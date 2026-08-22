@@ -155,6 +155,11 @@ public class AppSettings
     public List<ScheduledRecording> ScheduledRecordings { get; set; } = new();
 
     /// <summary>
+    /// Папка для записей (ffmpeg). null/пусто — «Видео\IptvPlayer».
+    /// </summary>
+    public string? RecordingsFolder { get; set; }
+
+    /// <summary>
     /// Показывать оверлей статистики потока (Ctrl+J): кодеки, разрешение,
     /// битрейты, фактический декодер, буфер и простои. Состояние переживает
     /// перезапуск — удобно для диагностики («включи и пришли скриншот»).

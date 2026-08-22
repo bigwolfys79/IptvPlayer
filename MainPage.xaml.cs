@@ -445,7 +445,7 @@ public sealed partial class MainPage : Page
 
                 // Идущая запись останавливается — файл остаётся валидным TS
                 // (Kill процесса = обрыв потока, MPEG-TS переживает это).
-                ViewModel.Recording.Stop();
+                ViewModel.Recording.StopAll();
 
                 if (Player.Player != null)
                 {
@@ -1360,20 +1360,100 @@ public sealed partial class MainPage : Page
     /// <summary>Синхронизирует вид обеих кнопок записи с состоянием сервиса.</summary>
     private void UpdateRecordButtons()
     {
-        var active = ViewModel.Recording.IsActive;
+        // Кнопка относится к ТЕКУЩЕМУ каналу: параллельно могут идти и другие записи.
+        var active = ViewModel.Recording.IsRecordingStream(ViewModel.SelectedChannel?.StreamUrl);
+        var currentPath = ViewModel.Recording.Active
+            .FirstOrDefault(r => r.StreamUrl == ViewModel.SelectedChannel?.StreamUrl)?.OutputPath;
 
         // Нарисованные иконки (AppIcons): идёт запись — красный квадрат STOP,
         // простаивает — красная точка REC. Цвет зашит в фигуру, Foreground
         // кнопки не трогаем.
         VideoOverlayRecordButton.Content = active ? AppIcons.StopSquare(13) : AppIcons.RecordDot(14);
         ToolTipService.SetToolTip(VideoOverlayRecordButton, active
-            ? L.T($"Остановить запись ({ViewModel.Recording.OutputPath})", $"Stop recording ({ViewModel.Recording.OutputPath})")
+            ? L.T($"Остановить запись ({currentPath})", $"Stop recording ({currentPath})")
             : L.T("Записать канал", "Record channel"));
 
         OverlayRecordButton.Content = active ? AppIcons.StopSquare(17) : AppIcons.RecordDot(18);
         ToolTipService.SetToolTip(OverlayRecordButton, active
             ? L.T("Остановить запись", "Stop recording")
             : L.T("Записать канал", "Record channel"));
+    }
+
+    // ===================== Список записей =====================
+
+    /// <summary>
+    /// Кнопка «Записи» (обе панели): список идущих и запланированных записей,
+    /// стоп по клику на идущую, отмена по клику на запланированную, внизу —
+    /// переход в папку записей.
+    /// </summary>
+    private void RecordingsListButton_Click(object sender, RoutedEventArgs e)
+    {
+        var flyout = new MenuFlyout();
+        var added = false;
+
+        foreach (var rec in ViewModel.Recording.Active)
+        {
+            added = true;
+            var id = rec.Id;
+            var item = new MenuFlyoutItem
+            {
+                Text = L.T(
+                    $"● {rec.ChannelName} — с {rec.StartedAt:HH:mm} (остановить)",
+                    $"● {rec.ChannelName} — since {rec.StartedAt:HH:mm} (stop)")
+            };
+            item.Click += (s, _) => ViewModel.Recording.Stop(id);
+            flyout.Items.Add(item);
+        }
+
+        foreach (var rec in ViewModel.AppSettings.ScheduledRecordings.OrderBy(r => r.StartTime).Take(10))
+        {
+            added = true;
+            var scheduled = rec;
+            var item = new MenuFlyoutItem
+            {
+                Text = L.T(
+                    $"🕘 {rec.ChannelName} — {rec.ProgramName}, {rec.StartTime:HH:mm} (убрать)",
+                    $"🕘 {rec.ChannelName} — {rec.ProgramName}, {rec.StartTime:HH:mm} (remove)")
+            };
+            item.Click += (s, _) => ViewModel.RemoveScheduledRecordingCommand.Execute(scheduled);
+            flyout.Items.Add(item);
+        }
+
+        if (!added)
+        {
+            flyout.Items.Add(new MenuFlyoutItem
+            {
+                Text = L.T("Нет активных и запланированных записей", "No active or scheduled recordings"),
+                IsEnabled = false
+            });
+        }
+
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        var openItem = new MenuFlyoutItem
+        {
+            Text = L.T("Открыть папку записей", "Open recordings folder")
+        };
+        openItem.Click += OpenRecordingsFolder;
+        flyout.Items.Add(openItem);
+
+        flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    private void OpenRecordingsFolder(object sender, RoutedEventArgs e)
+    {
+        var folder = string.IsNullOrWhiteSpace(ViewModel.AppSettings.RecordingsFolder)
+            ? Services.RecordingService.DefaultFolder
+            : ViewModel.AppSettings.RecordingsFolder;
+        try
+        {
+            System.IO.Directory.CreateDirectory(folder);
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo("explorer.exe", folder) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось открыть папку записей {Folder}.", folder);
+        }
     }
 
     // ===================== Беззвучный режим и двойной клик =====================

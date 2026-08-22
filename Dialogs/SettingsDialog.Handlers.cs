@@ -138,6 +138,9 @@ public sealed partial class SettingsDialog
             _viewModel.AppSettings.PreferredQuality = quality;
         }
 
+        _viewModel.AppSettings.RecordingsFolder =
+            string.IsNullOrWhiteSpace(RecordingsFolderBox.Text) ? null : RecordingsFolderBox.Text.Trim();
+
         await _settingsService.SaveAsync(_viewModel.AppSettings);
 
         // Переключение аудио фильтров слышно сразу — фильтры заменяются в графе
