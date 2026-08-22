@@ -1,0 +1,68 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.EpgSettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- Быстрый доступ к разделу EPG полного SettingsDialog: источники
+         XMLTV, напоминания и периодичность обновления. Комбобоксы
+         наполняются в code-behind (LoadAsync) — элементы с Tag-значениями. -->
+    <StackPanel Spacing="12" Width="440">
+        <TextBlock x:Name="TitleText" Text="Настройки EPG" FontSize="20" FontWeight="SemiBold"/>
+
+        <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="12" Spacing="12">
+
+                <TextBlock x:Name="EpgSourcesHeader" Text="Источники EPG" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="EpgSourcesHint"
+                           Text="URL-адреса источников EPG (XMLTV). Изменённый список перекачивается сразу после сохранения."
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+
+                <StackPanel x:Name="EpgSourcesContainer" Spacing="6"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                    <TextBox x:Name="EpgUrlBox"
+                             Width="290"
+                             PlaceholderText="URL XMLTV"/>
+                    <Button x:Name="AddEpgSourceButton"
+                            Content="Добавить"
+                            Height="32"
+                            Padding="12,0"
+                            Click="AddEpgSourceButton_Click"/>
+                </StackPanel>
+
+                <TextBlock x:Name="RemindersHeader" Text="Напоминания EPG" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="RemindersHint"
+                           Text="За сколько минут до начала передачи показывать тост-напоминание."
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+                <ComboBox x:Name="ReminderMinutesCombo" HorizontalAlignment="Stretch"/>
+
+                <TextBlock x:Name="EpgRefreshHeader" Text="EPG (программа передач)" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="EpgRefreshHint"
+                           Text="Как часто при запуске перекачивать XMLTV-источники."
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+                <ComboBox x:Name="EpgRefreshCombo" HorizontalAlignment="Stretch"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,24,0,0">
+                    <Button x:Name="CancelButton"
+                            Content="Отмена"
+                            Width="100" Height="36"
+                            Click="CancelButton_Click"/>
+                    <Button x:Name="SaveButton"
+                            Content="Сохранить"
+                            Width="100" Height="36"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="SaveButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>

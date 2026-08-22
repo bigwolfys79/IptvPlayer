@@ -1,0 +1,168 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.PlaylistSettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:models="using:IptvPlayer.Models"
+    xmlns:dialogs="using:IptvPlayer.Dialogs"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- Управление плейлистами: список источников (активный отмечен, кнопка
+         «Активировать» переключает список каналов), добавление нового
+         (имя необязательное — по умолчанию хост URL) и удаление.
+         Частота обновления — общая на все плейлисты. -->
+    <StackPanel Spacing="12" Width="480">
+        <TextBlock x:Name="TitleText" Text="Плейлист" FontSize="20" FontWeight="SemiBold"/>
+
+        <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="12" Spacing="12">
+
+                <TextBlock x:Name="PlaylistHeader" Text="Плейлисты" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="PlaylistHint"
+                           Text="Каналы в списке — из активного плейлиста. Переключайтесь комбобоксом над списком каналов."
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+                <ItemsControl x:Name="PlaylistsList" ItemsSource="{x:Bind PlaylistItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="6"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="dialogs:PlaylistListItem">
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="6" Padding="8,6">
+                                <StackPanel>
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Обычный вид: имя + URL. -->
+                                    <StackPanel Grid.Column="0" Spacing="2"
+                                                Visibility="{x:Bind ViewVisibility}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="●" FontSize="10" VerticalAlignment="Center"
+                                                       Foreground="{ThemeResource SystemAccentColor}"
+                                                       Visibility="{x:Bind ActiveMarkVisibility}"/>
+                                            <TextBlock Text="{x:Bind Playlist.Name}" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{x:Bind Playlist.Url}" FontSize="11"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <!-- Режим переименования: поле имени + сохранение. -->
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6"
+                                                Visibility="{x:Bind EditVisibility}">
+                                        <TextBox x:Name="NameEditBox" Width="260" KeyDown="NameEditBox_KeyDown"/>
+                                        <Button Content="✓" Width="36" Height="32"
+                                                ToolTipService.ToolTip="Сохранить имя"
+                                                Click="SavePlaylistNameButton_Click"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="✎" Width="36" Height="32"
+                                            ToolTipService.ToolTip="Переименовать"
+                                            Click="RenamePlaylistButton_Click"
+                                            Visibility="{x:Bind ViewVisibility}"/>
+                                    <Button Grid.Column="2" Content="EPG" Height="32" MinWidth="44" Padding="8,0"
+                                            ToolTipService.ToolTip="Источники EPG этого плейлиста"
+                                            Click="EpgSectionButton_Click"/>
+                                    <Button Grid.Column="3" Content="✓" Width="36" Height="32"
+                                            ToolTipService.ToolTip="Активировать"
+                                            Click="ActivatePlaylistButton_Click"
+                                            Visibility="{x:Bind ActivateButtonVisibility}"/>
+                                    <Button Grid.Column="4" Content="✕" Width="36" Height="32"
+                                            ToolTipService.ToolTip="Удалить"
+                                            Click="RemovePlaylistButton_Click"
+                                            Visibility="{x:Bind ViewVisibility}"/>
+                                </Grid>
+
+                                <!-- Источники EPG этого плейлиста (раскрывается кнопкой EPG):
+                                     чекбокс — использовать, ✕ — удалить, снизу добавление по «+». -->
+                                <StackPanel Spacing="6" Margin="0,8,0,0"
+                                            Visibility="{x:Bind EpgSectionVisibility}">
+                                    <ItemsControl ItemsSource="{x:Bind Playlist.EpgSources}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:EPGSource">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <CheckBox IsChecked="{x:Bind IsEnabled, Mode=TwoWay}"
+                                                              VerticalAlignment="Center"
+                                                              Checked="PlaylistEpgSource_CheckedChanged"
+                                                              Unchecked="PlaylistEpgSource_CheckedChanged"
+                                                              ToolTipService.ToolTip="Использовать источник"/>
+                                                    <TextBlock Text="{x:Bind Url}" FontSize="11" Width="260"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <Button Content="✕" Width="32" Height="32"
+                                                            VerticalAlignment="Center"
+                                                            ToolTipService.ToolTip="Удалить источник"
+                                                            Click="PlaylistEpgSourceRemoveButton_Click"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBox Width="296" PlaceholderText="URL XMLTV"
+                                                 KeyDown="PlaylistEpgUrlBox_KeyDown"/>
+                                        <Button Content="+" Width="36" Height="32"
+                                                VerticalAlignment="Center"
+                                                ToolTipService.ToolTip="Добавить источник EPG"
+                                                Click="PlaylistEpgSourceAddButton_Click"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                </StackPanel>
+                            </Border>                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Статус действий над плейлистами — рядом со списком. -->
+                <TextBlock x:Name="PlaylistStatusText"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           Visibility="Collapsed"/>
+
+                <TextBlock x:Name="AddPlaylistHeader" Text="Добавить плейлист" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                <TextBox x:Name="PlaylistNameBox"
+                         PlaceholderText="Имя (необязательно)"
+                         HorizontalAlignment="Stretch"/>
+                <TextBox x:Name="PlaylistUrlBox"
+                         PlaceholderText="URL плейлиста M3U/M3U8"
+                         HorizontalAlignment="Stretch"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="AddPlaylistButton"
+                            Content="Добавить"
+                            HorizontalAlignment="Left"
+                            Click="AddPlaylistButton_Click"/>
+                    <Button x:Name="AddPlaylistFileButton"
+                            Content="Выбрать файл..."
+                            HorizontalAlignment="Left"
+                            Click="AddPlaylistFileButton_Click"/>
+                </StackPanel>
+
+                <TextBlock x:Name="PlaylistRefreshHeader" Text="Частота обновления плейлистов" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="PlaylistRefreshHint"
+                           Text="Как часто при запуске перекачивать активный плейлист."
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+                <ComboBox x:Name="PlaylistRefreshCombo" HorizontalAlignment="Stretch"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,24,0,0">
+                    <Button x:Name="CloseButton"
+                            Content="Готово"
+                            Width="100" Height="36"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="CloseButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>

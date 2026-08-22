@@ -1,0 +1,66 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.InterfaceSettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- Быстрый доступ к разделу интерфейса полного SettingsDialog: язык,
+         тема и действие таймера сна. Комбобоксы и радиогруппы наполняются
+         в code-behind (LoadAsync) с Tag-значениями. -->
+    <StackPanel Spacing="12" Width="400">
+        <TextBlock x:Name="TitleText" Text="Настройки интерфейса" FontSize="20" FontWeight="SemiBold"/>
+
+        <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="12" Spacing="16">
+
+                <!-- Язык -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="LanguageHeader" Text="Язык интерфейса" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="LanguageHint"
+                               Text="Основные тексты интерфейса переводятся на лету."
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <ComboBox x:Name="LanguageCombo" MinWidth="180" HorizontalAlignment="Left"/>
+                </StackPanel>
+
+                <!-- Тема -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="ThemeHeader" Text="Тема интерфейса" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="ThemeHint"
+                               Text="Применяется сразу после сохранения, без перезапуска."
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <RadioButtons x:Name="ThemeRadio"/>
+                </StackPanel>
+
+                <!-- Таймер сна -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="SleepTimerHeader" Text="Таймер сна: по истечении" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="SleepTimerHint"
+                               Text="Применяется к уже взведённому таймеру, действие видно при его установке."
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <ComboBox x:Name="SleepTimerActionCombo" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+
+                <!-- Кнопки -->
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button x:Name="CancelButton"
+                            Content="Отмена"
+                            Width="100" Height="36"
+                            Click="CancelButton_Click"/>
+                    <Button x:Name="SaveButton"
+                            Content="Сохранить"
+                            Width="100" Height="36"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="SaveButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>

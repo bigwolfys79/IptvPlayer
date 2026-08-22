@@ -1,0 +1,74 @@
+## .NET / Visual Studio
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+artifacts/
+
+# Build logs
+[Ll]og/
+[Ll]ogs/
+*.log
+*.binlog
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+project.lock.json
+
+# MSIX packaging output
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixupload
+*.appx
+*.appxbundle
+*.appxupload
+
+# Publish output
+publish/
+*.pubxml
+PublishScripts/
+
+# Code analysis and tooling
+_ReSharper*/
+*.DotSettings.user
+*.dotCover
+.idea/
+
+# Generated files
+Generated\ Files/
+*_wpftmp.csproj
+
+# Heavy binaries and media samples (analysis/installer research artifacts)
+*.exe
+*.dll
+*.zip
+*.ts
+*.gz
+*.mp4
+analysis/ff.zip
+analysis/probe1080i
+installer/dolby/
+installer/dolby-installer.zip
+installer/dolby-pkgs/
+installer/output/
+installer/rg.html
+installer/rg2.html
+installer/test-hevc.mp4
+tools/
+Assets/epg-name-map.json.bak
+AppPackages*/
