@@ -260,6 +260,15 @@ public partial class MainPageViewModel : ObservableObject
         Recording = recording;
         _selectedChannel = new ChannelViewModel(); // избегаем null для x:Bind путей
 
+        // Старт/фinish любой записи (в т.ч. самозавершение по -t) обновляет
+        // состояние кнопок: IsRecording = «ТЕКУЩИЙ канал пишется», а не «хоть
+        // что-то пишется» — записей теперь может быть несколько.
+        Recording.RecordingsChanged += (s, e) =>
+        {
+            IsRecording = Recording.IsRecordingStream(SelectedChannel?.StreamUrl);
+            RecordingChanged?.Invoke(this, EventArgs.Empty);
+        };
+
         // После (пере)загрузки EPG пересобираем DisplayedChannels — обновлённые
         // иконки и текущие передачи гарантированно перерисовываются, даже если
         // PropertyChanged пришёл из фонового потока и привязка его не получила.
@@ -693,9 +702,11 @@ public partial class MainPageViewModel : ObservableObject
                 continue;
             }
 
-            if (Recording.IsActive)
+            if (Recording.IsRecordingChannel(rec.ChannelName))
             {
-                // Занято другой записью — попробуем на следующем тике.
+                // Этот канал уже пишется (например, вручную) — не дублируем.
+                AppSettings.ScheduledRecordings.RemoveAt(i);
+                changed = true;
                 continue;
             }
 
@@ -712,22 +723,33 @@ public partial class MainPageViewModel : ObservableObject
             var started = Recording.Start(
                 channel.StreamUrl,
                 $"{rec.ChannelName} - {rec.ProgramName}",
-                remaining);
+                rec.ChannelName,
+                remaining,
+                AppSettings.RecordingsFolder);
 
             if (started != null)
             {
                 AppSettings.ScheduledRecordings.RemoveAt(i);
                 changed = true;
             }
+            // null = лимит параллельных записей/нет ffmpeg — попробуем на
+            // следующем тике таймера.
         }
 
         if (changed)
         {
             SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
             ApplyReminderFlags();
-            IsRecording = Recording.IsActive;
-            RecordingChanged?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    /// <summary>Убирает передачу из расписания записей (кнопка в списке записей).</summary>
+    [RelayCommand]
+    private void RemoveScheduledRecording(ScheduledRecording rec)
+    {
+        AppSettings.ScheduledRecordings.Remove(rec);
+        SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
+        ApplyReminderFlags();
     }
 
     // ===================== Запись текущего канала =====================
@@ -741,28 +763,33 @@ public partial class MainPageViewModel : ObservableObject
     {
         RecordError = null;
 
-        if (Recording.IsActive)
+        var channel = SelectedChannel;
+        if (channel == null || string.IsNullOrWhiteSpace(channel.StreamUrl))
         {
-            Recording.Stop();
+            return;
+        }
+
+        var existing = Recording.Active.FirstOrDefault(r => r.StreamUrl == channel.StreamUrl);
+        if (existing != null)
+        {
+            // Пишется именно этот канал — кнопка его и останавливает
+            // (остальные параллельные записи не трогаем).
+            Recording.Stop(existing.Id);
         }
         else
         {
-            var channel = SelectedChannel;
-            if (channel == null || string.IsNullOrWhiteSpace(channel.StreamUrl))
-            {
-                return;
-            }
-
-            var path = Recording.Start(channel.StreamUrl, channel.Name, durationSec: null);
-            if (path == null)
+            var started = Recording.Start(
+                channel.StreamUrl, channel.Name, channel.Name,
+                durationSec: null, AppSettings.RecordingsFolder);
+            if (started == null)
             {
                 RecordError = L.T(
-                    "Не удалось начать запись (ffmpeg недоступен или запись уже идёт) — см. лог.",
-                    "Could not start recording (ffmpeg missing or already recording) — see log.");
+                    "Не удалось начать запись (ffmpeg недоступен или достигнут лимит одновременных записей) — см. лог.",
+                    "Could not start recording (ffmpeg missing or concurrent recording limit reached) — see log.");
             }
         }
 
-        IsRecording = Recording.IsActive;
+        IsRecording = Recording.IsRecordingStream(channel.StreamUrl);
         RecordingChanged?.Invoke(this, EventArgs.Empty);
     }
 
