@@ -160,6 +160,16 @@ public class AppSettings
     public string? RecordingsFolder { get; set; }
 
     /// <summary>
+    /// Родительский контроль: каналы групп из ParentalControlBlockedGroups
+    /// скрыты, пока контроль включён и не разблокирован временно. PIN —
+    /// PBKDF2-хэш (см. ParentalControlService); null = без PIN (просто скрыть).
+    /// </summary>
+    public bool ParentalControlEnabled { get; set; }
+    public string? ParentalControlPinHash { get; set; }
+    public List<string> ParentalControlBlockedGroups { get; set; } = new();
+    public DateTime? ParentalControlUnlockedUntilUtc { get; set; }
+
+    /// <summary>
     /// Показывать оверлей статистики потока (Ctrl+J): кодеки, разрешение,
     /// битрейты, фактический декодер, буфер и простои. Состояние переживает
     /// перезапуск — удобно для диагностики («включи и пришли скриншот»).

@@ -295,6 +295,40 @@ public partial class MainPageViewModel : ObservableObject
         UpdateChannelCountText();
     }
 
+    /// <summary>
+    /// Пересобирает список и группы после изменения настроек родительского
+    /// контроля (или истечения временной разблокировки): если выбранная
+    /// группа оказалась скрыта — сбрасываем на «Все группы».
+    /// </summary>
+    private bool? _lastParentalLocked;
+
+    /// <summary>
+    /// Вызывается 30-секундным таймером: когда временная разблокировка
+    /// истекла, снова прячет группы (и наоборот — не дёргает список зря).
+    /// </summary>
+    public void CheckParentalControlTimer()
+    {
+        var locked = ParentalControlService.IsLocked(AppSettings);
+        if (_lastParentalLocked == locked)
+        {
+            return;
+        }
+        _lastParentalLocked = locked;
+        ApplyParentalControl();
+    }
+
+    public void ApplyParentalControl()
+    {
+        _lastParentalLocked = ParentalControlService.IsLocked(AppSettings);
+        if (ParentalControlService.IsLocked(AppSettings) &&
+            ParentalControlService.IsGroupBlocked(AppSettings, SelectedGroup))
+        {
+            SelectedGroup = AllGroupsOption;
+        }
+        RefreshGroups(SelectedGroup);
+        FilterChannels();
+    }
+
     // ===================== Фильтрация каналов =====================
 
     /// <summary>
@@ -308,6 +342,14 @@ public partial class MainPageViewModel : ObservableObject
         var selectedGroup = SelectedGroup;
 
         IEnumerable<ChannelViewModel> filtered = Channels;
+
+        // Родительский контроль: каналы заблокированных групп не показываются
+        // (и группы исчезают из комбобокса — см. RefreshGroups), пока
+        // контроль включён и не разблокирован временно.
+        if (ParentalControlService.IsLocked(AppSettings))
+        {
+            filtered = filtered.Where(c => !ParentalControlService.IsGroupBlocked(AppSettings, c.Group));
+        }
 
         if (!string.IsNullOrEmpty(query))
         {
@@ -359,6 +401,11 @@ public partial class MainPageViewModel : ObservableObject
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(g => g, StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        if (ParentalControlService.IsLocked(AppSettings))
+        {
+            groups.RemoveAll(g => ParentalControlService.IsGroupBlocked(AppSettings, g));
+        }
 
         Groups.Clear();
         Groups.Add(AllGroupsOption);

@@ -635,6 +635,7 @@
                                 <MenuFlyoutItem Text="Интерфейс" Click="InterfaceSettingsButton_Click"/>
                                 <MenuFlyoutItem Text="EPG" Click="EpgSettingsButton_Click"/>
                                 <MenuFlyoutItem Text="Плейлист" Click="PlaylistSettingsButton_Click"/>
+                                <MenuFlyoutItem Text="Родительский контроль" Click="ParentalSettingsButton_Click"/>
                                 <!-- Подменю смены активного плейлиста: раскрывается при
                                      наведении (стрелка справа), наполняется в code-behind
                                      (UpdatePlaylistMenu), прячется, когда плейлист один. -->

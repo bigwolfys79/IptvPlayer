@@ -1,0 +1,62 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.ParentalControlDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- Родительский контроль: скрытие каналов выбранных групп за PIN с
+         временной разблокировкой. Пока контроль включён и заблокирован,
+         доступна только секция разблокировки; настройка — после ввода PIN. -->
+    <StackPanel Spacing="12" Width="460">
+        <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="12" Spacing="12">
+
+                <TextBlock x:Name="StatusText" FontSize="13" TextWrapping="Wrap"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                <!-- Секция разблокировки: видна, когда включено и заблокировано. -->
+                <StackPanel x:Name="UnlockPanel" Spacing="10" Visibility="Collapsed">
+                    <PasswordBox x:Name="PinBox" PlaceholderText="PIN" Width="200" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="UnlockHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="15 мин" Tag="15" Click="UnlockButton_Click"/>
+                        <Button Content="30 мин" Tag="30" Click="UnlockButton_Click"/>
+                        <Button Content="45 мин" Tag="45" Click="UnlockButton_Click"/>
+                        <Button Content="1 час" Tag="60" Click="UnlockButton_Click"/>
+                        <Button x:Name="UnlockForeverButton" Click="UnlockForeverButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Секция настройки: доступна, когда выключено или разблокировано. -->
+                <StackPanel x:Name="EditPanel" Spacing="12">
+                    <ToggleSwitch x:Name="EnabledToggle" HorizontalAlignment="Left"
+                                  Toggled="EnabledToggle_Toggled"/>
+                    <TextBlock x:Name="EnabledHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+                    <TextBlock x:Name="GroupsHeader" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="GroupsHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto" BorderThickness="1"
+                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" Padding="6">
+                        <StackPanel x:Name="GroupsList" Spacing="4"/>
+                    </ScrollViewer>
+
+                    <TextBlock x:Name="PinHeader" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="PinHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PasswordBox x:Name="NewPinBox" Width="160"/>
+                        <Button x:Name="SetPinButton" Click="SetPinButton_Click"/>
+                        <Button x:Name="RemovePinButton" Click="RemovePinButton_Click"/>
+                    </StackPanel>
+
+                    <Button x:Name="LockNowButton" Click="LockNowButton_Click" Margin="0,4,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>
