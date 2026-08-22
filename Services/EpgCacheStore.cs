@@ -30,10 +30,11 @@ public static class EpgCacheStore
         {
             Directory.CreateDirectory(CacheDir);
         }
-        catch
+        catch (Exception ex)
         {
             // Нет прав/диска — останемся без дискового кэша, это не должно
             // ронять приложение (см. такую же политику в CacheService).
+            Log.Warning(ex, "Не удалось создать папку кэша EPG {Dir}.", CacheDir);
         }
     }
 

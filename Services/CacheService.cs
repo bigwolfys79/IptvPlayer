@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services
 {
@@ -29,15 +30,17 @@ namespace IptvPlayer.Services
         private readonly Dictionary<string, object> _cache = new();
         private readonly string _cacheDir;
         private readonly ProcessSpeedMonitor? _speedMonitor;
+        private readonly ILogger<CacheService>? _logger;
 
         private static readonly JsonSerializerOptions JsonOpts = new()
         {
             WriteIndented = false
         };
 
-        public CacheService(ProcessSpeedMonitor? speedMonitor = null)
+        public CacheService(ProcessSpeedMonitor? speedMonitor = null, ILogger<CacheService>? logger = null)
         {
             _speedMonitor = speedMonitor;
+            _logger = logger;
             _cacheDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "IptvPlayer", "cache");
@@ -45,10 +48,11 @@ namespace IptvPlayer.Services
             {
                 Directory.CreateDirectory(_cacheDir);
             }
-            catch
+            catch (Exception ex)
             {
                 // Нет прав/диска — просто останемся без дискового кэша,
                 // in-memory часть продолжит работать как раньше.
+                _logger?.LogWarning(ex, "Не удалось создать папку дискового кэша {Dir}.", _cacheDir);
             }
         }
 
@@ -104,10 +108,11 @@ namespace IptvPlayer.Services
                     Directory.CreateDirectory(_cacheDir);
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Не критично — RefreshEPGAsync всё равно перезапишет файлы
                 // новыми данными на следующем SetAsync.
+                _logger?.LogWarning(ex, "Не удалось очистить папку дискового кэша {Dir}.", _cacheDir);
             }
         }
 
@@ -124,11 +129,12 @@ namespace IptvPlayer.Services
                 var json = File.ReadAllText(path);
                 return JsonSerializer.Deserialize<T>(json, JsonOpts);
             }
-            catch
+            catch (Exception ex)
             {
                 // Битый/несовместимый (например, после апдейта модели EPGEntry)
                 // файл кэша — считаем, что кэша нет, вызывающий код перекачает
                 // источник и перезапишет файл свежими данными.
+                _logger?.LogWarning(ex, "Не удалось прочитать файл кэша для ключа {Key} — считаем промахом.", key);
                 return default;
             }
         }
@@ -139,10 +145,11 @@ namespace IptvPlayer.Services
             {
                 File.WriteAllText(DiskPath(key), JsonSerializer.Serialize(value, JsonOpts));
             }
-            catch
+            catch (Exception ex)
             {
                 // Диск занят/нет прав — кэш останется только in-memory на
                 // текущую сессию, приложение это не должно ронять.
+                _logger?.LogWarning(ex, "Не удалось записать кэш на диск для ключа {Key}.", key);
             }
         }
 
@@ -156,9 +163,10 @@ namespace IptvPlayer.Services
                     File.Delete(path);
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Не критично.
+                _logger?.LogWarning(ex, "Не удалось удалить файл кэша для ключа {Key}.", key);
             }
         }
 
