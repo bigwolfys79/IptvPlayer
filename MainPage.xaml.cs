@@ -252,7 +252,14 @@ public sealed partial class MainPage : Page
                 }
             });
         ViewModel.FilterChanged += (s, e) =>
+        {
             DispatcherQueue.TryEnqueue(RefreshOverlayChannelGroups);
+            // Пересборка DisplayedChannels (фильтр, поиск, фоновая загрузка
+            // EPG) сбрасывает прокрутку списка наверх — возвращаем выбранный
+            // канал в видимую область, иначе играющий канал оказывается
+            // за экраном (особенно при старте с автопродолжением).
+            DispatcherQueue.TryEnqueue(async () => await ScrollSelectedChannelIntoViewAsync());
+        };
         ViewModel.ReminderToastRequested += (s, e) =>
             ShowReminderToast(e);
         ViewModel.SettingsSaveRequested += (s, e) =>
