@@ -241,9 +241,10 @@ namespace IptvPlayer.Services
                     CurrentDiagnostics.DownloadBitrate = _lastBitrateEstimate;
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Игнорируем ошибки при измерении скорости
+                Serilog.Log.Debug(ex, "Измерение скорости скачивания прервано ошибкой.");
             }
         }
 
@@ -280,9 +281,10 @@ namespace IptvPlayer.Services
                     ReadAheadBytes = config.General.ReadAheadBufferSize
                 };
             }
-            catch
+            catch (Exception ex)
             {
                 // Метаданные потока не критичны для воспроизведения.
+                Serilog.Log.Debug(ex, "Не удалось собрать метаданные потока — оверлей получит пустую диагностику.");
                 return new PlaybackDiagnostics();
             }
         }
