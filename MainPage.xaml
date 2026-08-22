@@ -136,7 +136,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Channel List Panel -->
-        <Border Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+        <Border x:Name="ChannelListPanel" Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
