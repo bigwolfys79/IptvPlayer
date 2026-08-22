@@ -163,6 +163,10 @@ namespace IptvPlayer.Services
                 // новое соединение без обречённой попытки; reconnect* —
                 // авто-восстановление при обрывах сети.
                 config.FFmpegOptions["multiple_requests"] = "0";
+                // http_persistent — опция именно HLS-демуксера: он сам
+                // включает keepalive для сегментов, multiple_requests на
+                // внешний контекст не влияет.
+                config.FFmpegOptions["http_persistent"] = "0";
                 config.FFmpegOptions["reconnect"] = "1";
                 config.FFmpegOptions["reconnect_streamed"] = "1";
                 config.FFmpegOptions["reconnect_delay_max"] = "7";
