@@ -446,6 +446,21 @@ public sealed partial class MainPage : Page
                     ? _channelListExpandedWidth
                     : Math.Max(0, ChannelListColumn.ActualWidth);
                 ViewModel.AppSettings.Volume = Player.LastUserVolume ?? 1.0;
+                // Идущие записи запоминаем, чтобы предложить продолжение
+                // оставшейся части при следующем запуске (передача могла не
+                // кончиться). URL не храним — подписи истекают, при
+                // продолжении возьмём свежий из плейлиста по имени канала.
+                ViewModel.AppSettings.InterruptedRecordings = ViewModel.Recording.Active
+                    .Select(r => new Models.InterruptedRecording
+                    {
+                        ChannelName = r.ChannelName,
+                        ProgramName = r.ChannelName,
+                        EndTime = r.DurationSec is > 0
+                            ? r.StartedAt.AddSeconds(r.DurationSec.Value)
+                            : null
+                    })
+                    .ToList();
+
                 ViewModel.SaveSettingsAsync().GetAwaiter().GetResult();
 
                 // Идущая запись останавливается — файл остаётся валидным TS
@@ -471,6 +486,92 @@ public sealed partial class MainPage : Page
 
             Environment.Exit(0);
         };
+    }
+
+    /// <summary>
+    /// Продолжение записей, прерванных закрытием приложения: для каждой
+    /// незаконченной (EndTime в будущем) и находимой в текущем плейлисте —
+    /// один диалог «Продолжить запись?». Продолжение пишет ffmpeg в НОВЫЙ
+    /// файл «… (продолжение)» на оставшееся время, со свежим URL потока
+    /// (старый к моменту запуска истёк по подписи).
+    /// </summary>
+    private async Task OfferInterruptedRecordingsAsync()
+    {
+        try
+        {
+            var now = DateTime.Now;
+            var resumable = ViewModel.AppSettings.InterruptedRecordings
+                .Where(r => r.EndTime == null || r.EndTime > now)
+                .ToList();
+
+            // Отработавшие своё и ненайденные каналы убираем из списка в
+            // любом случае.
+            ViewModel.AppSettings.InterruptedRecordings = resumable
+                .Where(r => ViewModel.Channels.Any(c =>
+                    string.Equals(c.Name, r.ChannelName, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            await ViewModel.SaveSettingsAsync();
+
+            if (ViewModel.AppSettings.InterruptedRecordings.Count == 0)
+            {
+                return;
+            }
+
+            var names = string.Join(Environment.NewLine, ViewModel.AppSettings.InterruptedRecordings
+                .Select(r => $"• {r.ChannelName}" +
+                             (r.EndTime != null ? $" (до {r.EndTime:HH:mm})" : "")));
+            var dialog = new ContentDialog
+            {
+                XamlRoot = Content.XamlRoot,
+                Title = L.T("Прерванная запись", "Interrupted recording"),
+                Content = new TextBlock
+                {
+                    Text = L.T(
+                        $"При прошлом закрытии приложения прервалась запись:{Environment.NewLine}{names}{Environment.NewLine}{Environment.NewLine}Продолжить запись оставшейся части?",
+                        $"A recording was interrupted when the app closed:{Environment.NewLine}{names}{Environment.NewLine}{Environment.NewLine}Resume recording the remaining part?"),
+                    TextWrapping = TextWrapping.Wrap
+                },
+                PrimaryButtonText = L.T("Продолжить", "Resume"),
+                CloseButtonText = L.T("Нет", "No")
+            };
+            var resume = await dialog.ShowAsync();
+
+            var toResume = ViewModel.AppSettings.InterruptedRecordings.ToList();
+            ViewModel.AppSettings.InterruptedRecordings.Clear();
+            await ViewModel.SaveSettingsAsync();
+
+            if (resume != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            foreach (var rec in toResume)
+            {
+                var channel = ViewModel.Channels.FirstOrDefault(c =>
+                    string.Equals(c.Name, rec.ChannelName, StringComparison.OrdinalIgnoreCase));
+                if (channel == null || string.IsNullOrWhiteSpace(channel.StreamUrl))
+                {
+                    continue;
+                }
+
+                var remaining = rec.EndTime != null
+                    ? (int)Math.Max(60, (rec.EndTime.Value - DateTime.Now).TotalSeconds)
+                    : (int?)null;
+                ViewModel.Recording.Start(
+                    channel.StreamUrl,
+                    $"{rec.ChannelName} (продолжение)",
+                    rec.ChannelName,
+                    remaining,
+                    ViewModel.AppSettings.RecordingsFolder);
+                _logger.LogInformation(
+                    "Продолжена прерванная запись: {Channel}, осталось {Remaining} c.",
+                    rec.ChannelName, remaining?.ToString() ?? "до остановки");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Предложение продолжения прерванных записей.");
+        }
     }
 
     private async Task InitializeAsync()
@@ -604,6 +705,10 @@ public sealed partial class MainPage : Page
         ViewModel.RefreshGroups();
         ViewModel.FilterChannels();
         UpdatePlaylistMenu();
+
+        // Записи, прерванные прошлым закрытием: если передача ещё идёт —
+        // предлагаем продолжить запись оставшейся части.
+        _ = OfferInterruptedRecordingsAsync();
 
         // Выбираем первый канал ДО запуска загрузки EPG: SelectedChannel
         // нужен для x:Bind EPG-панели, и раньше он назначался только после

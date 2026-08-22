@@ -177,6 +177,12 @@ public class AppSettings
     /// </summary>
     public bool CloseToTray { get; set; } = true;
 
+    /// <summary>
+    /// Записи, прерванные закрытием приложения: при следующем запуске
+    /// предлагается продолжить запись оставшейся части (см. InterruptedRecording).
+    /// </summary>
+    public List<InterruptedRecording> InterruptedRecordings { get; set; } = new();
+
     public bool ParentalControlEnabled { get; set; }
     public string? ParentalControlPinHash { get; set; }
     public List<string> ParentalControlBlockedGroups { get; set; } = new();
