@@ -384,6 +384,7 @@ public sealed partial class MainPage : Page
         {
             _ = ViewModel.CheckRemindersAsync();
             ViewModel.CheckScheduledRecordings();
+            ViewModel.CheckParentalControlTimer();
         };
         _reminderTimer.Start();
 
@@ -1922,6 +1923,18 @@ public sealed partial class MainPage : Page
 
         // Список/имена плейлистов могли измениться в диалоге — обновляем подменю.
         UpdatePlaylistMenu();
+    }
+
+    private async void ParentalSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Dialogs.ParentalControlDialog(
+            ViewModel,
+            _settingsService,
+            App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Dialogs.ParentalControlDialog>>());
+        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
+
+        // Состояние могло измениться — пересобрать список и группы.
+        ViewModel.ApplyParentalControl();
     }
 
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
