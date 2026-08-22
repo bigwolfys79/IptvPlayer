@@ -123,8 +123,8 @@ public sealed partial class RecordingSettingsDialog : UserControl
 
         FolderHeader.Text = L.T("Папка записей", "Recordings folder");
         FolderHint.Text = L.T(
-            "Куда ffmpeg сохраняет записи (.ts). Пусто — «Видео\\IptvPlayer».",
-            "Where ffmpeg saves recordings (.ts). Empty = \"Videos\\IptvPlayer\".");
+            "Куда ffmpeg сохраняет записи (.ts). Пусто — «Видео\\IptvPlayer». Корень диска выбирается вводом пути вручную, например F:\\ — системный диалог выбора папки корень диска не отдаёт.",
+            "Where ffmpeg saves recordings (.ts). Empty = \"Videos\\IptvPlayer\". A drive root can be typed in manually, e.g. F:\\ — the system folder picker does not allow selecting a drive root.");
         FolderBox.PlaceholderText = RecordingService.DefaultFolder;
         BrowseButton.Content = L.T("Обзор...", "Browse...");
         OpenFolderButton.Content = L.T("Открыть папку", "Open folder");
@@ -168,8 +168,26 @@ public sealed partial class RecordingSettingsDialog : UserControl
 
     private async void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        _viewModel.AppSettings.RecordingsFolder =
-            string.IsNullOrWhiteSpace(FolderBox.Text) ? null : FolderBox.Text.Trim();
+        var folder = string.IsNullOrWhiteSpace(FolderBox.Text) ? null : FolderBox.Text.Trim();
+        if (folder != null)
+        {
+            try
+            {
+                // Папки может не быть (ввели путь руками) — создаём заранее,
+                // иначе ffmpeg молча не сможет начать запись.
+                System.IO.Directory.CreateDirectory(folder);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Не удалось создать папку записей {Folder}.", folder);
+                FolderHint.Text = L.T(
+                    $"Не удалось создать папку «{folder}» — проверьте путь и права.",
+                    $"Could not create \"{folder}\" — check the path and permissions.");
+                return;
+            }
+        }
+
+        _viewModel.AppSettings.RecordingsFolder = folder;
         await _settingsService.SaveAsync(_viewModel.AppSettings);
         _hostDialog?.Hide();
     }
