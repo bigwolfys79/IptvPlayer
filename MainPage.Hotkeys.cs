@@ -132,6 +132,13 @@ public sealed partial class MainPage
 
         switch (e.Key)
         {
+            case VirtualKey.Back:
+                // «Предыдущий канал» — как кнопка «назад» пульта. Ввод номера
+                // канала и текстовые поля перехватили Backspace выше.
+                ViewModel.GoToPreviousChannelCommand.Execute(null);
+                e.Handled = true;
+                break;
+
             case VirtualKey.Space:
                 // Пауза живого эфира намеренно не поддерживается — как и кнопка
                 // паузы в панелях, пробел работает только на архиве.
