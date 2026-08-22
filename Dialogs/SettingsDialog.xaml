@@ -98,6 +98,13 @@
                         <TextBlock x:Name="PlaylistHeader" FontSize="12" FontWeight="Medium"/>
                         <ComboBox x:Name="PlaylistRefreshCombo" HorizontalAlignment="Stretch"/>
 
+                        <TextBlock x:Name="RecordingsFolderHeader" FontSize="12" FontWeight="Medium" Margin="0,8,0,0"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox x:Name="RecordingsFolderBox" HorizontalAlignment="Stretch" Width="300"/>
+                            <Button x:Name="ChooseRecordingsFolderButton" Click="ChooseRecordingsFolderButton_Click"/>
+                        </StackPanel>
+                        <TextBlock x:Name="RecordingsFolderHint" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+
                         <TextBlock x:Name="M3uHeader" FontSize="12" FontWeight="Medium" Margin="0,8,0,0"/>
                         <TextBox x:Name="PlaylistUrlBox"/>
                         <TextBlock x:Name="PlaylistStatusText" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Visibility="Collapsed"/>
