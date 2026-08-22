@@ -1407,6 +1407,10 @@ public sealed partial class MainPage : Page
         if (mini && !_panelsHiddenForMini)
         {
             _panelsHiddenForMini = true;
+            // MinWidth колонки (240) не даёт сжать её в ноль — прячем саму
+            // панель и разрешаем нулевую ширину.
+            ChannelListPanel.Visibility = Visibility.Collapsed;
+            ChannelListColumn.MinWidth = 0;
             ChannelListColumn.Width = new GridLength(0);
             SplitterColumn.Width = new GridLength(0);
             ViewModel.IsEpgVisible = false;
@@ -1415,9 +1419,11 @@ public sealed partial class MainPage : Page
         else if (!mini && _panelsHiddenForMini)
         {
             _panelsHiddenForMini = false;
+            ChannelListColumn.MinWidth = 240;
             ChannelListColumn.Width = new GridLength(
                 Math.Max(240, ViewModel.AppSettings.ChannelListWidth), GridUnitType.Pixel);
             SplitterColumn.Width = GridLength.Auto;
+            ChannelListPanel.Visibility = Visibility.Visible;
         }
     }
 
