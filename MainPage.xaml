@@ -532,12 +532,6 @@
                                                         ToolTipService.ToolTip="Записать канал">
                                             <Ellipse Width="14" Height="14" Fill="#FFF53B3B" />
                                         </Button>
-                                        <Button x:Name="VideoOverlayRecordingsListButton"
-                                                        Width="40" Height="40"
-                                                        Click="RecordingsListButton_Click"
-                                                        ToolTipService.ToolTip="Записи">
-                                            <Path Data="M3,4 H13 M3,8 H13 M3,12 H13" Stroke="White" StrokeThickness="1.6" StrokeDashCap="Round" />
-                                        </Button>
                     <!-- Показывается только при просмотре архива: подсказка с
                          названием передачи ставится в UpdateArchiveBanner. -->
                                         <Button x:Name="VideoOverlayBackToLiveButton"
@@ -635,6 +629,7 @@
                                 <MenuFlyoutItem Text="Интерфейс" Click="InterfaceSettingsButton_Click"/>
                                 <MenuFlyoutItem Text="EPG" Click="EpgSettingsButton_Click"/>
                                 <MenuFlyoutItem Text="Плейлист" Click="PlaylistSettingsButton_Click"/>
+                                <MenuFlyoutItem Text="Записи" Click="RecordingSettingsButton_Click"/>
                                 <MenuFlyoutItem Text="Родительский контроль" Click="ParentalSettingsButton_Click"/>
                                 <!-- Подменю смены активного плейлиста: раскрывается при
                                      наведении (стрелка справа), наполняется в code-behind
@@ -864,12 +859,6 @@
                                                                 Command="{x:Bind ViewModel.ToggleRecordingCommand}"
                                                                 ToolTipService.ToolTip="Записать канал">
                                                     <Ellipse Width="18" Height="18" Fill="#FFF53B3B" />
-                                                </Button>
-                                                <Button x:Name="OverlayRecordingsListButton"
-                                                                Width="56" Height="56"
-                                                                Click="RecordingsListButton_Click"
-                                                                ToolTipService.ToolTip="Записи">
-                                                    <Path Data="M4,5.5 H18 M4,11 H18 M4,16.5 H18" Stroke="White" StrokeThickness="2" StrokeDashCap="Round" />
                                                 </Button>
                                                 <Button x:Name="OverlayBackToLiveButton"
                                                                 Content="В эфир"

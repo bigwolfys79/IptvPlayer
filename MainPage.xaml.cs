@@ -1388,112 +1388,6 @@ public sealed partial class MainPage : Page
             : L.T("Записать канал", "Record channel"));
     }
 
-    // ===================== Список записей =====================
-
-    /// <summary>
-    /// Кнопка «Записи» (обе панели): список идущих и запланированных записей,
-    /// стоп по клику на идущую, отмена по клику на запланированную, внизу —
-    /// переход в папку записей.
-    /// </summary>
-    private void RecordingsListButton_Click(object sender, RoutedEventArgs e)
-    {
-        var flyout = new MenuFlyout();
-        var added = false;
-
-        foreach (var rec in ViewModel.Recording.Active)
-        {
-            added = true;
-            var id = rec.Id;
-            var item = new MenuFlyoutItem
-            {
-                Text = L.T(
-                    $"● {rec.ChannelName} — с {rec.StartedAt:HH:mm} (остановить)",
-                    $"● {rec.ChannelName} — since {rec.StartedAt:HH:mm} (stop)")
-            };
-            item.Click += (s, _) => ViewModel.Recording.Stop(id);
-            flyout.Items.Add(item);
-        }
-
-        foreach (var rec in ViewModel.AppSettings.ScheduledRecordings.OrderBy(r => r.StartTime).Take(10))
-        {
-            added = true;
-            var scheduled = rec;
-            var item = new MenuFlyoutItem
-            {
-                Text = L.T(
-                    $"🕘 {rec.ChannelName} — {rec.ProgramName}, {rec.StartTime:HH:mm} (убрать)",
-                    $"🕘 {rec.ChannelName} — {rec.ProgramName}, {rec.StartTime:HH:mm} (remove)")
-            };
-            item.Click += (s, _) => ViewModel.RemoveScheduledRecordingCommand.Execute(scheduled);
-            flyout.Items.Add(item);
-        }
-
-        if (!added)
-        {
-            flyout.Items.Add(new MenuFlyoutItem
-            {
-                Text = L.T("Нет активных и запланированных записей", "No active or scheduled recordings"),
-                IsEnabled = false
-            });
-        }
-
-        flyout.Items.Add(new MenuFlyoutSeparator());
-        var openItem = new MenuFlyoutItem
-        {
-            Text = L.T("Открыть папку записей", "Open recordings folder")
-        };
-        openItem.Click += OpenRecordingsFolder;
-        flyout.Items.Add(openItem);
-
-        var folderItem = new MenuFlyoutItem
-        {
-            Text = L.T("Выбрать папку записей...", "Choose recordings folder...")
-        };
-        folderItem.Click += ChooseRecordingsFolder;
-        flyout.Items.Add(folderItem);
-
-        flyout.ShowAt((FrameworkElement)sender);
-    }
-
-    /// <summary>Выбор папки для записей (FolderPicker требует HWND-владельца).</summary>
-    private async void ChooseRecordingsFolder(object sender, RoutedEventArgs e)
-    {
-        var picker = new Windows.Storage.Pickers.FolderPicker();
-        picker.FileTypeFilter.Add("*");
-        if (App.MainWindow is { } window)
-        {
-            WinRT.Interop.InitializeWithWindow.Initialize(
-                picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
-        }
-
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder == null)
-        {
-            return; // Отменили выбор.
-        }
-
-        ViewModel.AppSettings.RecordingsFolder = folder.Path;
-        await _settingsService.SaveAsync(ViewModel.AppSettings);
-        _logger.LogInformation("Папка записей изменена: {Folder}.", folder.Path);
-    }
-
-    private void OpenRecordingsFolder(object sender, RoutedEventArgs e)
-    {
-        var folder = string.IsNullOrWhiteSpace(ViewModel.AppSettings.RecordingsFolder)
-            ? Services.RecordingService.DefaultFolder
-            : ViewModel.AppSettings.RecordingsFolder;
-        try
-        {
-            System.IO.Directory.CreateDirectory(folder);
-            System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo("explorer.exe", folder) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Не удалось открыть папку записей {Folder}.", folder);
-        }
-    }
-
     // ===================== Родительский контроль: PIN при запуске =====================
 
     /// <summary>
@@ -2065,6 +1959,12 @@ public sealed partial class MainPage : Page
 
         // Список/имена плейлистов могли измениться в диалоге — обновляем подменю.
         UpdatePlaylistMenu();
+    }
+
+    private async void RecordingSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Dialogs.RecordingSettingsDialog(ViewModel, _settingsService);
+        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
     private async void ParentalSettingsButton_Click(object sender, RoutedEventArgs e)
