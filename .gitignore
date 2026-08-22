@@ -72,3 +72,6 @@ installer/test-hevc.mp4
 tools/
 Assets/epg-name-map.json.bak
 AppPackages*/
+
+# ZCode agent working files
+.zcode/
