@@ -159,10 +159,12 @@
                                         QueryIcon="Find"
                                         Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay}" />
                         <Button x:Name="AddChannelButton" 
-                                Content="+" 
                                 Width="36" Height="36" 
-                                ToolTipService.ToolTip="Добавить канал"
-                                Click="AddChannelButton_Click" />
+                                ToolTipService.ToolTip="Добавить канал вручную"
+                                Click="AddChannelButton_Click">
+                            <Path Data="M8,2 H9.5 V7 H14.5 V8.5 H9.5 V13.5 H8 V8.5 H3 V7 H8 Z"
+                                  Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
+                        </Button>
                     </StackPanel>
                 </Grid>
 
@@ -217,10 +219,28 @@
              Границы перетаскивания заданы на самой колонке ChannelListColumn
              (Min/MaxWidth), сплиттер их соблюдает. Выбранная ширина
              сохраняется в настройках при закрытии окна. -->
+        <!-- Живой разделитель: ширина панели каналов тянется мышью
+             (CommunityToolkit.WinUI.Controls.Sizers — GridSplitter).
+             Границы перетаскивания заданы на самой колонке ChannelListColumn
+             (Min/MaxWidth), сплиттер их соблюдает. Контент — три точки-захвата
+             (понятно, что тянуть можно отсюда); при наведении точки темнеют. -->
         <ctk:GridSplitter Grid.Column="1"
                                Width="5"
                                ResizeBehavior="PreviousAndNext"
-                               Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                               Background="{ThemeResource CardStrokeColorDefaultBrush}">
+            <Grid>
+                <!-- Мягкая подсветка при наведении (тот же приём, что у
+                     оверлейных кнопок): PointsPanel ховерится целиком. -->
+                <Grid.Background>
+                    <SolidColorBrush Color="Transparent"/>
+                </Grid.Background>
+                <StackPanel x:Name="SplitterGrip" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="3">
+                    <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
+                    <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
+                    <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
+                </StackPanel>
+            </Grid>
+        </ctk:GridSplitter>
 
         <!-- Player Panel: видео занимает всю правую область; EPG — перекрывающий
              оверлей, по умолчанию скрытый и открываемый кнопкой EPG в панели
