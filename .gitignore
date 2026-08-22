@@ -69,9 +69,13 @@ installer/output/
 installer/rg.html
 installer/rg2.html
 installer/test-hevc.mp4
-tools/
+
 Assets/epg-name-map.json.bak
 AppPackages*/
 
 # ZCode agent working files
 .zcode/
+
+# ffmpeg для записи: shared-сборка (541 КБ), DLL кодеков приходят из NuGet
+!tools/ffmpeg.exe
+!tools/
