@@ -14,7 +14,7 @@ public class EpgNormalizationTests
     [InlineData("   ", "")]
     public void NormalizeChannelName_EmptyInput_ReturnsEmpty(string? input, string expected)
     {
-        Assert.Equal(expected, EPGService.NormalizeChannelName(input));
+        Assert.Equal(expected, EpgNameNormalizer.Normalize(input));
     }
 
     [Theory]
@@ -31,7 +31,7 @@ public class EpgNormalizationTests
     [InlineData("Discovery Channel", "discovery channel")]
     public void NormalizeChannelName_RemovesProviderNoise(string input, string expected)
     {
-        Assert.Equal(expected, EPGService.NormalizeChannelName(input));
+        Assert.Equal(expected, EpgNameNormalizer.Normalize(input));
     }
 
     [Fact]
@@ -40,8 +40,8 @@ public class EpgNormalizationTests
         // Один и тот же канал в M3U и в XMLTV пишется по-разному —
         // нормализация должна давать один ключ.
         Assert.Equal(
-            EPGService.NormalizeChannelName("Первый канал HD"),
-            EPGService.NormalizeChannelName("Первый канал"));
+            EpgNameNormalizer.Normalize("Первый канал HD"),
+            EpgNameNormalizer.Normalize("Первый канал"));
     }
 
     [Theory]
@@ -49,7 +49,7 @@ public class EpgNormalizationTests
     [InlineData("BBC", "bbc")]
     public void NormalizeChannelName_SingleTokenName_IsNotStripped(string input, string expected)
     {
-        Assert.Equal(expected, EPGService.NormalizeChannelName(input));
+        Assert.Equal(expected, EpgNameNormalizer.Normalize(input));
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class EpgNormalizationTests
         // Строгий ключ карты имён: таймшифт-версии получают собственное
         // расписание, поэтому "+2" должен отличаться от базового канала.
         Assert.NotEqual(
-            EPGService.NormalizeChannelNamePreservingTimeshift("НТВ +2"),
-            EPGService.NormalizeChannelNamePreservingTimeshift("НТВ"));
+            EpgNameNormalizer.NormalizePreservingTimeshift("НТВ +2"),
+            EpgNameNormalizer.NormalizePreservingTimeshift("НТВ"));
     }
 }
