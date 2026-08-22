@@ -1032,8 +1032,39 @@ public sealed partial class MainPage : Page
         }
 
         await Task.Yield();
-        await Task.Delay(100);
+        await Task.Delay(150);
+
+        // Сначала Leading-прокрутка (реализует контейнер виртуализированного
+        // списка), затем сдвигаем его в центр видимой области.
         ChannelsListView.ScrollIntoView(ViewModel.SelectedChannel);
+        await Task.Delay(50);
+
+        try
+        {
+            if (ChannelsListView.ContainerFromItem(ViewModel.SelectedChannel) is not FrameworkElement container)
+            {
+                return;
+            }
+
+            var scrollViewer = FindDescendant<ScrollViewer>(ChannelsListView);
+            if (scrollViewer == null)
+            {
+                return;
+            }
+
+            var content = (UIElement)scrollViewer.Content;
+            var itemTop = container.TransformToVisual(content)
+                .TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
+            var target = scrollViewer.VerticalOffset + itemTop
+                         - (scrollViewer.ViewportHeight - container.ActualHeight) / 2;
+            scrollViewer.ChangeView(null, Math.Max(0, target), null, disableAnimation: true);
+        }
+        catch (Exception ex)
+        {
+            // Центрирование — косметика: любая гонка с пересборкой списка
+            // не должна ломать прокрутку целиком.
+            Serilog.Log.Debug(ex, "Центрирование выбранного канала в списке.");
+        }
     }
 
     /// <summary>
