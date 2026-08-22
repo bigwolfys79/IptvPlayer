@@ -58,6 +58,18 @@
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
+  <!-- Доступ к internal-методам (нормализация имён EPG) из unit-тестов. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="IptvPlayer.Tests" />
+  </ItemGroup>
+
+  <!-- tests/ лежит внутри каталога проекта — без явного исключения его
+       исходники попадают и в основную сборку (конфликт с xunit). -->
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
+  </ItemGroup>
+
   <!-- dotnet publish в unpackaged-режиме (Release для Inno Setup) не
        копирует XBF-файлы и PRI приложения — без них exe падает на старте
        с XamlParseException (LoadComponent не находит ms-appx-ресурсы).
