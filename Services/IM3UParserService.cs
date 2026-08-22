@@ -6,7 +6,7 @@ namespace IptvPlayer.Services
 {
     public interface IM3UParserService
     {
-        Task<List<ChannelViewModel>> ParseFromUrlAsync(string playlistUrl);
+        Task<List<ChannelViewModel>> ParseFromUrlAsync(string playlistUrl, CancellationToken ct = default);
         Task<List<ChannelViewModel>> ParseFromFileAsync(string filePath);
         List<ChannelViewModel> ParseContent(string content);
     }

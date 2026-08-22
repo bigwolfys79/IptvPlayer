@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using IptvPlayer.ViewModels;
 
@@ -71,7 +72,7 @@ namespace IptvPlayer.Services
         /// <summary>
         /// Загружает и разбирает плейлист по URL (http/https).
         /// </summary>
-        public async Task<List<ChannelViewModel>> ParseFromUrlAsync(string playlistUrl)
+        public async Task<List<ChannelViewModel>> ParseFromUrlAsync(string playlistUrl, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(playlistUrl))
             {
@@ -90,11 +91,15 @@ namespace IptvPlayer.Services
             using var playlistPause = _speedMonitor.PauseScope();
             try
             {
-                response = await _httpClient.GetAsync(uri);
+                response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
             }
             catch (HttpRequestException ex)
             {
                 throw new InvalidOperationException($"Не удалось загрузить плейлист по адресу '{playlistUrl}'.", ex);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw; // переключение плейлиста — не ошибка, просто отменяем скачивание
             }
             catch (TaskCanceledException ex)
             {
@@ -107,7 +112,7 @@ namespace IptvPlayer.Services
                     $"Сервер плейлиста вернул ошибку {(int)response.StatusCode} ({response.StatusCode}) для '{playlistUrl}'.");
             }
 
-            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
 
             // Decode (перебор байтов детектором кодировки) и ParseContent
             // (regex на каждую строку ~4000-строчного плейлиста) — синхронная
