@@ -358,7 +358,13 @@ public sealed partial class MainPage : Page
         {
             Player.RefreshArchivePosition();
             UpdateArchiveSeekBar();
-            UpdateStatsOverlay();
+            // Обновление текста StatsOverlay под курсором порождает
+            // синтетические PointerMoved — input-site возвращал стрелку
+            // (мелькание). Пока курсор спрятан, текст заморожен.
+            if (!_cursorHidden)
+            {
+                UpdateStatsOverlay();
+            }
             ViewModel.CheckSleepTimer();
             UpdateSleepTimerDisplays();
         };
@@ -804,7 +810,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            Serilog.Log.Debug(ex, "Не удалось извлечь хост из URL плейлиста — показываем исходный URL.");
+            Serilog.Log.Information(ex, "Не удалось извлечь хост из URL плейлиста — показываем исходный URL.");
             return url;
         }
     }
@@ -1026,6 +1032,52 @@ public sealed partial class MainPage : Page
     /// </summary>
     private async Task ScrollSelectedChannelIntoViewAsync()
     {
+        await ScrollChannelIntoViewAsync(ChannelsListView);
+    }
+
+    /// <summary>
+    /// Прокрутка полноэкранного списка каналов к текущему. Только ScrollIntoView
+    /// (режим Leading — канал становится первым видимым сверху): поиск контейнера
+    /// и ручное позиционирование через ChangeView на группированном списке из
+    /// ~2000 каналов вызывали зависание UI.
+    /// </summary>
+    private async Task ScrollOverlayChannelIntoViewAsync()
+    {
+        var channel = ViewModel.SelectedChannel;
+        if (channel == null)
+        {
+            return;
+        }
+
+        await Task.Yield();
+
+        // Ждём (до ~1,5 с), пока развёрнутый оверлей создаст панель списка —
+        // сразу после ShowFullScreenOverlay она ещё может быть не готова.
+        var waited = 0;
+        for (var i = 0; i < 15 && OverlayChannelsListView.ItemsPanelRoot == null; i++)
+        {
+            await Task.Delay(100);
+            waited += 100;
+        }
+
+        Serilog.Log.Debug(
+            "OverlayList: прокрутка к «{Channel}» — панель списка {PanelState} (ожидали {Waited} мс), Items {Count}",
+            channel.Name,
+            OverlayChannelsListView.ItemsPanelRoot == null ? "НЕ готова" : "готова",
+            waited,
+            OverlayChannelsListView.Items.Count);
+
+        // Leading — канал становится первым (верхним) из видимых; без явного
+        // выравнивания список прокручивается «минимально» и канал висит внизу.
+        OverlayChannelsListView.ScrollIntoView(channel, ScrollIntoViewAlignment.Leading);
+    }
+
+    /// <summary>
+    /// Прокрутка списка каналов к выбранному — как оконного, так и полноэкранного
+    /// оверлея: выделение без прокрутки «невидимо», если канал глубоко в списке.
+    /// </summary>
+    private async Task ScrollChannelIntoViewAsync(ListView list)
+    {
         if (ViewModel.SelectedChannel == null)
         {
             return;
@@ -1036,17 +1088,17 @@ public sealed partial class MainPage : Page
 
         // Сначала Leading-прокрутка (реализует контейнер виртуализированного
         // списка), затем сдвигаем его в центр видимой области.
-        ChannelsListView.ScrollIntoView(ViewModel.SelectedChannel);
+        list.ScrollIntoView(ViewModel.SelectedChannel);
         await Task.Delay(50);
 
         try
         {
-            if (ChannelsListView.ContainerFromItem(ViewModel.SelectedChannel) is not FrameworkElement container)
+            if (list.ContainerFromItem(ViewModel.SelectedChannel) is not FrameworkElement container)
             {
                 return;
             }
 
-            var scrollViewer = FindDescendant<ScrollViewer>(ChannelsListView);
+            var scrollViewer = FindDescendant<ScrollViewer>(list);
             if (scrollViewer == null)
             {
                 return;
@@ -1065,7 +1117,7 @@ public sealed partial class MainPage : Page
         {
             // Центрирование — косметика: любая гонка с пересборкой списка
             // не должна ломать прокрутку целиком.
-            Serilog.Log.Debug(ex, "Центрирование выбранного канала в списке.");
+            Serilog.Log.Information(ex, "Центрирование выбранного канала в списке.");
         }
     }
 
@@ -1204,6 +1256,21 @@ public sealed partial class MainPage : Page
         };
 
         OverlayChannelsListView.ItemsSource = cvs.View;
+
+        // Назначение нового ItemsSource сбрасывает выделение — восстанавливаем
+        // текущий канал, иначе в fullscreen теряется подсветка играющего.
+        // TwoWay-биндинг SelectedItem сам не сработает: значение на пути
+        // (ViewModel.SelectedChannel) при этом не менялось.
+        if (ViewModel.SelectedChannel is { } selected)
+        {
+            OverlayChannelsListView.SelectedItem = selected;
+        }
+
+        Serilog.Log.Debug(
+            "OverlayList: пересборка — каналов {Channels}, групп {Groups}, выделен «{Selected}», в списке выделение: {HasSelection}",
+            ViewModel.DisplayedChannels.Count, orderedGroups.Count,
+            ViewModel.SelectedChannel?.Name,
+            OverlayChannelsListView.SelectedItem != null);
     }
 
     // ChannelSearchBox.Text и GroupFilterComboBox.SelectedItem теперь забиндены

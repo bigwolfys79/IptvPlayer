@@ -116,8 +116,19 @@ namespace IptvPlayer.Dialogs
                 SleepTimerActionCombo.SelectedIndex = 0;
             }
 
-            // Трей: крестик сворачивает окно в трей, звук продолжает
-            // играть; полный выход — через меню иконки.
+            // Трей: иконка живёт в трее только пока окно скрыто. Кнопка
+            // «Свернуть» и крестик прячут окно в трей (звук продолжает
+            // играть); полный выход — через меню иконки.
+            MinimizeToTrayToggle.Toggled -= MinimizeToTrayToggle_Toggled;
+            MinimizeToTrayToggle.IsOn = settings.MinimizeToTray;
+            MinimizeToTrayToggle.Header = L.T("Сворачивать в трей при сворачивании", "Minimize to tray on minimize");
+            MinimizeToTrayToggle.OnContent = L.T("Вкл", "On");
+            MinimizeToTrayToggle.OffContent = L.T("Выкл", "Off");
+            MinimizeToTrayToggle.Toggled += MinimizeToTrayToggle_Toggled;
+            MinimizeToTrayHint.Text = L.T(
+                "Кнопка «Свернуть» прячет окно в трей вместо панели задач.",
+                "The minimize button hides the window to the tray instead of the taskbar.");
+
             CloseToTrayToggle.Toggled -= CloseToTrayToggle_Toggled;
             CloseToTrayToggle.IsOn = settings.CloseToTray;
             CloseToTrayToggle.Header = L.T("Сворачивать в трей при закрытии", "Minimize to tray on close");
@@ -155,6 +166,13 @@ namespace IptvPlayer.Dialogs
         private async void CloseToTrayToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.CloseToTray = CloseToTrayToggle.IsOn;
+            await _settingsService.SaveAsync(_viewModel.AppSettings);
+        }
+
+        /// <summary>Сворачивание по кнопке «Свернуть» — применяется сразу.</summary>
+        private async void MinimizeToTrayToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AppSettings.MinimizeToTray = MinimizeToTrayToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 

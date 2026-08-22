@@ -42,9 +42,17 @@ public sealed partial class MainPage
     private void SetFullScreenMode(bool enable)
     {
         _isFullScreen = enable;
+        Serilog.Log.Information("FullScreen: {Action}", enable ? "вход в полноэкранный режим" : "выход из полноэкранного режима");
 
-        // Настоящий полноэкранный режим уровня ОС — без рамки и заголовка окна.
+        // Presenter переключается первым и в отеле от остальной логики:
+        // если что-то ниже бросит исключение, окно всё равно развернётся.
         MainWindow.Instance?.SetOsFullScreen(enable);
+
+        // Смена presenter'а иногда оставляет видео-остров со смещённой
+        // компоновкой (видео рисуется не там, где элемент): пересобираем
+        // компоновку плеера принудительно. MediaPlayer один и тот же —
+        // воспроизведение не прерывается, только мгновенная перерисовка.
+        ForceVideoRelayout();
 
         if (enable)
         {
@@ -78,9 +86,19 @@ public sealed partial class MainPage
             // Слайдеры громкости обоих оверлеев показывают текущую громкость.
             SyncVolumeSliders(Player.Player?.Volume ?? Player.LastUserVolume ?? 1.0);
 
-            RefreshOverlayChannelGroups();
+            // Сначала показываем оверлей. Группированный источник для оверлейного
+            // списка НЕ пересобираем здесь: он уже актуален — RefreshOverlayChannelGroups
+            // вызывается по событию FilterChanged при любом изменении DisplayedChannels.
+            // Лишняя пересборка сбрасывала выделение и прокрутку (а при первом
+            // входе оставляла список пустым).
             _lastOverlayPointerPosition = new Windows.Foundation.Point(-1, -1);
             ShowFullScreenOverlay();
+
+            // БИСЕКЦИЯ, шаг 2: входной нудж включён (проверяем связку).
+            _ = NudgePointerDelayedAsync();
+
+            _ = ScrollOverlayChannelIntoViewAsync();
+
             _overlayHideTimer.Stop();
             _overlayHideTimer.Start();
         }
@@ -101,6 +119,18 @@ public sealed partial class MainPage
     }
 
     /// <summary>
+    /// Принудительная пересборка компоновки видео-острова: мгновенно
+    /// скрываем и показываем MediaPlayerElement. Лечит смещение видео после
+    /// смены presenter'а (окно fullscreen ↔ оконное), когда DComp-остров
+    /// продолжал рисовать по старым координатам.
+    /// </summary>
+    private void ForceVideoRelayout()
+    {
+        MediaPlayer.Visibility = Visibility.Collapsed;
+        DispatcherQueue.TryEnqueue(() => MediaPlayer.Visibility = Visibility.Visible);
+    }
+
+    /// <summary>
     /// Движение мыши в fullscreen-режиме показывает оверлей (список каналов,
     /// кнопки плеера, EPG, выход) и сбрасывает таймер автоскрытия. Вне
     /// fullscreen-режима не делает ничего.
@@ -114,14 +144,17 @@ public sealed partial class MainPage
 
     private void RootGrid_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (!_isFullScreen)
+        if (!_isFullScreen || _suppressOverlayWake)
         {
             return;
         }
-
         var position = e.GetCurrentPoint(RootGrid).Position;
-        if (Math.Abs(position.X - _lastOverlayPointerPosition.X) < 1 &&
-            Math.Abs(position.Y - _lastOverlayPointerPosition.Y) < 1)
+        // <= 1 px: нулевые «синтетические» PointerMoved от появления/исчезания
+        // элементов под курсором плюс наш собственный нудж 1 px из
+        // HideCursorOverVideo (применение ProtectedCursor требует события
+        // указателя) не должны будить оверлей и возвращать курсор.
+        if (Math.Abs(position.X - _lastOverlayPointerPosition.X) <= 1 &&
+            Math.Abs(position.Y - _lastOverlayPointerPosition.Y) <= 1)
         {
             return;
         }
