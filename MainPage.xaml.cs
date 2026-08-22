@@ -49,6 +49,10 @@ public sealed partial class MainPage : Page
     /// в списке принадлежат ему; переключение — SwitchPlaylistAsync.
     /// </summary>
     private PlaylistSource? _activePlaylist;
+
+    // Отменяет скачивание предыдущего плейлиста при переключении: без него
+    // два GetAsync шли параллельно, и медленный старый мог прийти последним.
+    private System.Threading.CancellationTokenSource? _playlistLoadCts;
     private readonly IStreamService _streamService;
     private readonly ChannelRepository _channelRepository;
     private readonly ILogger<MainPage> _logger;
@@ -694,7 +698,8 @@ public sealed partial class MainPage : Page
     /// обновляется. При сбое скачивания отдаётся пусть и просроченный кэш —
     /// переключение/запуск не должно оставлять пользователя без каналов.
     /// </summary>
-    private async Task<List<ChannelViewModel>> LoadPlaylistChannelsAsync(PlaylistSource playlist)
+    private async Task<List<ChannelViewModel>> LoadPlaylistChannelsAsync(
+        PlaylistSource playlist, System.Threading.CancellationToken ct = default)
     {
         var result = new List<ChannelViewModel>();
         var playlistCache = await _playlistCacheService.LoadAsync(playlist.Id);
@@ -721,7 +726,7 @@ public sealed partial class MainPage : Page
             // Локальный файл (m3u на диске) — без сети; URL — скачивание.
             var playlistChannels = System.IO.File.Exists(playlist.Url)
                 ? await _m3uParserService.ParseFromFileAsync(playlist.Url)
-                : await _m3uParserService.ParseFromUrlAsync(playlist.Url);
+                : await _m3uParserService.ParseFromUrlAsync(playlist.Url, ct);
             result.AddRange(playlistChannels);
             await SavePlaylistCacheAsync(playlist.Id, playlistChannels);
         }
@@ -813,7 +818,9 @@ public sealed partial class MainPage : Page
         ViewModel.AppSettings.ActivePlaylistId = playlist.Id;
         await _settingsService.SaveAsync(ViewModel.AppSettings);
 
-        var channels = await LoadPlaylistChannelsAsync(playlist);
+        _playlistLoadCts?.Cancel();
+        _playlistLoadCts = new System.Threading.CancellationTokenSource();
+        var channels = await LoadPlaylistChannelsAsync(playlist, _playlistLoadCts.Token);
 
         var channelId = 1;
         foreach (var channel in channels)
