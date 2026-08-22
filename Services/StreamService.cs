@@ -154,6 +154,19 @@ namespace IptvPlayer.Services
                     32 * 1024 * 1024,
                     readAheadSeconds * 4 * 1024 * 1024);
 
+                // HTTP-протокол FFmpeg: провайдер отдаёт сегменты попеременно
+                // с двух серверов, поэтому keepalive-переиспользование
+                // соединения ломается на КАЖДОМ сегменте ("keepalive request
+                // failed ... retrying with new connection") — это лишняя
+                // пауза перед каждым сегментом, а при медленном ретраите
+                // затыкается и воспроизведение. multiple_requests=0 — сразу
+                // новое соединение без обречённой попытки; reconnect* —
+                // авто-восстановление при обрывах сети.
+                config.FFmpegOptions["multiple_requests"] = "0";
+                config.FFmpegOptions["reconnect"] = "1";
+                config.FFmpegOptions["reconnect_streamed"] = "1";
+                config.FFmpegOptions["reconnect_delay_max"] = "7";
+
                 var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(streamUrl, config);
                 player.Source = ffmpegSource.CreateMediaPlaybackItem();
                 LiveSources.Add(player, ffmpegSource);
