@@ -13,15 +13,20 @@ namespace IptvPlayer.Dialogs;
 /// «О программе»: описание, компоненты, пути настроек/логов, кнопки
 /// «Проверить обновления» и «Открыть папку логов».
 ///
-/// Проверка обновлений: GET по AppSettings.UpdateCheckUrl — ожидается JSON
-/// {"version": "1.7.0", "url": "https://.../setup.exe"}. Если версия в JSON
-/// больше текущей — предлагаем открыть ссылку в браузере. URL не задан —
-/// сообщаем, где его прописать (settings.json), чтобы не хардкодить чужой
-/// сервер в программе.
+/// Проверка обновлений — из GitHub Releases репозитория проекта (по
+/// умолчанию) или по своему URL (AppSettings.UpdateCheckUrl): ожидается
+/// JSON {"version": "1.7.0", "url": "https://.../setup.exe"} либо ответ
+/// GitHub API /releases/latest (tag_name + assets[].browser_download_url).
+/// Если версия больше текущей — кнопка «Скачать обновление» открывает
+/// установщик в браузере.
 /// </summary>
 public sealed partial class AboutDialog : UserControl
 {
     private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+
+    /// <summary>GitHub Releases проекта — источник обновлений по умолчанию.</summary>
+    private const string DefaultUpdateUrl =
+        "https://api.github.com/repos/bigwolfys79/IptvPlayer/releases/latest";
 
     private readonly AppSettings _settings;
 
@@ -103,28 +108,51 @@ public sealed partial class AboutDialog : UserControl
     {
         UpdateStatusText.Visibility = Visibility.Visible;
 
-        if (string.IsNullOrWhiteSpace(_settings.UpdateCheckUrl))
-        {
-            UpdateStatusText.Text = L.T(
-                "Проверка обновлений не настроена: укажите UpdateCheckUrl в settings.json " +
-                "(JSON вида {\"version\":\"1.7.0\",\"url\":\"https://…/setup.exe\"}).",
-                "Update check is not configured: set UpdateCheckUrl in settings.json " +
-                "(JSON like {\"version\":\"1.7.0\",\"url\":\"https://…/setup.exe\"}).");
-            return;
-        }
+        var url = string.IsNullOrWhiteSpace(_settings.UpdateCheckUrl)
+            ? DefaultUpdateUrl
+            : _settings.UpdateCheckUrl;
 
         CheckUpdateButton.IsEnabled = false;
         UpdateStatusText.Text = L.T("Проверяю обновления...", "Checking for updates...");
         try
         {
-            var json = await Http.GetStringAsync(_settings.UpdateCheckUrl);
-            var info = JsonSerializer.Deserialize<UpdateInfo>(json);
-            var current = Version.Parse(GetAppVersion());
-            var available = Version.Parse(info?.Version ?? "0.0.0");
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            // GitHub API требует User-Agent.
+            request.Headers.UserAgent.ParseAdd("IptvPlayer-UpdateCheck");
+            using var response = await Http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
 
-            if (available > current && !string.IsNullOrEmpty(info?.Url))
+            var current = Version.Parse(GetAppVersion());
+            string? availableText;
+            string? downloadUrl;
+
+            using (var doc = JsonDocument.Parse(json))
             {
-                _updateUrl = info.Url;
+                var root = doc.RootElement;
+                if (root.TryGetProperty("tag_name", out var tag))
+                {
+                    // Формат GitHub API /releases/latest.
+                    availableText = tag.GetString()?.TrimStart('v', 'V');
+                    downloadUrl = root.TryGetProperty("assets", out var assets) && assets.GetArrayLength() > 0
+                        ? assets[0].TryGetProperty("browser_download_url", out var assetUrl)
+                            ? assetUrl.GetString()
+                            : null
+                        : root.TryGetProperty("html_url", out var html) ? html.GetString() : null;
+                }
+                else
+                {
+                    // Простой формат {"version": "...", "url": "..."}.
+                    availableText = root.TryGetProperty("version", out var v) ? v.GetString() : null;
+                    downloadUrl = root.TryGetProperty("url", out var u) ? u.GetString() : null;
+                }
+            }
+
+            var available = Version.Parse(availableText ?? "0.0.0");
+
+            if (available > current && !string.IsNullOrEmpty(downloadUrl))
+            {
+                _updateUrl = downloadUrl;
                 UpdateStatusText.Text = L.T(
                     $"Доступна версия {available} (у вас {current}).",
                     $"Version {available} is available (you have {current}).");
@@ -181,4 +209,6 @@ public sealed partial class AboutDialog : UserControl
         public string? Version { get; set; }
         public string? Url { get; set; }
     }
+
+
 }
