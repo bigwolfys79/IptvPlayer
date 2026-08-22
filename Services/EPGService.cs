@@ -24,7 +24,7 @@ namespace IptvPlayer.Services
     /// Часть провайдеров плейлистов вообще не проставляет tvg-id в #EXTINF
     /// (например lunexas.top — есть только tvg-rec, служебный флаг записи).
     /// Для таких каналов используется резервное сопоставление по
-    /// нормализованному названию канала (см. NormalizeChannelName) —
+    /// нормализованному названию канала (см. EpgNameNormalizer) —
     /// сравнивается название из M3U с display-name из XMLTV.
     /// </summary>
     public class EPGService : IEPGService
@@ -37,19 +37,6 @@ namespace IptvPlayer.Services
         // нет дублирующего лога на каждый отдельный вызов
         // GetEPGEntriesAsync. Вернуть true после проверки.
         private static readonly bool LogPerChannelDiagnostics = false;
-
-        // Служебные слова/суффиксы, которые провайдеры добавляют к названию
-        // канала непоследовательно (то в M3U, то в XMLTV, то нигде) — они не
-        // несут признака, ПО КОТОРОМУ канал различается, и должны игнорироваться
-        // при сравнении названий, иначе "РБК" из XMLTV не совпадёт с "РБК HD" из M3U.
-        private static readonly Regex NoiseTokenRegex =
-            new(@"\b(hd|fhd|uhd|sd|4k|hevc|full\s*hd)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-        // Уточнения в скобках вида "(Элиста)", "(Тамбов)" — региональные версии
-        // одного и того же канала бьют по-разному в M3U и в XMLTV, отбрасываем.
-        private static readonly Regex ParenthesesRegex = new(@"\([^)]*\)", RegexOptions.Compiled);
-        private static readonly Regex NonAlphaNumericRegex = new(@"[^\p{L}\p{Nd}\s]", RegexOptions.Compiled);
-        private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
 
         private readonly IChannelRepository _channelRepository;
         private readonly ICacheService _cacheService;
@@ -341,7 +328,7 @@ namespace IptvPlayer.Services
                 return (byId.ToList(), MatchMethod.TvgId);
             }
 
-            var strictKey = NormalizeChannelNamePreservingTimeshift(channel.Name);
+            var strictKey = EpgNameNormalizer.NormalizePreservingTimeshift(channel.Name);
             if (!string.IsNullOrEmpty(strictKey) &&
                 _tvgIdByStrictName.TryGetValue(strictKey, out var strictId) &&
                 _entriesByChannelId.TryGetValue(strictId, out var strictEntries))
@@ -349,7 +336,7 @@ namespace IptvPlayer.Services
                 return (strictEntries.ToList(), MatchMethod.NameMap);
             }
 
-            var lenientKey = NormalizeChannelName(channel.Name);
+            var lenientKey = EpgNameNormalizer.Normalize(channel.Name);
             if (!string.IsNullOrEmpty(lenientKey) &&
                 _tvgIdByLenientName.TryGetValue(lenientKey, out var lenientId) &&
                 _entriesByChannelId.TryGetValue(lenientId, out var lenientEntries))
@@ -366,205 +353,6 @@ namespace IptvPlayer.Services
             return (new List<EPGEntry>(), MatchMethod.None);
         }
 
-        // Суффикс вида ".ru"/".ua" — не признак региона канала (это не то же
-        // самое, что "(Тамбов)"), а артефакт конкретно этого XMLTV-источника:
-        // russia3.xml пишет его в КАЖДОЕ display-name без исключения
-        // ("BCU Kids.ru", "1+1 Украина.ru", "+ТВ.ru"). NonAlphaNumericRegex
-        // заменяет точку на пробел, а не удаляет — значит "bcu kids.ru"
-        // превращался в "bcu kids ru", а не в "bcu kids". Название из плейлиста
-        // ("РБК" -> "рбк") никогда не совпадёт с "рбк ru" — из-за этого
-        // сопоставление по имени было сломано ПОЛНОСТЬЮ для всех каналов
-        // этого источника (0 совпадений из 2065), а не только для тех, что
-        // попали в лог как неоднозначные. Удаляем суффикс целиком (не в
-        // пробел, а в пустоту), поэтому он и не оставляет постороннего слова.
-        private static readonly Regex TrailingCountryCodeRegex = new(@"\.[a-zа-я]{2,3}$", RegexOptions.Compiled);
-
-        // Голый "+" без цифры после него (например "BCU Kids+") — это чаще
-        // всего отдельная версия канала (альтернативный/улучшенный поток), а
-        // не косметическое отличие вроде HD/4K, поэтому его нельзя стирать
-        // как шум — раньше NonAlphaNumericRegex стирал его наравне с точками
-        // и запятыми, из-за чего "BCU Kids+" схлопывался с обычным
-        // "BCU Kids" и сопоставление по имени становилось неоднозначным (см.
-        // BuildNameIndex-warning "bcu kids ru"). "+2"/"+4" (с цифрой) эта
-        // строка не трогает — там цифра и так уже сохраняется отдельно.
-        private static readonly Regex BarePlusRegex = new(@"\+(?!\d)", RegexOptions.Compiled);
-
-        // Таймшифт-суффикс вида "+2"/"+4"/"+7" в конце названия ("НТВ +2",
-        // "Первый канал +4 (Томск)") — провайдер плейлиста плодит таймшфт-
-        // дубли каждого федерального канала, а в XMLTV есть только базовое
-        // расписание. Программы таймшфт-версии те же, просто сдвинуты по
-        // времени, поэтому при сопоставлении суффикс отбрасываем (как и
-        // "+0" выше). Цифра обязательно в конце строки: "2+2" (украинский
-        // канал) этот regex не трогает — плюс у него не хвостовой.
-        // Измерено на реальном плейлисте (2065 каналов): +130 сопоставлений.
-        private static readonly Regex TrailingTimeshiftRegex = new(@"\+\s*\d{1,2}\s*$", RegexOptions.Compiled);
-
-        // Разные названия одного и того же канала у провайдера плейлиста и в
-        // XMLTV. "Кинозал N (Триколор)" — внутренние киноканалы Триколора, у
-        // которых нет собственного публичного EPG; ближайшие по смыслу
-        // соседи в XMLTV — "Кино 1"/"Кино 2" (Tviksel). Сравнивать их как
-        // каналы некорректно, но расписание кино-канала лучше его отсутствия
-        // (измерено: +2 канала; попадает в эвристические имена в сводке).
-        private static readonly Regex KinozalAliasRegex = new(@"\bкинозал\b", RegexOptions.Compiled);
-
-        // Код страны в конце названия ("France 24 HD FR", "CNBC HD US",
-        // "Sky Atlantic HD DE") — добавляется провайдером плейлиста, в
-        // XMLTV его нет. Отбрасываем только ПОСЛЕДНИЙ токен и только если
-        // перед ним осталось ещё хотя бы одно слово, иначе "BBC US"
-        // превратился бы в голый "bbc", а канал с настоящим именем "360"
-        // (есть в XMLTV) — в пустую строку. Только точные вхождения из
-        // списка: "НТВ Мир" не трогается ("мир" — не код). "international" и
-        // "международный" — маркер международной версии того же канала, не
-        // отдельное имя ("Кино 1 International" == "Кино 1", "1+1
-        // Международный" == "1+1"). Измерено: +87 сопоставлений.
-        private static readonly HashSet<string> TrailingCountryCodes = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "uk", "us", "fr", "de", "it", "es", "pl", "br", "cn", "jp", "kr", "in", "tr", "ua", "by",
-            "kz", "az", "ge", "am", "lt", "lv", "ee", "rs", "hu", "ro", "bg", "gr", "nl", "se", "no",
-            "dk", "fi", "at", "ch", "be", "pt", "ie", "cz", "sk", "si", "hr", "md", "il", "ae", "sa",
-            "eg", "za", "ng", "th", "vn", "id", "my", "sg", "au", "nz", "ca", "mx", "ar", "cl", "co",
-            "pe", "eu", "intl", "international", "международный",
-        };
-
-        // Маркеры варианта потока в конце названия: "orig" (оригинальный
-        // источник), "50"/"60" (50/60 fps — плейлист даёт такие дубли почти
-        // каждого канала: "Россия 1 HD orig", "Матч ТВ HD 50"), "hdr" и
-        // разрешения "1080p"/"720p"/... — всё это не часть имени канала, и
-        // в XMLTV таких суффиксов нет. Правила те же, что у кодов стран:
-        // только хвостовой токен, только если перед ним есть ещё слова.
-        // Измерено: +274 сопоставления (самый крупный прирост одного слоя).
-        private static readonly HashSet<string> TrailingStreamMarkers = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "orig", "50", "60", "hdr", "1080p", "1080i", "720p", "2160p", "50p", "60p",
-        };
-
-        // Приоритет качества нужен только для детерминированного выбора среди
-        // чисто качественных дублей (см. BuildNameIndex) — расписание передач
-        // у HD/4K-версии практически всегда совпадает с SD, поэтому сам факт
-        // "какой именно id выбрать" не влияет на корректность программы,
-        // важна только предсказуемость выбора.
-        private static readonly Dictionary<string, int> QualityRank = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["sd"] = 1,
-            ["hevc"] = 1,
-            ["hd"] = 2,
-            ["fhd"] = 3,
-            ["full hd"] = 3,
-            ["4k"] = 4,
-            ["uhd"] = 4,
-        };
-
-        private static int GetQualityRank(string rawName)
-        {
-            var best = 0;
-            foreach (Match m in NoiseTokenRegex.Matches(rawName))
-            {
-                var token = MultiSpaceRegex.Replace(m.Value.ToLowerInvariant(), " ").Trim();
-                if (QualityRank.TryGetValue(token, out var rank))
-                {
-                    best = Math.Max(best, rank);
-                }
-            }
-            return best;
-        }
-
-        private static string NormalizeChannelNameKeepQualifiers(string? name)
-            => NormalizeChannelNameCore(name, keepQualifiers: true, keepTimeshift: false);
-
-        /// <summary>
-        /// Как NormalizeChannelName, но таймшифт-суффикс "+2"/"+4" в конце
-        /// СОХРАНЯЕТСЯ ("первый канал 2" != "первый канал"). Нужен для строгого
-        /// ключа таблицы epg-name-map: провайдер выдаёт таймшфт-версиям
-        /// собственные tvg-id, и строгий ключ даёт каналу его родное
-        /// расписание, а не базовое со сдвигом.
-        /// </summary>
-        internal static string NormalizeChannelNamePreservingTimeshift(string? name)
-            => NormalizeChannelNameCore(name, keepQualifiers: false, keepTimeshift: true);
-
-        /// <summary>
-        /// Как NormalizeChannelName, но НЕ трогает содержимое скобок — только
-        /// убирает суффикс качества и служебный ".ru"/".ua". Нужен, чтобы
-        /// отличить "разница только в качестве" (HD/4K/SD) от "разница ещё в
-        /// чём-то" (например регион в скобках) ДО того, как скобки стёрты —
-        /// см. BuildNameIndex.
-        /// </summary>
-        private static string NormalizeChannelNameCore(string? name, bool keepQualifiers, bool keepTimeshift)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return string.Empty;
-            }
-
-            var s = name.Trim().ToLowerInvariant().Replace('ё', 'е');
-            s = TrailingCountryCodeRegex.Replace(s, string.Empty);
-            if (!keepQualifiers)
-            {
-                // Региональные уточнения в скобках бьют по-разному в M3U и в
-                // XMLTV — стираем вместе со скобками.
-                s = ParenthesesRegex.Replace(s, " ");
-            }
-            s = NoiseTokenRegex.Replace(s, " ");
-            s = s.Replace("+0", " ");
-            if (!keepTimeshift)
-            {
-                s = TrailingTimeshiftRegex.Replace(s, " ");
-            }
-            s = BarePlusRegex.Replace(s, " plus ");
-            if (keepQualifiers)
-            {
-                s = s.Replace("(", " ").Replace(")", " "); // скобки убираем, содержимое — нет
-            }
-            s = NonAlphaNumericRegex.Replace(s, " ");
-            s = MultiSpaceRegex.Replace(s, " ").Trim();
-            s = KinozalAliasRegex.Replace(s, "кино");
-
-            return StripTrailingMarkers(s);
-        }
-
-        /// <summary>
-        /// Срезает с конца уже нормализованного названия хвостовые токены,
-        /// которые не являются частью имени канала: коды стран (см.
-        /// TrailingCountryCodes) и маркеры варианта потока (см.
-        /// TrailingStreamMarkers). Режем только пока перед обрезаемым токеном
-        /// есть ещё хотя бы одно слово — "360" или "BBC" дальше резать нельзя.
-        /// </summary>
-        private static string StripTrailingMarkers(string normalized)
-        {
-            if (string.IsNullOrEmpty(normalized))
-            {
-                return normalized;
-            }
-
-            var tokens = normalized.Split(' ');
-            var keep = tokens.Length;
-            while (keep > 1)
-            {
-                var last = tokens[keep - 1];
-                if (!TrailingCountryCodes.Contains(last) && !TrailingStreamMarkers.Contains(last))
-                {
-                    break;
-                }
-                keep--;
-            }
-
-            if (keep == tokens.Length)
-            {
-                return normalized;
-            }
-
-            return string.Join(" ", tokens, 0, keep);
-        }
-
-        /// <summary>
-        /// Убирает шум, из-за которого одно и то же название канала пишется
-        /// по-разному в M3U и в XMLTV: регистр, "ё"/"е", суффиксы HD/FHD/4K,
-        /// таймшифт "+2"/"+4", региональные уточнения в скобках, хвостовые
-        /// коды стран и маркеры потока (orig/50/60), лишнюю пунктуацию/пробелы.
-        /// "РБК HD" и "РБК", "НТВ +2" и "НТВ", "France 24 FR" и "France 24"
-        /// после нормализации дают одну и ту же строку "рбк"/"нтв"/"france 24".
-        /// </summary>
-        internal static string NormalizeChannelName(string? name)
-            => NormalizeChannelNameCore(name, keepQualifiers: false, keepTimeshift: false);
 
         /// <summary>
         /// Загружает таблицу "имя -> tvg-id" (Assets/epg-name-map.json).
@@ -608,13 +396,13 @@ namespace IptvPlayer.Services
                         continue;
                     }
 
-                    var strictKey = NormalizeChannelNamePreservingTimeshift(entry.N);
+                    var strictKey = EpgNameNormalizer.NormalizePreservingTimeshift(entry.N);
                     if (strictKey.Length > 0)
                     {
                         _tvgIdByStrictName.TryAdd(strictKey, entry.I);
                     }
 
-                    var lenientKey = NormalizeChannelName(entry.N);
+                    var lenientKey = EpgNameNormalizer.Normalize(entry.N);
                     if (lenientKey.Length > 0 &&
                         (!_tvgIdByLenientName.TryGetValue(lenientKey, out var currentId) ||
                          entry.N.Length < lenientRawLength[lenientKey]))
@@ -726,7 +514,7 @@ namespace IptvPlayer.Services
                 // сортировка ~400к записей, построение индекса имён — чистая
                 // CPU-работа, которая раньше шла в продолжении await прямо на
                 // UI-потоке и морозила интерфейс при старте. Выносим одним
-                // куском в пул потоков (MergeSources).
+                // куском в пул потоков (EpgSourceMerger.Merge).
                 var sourceResults = new List<XmlTvLoadResult>();
                 foreach (var source in enabledSources)
                 {
@@ -745,7 +533,7 @@ namespace IptvPlayer.Services
                     }
                 }
 
-                var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => MergeSources(sourceResults));
+                var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger));
 
                 _entriesByChannelId = byChannel;
                 _entriesByNormalizedName = nameIndex;
@@ -784,219 +572,6 @@ namespace IptvPlayer.Services
                     _loadingTask = null;
                 }
             }
-        }
-
-        /// <summary>
-        /// Сливает программы всех источников в один индекс по tvg-id и строит
-        /// индекс по нормализованным именам. Чистая CPU-работа без await —
-        /// вызывается только из пула потоков (см. DoEnsureEpgLoadedAsync),
-        /// потому что на сотнях тысяч программ занимает заметное время.
-        /// </summary>
-        private (Dictionary<string, List<EPGEntry>> ByChannel,
-                Dictionary<string, string> IconsByChannelId,
-                Dictionary<string, List<EPGEntry>> NameIndex) MergeSources(
-            List<XmlTvLoadResult> sourceResults)
-        {
-            var byChannel = new Dictionary<string, List<EPGEntry>>(StringComparer.OrdinalIgnoreCase);
-            var iconsByChannelId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var sourceResult in sourceResults)
-            {
-                // Тот же принцип приоритета, что и для программ ниже:
-                // источники обрабатываются в порядке списка настроек,
-                // TryAdd оставляет иконку от первого источника, где она
-                // нашлась для этого id.
-                foreach (var (channelId, iconUrl) in sourceResult.ChannelIcons)
-                {
-                    iconsByChannelId.TryAdd(channelId, iconUrl);
-                }
-
-                foreach (var entry in sourceResult.Entries)
-                {
-                    if (!byChannel.TryGetValue(entry.ChannelId, out var list))
-                    {
-                        list = new List<EPGEntry>();
-                        byChannel[entry.ChannelId] = list;
-                    }
-
-                    // Источники обрабатываются в порядке списка настроек, поэтому
-                    // "list" на этот момент содержит программы более приоритетных
-                    // источников. Если новая программа пересекается по времени с
-                    // уже принятой — отбрасываем её как менее приоритетную.
-                    var overlapsExisting = list.Any(existing =>
-                        entry.StartTime < existing.EndTime && existing.StartTime < entry.EndTime);
-
-                    if (!overlapsExisting)
-                    {
-                        list.Add(entry);
-                    }
-                }
-            }
-
-            foreach (var list in byChannel.Values)
-            {
-                list.Sort((a, b) => a.StartTime.CompareTo(b.StartTime));
-            }
-
-            return (byChannel, iconsByChannelId, BuildNameIndex(byChannel));
-        }
-
-        /// <summary>
-        /// Строит индекс "нормализованное имя -> программы" из уже собранного
-        /// по id индекса. Если два РАЗНЫХ id в XMLTV нормализуются в одно и то
-        /// же имя (например "Первый канал" и "Первый канал (Москва)" после
-        /// удаления скобок), сопоставление по имени неоднозначно — но прежде
-        /// чем исключать такое имя целиком, проверяем: не различаются ли
-        /// варианты ТОЛЬКО суффиксом качества (HD/FHD/4K/UHD/SD/HEVC), как
-        /// "BCU Kids 4K" и "BCU Kids" — это один и тот же канал в разных
-        /// потоках, и расписание передач у них практически всегда совпадает.
-        /// Для этого сравниваем имена, из которых убран только суффикс
-        /// качества, но НЕ убраны скобки (NormalizeChannelNameKeepQualifiers) —
-        /// если различие ещё и в скобках (например "Первый городской (Одесса)"
-        /// vs "(Омск)"), это настоящая неоднозначность: расписание может быть
-        /// любым из кандидатов. Раньше такие имена исключались из индекса
-        /// целиком (ни один канал с этим названием не получал EPG) — теперь
-        /// выбирается детерминированно лучший кандидат, а имя попадает в
-        /// список эвристических в сводке лога.
-        /// </summary>
-        private Dictionary<string, List<EPGEntry>> BuildNameIndex(Dictionary<string, List<EPGEntry>> byChannel)
-        {
-            var groups = new Dictionary<string, List<(string ChannelId, string RawName, List<EPGEntry> Entries)>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var (id, entries) in byChannel)
-            {
-                if (entries.Count == 0)
-                {
-                    continue;
-                }
-
-                var rawName = entries[0].ChannelName;
-                var normalized = NormalizeChannelName(rawName);
-                if (string.IsNullOrEmpty(normalized))
-                {
-                    continue;
-                }
-
-                if (!groups.TryGetValue(normalized, out var list))
-                {
-                    list = new List<(string, string, List<EPGEntry>)>();
-                    groups[normalized] = list;
-                }
-
-                list.Add((id, rawName, entries));
-            }
-
-            var result = new Dictionary<string, List<EPGEntry>>(StringComparer.OrdinalIgnoreCase);
-
-            // Раньше на каждую группу дублей писалась отдельная строка лога:
-            // только в ru-источнике epg.one каналов с дублями по качеству
-            // ~250, и на КАЖДОЙ загрузке EPG лог заполнялся сотнями строк,
-            // в которых тонули настоящие ошибки. Теперь собираем статистику
-            // и пишем две агрегированные строки после цикла. Подробности
-            // (какой именно id выбран для какого имени) при отладке легко
-            // вернуть временно.
-            var qualityDupCount = 0;
-            var ambiguousNames = new List<string>();
-
-            foreach (var (normalized, group) in groups)
-            {
-                if (group.Count == 1)
-                {
-                    result[normalized] = group[0].Entries;
-                    continue;
-                }
-
-                var keepQualifiersKeys = group
-                    .Select(g => NormalizeChannelNameKeepQualifiers(g.RawName))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                if (keepQualifiersKeys.Count == 1)
-                {
-                    // Различие только в качестве — не выбрасываем имя целиком,
-                    // а выбираем один id: сначала у кого реально есть программы
-                    // (защита на случай, если у одного из дублей расписание
-                    // почему-то пустое/устаревшее), при равенстве — более
-                    // высокое качество.
-                    var chosen = group
-                        .OrderByDescending(g => g.Entries.Count)
-                        .ThenByDescending(g => GetQualityRank(g.RawName))
-                        .First();
-
-                    qualityDupCount++;
-                    result[normalized] = chosen.Entries;
-                }
-                else
-                {
-                    // Раньше такие имена ВЫБРАСЫВАЛИСЬ из индекса целиком — и все
-                    // плейлистные каналы с этим названием (например "8 канал",
-                    // "аист", "ннтв", "360") оставались вообще без EPG, хотя
-                    // кандидатов в XMLTV было два-три. Отсутствие расписания
-                    // хуже, чем расписание одного из кандидатов: выбираем
-                    // детерминированно лучшего (максимум программ, затем
-                    // качество) — те же критерии, что и у чисто качественных
-                    // дублей выше. Имя попадает в отдельный список, чтобы в
-                    // сводке было видно, где сопоставление эвристическое.
-                    var chosen = group
-                        .OrderByDescending(g => g.Entries.Count)
-                        .ThenByDescending(g => GetQualityRank(g.RawName))
-                        .First();
-
-                    ambiguousNames.Add(normalized);
-                    result[normalized] = chosen.Entries;
-                }
-            }
-
-            if (qualityDupCount > 0)
-            {
-                _logger.LogInformation(
-                    "Индекс имён: у {Count} каналов в XMLTV несколько id, различающихся только " +
-                    "качеством (HD/SD/4K и т.п.) — для каждого выбран один id (максимум программ, затем " +
-                    "максимальное качество), остальные пропущены как дубли.",
-                    qualityDupCount);
-            }
-
-            if (ambiguousNames.Count > 0)
-            {
-                // Сортировка — чтобы список был стабильным между запусками и
-                // его можно было сравнивать глазами/диффом.
-                ambiguousNames.Sort(StringComparer.OrdinalIgnoreCase);
-                _logger.LogWarning(
-                    "Индекс имён: {Count} нормализованных имён соответствуют нескольким разным " +
-                    "id в XMLTV (различие не только в качестве) — для них выбран лучший кандидат эвристически " +
-                    "(расписание может оказаться соседнего региона): {Names}. " +
-                    "Точное сопоставление для этих каналов даст корректный tvg-id в плейлисте.",
-                    ambiguousNames.Count, string.Join(", ", ambiguousNames.Select(n => $"\"{n}\"")));
-            }
-
-            // Дополнительные ключи без брендового префикса "Tviksel ":
-            // "Tviksel Кино 2 HD" даёт ключ "кино 2", по которому находят
-            // себя "Кинозал 2" (после алиаса кинозал->кино) и другие
-            // варианты написания. Регистрируем ТОЛЬКО если такой ключ ещё
-            // не занят прямым именем — иначе брендовый дубль вытеснил бы
-            // настоящий канал ("Tviksel Детское кино" не должен подменять
-            // "Детское кино"). Побочный эффект отсутствует: сами
-            // Tviksel-каналы продолжают находиться по своим полным ключам.
-            var brandAliasAdds = new List<(string AltKey, List<EPGEntry> Entries)>();
-            foreach (var (key, entries) in result)
-            {
-                if (!key.StartsWith("tviksel ", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                var altKey = key["tviksel ".Length..];
-                if (altKey.Length > 0 && !result.ContainsKey(altKey))
-                {
-                    brandAliasAdds.Add((altKey, entries));
-                }
-            }
-            foreach (var (altKey, entries) in brandAliasAdds)
-            {
-                result[altKey] = entries;
-            }
-
-            return result;
         }
 
         /// <summary>
@@ -1044,8 +619,8 @@ namespace IptvPlayer.Services
                 // Кандидаты tvg-id: собственный из плейлиста, затем строгий и
                 // мягкий ключи таблицы (плейлист tvg-id не содержит, поэтому
                 // раньше этот метод не срабатывал ни для одного канала).
-                var strictKey = NormalizeChannelNamePreservingTimeshift(channel.Name);
-                var lenientKey = NormalizeChannelName(channel.Name);
+                var strictKey = EpgNameNormalizer.NormalizePreservingTimeshift(channel.Name);
+                var lenientKey = EpgNameNormalizer.Normalize(channel.Name);
                 if (!_tvgIdByStrictName.TryGetValue(strictKey, out var strictId))
                 {
                     strictId = string.Empty;
