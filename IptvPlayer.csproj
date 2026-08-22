@@ -1,0 +1,128 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>IptvPlayer</RootNamespace>
+    <Version>1.6.6</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Platforms>x86;x64;ARM64</Platforms>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
+    <PublishProfile Condition="Exists('Properties\PublishProfiles\win-$(Platform).pubxml')">win-$(Platform).pubxml</PublishProfile>
+    <UseWinUI>true</UseWinUI>
+    <WinUISDKReferences>false</WinUISDKReferences>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <!-- Иконка самого exe (нужна для unpackaged-Release: у него нет MSIX-
+         манифеста, и значок ярлыка/файла берётся из exe). -->
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- Release собирается БЕЗ MSIX-упаковки — под классический инсталятор
+       (Inno Setup). WindowsAppSDKSelfContained включает рантайм Windows App
+       SDK в выходную папку, поэтому на целевой машине ничего дополнительно
+       ставить не нужно. Debug остаётся упакованным (MSIX) для F5 в VS.
+       Точка входа с bootstrap-инициализацией WinAppSDK для unpackaged-режима
+       генерируется автоматически (WindowsAppSdkAutoInitialize по умолчанию). -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <EnableMsixTooling>false</EnableMsixTooling>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <!-- CopyToOutputDirectory обязателен: без него Content-файлы попадают
+         только в MSIX-пакет (Debug), а в publish/unpackaged-установку (Inno)
+         — нет. epg-name-map.json нужна рядом с exe (EPGService ищет её в
+         AppContext.BaseDirectory\Assets), AppIcon.ico — для иконки окна. -->
+    <Content Include="Assets\epg-name-map.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <!-- ffmpeg.exe для записи передач/каналов (RecordingService). Shared-сборка
+         использует те же DLL, что FFmpegInteropX кладёт в корень вывода. -->
+    <Content Include="tools\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" />
+    <!-- FFmpeg для FFmpegInteropX: dll кладутся в КОРЕНЬ вывода (Link
+         переопределяет путь), иначе нативный загрузчик их не найдёт. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <!-- dotnet publish в unpackaged-режиме (Release для Inno Setup) не
+       копирует XBF-файлы и PRI приложения — без них exe падает на старте
+       с XamlParseException (LoadComponent не находит ms-appx-ресурсы).
+       MRT Core в unpackaged-приложении ищет resources.pri рядом с exe. -->
+  <Target Name="CopyUnpackagedWinUIResourcesToPublish" Condition="'$(Configuration)' == 'Release'" AfterTargets="Publish">
+    <ItemGroup>
+      <UnpackagedWinUIResource Include="$(OutputPath)*.xbf" />
+    </ItemGroup>
+    <Copy SourceFiles="@(UnpackagedWinUIResource)" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="$(OutputPath)IptvPlayer.pri" DestinationFiles="$(PublishDir)resources.pri" />
+    <Copy SourceFiles="$(OutputPath)IptvPlayer.pri" DestinationFiles="$(PublishDir)IptvPlayer.pri" />
+  </Target>
+
+  <!--
+    Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
+    Tools extension to be activated for this project even if the Windows App SDK Nuget
+    package has not yet been restored.
+  -->
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.Windows.SDK.BuildTools.WinApp adds first-class support for
+    `dotnet run` on packaged WinUI apps: it hooks the .NET CLI Run target to
+    register a debug identity via the winapp CLI and launch the app with
+    package identity (AUMID).
+    Set <EnableWinAppRunSupport>false</EnableWinAppRunSupport> in a
+    <PropertyGroup> above to opt out.
+  -->
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Sizers" Version="8.2.251219" />
+    <PackageReference Include="CommunityToolkit.WinUI.Notifications" Version="7.1.2" />
+    <PackageReference Include="FFmpegInteropX" Version="2.1.0.81200" />
+    <PackageReference Include="MemoryPack" Version="1.21.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.5.0" />
+    <PackageReference Include="Serilog" Version="4.4.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+  </ItemGroup>
+
+  <!--
+    Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
+    Explorer "Package and Publish" context menu entry to be enabled for this project even if
+    the Windows App SDK Nuget package has not yet been restored.
+  -->
+  <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
+    <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
+  </PropertyGroup>
+
+  <!-- Publish Properties -->
+  <PropertyGroup>
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
+    <!-- Trimming отключён: WinUI/XAML и рефлексионный System.Text.Json
+         (настройки, кэш EPG, epg-name-map) не переживают обрезку — publish
+         с PublishTrimmed=true сыпал IL2026/IL2059 и рисковал уронить
+         приложение при первом же чтении настроек/кэша. -->
+    <PublishTrimmed>False</PublishTrimmed>
+  </PropertyGroup>
+</Project>

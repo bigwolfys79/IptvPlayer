@@ -1,0 +1,985 @@
+<Page
+    x:Class="IptvPlayer.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:IptvPlayer"
+    xmlns:vm="using:IptvPlayer.ViewModels"
+    xmlns:vmModels="using:IptvPlayer.Models"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:ctk="using:CommunityToolkit.WinUI.Controls"
+    xmlns:converters="using:IptvPlayer.Converters"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanConverter" />
+        <converters:EPGTimeToPositionConverter x:Key="EPGTimeConverter" />
+        <converters:EPGDurationToWidthConverter x:Key="EPGDurationConverter" />
+        <converters:DateConverter x:Key="DateConverter" />
+        <converters:BoolToLiveColorConverter x:Key="BoolToLiveColorConverter" />
+        <converters:StringToImageSourceConverter x:Key="StringToImageConverter" />
+        <converters:BoolToRecordColorConverter x:Key="BoolToRecordColorConverter" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisConverter" />
+
+        <DataTemplate x:Key="ChannelItemTemplate" x:DataType="vm:ChannelViewModel">
+            <StackPanel Orientation="Horizontal" Padding="12,8" Spacing="12">
+                <Image Width="28" Height="28"
+                       Stretch="Uniform"
+                       VerticalAlignment="Center"
+                       Source="{x:Bind LogoUrl, Converter={StaticResource StringToImageConverter}, Mode=OneWay}" />
+                <!-- Индикатор архива передач: зелёный — у канала есть архив
+                     (tvg-rec плейлиста), серый — нет. Подсказка показывает
+                     глубину архива. Раньше кружок красился по IsLive, но
+                     IsLive у всех каналов всегда true — индикатор был
+                     бессмысленным. -->
+                <Ellipse Width="12" Height="12"
+                         Fill="{x:Bind HasArchive, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}"
+                         VerticalAlignment="Center"
+                         ToolTipService.ToolTip="{x:Bind ArchiveToolTip, Mode=OneWay}" />
+                <Button x:Name="FavoriteButton"
+                        Width="28" Height="28"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        VerticalAlignment="Center"
+                        Click="FavoriteButton_Click"
+                        ToolTipService.ToolTip="{x:Bind FavoriteToolTip, Mode=OneWay}">
+                    <!-- Нарисованная звезда (без шрифтовых глифов): закрашенная
+                         янтарная — в избранном, контурная серая — нет. -->
+                    <Grid Width="15" Height="15">
+                        <Path Data="M8,0.9 L9.93,5.4 L14.8,5.94 L11.15,9.1 L12.14,13.9 L8,11.63 L3.86,13.9 L4.85,9.1 L1.2,5.94 L6.07,5.4 Z"
+                              Fill="#FFFFC107" Stretch="Uniform"
+                              Visibility="{x:Bind IsFavorite, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+                        <Path Data="M8,0.9 L9.93,5.4 L14.8,5.94 L11.15,9.1 L12.14,13.9 L8,11.63 L3.86,13.9 L4.85,9.1 L1.2,5.94 L6.07,5.4 Z"
+                              Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2" Stretch="Uniform"
+                              Visibility="{x:Bind IsFavorite, Converter={StaticResource InverseBoolToVisConverter}, Mode=OneWay}" />
+                    </Grid>
+                </Button>
+                <StackPanel Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Name}" FontSize="14" TextTrimming="CharacterEllipsis" />
+                    <!-- OneWay обязательно: список каналов строится до загрузки EPG,
+                         и CurrentProgramTitle заполняется позже (RecalculateCurrentPrograms
+                         пачками); с OneTime (по умолчанию) строка навсегда оставалась бы
+                         пустой — значения, захваченного при создании элемента, ещё нет. -->
+                    <TextBlock Text="{x:Bind CurrentProgramTitle, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                    <!-- Тонкая полоса прогресса текущей передачи: видно, сколько
+                         передачи уже прошло (начало/середина/почти конец). Течёт
+                         со временем — обновляется 30-секундным таймером. Шаблон
+                         общий для главного списка и полноэкранного оверлея. -->
+                    <ProgressBar Value="{x:Bind CurrentProgramProgress, Mode=OneWay}"
+                                 Maximum="1" Minimum="0"
+                                 Height="3" CornerRadius="1.5" Padding="0" Margin="0,1,0,0"
+                                 Visibility="{x:Bind HasCurrentProgram, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="EPGEntryTemplate" x:DataType="vmModels:EPGEntry">
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" 
+                    CornerRadius="4"
+                    Margin="2"
+                    Padding="8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Vertical" Spacing="2">
+                        <TextBlock Text="{x:Bind StartTimeString}" FontSize="11" FontWeight="Bold" />
+                        <TextBlock Text="{x:Bind Duration, Converter={StaticResource TimeSpanConverter}}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Vertical" Spacing="2">
+                        <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="2" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="EPGVerticalEntryTemplate" x:DataType="vmModels:EPGEntry">
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="12,10"
+                    Margin="2,1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Vertical" Spacing="2" MinWidth="80">
+                        <TextBlock Text="{x:Bind StartTimeString}" FontSize="12" FontWeight="Bold" />
+                        <TextBlock Text="{x:Bind Duration, Converter={StaticResource TimeSpanConverter}}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Vertical" Spacing="2">
+                        <TextBlock Text="{x:Bind Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="3" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid x:Name="RootGrid"
+          Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+          PointerMoved="RootGrid_PointerMoved"
+          PointerWheelChanged="RootGrid_PointerWheelChanged">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="ChannelListColumn" Width="320" MinWidth="240" MaxWidth="640" />
+            <ColumnDefinition x:Name="SplitterColumn" Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Channel List Panel -->
+        <Border Grid.Column="0" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Channel List Header -->
+                <Grid Grid.Row="0" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ChannelsHeaderText" Text="Каналы" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <AutoSuggestBox x:Name="ChannelSearchBox"
+                                        PlaceholderText="Поиск..." 
+                                        Width="180"
+                                        QueryIcon="Find"
+                                        Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay}" />
+                        <Button x:Name="AddChannelButton" 
+                                Content="+" 
+                                Width="36" Height="36" 
+                                ToolTipService.ToolTip="Добавить канал"
+                                Click="AddChannelButton_Click" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Group Filter -->
+                <ComboBox x:Name="GroupFilterComboBox"
+                          Grid.Row="1"
+                          Margin="12,8"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedGroup, Mode=TwoWay}" />
+
+                <!-- Channel List -->
+                <ListView x:Name="ChannelsListView" 
+                          Grid.Row="2"
+                          ItemsSource="{x:Bind ViewModel.DisplayedChannels, Mode=OneWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=TwoWay}"
+                          ItemTemplate="{StaticResource ChannelItemTemplate}"
+                          SelectionMode="Single"
+                          IsItemClickEnabled="True"
+                          ItemClick="ChannelsListView_ItemClick">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Padding" Value="0" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
+
+                <!-- Channel Stats -->
+                <Border Grid.Row="3" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                                                <TextBlock x:Name="ChannelCountText" Text="{x:Bind ViewModel.ChannelCountText, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Живой разделитель: ширина панели каналов тянется мышью
+             (CommunityToolkit.WinUI.Controls.Sizers — GridSplitter).
+             Границы перетаскивания заданы на самой колонке ChannelListColumn
+             (Min/MaxWidth), сплиттер их соблюдает. Выбранная ширина
+             сохраняется в настройках при закрытии окна. -->
+        <ctk:GridSplitter Grid.Column="1"
+                               Width="5"
+                               ResizeBehavior="PreviousAndNext"
+                               Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+        <!-- Player Panel: видео занимает всю правую область; EPG — перекрывающий
+             оверлей, по умолчанию скрытый и открываемый кнопкой EPG в панели
+             управления видео; сама панель управления (WindowedVideoOverlay) —
+             самый верхний слой. ZIndex задаёт порядок слоёв явно, независимо
+             от порядка объявления. -->
+        <Grid x:Name="RightPanelGrid"
+              Grid.Column="2"
+              PointerMoved="VideoArea_PointerMoved">
+
+            <!-- Шапка канала над видео в ОКОННОМ режиме: название, текущая
+                 передача, прогресс и индикатор архива — аналог шапки полноэкранного
+                 оверлея, но для окна (раньше эта информация была только в списке
+                 каналов слева). Живёт строго внутри области видео (RightPanelGrid —
+                 Grid.Column 2), поэтому список каналов и разделитель (колонки 0/1)
+                 физически не могут её перекрыть. Открытый EPG-оверлей лежит выше
+                 (ZIndex 3) и закрывает её целиком — со своей шапкой канала.
+                 В fullscreen прячется (SetFullScreenMode): там своя шапка. -->
+            <Border x:Name="WindowedTopOverlay"
+                    Canvas.ZIndex="2"
+                    VerticalAlignment="Top"
+                    Height="44"
+                    Background="#B2000000"
+                    Padding="16,0"
+                    Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}"
+                                   Foreground="White" FontSize="14" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" />
+                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramTitle, Mode=OneWay}"
+                                   Foreground="#CCFFFFFF" FontSize="12.5"
+                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                        <!-- Таймер сна: остаток времени «29:59», виден только когда
+                             таймер взведён (UpdateSleepTimerDisplays). -->
+                        <StackPanel x:Name="WindowedSleepTimerPanel" Orientation="Horizontal" Spacing="5"
+                                    VerticalAlignment="Center" Visibility="Collapsed">
+                            <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
+                                  Width="13" Height="13" Stretch="Uniform" Fill="#FFB39DDB" />
+                            <TextBlock x:Name="WindowedSleepTimerText"
+                                       Foreground="#FFB39DDB" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <Button x:Name="WindowedSleepTimerCancelButton"
+                                    Width="20" Height="20" Padding="0"
+                                    Background="Transparent" BorderThickness="0"
+                                    Click="SleepTimerCancelButton_Click"
+                                    ToolTipService.ToolTip="Отменить таймер">
+                                <Path Data="M4,4 L12,12 M12,4 L4,12"
+                                      Width="10" Height="10" Stretch="Uniform"
+                                      Stroke="#FFB39DDB" StrokeThickness="1.5" />
+                            </Button>
+                        </StackPanel>
+                        <!-- Индикатор архивной передачи: ставит UpdateArchiveBanner
+                             (как OverlayArchiveIndicator в fullscreen-шапке). -->
+                        <StackPanel x:Name="WindowedArchiveIndicator" Orientation="Horizontal" Spacing="6"
+                                    VerticalAlignment="Center" Visibility="Collapsed">
+                            <Grid Width="13" Height="13">
+                                <Ellipse Stroke="#FFFFD54F" StrokeThickness="1.4" />
+                                <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="#FFFFD54F" StrokeThickness="1.4" />
+                            </Grid>
+                            <TextBlock x:Name="WindowedArchiveText"
+                                       Foreground="#FFFFD54F" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- Прогресс текущей передачи по нижнему краю шапки (на всю
+                         ширину): сколько передачи уже прошло; обновляется
+                         30-секундным таймером через INPC SelectedChannel.
+                         Отрицательные поля растягивают полосу за Padding шапки. -->
+                    <ProgressBar Value="{x:Bind ViewModel.SelectedChannel.CurrentProgramProgress, Mode=OneWay}"
+                                 Grid.ColumnSpan="2"
+                                 Maximum="1" Minimum="0"
+                                 VerticalAlignment="Bottom" Margin="-16,0,-16,0"
+                                 Height="3" CornerRadius="1.5,1.5,0,0" Padding="0"
+                                 Foreground="#FF4CAF50" />
+                </Grid>
+            </Border>
+
+            <!-- EPG-оверлей поверх видео -->
+            <Border x:Name="EpgPanelBorder"
+                    Canvas.ZIndex="3"
+                    Visibility="Collapsed"
+                    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,0,0,1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- EPG Content — вертикальный список программ выбранного канала -->
+                    <Grid Grid.Row="1">
+                        <!-- Заголовок с названием канала -->
+                        <Border Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="16,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                <Ellipse Width="14" Height="14" Fill="{x:Bind ViewModel.SelectedChannel.IsLive, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}" VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <TextBlock x:Name="EpgHeaderText" Text="— Программа передач" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock x:Name="EpgHeaderHintText" Text="клик по передаче — смотреть с начала" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Список программ передач. Клик по уже начавшейся передаче
+                             запускает её в архиве (timeshift) — см. EPGProgramsListView_ItemClick. -->
+                        <ListView x:Name="EPGProgramsListView"
+                                  ItemsSource="{x:Bind ViewModel.SelectedChannel.EPGEntries, Mode=OneWay}"
+                                  Margin="0,52,0,0"
+                                  SelectionMode="None"
+                                  IsItemClickEnabled="True"
+                                  ItemClick="EPGProgramsListView_ItemClick"
+                                  Loaded="EPGProgramsListView_Loaded">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="4,2" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="vmModels:EPGEntry">
+                                    <Grid>
+                                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="12,10">
+                                            <StackPanel Orientation="Vertical" Spacing="0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Orientation="Vertical" Spacing="2" MinWidth="80">
+                                                        <TextBlock Text="{x:Bind StartTimeString}" FontSize="12" FontWeight="Bold" />
+                                                        <TextBlock Text="{x:Bind Duration, Converter={StaticResource TimeSpanConverter}}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Vertical" Spacing="2">
+                                                        <TextBlock Text="{x:Bind Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="3" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <!-- Значок доступности архива (только у начавшихся передач)
+                                                         и колокольчик напоминания (только у будущих). -->
+                                                    <StackPanel Grid.Column="2"
+                                                                Margin="8,0,0,0"
+                                                                Orientation="Horizontal"
+                                                                Spacing="4"
+                                                                VerticalAlignment="Center">
+                                                        <Path Data="M4.5,2 L13,8 L4.5,14 Z"
+                                                              Width="14" Height="14" Stretch="Uniform"
+                                                              Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                                                              Visibility="{x:Bind CanPlayArchive, Converter={StaticResource BoolToVisConverter}}"
+                                                              ToolTipService.ToolTip="Смотреть с начала (архив)" />
+                                                        <!-- Напоминание: зелёный колокольчик = стоит. Доступно
+                                                             только передачам, которые ещё не начались. -->
+                                                        <Button x:Name="ReminderButton"
+                                                                Width="32" Height="32"
+                                                                Padding="0"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Click="ReminderButton_Click"
+                                                                Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
+                                                                ToolTipService.ToolTip="Напомнить о передаче">
+                                                            <!-- Нарисованный колокольчик: цвет — серый/зелёный
+                                                                 по HasReminder. -->
+                                                            <Grid Width="14" Height="14">
+                                                                <Path Data="M8,1.7 C5.5,1.7 3.8,3.9 3.8,6.5 V9.1 L2.2,11.7 H13.8 L12.2,9.1 V6.5 C12.2,3.9 10.5,1.7 8,1.7 Z M6.7,13 A1.35,1.35 0 0 0 9.3,13 Z"
+                                                                      Fill="{x:Bind HasReminder, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}"
+                                                                      Stretch="Uniform" />
+                                                            </Grid>
+                                                        </Button>
+                                                        <!-- Запланировать запись передачи (тоже только будущей):
+                                                             зелёная точка записи = запланировано. -->
+                                                        <Button x:Name="ScheduleRecordButton"
+                                                                Width="32" Height="32"
+                                                                Padding="0"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Click="ScheduleRecordButton_Click"
+                                                                Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
+                                                                ToolTipService.ToolTip="Записать передачу">
+                                                            <!-- Нарисованная кнопка записи: кольцо с точкой,
+                                                                 серые — без записи, красные — запланирована. -->
+                                                            <Grid Width="14" Height="14">
+                                                                <Ellipse StrokeThickness="1.5"
+                                                                         Stroke="{x:Bind HasScheduleRecord, Converter={StaticResource BoolToRecordColorConverter}, Mode=OneWay}" />
+                                                                <Ellipse Width="6.5" Height="6.5"
+                                                                         Fill="{x:Bind HasScheduleRecord, Converter={StaticResource BoolToRecordColorConverter}, Mode=OneWay}" />
+                                                            </Grid>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <!-- Сколько текущей передачи уже прошло: тонкая полоса
+                                                     внизу карточки, есть только у идущей передачи. -->
+                                                <ProgressBar Value="{x:Bind LiveProgress, Mode=OneWay}"
+                                                             Maximum="1" Minimum="0"
+                                                             Height="3" CornerRadius="1.5" Padding="0" Margin="0,6,0,0"
+                                                             Visibility="{x:Bind IsCurrent, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Подсветка текущей передачи (OneWay: минутный таймер
+                                             переносит IsCurrent на новую передачу на лету). -->
+                                        <Border Background="#334CAF50"
+                                                BorderBrush="#4CAF50"
+                                                BorderThickness="2"
+                                                CornerRadius="4"
+                                                Visibility="{x:Bind IsCurrent, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <!-- Пустое состояние — если нет EPG данных у выбранного канала -->
+                        <StackPanel x:Name="EmptyChannelEPGState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,52,0,0">
+                            <Path Data="M3.7,1.7 H12.3 V14.3 H3.7 Z M5.8,5.4 H10.2 M5.8,8.2 H10.2 M5.8,11 H8.8"
+                                  Width="36" Height="36" Stretch="Uniform"
+                                  Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2"
+                                  HorizontalAlignment="Center" />
+                            <TextBlock x:Name="EmptyChannelEpgText" Text="Нет данных о программах для этого канала" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Empty State -->
+                    <Grid x:Name="EmptyEPGState" Grid.Row="1" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Vertical" Spacing="16" HorizontalAlignment="Center">
+                            <Path Data="M3.7,1.7 H12.3 V14.3 H3.7 Z M5.8,5.4 H10.2 M5.8,8.2 H10.2 M5.8,11 H8.8"
+                                  Width="48" Height="48" Stretch="Uniform"
+                                  Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2" />
+                            <TextBlock x:Name="EmptyEpgTitle" Text="EPG данные недоступны" FontSize="18" FontWeight="Medium" />
+                            <TextBlock x:Name="EmptyEpgHint" Text="Выберите источник EPG или обновите данные" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" />
+                                                        <Button x:Name="EmptyEpgRefreshButton" Content="Обновить EPG" Command="{x:Bind ViewModel.EpgViewModel.RefreshEpgCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Now Playing Bar убрана: громкость, EPG и полноэкранный режим
+                 теперь в оверлее поверх видео (WindowedVideoOverlay ниже),
+                 который появляется по движению мыши над видео и скрывается
+                 сам через пару секунд бездействия. -->
+
+            <!-- Media Player -->
+            <Border x:Name="VideoAreaBorder"
+                    Canvas.ZIndex="1"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    Padding="12"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,0"
+                    DoubleTapped="VideoArea_DoubleTapped">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <MediaPlayerElement x:Name="MediaPlayer"
+                                        Grid.Row="0"
+                                        AreTransportControlsEnabled="False"
+                                        AutoPlay="False"
+                                        Stretch="Uniform"
+                                        Visibility="{x:Bind ViewModel.SelectedChannel.IsPlaying, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+
+                    <!-- Баннер архива над видео убран — мешал просмотру. Информация
+                         об архивной передаче и кнопка "В эфир" теперь в панелях
+                         управления (WindowedVideoOverlay и полноэкранный оверлей),
+                         которые появляются по движению мыши и скрываются сами. -->
+
+                    <ProgressBar x:Name="BufferProgress"
+                                 Grid.Row="1" 
+                                 Height="4" 
+                                 Margin="0,8,0,0"
+                                 IsIndeterminate="False"
+                                 Visibility="Collapsed" />
+
+                    <TextBlock x:Name="StreamErrorText"
+                               Grid.Row="2"
+                               Margin="0,8,0,0"
+                               FontSize="12"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               TextWrapping="Wrap"
+                               Visibility="Collapsed" />
+                </Grid>
+            </Border>
+
+            <!-- Панель управления видео в ОКОННОМ режиме: громкость (и колесо
+                 мыши над видео), пауза архива, EPG, настройки программы,
+                 полноэкранный режим. Самый верхний слой — доступна и поверх
+                 EPG-оверлея, чтобы можно было закрыть EPG той же кнопкой.
+                 Появляется по движению мыши (RightPanelGrid -> VideoArea_PointerMoved)
+                 и скрывается сама через пару секунд бездействия. -->
+            <Border x:Name="WindowedVideoOverlay"
+                    Canvas.ZIndex="4"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Bottom"
+                    Margin="12"
+                    Padding="16,10"
+                    CornerRadius="8"
+                    Background="#B2000000"
+                    Visibility="Collapsed"
+                    Opacity="0">
+                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <!-- Запись текущего канала: ffmpeg.exe пишет поток в
+                         Видео\IptvPlayer до повторного нажатия. Иконки —
+                         нарисованные (красная точка REC / красный квадрат
+                         STOP), пересобираются в UpdateRecordButtons. -->
+                                        <Button x:Name="VideoOverlayRecordButton"
+                                                        Width="40" Height="40"
+                                                        Command="{x:Bind ViewModel.ToggleRecordingCommand}"
+                                                        ToolTipService.ToolTip="Записать канал">
+                                            <Ellipse Width="14" Height="14" Fill="#FFF53B3B" />
+                                        </Button>
+                    <!-- Показывается только при просмотре архива: подсказка с
+                         названием передачи ставится в UpdateArchiveBanner. -->
+                                        <Button x:Name="VideoOverlayBackToLiveButton"
+                                                        Content="В эфир"
+                                                        FontSize="12"
+                                                        Padding="12,4"
+                                                        Visibility="Collapsed"
+                                                        Command="{x:Bind ViewModel.BackToLiveCommand}"
+                                                        ToolTipService.ToolTip="Вернуться к прямому эфиру" />
+                                        <Button x:Name="VideoOverlayPauseButton"
+                                                        Width="40" Height="40"
+                                                        Command="{x:Bind ViewModel.ToggleArchivePauseCommand}"
+                                                        Visibility="Collapsed"
+                                                        ToolTipService.ToolTip="Пауза (архив)">
+                                            <!-- Нарисованная пауза (две полосы); на плей
+                                                 переключает UpdateArchivePauseButton. -->
+                                            <Path Data="M3.5,2.5 H6.4 V13.5 H3.5 Z M9.6,2.5 H12.5 V13.5 H9.6 Z"
+                                                  Width="16" Height="16" Stretch="Uniform" Fill="White" />
+                                        </Button>
+                    <!-- Полоса перемотки архива (timeshift): позиция считается по
+                         часам от старта показа, отпускание ползунка перезапускает
+                         поток с новой точки. Показывается только при архивном
+                         воспроизведении — см. UpdateArchivePauseButton. -->
+                    <StackPanel x:Name="WindowedArchiveSeekPanel"
+                                Orientation="Horizontal" Spacing="8"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed"
+                                ToolTipService.ToolTip="Перемотка архива (отпустите ползунок для перехода)">
+                        <TextBlock x:Name="WindowedArchivePositionText"
+                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   VerticalAlignment="Center" />
+                        <Slider x:Name="WindowedArchiveSeekBar"
+                                Width="150" Minimum="0" Maximum="1"
+                                VerticalAlignment="Center"
+                                ValueChanged="ArchiveSeekBar_ValueChanged"
+                                PointerPressed="ArchiveSeekBar_PointerPressed"
+                                PointerReleased="ArchiveSeekBar_PointerReleased"
+                                PointerCaptureLost="ArchiveSeekBar_PointerCaptureLost" />
+                        <TextBlock x:Name="WindowedArchiveDurationText"
+                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <!-- Кнопка беззвучного режима: иконку (динамик/динамик с
+                         крестом) ставит UpdateMuteButtons; дублирует M. -->
+                    <Button x:Name="VideoOverlayMuteButton"
+                            Width="36" Height="36"
+                            Click="MuteButton_Click"
+                            ToolTipService.ToolTip="Без звука (M)" />
+                    <Slider x:Name="VideoOverlayVolumeSlider"
+                            Width="130"
+                            Minimum="0"
+                            Maximum="1"
+                            StepFrequency="0.05"
+                            VerticalAlignment="Center"
+                            ToolTipService.ToolTip="Громкость (или колесо мыши над видео)"
+                            ValueChanged="VideoOverlayVolumeSlider_ValueChanged" />
+                    <!-- Режим отображения (вписать/растянуть/обрезать) — для
+                         контента не в пропорции окна; дублирует клавишу V.
+                         Текущий режим — в подсказке (UpdateStretchButtons). -->
+                    <Button x:Name="VideoOverlayStretchButton"
+                            Width="40" Height="40"
+                            Click="StretchButton_Click"
+                            ToolTipService.ToolTip="Режим отображения (V)">
+                        <!-- Рамка и двунаправленная стрелка (растяжение). -->
+                        <Grid Width="16" Height="16">
+                            <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                                       Margin="1,2.4,1,1" />
+                            <Path Data="M4,8 H12 M5.8,5.6 L3.4,8 L5.8,10.4 M10.2,5.6 L12.6,8 L10.2,10.4"
+                                  Stroke="White" StrokeThickness="1.2" />
+                        </Grid>
+                    </Button>
+                                        <Button x:Name="VideoOverlayEpgButton"
+                                                        Width="40" Height="40"
+                                                        Command="{x:Bind ViewModel.ToggleEpgCommand}"
+                                                        ToolTipService.ToolTip="Показать EPG">
+                                            <!-- Нарисованный календарь (программа передач). -->
+                                            <Grid Width="16" Height="16">
+                                                <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                                                           Margin="1,2.6,1,1" />
+                                                <Rectangle Fill="White" Height="1.7" RadiusX="0.8"
+                                                           Margin="1,5.6,1,0" VerticalAlignment="Top" />
+                                                <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                                                           Margin="3.7,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                                <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                                                           Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                            </Grid>
+                                        </Button>
+                    <Button x:Name="VideoOverlaySettingsButton"
+                            Width="40" Height="40"
+                            ToolTipService.ToolTip="Настройки">
+                        <!-- Нарисованные «ползунки настроек» (три линии с ручками). -->
+                        <Button.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="Воспроизведение" Click="PlaybackSettingsButton_Click"/>
+                                <MenuFlyoutItem Text="Интерфейс" Click="InterfaceSettingsButton_Click"/>
+                                <MenuFlyoutItem Text="EPG" Click="EpgSettingsButton_Click"/>
+                                <MenuFlyoutItem Text="Плейлист" Click="PlaylistSettingsButton_Click"/>
+                                <!-- Подменю смены активного плейлиста: раскрывается при
+                                     наведении (стрелка справа), наполняется в code-behind
+                                     (UpdatePlaylistMenu), прячется, когда плейлист один. -->
+                                <MenuFlyoutSubItem x:Name="SwitchPlaylistSubMenu" Text="Сменить плейлист"/>
+                                <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem Text="О программе" Click="AboutButton_Click"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                        <Grid Width="16" Height="16">
+                            <Rectangle Fill="White" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,3.4,1.5,0" />
+                            <Ellipse Fill="White" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2.6,1.9,0,0" />
+                            <Rectangle Fill="White" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,8.2,1.5,0" />
+                            <Ellipse Fill="White" Width="4.6" Height="4.6" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6.7,2.6,0" />
+                            <Rectangle Fill="White" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,13,1.5,0" />
+                            <Ellipse Fill="White" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,11.5,0,0" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="VideoOverlaySleepTimerButton"
+                            Width="40" Height="40"
+                            Click="SleepTimerButton_Click"
+                            ToolTipService.ToolTip="Таймер сна">
+                        <!-- Нарисованные часы с луной. -->
+                        <Grid Width="16" Height="16">
+                            <Path Data="M8,1.5 A6.5,6.5 0 1 0 14.5,8"
+                                  Stroke="White" StrokeThickness="1.3" Fill="Transparent" />
+                            <Path Data="M8,4 V8 L11,10"
+                                  Stroke="White" StrokeThickness="1.3" />
+                            <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
+                                  Fill="#B39DDB" Stretch="Uniform"
+                                  Width="6" Height="6"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                  Margin="0,0,-1,-1" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="VideoOverlayFullScreenButton"
+                            Width="40" Height="40"
+                            Click="FullScreenButton_Click"
+                            ToolTipService.ToolTip="Развернуть плеер на весь экран">
+                        <!-- Нарисованные уголки «на весь экран». -->
+                        <Path Data="M1,5.5 V3 Q1,1 3,1 H5.5 M10.5,1 H13 Q15,1 15,3 V5.5 M15,10.5 V13 Q15,15 13,15 H10.5 M5.5,15 H3 Q1,15 1,13 V10.5"
+                              Width="16" Height="16" Stretch="Uniform"
+                              Stroke="White" StrokeThickness="1.5" />
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Индикация загрузки/обновления EPG: тонкая полоса поверх всего
+                 правого блока — раньше жила в шапке EPG-панели, которую убрали. -->
+            <ProgressBar x:Name="EpgLoadingProgress"
+                         Canvas.ZIndex="4"
+                         VerticalAlignment="Top"
+                         Height="2"
+                         IsIndeterminate="True"
+                         Visibility="{x:Bind ViewModel.EpgViewModel.IsLoading, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+
+            <!-- Оверлей ввода номера канала цифрами (как в телевизоре):
+                 цифры — ввести, Enter/3 с — переключить, Backspace — стереть,
+                 Esc — отмена. Показывает разрешаемое имя канала по мере ввода.
+                 Не ловит мышь (IsHitTestVisible=false), живёт над всеми
+                 оверлеями правой панели (ZIndex 5) и работает в обоих
+                 режимах — оконном и полноэкранном. -->
+            <Border x:Name="ChannelNumberOverlay"
+                    Canvas.ZIndex="5"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Margin="0,96,0,0"
+                    Padding="18,10"
+                    CornerRadius="8"
+                    Background="#B2000000"
+                    Visibility="Collapsed"
+                    IsHitTestVisible="False">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock x:Name="ChannelNumberText"
+                               FontSize="26" FontWeight="SemiBold" Foreground="White"
+                               VerticalAlignment="Center" />
+                    <TextBlock x:Name="ChannelNumberName"
+                               FontSize="13" Foreground="#CCFFFFFF"
+                               VerticalAlignment="Center" MaxWidth="380"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ================= Full-Screen Overlay ================= -->
+        <!-- Виден только в полноэкранном режиме. Появляется по движению мыши
+             (RootGrid_PointerMoved) и автоматически скрывается через пару секунд
+             бездействия (_overlayHideTimer в MainPage.xaml.cs). Растянут на все
+             колонки, чтобы лежать поверх видео независимо от их ширины. -->
+        <Grid x:Name="FullScreenOverlay"
+              Grid.Column="0" Grid.ColumnSpan="3"
+              Visibility="Collapsed"
+              Opacity="0"
+              Background="Transparent"
+              DoubleTapped="FullScreenOverlay_DoubleTapped">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <!-- Отдельная колонка под список каналов: шапка и нижняя панель
+                 управления живут только в области видео и центрируются
+                 относительно неё — раньше нижняя панель центрировалась по всей
+                 ширине окна и наезжала на список слева. -->
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Верхняя панель — только информация о канале и текущей передаче;
+                 кнопки EPG и выхода из fullscreen живут в нижней панели
+                 управления (перенесены сюда, чтобы всё управление было
+                 в одном месте, как в оконной панели). -->
+            <Border Grid.Row="0" Grid.Column="1" Background="#B2000000" Padding="20,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}"
+                                   Foreground="White" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramTitle, Mode=OneWay}"
+                                   Foreground="#CCFFFFFF" FontSize="13" />
+                        <!-- Прогресс текущей передачи в шапке оверлея: сколько уже
+                             прошло. Обновляется 30-секундным таймером (как и полосы
+                             в списке каналов) через INPC SelectedChannel. -->
+                        <ProgressBar Value="{x:Bind ViewModel.SelectedChannel.CurrentProgramProgress, Mode=OneWay}"
+                                     Maximum="1" Minimum="0"
+                                     Width="260" HorizontalAlignment="Left"
+                                     Height="3" CornerRadius="1.5" Padding="0" Margin="0,3,0,0"
+                                     Foreground="#FF4CAF50" />
+                        <!-- Показывается вместо/рядом с текущей программой, когда в
+                             fullscreen идёт архивная передача (UpdateArchiveBanner). -->
+                        <StackPanel x:Name="OverlayArchiveIndicator"
+                                    Orientation="Horizontal"
+                                    Spacing="6"
+                                    Visibility="Collapsed">
+                            <!-- Нарисованные часы — индикатор архивной передачи. -->
+                            <Grid Width="13" Height="13">
+                                <Ellipse Stroke="#FFFFD54F" StrokeThickness="1.4" />
+                                <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="#FFFFD54F" StrokeThickness="1.4" />
+                            </Grid>
+                            <TextBlock x:Name="OverlayArchiveText"
+                                       Foreground="#FFFFD54F" FontSize="12" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- Таймер сна в полноэкранном режиме: остаток + кнопка отмены. -->
+                    <StackPanel x:Name="OverlaySleepTimerPanel" Grid.Column="1"
+                                Orientation="Horizontal" Spacing="6"
+                                VerticalAlignment="Center" Visibility="Collapsed">
+                        <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
+                              Width="16" Height="16" Stretch="Uniform" Fill="#FFB39DDB" />
+                        <TextBlock x:Name="OverlaySleepTimerText"
+                                   Foreground="#FFB39DDB" FontSize="14" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
+                        <Button x:Name="OverlaySleepTimerCancelButton"
+                                Width="24" Height="24" Padding="0"
+                                Background="Transparent" BorderThickness="0"
+                                Click="SleepTimerCancelButton_Click"
+                                ToolTipService.ToolTip="Отменить таймер">
+                            <Path Data="M4,4 L12,12 M12,4 L4,12"
+                                  Width="12" Height="12" Stretch="Uniform"
+                                  Stroke="#FFB39DDB" StrokeThickness="1.5" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Список каналов слева, сгруппированный и отсортированный по группам -->
+            <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
+                    HorizontalAlignment="Left"
+                    Width="320"
+                    Background="#D9101010">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" x:Name="OverlayChannelsHeaderText" Text="Каналы"
+                               Foreground="White" FontSize="18" FontWeight="SemiBold"
+                               Padding="16,16,16,8" />
+
+                    <ListView x:Name="OverlayChannelsListView"
+                              Grid.Row="1"
+                              Background="Transparent"
+                              SelectionMode="Single"
+                              IsItemClickEnabled="True"
+                              ItemClick="ChannelsListView_ItemClick"
+                              ItemTemplate="{StaticResource ChannelItemTemplate}">
+                        <ListView.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Key}"
+                                                   Foreground="#B3FFFFFF"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Padding="16,12,16,4" />
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListView.GroupStyle>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <!-- Нижняя панель управления полноэкранного режима: запись, «В эфир»
+                 и пауза архива, перемотка, громкость, EPG, выход из fullscreen.
+                 Пауза/воспроизведение нужны только при просмотре архива (прямой
+                 эфир паузить незачем), поэтому кнопка показывается лишь пока
+                 идёт архивная передача — см. UpdateArchivePauseButton. Встроенные
+                 transport controls в fullscreen отключены, так что громкость
+                 регулируется здесь. -->
+            <Border Grid.Row="2" Grid.Column="1" Background="#B2000000" Padding="16,14">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
+                                                <Button x:Name="OverlayRecordButton"
+                                                                Width="56" Height="56"
+                                                                Command="{x:Bind ViewModel.ToggleRecordingCommand}"
+                                                                ToolTipService.ToolTip="Записать канал">
+                                                    <Ellipse Width="18" Height="18" Fill="#FFF53B3B" />
+                                                </Button>
+                                                <Button x:Name="OverlayBackToLiveButton"
+                                                                Content="В эфир"
+                                                                FontSize="12"
+                                                                Padding="12,4"
+                                                                Visibility="Collapsed"
+                                                                Command="{x:Bind ViewModel.BackToLiveCommand}"
+                                                                ToolTipService.ToolTip="Вернуться к прямому эфиру" />
+                                                <Button x:Name="OverlayPauseButton"
+                                                                Width="56" Height="56"
+                                                                Command="{x:Bind ViewModel.ToggleArchivePauseCommand}"
+                                                                Visibility="Collapsed"
+                                                                ToolTipService.ToolTip="Пауза (архив)">
+                                                    <Path Data="M3.5,2.5 H6.4 V13.5 H3.5 Z M9.6,2.5 H12.5 V13.5 H9.6 Z"
+                                                          Width="20" Height="20" Stretch="Uniform" Fill="White" />
+                                                </Button>
+                        <!-- Полоса перемотки архива (timeshift) в полноэкранном
+                             оверлее — аналог оконной (WindowedArchiveSeekPanel). -->
+                        <StackPanel x:Name="OverlayArchiveSeekPanel"
+                                    Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center"
+                                    Visibility="Collapsed"
+                                    ToolTipService.ToolTip="Перемотка архива (отпустите ползунок для перехода)">
+                            <TextBlock x:Name="OverlayArchivePositionText"
+                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       VerticalAlignment="Center" />
+                            <Slider x:Name="OverlayArchiveSeekBar"
+                                    Width="190" Minimum="0" Maximum="1"
+                                    VerticalAlignment="Center"
+                                    ValueChanged="ArchiveSeekBar_ValueChanged"
+                                    PointerPressed="ArchiveSeekBar_PointerPressed"
+                                    PointerReleased="ArchiveSeekBar_PointerReleased"
+                                    PointerCaptureLost="ArchiveSeekBar_PointerCaptureLost" />
+                            <TextBlock x:Name="OverlayArchiveDurationText"
+                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    <!-- Кнопка беззвучного режима (дублирует M); иконку ставит
+                         UpdateMuteButtons. -->
+                    <Button x:Name="OverlayMuteButton"
+                            Width="40" Height="40"
+                            Margin="16,0,0,0"
+                            Click="MuteButton_Click"
+                            ToolTipService.ToolTip="Без звука (M)" />
+                    <Slider x:Name="OverlayVolumeSlider"
+                            Width="150"
+                            Minimum="0"
+                            Maximum="1"
+                            StepFrequency="0.05"
+                            VerticalAlignment="Center"
+                            ValueChanged="OverlayVolumeSlider_ValueChanged" />
+                    <!-- Режим отображения — аналог кнопки в оконной панели. -->
+                    <Button x:Name="OverlayStretchButton"
+                            Width="44" Height="44"
+                            Click="StretchButton_Click"
+                            ToolTipService.ToolTip="Режим отображения (V)">
+                        <Grid Width="18" Height="18">
+                            <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                                       Margin="1,2.4,1,1" />
+                            <Path Data="M4,8 H12 M5.8,5.6 L3.4,8 L5.8,10.4 M10.2,5.6 L12.6,8 L10.2,10.4"
+                                  Stroke="White" StrokeThickness="1.2" />
+                        </Grid>
+                    </Button>
+                    <!-- EPG и выход из fullscreen — перенесены из верхней
+                         панели: всё управление собрано здесь, порядок как в
+                         оконной панели (громкость → EPG → полный экран). -->
+                    <Button x:Name="OverlaySleepTimerButton"
+                            Width="44" Height="44"
+                            Click="SleepTimerButton_Click"
+                            ToolTipService.ToolTip="Таймер сна">
+                        <!-- Нарисованные часы с луной. -->
+                        <Grid Width="18" Height="18">
+                            <Path Data="M8,1.5 A6.5,6.5 0 1 0 14.5,8"
+                                  Stroke="White" StrokeThickness="1.3" Fill="Transparent" />
+                            <Path Data="M8,4 V8 L11,10"
+                                  Stroke="White" StrokeThickness="1.3" />
+                            <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
+                                  Fill="#B39DDB" Stretch="Uniform"
+                                  Width="7" Height="7"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                  Margin="0,0,-1,-1" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="OverlayEpgButton"
+                            Width="44" Height="44"
+                            Command="{x:Bind ViewModel.ToggleEpgCommand}"
+                            ToolTipService.ToolTip="Показать/скрыть EPG">
+                        <!-- Нарисованный календарь (программа передач). -->
+                        <Grid Width="17" Height="17">
+                            <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                                       Margin="1,2.6,1,1" />
+                            <Rectangle Fill="White" Height="1.7" RadiusX="0.8"
+                                       Margin="1,5.6,1,0" VerticalAlignment="Top" />
+                            <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                                       Margin="3.7,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                            <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                                       Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                        </Grid>
+                    </Button>
+                    <Button x:Name="ExitFullScreenButton"
+                            Width="44" Height="44"
+                            Click="ExitFullScreenButton_Click"
+                            ToolTipService.ToolTip="Выйти из полноэкранного режима">
+                        <!-- Нарисованные уголки, «сворачивающиеся» внутрь. -->
+                        <Path Data="M5.5,1 V3 Q5.5,5 3.5,5 H1 M15,5 H12.5 Q10.5,5 10.5,3 V1 M10.5,15 V13 Q10.5,11 12.5,11 H15 M1,11 H3.5 Q5.5,11 5.5,13 V15"
+                              Width="16" Height="16" Stretch="Uniform"
+                              Stroke="White" StrokeThickness="1.5" />
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Оверлей статистики потока (Ctrl+J, как в VLC): кодеки, разрешение,
+             битрейт, фактический декодер, буфер и простои. Диагностический
+             инструмент — для жалоб «тормозит» достаточно его скриншота.
+             ZIndex 10 держит его над полноэкранным оверлеем (список каналов,
+             панели управления), IsHitTestVisible — не ловит мышь; обновляется
+             секундным тиком. В fullscreen отступ слева больше — список
+             каналов занимает 320 px (SetFullScreenMode). -->
+        <Border x:Name="StatsOverlay"
+                Grid.Column="2"
+                Canvas.ZIndex="10"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="12,60,0,0"
+                Padding="14,10"
+                CornerRadius="8"
+                Background="#B2000000"
+                Visibility="Collapsed"
+                IsHitTestVisible="False">
+            <TextBlock x:Name="StatsText"
+                       FontFamily="Consolas"
+                       FontSize="12.5"
+                       Foreground="#FFE8E8E8"
+                       Text="—" />
+        </Border>
+    </Grid>
+</Page>
