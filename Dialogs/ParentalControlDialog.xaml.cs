@@ -66,8 +66,8 @@ public sealed partial class ParentalControlDialog : UserControl
             var blockedCount = Settings.ParentalControlBlockedGroups.Count;
             StatusText.Text = Settings.ParentalControlEnabled
                 ? L.T(
-                    $"Включён. Скрыто групп: {blockedCount}. " + (locked ? "Каналы этих групп сейчас скрыты." : "Сейчас разблокировано."),
-                    $"Enabled. Hidden groups: {blockedCount}. " + (locked ? "Channels of these groups are hidden now." : "Currently unlocked."))
+                    $"Включён. Групп под PIN: {blockedCount}. " + (locked ? "Запуск их каналов требует PIN." : "Сейчас разрешено без PIN."),
+                    $"Enabled. Groups behind PIN: {blockedCount}. " + (locked ? "Starting their channels requires the PIN." : "Currently allowed without PIN."))
                 : L.T("Выключен.", "Disabled.");
 
             // Заблокировано → только секция разблокировки с PIN.
@@ -76,8 +76,8 @@ public sealed partial class ParentalControlDialog : UserControl
             EditPanel.Visibility = needUnlock ? Visibility.Collapsed : Visibility.Visible;
 
             UnlockHint.Text = L.T(
-                "Введите PIN и выберите, на сколько разблокировать скрытые группы.",
-                "Enter the PIN and choose how long to unlock the hidden groups.");
+                "Введите PIN и выберите, на сколько отключить его запрос при запуске каналов.",
+                "Enter the PIN and choose how long to stop asking for it when starting channels.");
             UnlockForeverButton.Content = L.T("До выключения", "Until off");
 
             EnabledToggle.IsOn = Settings.ParentalControlEnabled;
@@ -85,13 +85,13 @@ public sealed partial class ParentalControlDialog : UserControl
             EnabledToggle.OnContent = L.T("Вкл", "On");
             EnabledToggle.OffContent = L.T("Выкл", "Off");
             EnabledHint.Text = L.T(
-                "При включении галочки «взрослых» групп (18+, xxx и т.п.) ставятся автоматически; список можно изменить вручную.",
-                "When enabling, \"adult\" groups (18+, xxx, etc.) are checked automatically; the list can be edited manually.");
+                "Каналы остаются в списке, но запуск каналов отмеченных групп требует PIN. Галочки «взрослых» групп (18+, xxx и т.п.) ставятся автоматически; список можно изменить вручную.",
+                "Channels stay in the list, but starting channels of the checked groups requires the PIN. \"Adult\" groups (18+, xxx, etc.) are checked automatically; the list can be edited manually.");
 
             GroupsHeader.Text = L.T("Скрываемые группы", "Groups to hide");
             GroupsHint.Text = L.T(
-                "Отмеченные группы исчезают из списка каналов и фильтра групп, пока контроль включён и не разблокирован.",
-                "Checked groups disappear from the channel list and group filter while control is enabled and locked.");
+                "Запуск каналов отмеченных групп запрашивает PIN, пока контроль включён и не разблокирован временно.",
+                "Starting channels of the checked groups asks for the PIN while control is enabled and not temporarily unlocked.");
             BuildGroupsList();
 
             PinHeader.Text = L.T("PIN-код", "PIN code");
@@ -105,7 +105,7 @@ public sealed partial class ParentalControlDialog : UserControl
             NewPinBox.PlaceholderText = L.T("Новый PIN (4+ цифры)", "New PIN (4+ digits)");
             SetPinButton.Content = L.T("Установить", "Set");
             RemovePinButton.Content = L.T("Убрать PIN", "Remove PIN");
-            LockNowButton.Content = L.T("Скрыть группы сейчас", "Hide groups now");
+            LockNowButton.Content = L.T("Запрашивать PIN сейчас", "Ask for PIN now");
         }
         finally
         {
@@ -176,7 +176,6 @@ public sealed partial class ParentalControlDialog : UserControl
         }
 
         await _settingsService.SaveAsync(Settings);
-        _viewModel.ApplyParentalControl();
         LoadSection();
     }
 
@@ -198,7 +197,6 @@ public sealed partial class ParentalControlDialog : UserControl
         }
 
         await _settingsService.SaveAsync(Settings);
-        _viewModel.ApplyParentalControl();
         LoadSection();
     }
 
@@ -223,7 +221,6 @@ public sealed partial class ParentalControlDialog : UserControl
 
         ParentalControlService.Unlock(Settings, minutes);
         await _settingsService.SaveAsync(Settings);
-        _viewModel.ApplyParentalControl();
         PinBox.Password = string.Empty;
         LoadSection();
     }
@@ -232,7 +229,6 @@ public sealed partial class ParentalControlDialog : UserControl
     {
         ParentalControlService.Lock(Settings);
         await _settingsService.SaveAsync(Settings);
-        _viewModel.ApplyParentalControl();
         LoadSection();
     }
 
