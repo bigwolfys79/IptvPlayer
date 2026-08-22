@@ -10,7 +10,87 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+            <!-- Единая палитра приложения: акцентные цвета, которые раньше
+                 дублировались hex-значениями по всему XAML/коду (REC, эфир,
+                 архив, избранное, выделение канала, скримы оверлеев).
+                 Менять цветовую схему — только здесь. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="RecRedBrush" Color="#FFF53B3B"/>
+                    <SolidColorBrush x:Key="LiveGreenBrush" Color="#FF4CAF50"/>
+                    <SolidColorBrush x:Key="LiveGreenSoftBrush" Color="#334CAF50"/>
+                    <SolidColorBrush x:Key="ArchiveAmberBrush" Color="#FFFFD54F"/>
+                    <SolidColorBrush x:Key="FavoriteAmberBrush" Color="#FFFFC107"/>
+                    <SolidColorBrush x:Key="SleepLavenderBrush" Color="#FFB39DDB"/>
+                    <SolidColorBrush x:Key="ChannelSelectedBrush" Color="#FF2B6CB0"/>
+                    <SolidColorBrush x:Key="ChannelSelectedHoverBrush" Color="#FF3178C6"/>
+                    <SolidColorBrush x:Key="ChannelSelectedPressedBrush" Color="#FF245D94"/>
+                    <SolidColorBrush x:Key="OverlayScrimBrush" Color="#B2000000"/>
+                    <SolidColorBrush x:Key="OverlayScrimDarkBrush" Color="#D9101010"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="RecRedBrush" Color="#FFF53B3B"/>
+                    <SolidColorBrush x:Key="LiveGreenBrush" Color="#FF4CAF50"/>
+                    <SolidColorBrush x:Key="LiveGreenSoftBrush" Color="#334CAF50"/>
+                    <SolidColorBrush x:Key="ArchiveAmberBrush" Color="#FFFFD54F"/>
+                    <SolidColorBrush x:Key="FavoriteAmberBrush" Color="#FFFFC107"/>
+                    <SolidColorBrush x:Key="SleepLavenderBrush" Color="#FFB39DDB"/>
+                    <SolidColorBrush x:Key="ChannelSelectedBrush" Color="#FF2B6CB0"/>
+                    <SolidColorBrush x:Key="ChannelSelectedHoverBrush" Color="#FF3178C6"/>
+                    <SolidColorBrush x:Key="ChannelSelectedPressedBrush" Color="#FF245D94"/>
+                    <SolidColorBrush x:Key="OverlayScrimBrush" Color="#B2000000"/>
+                    <SolidColorBrush x:Key="OverlayScrimDarkBrush" Color="#D9101010"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Стиль кнопок видео-оверлеев (оконная панель и полноэкранная):
+                 прозрачный фон в покое, мягкая белая подсветка при наведении —
+                 стандартный дефолтный ховер плохо читается на тёмном скриме. -->
+            <Style x:Key="OverlayButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="UseSystemFocusVisuals" Value="True"/>
+            </Style>
+            <!-- Ховер/нажатие — через VisualState стандартного шаблона не
+                 переопределить простым Setter'ом; делаем лёгкий переопределённый
+                 шаблон (контент + фон-индикатор). -->
+            <ControlTemplate x:Key="OverlayButtonTemplate" TargetType="Button">
+                <Grid>
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal"/>
+                            <VisualState x:Name="PointerOver">
+                                <VisualState.Setters>
+                                    <Setter Target="RootBorder.Background" Value="#22FFFFFF"/>
+                                    <Setter Target="RootBorder.BorderThickness" Value="0"/>
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Pressed">
+                                <VisualState.Setters>
+                                    <Setter Target="RootBorder.Background" Value="#44FFFFFF"/>
+                                </VisualState.Setters>
+                            </VisualState>
+                            <VisualState x:Name="Disabled">
+                                <VisualState.Setters>
+                                    <Setter Target="ContentPresenter.Opacity" Value="0.4"/>
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+                    <Border x:Name="RootBorder" Background="Transparent" CornerRadius="6">
+                        <ContentPresenter x:Name="ContentPresenter" Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+            <Style x:Key="OverlayIconButtonStyle" TargetType="Button" BasedOn="{StaticResource OverlayButtonStyle}">
+                <Setter Property="Template" Value="{StaticResource OverlayButtonTemplate}"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
