@@ -198,7 +198,7 @@ public sealed partial class MainPage : Page
             {
                 BufferProgress.Visibility = Player.IsBuffering ? Visibility.Visible : Visibility.Collapsed;
                 StreamErrorText.Text = Player.StreamError ?? string.Empty;
-                StreamErrorText.Visibility = string.IsNullOrEmpty(Player.StreamError)
+                StreamErrorCard.Visibility = string.IsNullOrEmpty(Player.StreamError)
                     ? Visibility.Collapsed
                     : Visibility.Visible;
 
@@ -1950,7 +1950,7 @@ public sealed partial class MainPage : Page
     private void ShowStreamError(string message)
     {
         StreamErrorText.Text = message;
-        StreamErrorText.Visibility = Visibility.Visible;
+        StreamErrorCard.Visibility = Visibility.Visible;
     }
 
     // ===================== Перемотка архива =====================

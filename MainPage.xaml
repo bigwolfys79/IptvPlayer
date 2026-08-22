@@ -513,20 +513,36 @@
                          управления (WindowedVideoOverlay и полноэкранный оверлей),
                          которые появляются по движению мыши и скрываются сами. -->
 
+                    <!-- Буферизация: скруглённая акцентная полоса под видео. -->
                     <ProgressBar x:Name="BufferProgress"
                                  Grid.Row="1" 
-                                 Height="4" 
-                                 Margin="0,8,0,0"
+                                 Height="6"
+                                 CornerRadius="3"
+                                 Margin="12,10,12,0"
                                  IsIndeterminate="False"
                                  Visibility="Collapsed" />
 
-                    <TextBlock x:Name="StreamErrorText"
-                               Grid.Row="2"
-                               Margin="0,8,0,0"
-                               FontSize="12"
-                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                               TextWrapping="Wrap"
-                               Visibility="Collapsed" />
+                    <!-- Ошибка потока: карточка на тёмном скриме с янтарным
+                         треугольником вместо голой красной строки. -->
+                    <Border x:Name="StreamErrorCard"
+                            Grid.Row="2"
+                            Margin="12,10,12,0"
+                            CornerRadius="8"
+                            Background="{ThemeResource OverlayScrimBrush}"
+                            Padding="14,10"
+                            HorizontalAlignment="Left"
+                            Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Path Data="M8,1.5 L15,14 H1 Z M8,6 V9.5 H8.6 V6 Z M8,10.6 V11.8 H8.6 V10.6 Z"
+                                  Fill="{ThemeResource ArchiveAmberBrush}" Stretch="Uniform" Width="16" Height="16"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock x:Name="StreamErrorText"
+                                       FontSize="13"
+                                       Foreground="White"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
