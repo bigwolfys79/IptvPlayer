@@ -1053,11 +1053,13 @@ public sealed partial class MainPage : Page
             }
 
             var content = (UIElement)scrollViewer.Content;
+            // Координата Y относительно корня контента — это УЖЕ абсолютная
+            // позиция в списке (VerticalOffset здесь добавлять не нужно:
+            // двойной учёт смещения раньше уводил прокрутку «мимо» канала).
             var itemTop = container.TransformToVisual(content)
                 .TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
-            var target = scrollViewer.VerticalOffset + itemTop
-                         - (scrollViewer.ViewportHeight - container.ActualHeight) / 2;
-            scrollViewer.ChangeView(null, Math.Max(0, target), null, disableAnimation: true);
+            // Канал — в верхнюю часть видимой области (первая строка списка).
+            scrollViewer.ChangeView(null, Math.Max(0, itemTop - 4), null, disableAnimation: true);
         }
         catch (Exception ex)
         {
