@@ -48,6 +48,14 @@
                     <ComboBox x:Name="SleepTimerActionCombo" HorizontalAlignment="Stretch"/>
                 </StackPanel>
 
+                <!-- Диагностика -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="DiagnosticsHeader" FontSize="14" FontWeight="SemiBold"/>
+                    <ToggleSwitch x:Name="FileLoggingToggle" HorizontalAlignment="Left" Toggled="FileLoggingToggle_Toggled"/>
+                    <TextBlock x:Name="FileLoggingHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
                 <!-- Кнопки -->
                 <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,8,0,0">
                     <Button x:Name="CancelButton"

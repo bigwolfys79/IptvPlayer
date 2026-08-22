@@ -115,6 +115,28 @@ namespace IptvPlayer.Dialogs
             {
                 SleepTimerActionCombo.SelectedIndex = 0;
             }
+
+            // Файловый лог (Serilog): применяется сразу через
+            // LoggingLevelSwitch, без перезапуска. Вывод в Debug (окно
+            // Output студии) остаётся всегда.
+            DiagnosticsHeader.Text = L.T("Диагностика", "Diagnostics");
+            FileLoggingToggle.Toggled -= FileLoggingToggle_Toggled;
+            FileLoggingToggle.IsOn = settings.FileLoggingEnabled;
+            FileLoggingToggle.Header = L.T("Файловый лог", "File log");
+            FileLoggingToggle.OnContent = L.T("Вкл", "On");
+            FileLoggingToggle.OffContent = L.T("Выкл", "Off");
+            FileLoggingToggle.Toggled += FileLoggingToggle_Toggled;
+            FileLoggingHint.Text = L.T(
+                $"Запись событий в {App.LogDirectory}. Выключение действует сразу, перезапуск не нужен.",
+                $"Writes events to {App.LogDirectory}. Turning it off takes effect immediately, no restart required.");
+        }
+
+        /// <summary>Включение/выключение файлового лога — действует сразу.</summary>
+        private void FileLoggingToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            var enabled = FileLoggingToggle.IsOn;
+            _viewModel.AppSettings.FileLoggingEnabled = enabled;
+            App.SetFileLoggingEnabled(enabled);
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
