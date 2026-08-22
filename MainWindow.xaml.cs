@@ -40,8 +40,92 @@ public sealed partial class MainWindow : Window
 
         AppWindow.SetIcon("Assets/AppIcon.ico");
 
+        // Крестик сворачивает в трей (продолжая играть звук) — реальный
+        // выход через меню иконки в трее. AppWindow.Closing — единственная
+        // точка, где закрытие можно отменить.
+        AppWindow.Closing += (s, e) =>
+        {
+            bool closeToTray;
+            try
+            {
+                var settings = App.Services.GetRequiredService<ISettingsService>().LoadAsync().GetAwaiter().GetResult();
+                closeToTray = settings.CloseToTray;
+            }
+            catch
+            {
+                closeToTray = false; // настройки не прочитались — выходим честно.
+            }
+
+            if (!App.AllowClose && closeToTray)
+            {
+                e.Cancel = true;
+                AppWindow.Hide();
+                return;
+            }
+
+            App.Tray?.Dispose();
+            App.Tray = null;
+        };
+
+        // Иконка создаётся один раз на сессию: клик — показать, правый клик — меню.
+        App.Tray ??= new Services.TrayIconService(
+            System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"),
+            ShowFromTray,
+            ExitFromTray);
+
         // Navigate the root frame to the main page on startup.
         RootFrame.Navigate(typeof(MainPage));
+    }
+
+    private bool _miniPlayer;
+    private Windows.Graphics.RectInt32 _preMiniPlacement;
+
+    /// <summary>Активен ли компактный режим мини-плеера (always-on-top).</summary>
+    public bool IsMiniPlayer => _miniPlayer;
+
+    /// <summary>
+    /// Мини-плеер: компактное окно 480x270 поверх всех окон, без панелей
+    /// (они скрывает MainPage). Повторный вызов возвращает обычный режим.
+    /// </summary>
+    public void ToggleMiniPlayer()
+    {
+        if (IsOsFullScreen)
+        {
+            SetOsFullScreen(false);
+        }
+
+        if (!_miniPlayer)
+        {
+            var pos = AppWindow.Position;
+            var size = AppWindow.Size;
+            _preMiniPlacement = new Windows.Graphics.RectInt32(pos.X, pos.Y, size.Width, size.Height);
+
+            _miniPlayer = true;
+            (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = true;
+            // 16:9 + запас на рамку и строку заголовка.
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(480, 300));
+        }
+        else
+        {
+            _miniPlayer = false;
+            (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = false;
+            AppWindow.MoveAndResize(_preMiniPlacement);
+        }
+    }
+
+    /// <summary>Левый клик по иконке в трее / пункт «Показать».</summary>
+    public void ShowFromTray()
+    {
+        AppWindow.Show();
+        Activate();
+        (AppWindow.Presenter as OverlappedPresenter)?.Restore();
+    }
+
+    /// <summary>Пункт «Выход» в трее — настоящее закрытие окна.</summary>
+    public void ExitFromTray()
+    {
+        App.AllowClose = true;
+        Close();
     }
 
     /// <summary>

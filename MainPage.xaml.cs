@@ -272,6 +272,8 @@ public sealed partial class MainPage : Page
                 // приложение или выключить компьютер. Для Exit/Shutdown
                 // закрываем окно — его Closed-обработчик сам остановит
                 // плеер и запись и сохранит настройки перед Environment.Exit.
+                // Таймер сна — осознанный выход, не сворачивание в трей.
+                App.AllowClose = true;
                 switch (ViewModel.AppSettings.SleepTimerAction)
                 {
                     case "Exit":
@@ -461,9 +463,10 @@ public sealed partial class MainPage : Page
                 // Процесс всё равно завершится ниже — уборка best-effort.
             }
 
-            // Выгружаем буферы Serilog до немедленного выхода: обработчик
-            // Closed в App подписан ПОСЛЕ этого и до Environment.Exit(0)
-            // уже не выполнится.
+            // Иконка в трее (если выход пошёл мимо Closing, например по
+            // Exit-пути) и буферы Serilog — до немедленного Environment.Exit.
+            App.Tray?.Dispose();
+            App.Tray = null;
             Serilog.Log.CloseAndFlush();
 
             Environment.Exit(0);
@@ -1388,6 +1391,36 @@ public sealed partial class MainPage : Page
             : L.T("Записать канал", "Record channel"));
     }
 
+    // ===================== Мини-плеер =====================
+
+    private bool _panelsHiddenForMini;
+
+    /// <summary>
+    /// Ctrl+M: компактное always-on-top окно только с видео; панели
+    /// (список каналов, EPG) скрываются и возвращаются при выходе из режима.
+    /// </summary>
+    private void ToggleMiniPlayer()
+    {
+        MainWindow.Instance!.ToggleMiniPlayer();
+        var mini = MainWindow.Instance.IsMiniPlayer;
+
+        if (mini && !_panelsHiddenForMini)
+        {
+            _panelsHiddenForMini = true;
+            ChannelListColumn.Width = new GridLength(0);
+            SplitterColumn.Width = new GridLength(0);
+            ViewModel.IsEpgVisible = false;
+            EpgPanelBorder.Visibility = Visibility.Collapsed;
+        }
+        else if (!mini && _panelsHiddenForMini)
+        {
+            _panelsHiddenForMini = false;
+            ChannelListColumn.Width = new GridLength(
+                Math.Max(240, ViewModel.AppSettings.ChannelListWidth), GridUnitType.Pixel);
+            SplitterColumn.Width = GridLength.Auto;
+        }
+    }
+
     // ===================== Родительский контроль: PIN при запуске =====================
 
     /// <summary>
@@ -1978,26 +2011,8 @@ public sealed partial class MainPage : Page
 
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
     {
-        // Тот же текст, что в разделе «О приложении» SettingsDialog.
-        var text = new TextBlock
-        {
-            Text = $"IptvPlayer {Dialogs.SettingsDialog.GetAppVersion()}\n\n" +
-                   "IPTV-плеер для плейлистов M3U/M3U8 с программой передач.\n\n" +
-                   "Воспроизведение: FFmpeg (демуксинг, декодирование HEVC/AC-3 и др.) поверх Windows App SDK.\n" +
-                   "EPG: XMLTV (epg.one), сопоставление каналов — по таблице epg.one/setup-playlist.\n\n" +
-                   "Настройки и кэш: %LocalAppData%\\IptvPlayer\n" +
-                   $"Лог: {App.LogDirectory}",
-            IsTextSelectionEnabled = true,
-            TextWrapping = TextWrapping.Wrap
-        };
-        var dialog = new ContentDialog
-        {
-            Title = L.T("О программе", "About"),
-            Content = text,
-            CloseButtonText = L.T("Закрыть", "Close"),
-            XamlRoot = ((FrameworkElement)sender).XamlRoot
-        };
-        await dialog.ShowAsync();
+        var dialog = new Dialogs.AboutDialog(ViewModel.AppSettings);
+        await dialog.ShowAsync(((FrameworkElement)sender).XamlRoot);
     }
 
     /// <summary>
