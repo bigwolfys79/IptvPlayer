@@ -1,0 +1,84 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.PlaybackSettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!-- Быстрый доступ к разделу воспроизведения полного SettingsDialog:
+         декодер, буфер, качество, аудио и видео-фильтры. Радиогруппы и
+         комбобоксы наполняются в code-behind (LoadAsync) с Tag-значениями. -->
+    <StackPanel Spacing="12" Width="440">
+        <TextBlock x:Name="TitleText" Text="Настройки воспроизведения" FontSize="20" FontWeight="SemiBold"/>
+
+        <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="12" Spacing="16">
+
+                <!-- Декодер -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="DecoderHeader" Text="Декодирование видео" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="DecoderHint"
+                               Text="Применится при следующем переключении канала."
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <RadioButtons x:Name="DecoderRadio"/>
+                </StackPanel>
+
+                <!-- Буфер -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="BufferHeader" Text="Буферизация" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="BufferHint"
+                               Text="Применится при следующем переключении канала."
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <Slider x:Name="BufferSlider"
+                            Minimum="5" Maximum="60" StepFrequency="1"
+                            Width="320" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="BufferValueText"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <!-- Качество -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="QualityHeader" Text="Качество видео" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="QualityHint"
+                               Text="Максимальное качество потока или ограничение разрешения. Применится при следующем переключении канала."
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <ComboBox x:Name="QualityCombo" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+
+                <!-- Аудио -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="AudioHeader" Text="Звук" FontSize="14" FontWeight="SemiBold"/>
+
+                    <TextBlock x:Name="AudioNormHeader" Text="Нормализация громкости" FontSize="12" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="AudioNormHint"
+                               Text="Подтягивает тихие каналы к общему уровню. Применяется к играющему каналу сразу."
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <RadioButtons x:Name="AudioNormRadio"/>
+                </StackPanel>
+
+                <!-- Кнопки -->
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button x:Name="CancelButton"
+                            Content="Отмена"
+                            Width="100" Height="36"
+                            Click="CancelButton_Click"/>
+                    <Button x:Name="SaveButton"
+                            Content="Сохранить"
+                            Width="100" Height="36"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Click="SaveButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </StackPanel>
+</UserControl>
