@@ -680,8 +680,9 @@ public sealed partial class MainPage : Page
                 ? host[4..]
                 : host;
         }
-        catch
+        catch (Exception ex)
         {
+            Serilog.Log.Debug(ex, "Не удалось извлечь хост из URL плейлиста — показываем исходный URL.");
             return url;
         }
     }
