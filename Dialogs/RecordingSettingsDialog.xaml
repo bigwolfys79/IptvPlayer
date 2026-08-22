@@ -7,7 +7,7 @@
     mc:Ignorable="d">
 
     <!-- Записи: идущие и запланированные (стоп/отмена), папка сохранения. -->
-    <StackPanel Spacing="12" Width="460">
+    <StackPanel Spacing="12" Width="480">
         <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="4" Spacing="12">
 

@@ -50,7 +50,7 @@
                          янтарная — в избранном, контурная серая — нет. -->
                     <Grid Width="15" Height="15">
                         <Path Data="M8,0.9 L9.93,5.4 L14.8,5.94 L11.15,9.1 L12.14,13.9 L8,11.63 L3.86,13.9 L4.85,9.1 L1.2,5.94 L6.07,5.4 Z"
-                              Fill="#FFFFC107" Stretch="Uniform"
+                              Fill="{ThemeResource FavoriteAmberBrush}" Stretch="Uniform"
                               Visibility="{x:Bind IsFavorite, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
                         <Path Data="M8,0.9 L9.93,5.4 L14.8,5.94 L11.15,9.1 L12.14,13.9 L8,11.63 L3.86,13.9 L4.85,9.1 L1.2,5.94 L6.07,5.4 Z"
                               Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2" Stretch="Uniform"
@@ -189,9 +189,9 @@
                          локально на этом списке. -->
                     <ListView.Resources>
                         <ResourceDictionary>
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#FF2B6CB0"/>
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#FF3178C6"/>
-                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#FF245D94"/>
+                            <StaticResource x:Key="ListViewItemBackgroundSelected" ResourceKey="ChannelSelectedBrush"/>
+                            <StaticResource x:Key="ListViewItemBackgroundSelectedPointerOver" ResourceKey="ChannelSelectedHoverBrush"/>
+                            <StaticResource x:Key="ListViewItemBackgroundSelectedPressed" ResourceKey="ChannelSelectedPressedBrush"/>
                             <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="White"/>
                             <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver" Color="White"/>
                             <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed" Color="White"/>
@@ -243,7 +243,7 @@
                     Canvas.ZIndex="2"
                     VerticalAlignment="Top"
                     Height="44"
-                    Background="#B2000000"
+                    Background="{ThemeResource OverlayScrimBrush}"
                     Padding="16,0"
                     Visibility="Collapsed">
                 <Grid>
@@ -265,9 +265,9 @@
                         <StackPanel x:Name="WindowedSleepTimerPanel" Orientation="Horizontal" Spacing="5"
                                     VerticalAlignment="Center" Visibility="Collapsed">
                             <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
-                                  Width="13" Height="13" Stretch="Uniform" Fill="#FFB39DDB" />
+                                  Width="13" Height="13" Stretch="Uniform" Fill="{ThemeResource SleepLavenderBrush}" />
                             <TextBlock x:Name="WindowedSleepTimerText"
-                                       Foreground="#FFB39DDB" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource SleepLavenderBrush}" FontSize="12" FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
                             <Button x:Name="WindowedSleepTimerCancelButton"
                                     Width="20" Height="20" Padding="0"
@@ -276,7 +276,7 @@
                                     ToolTipService.ToolTip="Отменить таймер">
                                 <Path Data="M4,4 L12,12 M12,4 L4,12"
                                       Width="10" Height="10" Stretch="Uniform"
-                                      Stroke="#FFB39DDB" StrokeThickness="1.5" />
+                                      Stroke="{ThemeResource SleepLavenderBrush}" StrokeThickness="1.5" />
                             </Button>
                         </StackPanel>
                         <!-- Индикатор архивной передачи: ставит UpdateArchiveBanner
@@ -284,11 +284,11 @@
                         <StackPanel x:Name="WindowedArchiveIndicator" Orientation="Horizontal" Spacing="6"
                                     VerticalAlignment="Center" Visibility="Collapsed">
                             <Grid Width="13" Height="13">
-                                <Ellipse Stroke="#FFFFD54F" StrokeThickness="1.4" />
-                                <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="#FFFFD54F" StrokeThickness="1.4" />
+                                <Ellipse Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
+                                <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
                             </Grid>
                             <TextBlock x:Name="WindowedArchiveText"
-                                       Foreground="#FFFFD54F" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource ArchiveAmberBrush}" FontSize="12" FontWeight="SemiBold"
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
                         </StackPanel>
                     </StackPanel>
@@ -301,7 +301,7 @@
                                  Maximum="1" Minimum="0"
                                  VerticalAlignment="Bottom" Margin="-16,0,-16,0"
                                  Height="3" CornerRadius="1.5,1.5,0,0" Padding="0"
-                                 Foreground="#FF4CAF50" />
+                                 Foreground="{ThemeResource LiveGreenBrush}" />
                 </Grid>
             </Border>
 
@@ -430,8 +430,8 @@
 
                                         <!-- Подсветка текущей передачи (OneWay: минутный таймер
                                              переносит IsCurrent на новую передачу на лету). -->
-                                        <Border Background="#334CAF50"
-                                                BorderBrush="#4CAF50"
+                                        <Border Background="{ThemeResource LiveGreenSoftBrush}"
+                                                BorderBrush="{ThemeResource LiveGreenBrush}"
                                                 BorderThickness="2"
                                                 CornerRadius="4"
                                                 Visibility="{x:Bind IsCurrent, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
@@ -526,7 +526,7 @@
                     Margin="12"
                     Padding="16,10"
                     CornerRadius="8"
-                    Background="#B2000000"
+                    Background="{ThemeResource OverlayScrimBrush}"
                     Visibility="Collapsed"
                     Opacity="0">
                 <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
@@ -534,17 +534,17 @@
                          Видео\IptvPlayer до повторного нажатия. Иконки —
                          нарисованные (красная точка REC / красный квадрат
                          STOP), пересобираются в UpdateRecordButtons. -->
-                                        <Button x:Name="VideoOverlayPrevChannelButton"
+                                        <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayPrevChannelButton"
                                                         Width="40" Height="40"
                                                         Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
                                                         ToolTipService.ToolTip="Предыдущий канал (Backspace)">
                                             <Path Data="M12,3.5 L5,8.5 L12,13.5 Z" Fill="White" />
                                         </Button>
-                                        <Button x:Name="VideoOverlayRecordButton"
+                                        <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayRecordButton"
                                                         Width="40" Height="40"
                                                         Command="{x:Bind ViewModel.ToggleRecordingCommand}"
                                                         ToolTipService.ToolTip="Записать канал">
-                                            <Ellipse Width="14" Height="14" Fill="#FFF53B3B" />
+                                            <Ellipse Width="14" Height="14" Fill="{ThemeResource RecRedBrush}" />
                                         </Button>
                     <!-- Показывается только при просмотре архива: подсказка с
                          названием передачи ставится в UpdateArchiveBanner. -->
@@ -555,7 +555,7 @@
                                                         Visibility="Collapsed"
                                                         Command="{x:Bind ViewModel.BackToLiveCommand}"
                                                         ToolTipService.ToolTip="Вернуться к прямому эфиру" />
-                                        <Button x:Name="VideoOverlayPauseButton"
+                                        <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayPauseButton"
                                                         Width="40" Height="40"
                                                         Command="{x:Bind ViewModel.ToggleArchivePauseCommand}"
                                                         Visibility="Collapsed"
@@ -590,7 +590,7 @@
                     </StackPanel>
                     <!-- Кнопка беззвучного режима: иконку (динамик/динамик с
                          крестом) ставит UpdateMuteButtons; дублирует M. -->
-                    <Button x:Name="VideoOverlayMuteButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayMuteButton"
                             Width="36" Height="36"
                             Click="MuteButton_Click"
                             ToolTipService.ToolTip="Без звука (M)" />
@@ -605,7 +605,7 @@
                     <!-- Режим отображения (вписать/растянуть/обрезать) — для
                          контента не в пропорции окна; дублирует клавишу V.
                          Текущий режим — в подсказке (UpdateStretchButtons). -->
-                    <Button x:Name="VideoOverlayStretchButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayStretchButton"
                             Width="40" Height="40"
                             Click="StretchButton_Click"
                             ToolTipService.ToolTip="Режим отображения (V)">
@@ -617,7 +617,7 @@
                                   Stroke="White" StrokeThickness="1.2" />
                         </Grid>
                     </Button>
-                                        <Button x:Name="VideoOverlayEpgButton"
+                                        <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayEpgButton"
                                                         Width="40" Height="40"
                                                         Command="{x:Bind ViewModel.ToggleEpgCommand}"
                                                         ToolTipService.ToolTip="Показать EPG">
@@ -633,7 +633,7 @@
                                                            Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
                                             </Grid>
                                         </Button>
-                    <Button x:Name="VideoOverlaySettingsButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlaySettingsButton"
                             Width="40" Height="40"
                             ToolTipService.ToolTip="Настройки">
                         <!-- Нарисованные «ползунки настроек» (три линии с ручками). -->
@@ -662,7 +662,7 @@
                             <Ellipse Fill="White" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,11.5,0,0" />
                         </Grid>
                     </Button>
-                    <Button x:Name="VideoOverlaySleepTimerButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlaySleepTimerButton"
                             Width="40" Height="40"
                             Click="SleepTimerButton_Click"
                             ToolTipService.ToolTip="Таймер сна">
@@ -679,7 +679,7 @@
                                   Margin="0,0,-1,-1" />
                         </Grid>
                     </Button>
-                    <Button x:Name="VideoOverlayFullScreenButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayFullScreenButton"
                             Width="40" Height="40"
                             Click="FullScreenButton_Click"
                             ToolTipService.ToolTip="Развернуть плеер на весь экран">
@@ -713,7 +713,7 @@
                     Margin="0,96,0,0"
                     Padding="18,10"
                     CornerRadius="8"
-                    Background="#B2000000"
+                    Background="{ThemeResource OverlayScrimBrush}"
                     Visibility="Collapsed"
                     IsHitTestVisible="False">
                 <StackPanel Orientation="Horizontal" Spacing="12">
@@ -757,7 +757,7 @@
                  кнопки EPG и выхода из fullscreen живут в нижней панели
                  управления (перенесены сюда, чтобы всё управление было
                  в одном месте, как в оконной панели). -->
-            <Border Grid.Row="0" Grid.Column="1" Background="#B2000000" Padding="20,14">
+            <Border Grid.Row="0" Grid.Column="1" Background="{ThemeResource OverlayScrimBrush}" Padding="20,14">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -775,7 +775,7 @@
                                      Maximum="1" Minimum="0"
                                      Width="260" HorizontalAlignment="Left"
                                      Height="3" CornerRadius="1.5" Padding="0" Margin="0,3,0,0"
-                                     Foreground="#FF4CAF50" />
+                                     Foreground="{ThemeResource LiveGreenBrush}" />
                         <!-- Показывается вместо/рядом с текущей программой, когда в
                              fullscreen идёт архивная передача (UpdateArchiveBanner). -->
                         <StackPanel x:Name="OverlayArchiveIndicator"
@@ -784,11 +784,11 @@
                                     Visibility="Collapsed">
                             <!-- Нарисованные часы — индикатор архивной передачи. -->
                             <Grid Width="13" Height="13">
-                                <Ellipse Stroke="#FFFFD54F" StrokeThickness="1.4" />
-                                <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="#FFFFD54F" StrokeThickness="1.4" />
+                                <Ellipse Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
+                                <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
                             </Grid>
                             <TextBlock x:Name="OverlayArchiveText"
-                                       Foreground="#FFFFD54F" FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource ArchiveAmberBrush}" FontSize="12" FontWeight="SemiBold"
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </StackPanel>
@@ -797,18 +797,18 @@
                                 Orientation="Horizontal" Spacing="6"
                                 VerticalAlignment="Center" Visibility="Collapsed">
                         <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
-                              Width="16" Height="16" Stretch="Uniform" Fill="#FFB39DDB" />
+                              Width="16" Height="16" Stretch="Uniform" Fill="{ThemeResource SleepLavenderBrush}" />
                         <TextBlock x:Name="OverlaySleepTimerText"
-                                   Foreground="#FFB39DDB" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource SleepLavenderBrush}" FontSize="14" FontWeight="SemiBold"
                                    VerticalAlignment="Center" />
-                        <Button x:Name="OverlaySleepTimerCancelButton"
+                        <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlaySleepTimerCancelButton"
                                 Width="24" Height="24" Padding="0"
                                 Background="Transparent" BorderThickness="0"
                                 Click="SleepTimerCancelButton_Click"
                                 ToolTipService.ToolTip="Отменить таймер">
                             <Path Data="M4,4 L12,12 M12,4 L4,12"
                                   Width="12" Height="12" Stretch="Uniform"
-                                  Stroke="#FFB39DDB" StrokeThickness="1.5" />
+                                  Stroke="{ThemeResource SleepLavenderBrush}" StrokeThickness="1.5" />
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -818,7 +818,7 @@
             <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
                     HorizontalAlignment="Left"
                     Width="320"
-                    Background="#D9101010">
+                    Background="{ThemeResource OverlayScrimDarkBrush}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -860,19 +860,19 @@
                  идёт архивная передача — см. UpdateArchivePauseButton. Встроенные
                  transport controls в fullscreen отключены, так что громкость
                  регулируется здесь. -->
-            <Border Grid.Row="2" Grid.Column="1" Background="#B2000000" Padding="16,14">
+            <Border Grid.Row="2" Grid.Column="1" Background="{ThemeResource OverlayScrimBrush}" Padding="16,14">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
-                                                <Button x:Name="OverlayPrevChannelButton"
+                                                <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayPrevChannelButton"
                                                                 Width="56" Height="56"
                                                                 Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
                                                                 ToolTipService.ToolTip="Предыдущий канал (Backspace)">
                                                     <Path Data="M16,5 L7,11 L16,17 Z" Fill="White" />
                                                 </Button>
-                                                <Button x:Name="OverlayRecordButton"
+                                                <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayRecordButton"
                                                                 Width="56" Height="56"
                                                                 Command="{x:Bind ViewModel.ToggleRecordingCommand}"
                                                                 ToolTipService.ToolTip="Записать канал">
-                                                    <Ellipse Width="18" Height="18" Fill="#FFF53B3B" />
+                                                    <Ellipse Width="18" Height="18" Fill="{ThemeResource RecRedBrush}" />
                                                 </Button>
                                                 <Button x:Name="OverlayBackToLiveButton"
                                                                 Content="В эфир"
@@ -881,7 +881,7 @@
                                                                 Visibility="Collapsed"
                                                                 Command="{x:Bind ViewModel.BackToLiveCommand}"
                                                                 ToolTipService.ToolTip="Вернуться к прямому эфиру" />
-                                                <Button x:Name="OverlayPauseButton"
+                                                <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayPauseButton"
                                                                 Width="56" Height="56"
                                                                 Command="{x:Bind ViewModel.ToggleArchivePauseCommand}"
                                                                 Visibility="Collapsed"
@@ -912,7 +912,7 @@
                         </StackPanel>
                     <!-- Кнопка беззвучного режима (дублирует M); иконку ставит
                          UpdateMuteButtons. -->
-                    <Button x:Name="OverlayMuteButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayMuteButton"
                             Width="40" Height="40"
                             Margin="16,0,0,0"
                             Click="MuteButton_Click"
@@ -925,7 +925,7 @@
                             VerticalAlignment="Center"
                             ValueChanged="OverlayVolumeSlider_ValueChanged" />
                     <!-- Режим отображения — аналог кнопки в оконной панели. -->
-                    <Button x:Name="OverlayStretchButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayStretchButton"
                             Width="44" Height="44"
                             Click="StretchButton_Click"
                             ToolTipService.ToolTip="Режим отображения (V)">
@@ -939,7 +939,7 @@
                     <!-- EPG и выход из fullscreen — перенесены из верхней
                          панели: всё управление собрано здесь, порядок как в
                          оконной панели (громкость → EPG → полный экран). -->
-                    <Button x:Name="OverlaySleepTimerButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlaySleepTimerButton"
                             Width="44" Height="44"
                             Click="SleepTimerButton_Click"
                             ToolTipService.ToolTip="Таймер сна">
@@ -956,7 +956,7 @@
                                   Margin="0,0,-1,-1" />
                         </Grid>
                     </Button>
-                    <Button x:Name="OverlayEpgButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayEpgButton"
                             Width="44" Height="44"
                             Command="{x:Bind ViewModel.ToggleEpgCommand}"
                             ToolTipService.ToolTip="Показать/скрыть EPG">
@@ -972,7 +972,7 @@
                                        Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
                         </Grid>
                     </Button>
-                    <Button x:Name="ExitFullScreenButton"
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="ExitFullScreenButton"
                             Width="44" Height="44"
                             Click="ExitFullScreenButton_Click"
                             ToolTipService.ToolTip="Выйти из полноэкранного режима">
@@ -1000,7 +1000,7 @@
                 Margin="12,60,0,0"
                 Padding="14,10"
                 CornerRadius="8"
-                Background="#B2000000"
+                Background="{ThemeResource OverlayScrimBrush}"
                 Visibility="Collapsed"
                 IsHitTestVisible="False">
             <TextBlock x:Name="StatsText"

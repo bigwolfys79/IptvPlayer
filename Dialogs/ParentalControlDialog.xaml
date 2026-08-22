@@ -9,7 +9,7 @@
     <!-- Родительский контроль: скрытие каналов выбранных групп за PIN с
          временной разблокировкой. Пока контроль включён и заблокирован,
          доступна только секция разблокировки; настройка — после ввода PIN. -->
-    <StackPanel Spacing="12" Width="460">
+    <StackPanel Spacing="12" Width="480">
         <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="12">
 

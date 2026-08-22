@@ -9,7 +9,7 @@
     <!-- Быстрый доступ к разделу интерфейса полного SettingsDialog: язык,
          тема и действие таймера сна. Комбобоксы и радиогруппы наполняются
          в code-behind (LoadAsync) с Tag-значениями. -->
-    <StackPanel Spacing="12" Width="400">
+    <StackPanel Spacing="12" Width="480">
         <TextBlock x:Name="TitleText" Text="Настройки интерфейса" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
