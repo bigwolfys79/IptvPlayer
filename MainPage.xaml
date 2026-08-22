@@ -227,20 +227,17 @@
         <ctk:GridSplitter Grid.Column="1"
                                Width="5"
                                ResizeBehavior="PreviousAndNext"
-                               Background="{ThemeResource CardStrokeColorDefaultBrush}">
-            <Grid>
-                <!-- Мягкая подсветка при наведении (тот же приём, что у
-                     оверлейных кнопок): PointsPanel ховерится целиком. -->
-                <Grid.Background>
-                    <SolidColorBrush Color="Transparent"/>
-                </Grid.Background>
-                <StackPanel x:Name="SplitterGrip" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="3">
-                    <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
-                    <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
-                    <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
-                </StackPanel>
-            </Grid>
-        </ctk:GridSplitter>
+                               Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+        <!-- Точки-захват поверх сплиттера: GridSplitter (CommunityToolkit)
+             не принимает контент, поэтому grip — отдельный элемент с
+             выключенным вводом (клики/перетаскивание проходят в сплиттер). -->
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="3"
+                    IsHitTestVisible="False">
+            <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
+            <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
+        </StackPanel>
 
         <!-- Player Panel: видео занимает всю правую область; EPG — перекрывающий
              оверлей, по умолчанию скрытый и открываемый кнопкой EPG в панели
