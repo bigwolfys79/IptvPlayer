@@ -333,14 +333,6 @@ public sealed partial class SettingsDialog : UserControl
 
         PlaylistUrlBox.Text = _currentSettings.PlaylistUrl ?? string.Empty;
 
-        // Папка записей: пусто = «Видео\\IptvPlayer».
-        RecordingsFolderHeader.Text = L.T("Папка записей", "Recordings folder");
-        RecordingsFolderBox.PlaceholderText = RecordingService.DefaultFolder;
-        RecordingsFolderBox.Text = _currentSettings.RecordingsFolder ?? string.Empty;
-        RecordingsFolderHint.Text = L.T(
-            "Куда ffmpeg сохраняет записи. Пусто — «Видео\\IptvPlayer».",
-            "Where ffmpeg saves recordings. Empty = \"Videos\\IptvPlayer\".");
-        ChooseRecordingsFolderButton.Content = L.T("Обзор...", "Browse...");
 
         // «О программе».
         AboutText.Text = $"IptvPlayer {GetAppVersion()}\n\n" +

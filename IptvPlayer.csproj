@@ -48,8 +48,10 @@
     <Content Include="Assets\epg-name-map.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <!-- ffmpeg.exe для записи передач/каналов (RecordingService). Shared-сборка
-         использует те же DLL, что FFmpegInteropX кладёт в корень вывода. -->
-    <Content Include="tools\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" />
+         использует те же DLL, что FFmpegInteropX кладёт в корень вывода.
+         TargetPath обязателен: без него Content копируется в вывод как
+         tools\ffmpeg.exe, а RecordingService ищет его в корне. -->
+    <Content Include="tools\ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" TargetPath="ffmpeg.exe" />
     <!-- FFmpeg для FFmpegInteropX: dll кладутся в КОРЕНЬ вывода (Link
          переопределяет путь), иначе нативный загрузчик их не найдёт. -->
   </ItemGroup>
