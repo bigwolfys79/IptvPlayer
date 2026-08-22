@@ -183,6 +183,20 @@
                           SelectionMode="Single"
                           IsItemClickEnabled="True"
                           ItemClick="ChannelsListView_ItemClick">
+                    <!-- Выделение заметнее стандартного: сплошная синяя
+                         подложка вместо полупрозрачной, белый текст.
+                         Это theme-ки ListViewItemPresenter — переопределяем
+                         локально на этом списке. -->
+                    <ListView.Resources>
+                        <ResourceDictionary>
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#FF2B6CB0"/>
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#FF3178C6"/>
+                            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="#FF245D94"/>
+                            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="White"/>
+                            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver" Color="White"/>
+                            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed" Color="White"/>
+                        </ResourceDictionary>
+                    </ListView.Resources>
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
