@@ -401,6 +401,33 @@ public partial class MainPageViewModel : ObservableObject
 
     // ===================== Выбор и воспроизведение канала =====================
 
+    /// <summary>История просмотра для кнопки/клавиши «предыдущий канал».</summary>
+    public ChannelHistory ChannelHistory { get; } = new();
+
+    // Переход по истории не должен записывать покидаемый канал в историю
+    // снова — иначе «назад» ходил бы по кругу между двумя каналами.
+    private bool _navigatingBack;
+
+    [RelayCommand]
+    private async Task GoToPreviousChannelAsync()
+    {
+        var previous = ChannelHistory.Pop();
+        if (previous == null)
+        {
+            return;
+        }
+
+        _navigatingBack = true;
+        try
+        {
+            await SelectAndPlayChannelAsync(previous);
+        }
+        finally
+        {
+            _navigatingBack = false;
+        }
+    }
+
     /// <summary>
     /// Обработчик клика по каналу: останавливает текущее воспроизведение
     /// (если это другой канал или архив), запускает прямой эфир, загружает EPG.
@@ -408,6 +435,15 @@ public partial class MainPageViewModel : ObservableObject
     [RelayCommand]
     private async Task SelectAndPlayChannelAsync(ChannelViewModel channel)
     {
+        // Запоминаем покидаемый канал как «предыдущий» для кнопки «назад».
+        if (!_navigatingBack &&
+            Player.CurrentPlayerChannelId is int previousId &&
+            previousId != channel.Id &&
+            Channels.FirstOrDefault(c => c.Id == previousId) is { } previous)
+        {
+            ChannelHistory.Record(previous);
+        }
+
         // Повторный клик по каналу, когда играет его архив, должен вернуть
         // прямой эфир, а не застрять в ветке "тот же канал — пауза/резюм".
         if (Player.CurrentPlayerChannelId != null &&

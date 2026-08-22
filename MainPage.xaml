@@ -520,6 +520,12 @@
                          Видео\IptvPlayer до повторного нажатия. Иконки —
                          нарисованные (красная точка REC / красный квадрат
                          STOP), пересобираются в UpdateRecordButtons. -->
+                                        <Button x:Name="VideoOverlayPrevChannelButton"
+                                                        Width="40" Height="40"
+                                                        Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
+                                                        ToolTipService.ToolTip="Предыдущий канал (Backspace)">
+                                            <Path Data="M12,3.5 L5,8.5 L12,13.5 Z" Fill="White" />
+                                        </Button>
                                         <Button x:Name="VideoOverlayRecordButton"
                                                         Width="40" Height="40"
                                                         Command="{x:Bind ViewModel.ToggleRecordingCommand}"
@@ -840,6 +846,12 @@
                  регулируется здесь. -->
             <Border Grid.Row="2" Grid.Column="1" Background="#B2000000" Padding="16,14">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
+                                                <Button x:Name="OverlayPrevChannelButton"
+                                                                Width="56" Height="56"
+                                                                Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
+                                                                ToolTipService.ToolTip="Предыдущий канал (Backspace)">
+                                                    <Path Data="M16,5 L7,11 L16,17 Z" Fill="White" />
+                                                </Button>
                                                 <Button x:Name="OverlayRecordButton"
                                                                 Width="56" Height="56"
                                                                 Command="{x:Bind ViewModel.ToggleRecordingCommand}"
