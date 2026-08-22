@@ -164,6 +164,19 @@ public class AppSettings
     /// скрыты, пока контроль включён и не разблокирован временно. PIN —
     /// PBKDF2-хэш (см. ParentalControlService); null = без PIN (просто скрыть).
     /// </summary>
+    /// <summary>
+    /// URL проверки обновлений для кнопки в «О программе»: ожидается JSON
+    /// {"version":"1.7.0","url":"https://.../setup.exe"}. null — проверка
+    /// отключена (не хардкодим чужой сервер).
+    /// </summary>
+    public string? UpdateCheckUrl { get; set; }
+
+    /// <summary>
+    /// Сворачивать окно в трей вместо выхода при закрытии (крестик).
+    /// Полный выход — через меню иконки в трее.
+    /// </summary>
+    public bool CloseToTray { get; set; } = true;
+
     public bool ParentalControlEnabled { get; set; }
     public string? ParentalControlPinHash { get; set; }
     public List<string> ParentalControlBlockedGroups { get; set; } = new();

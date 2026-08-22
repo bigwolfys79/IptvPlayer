@@ -84,6 +84,12 @@ public sealed partial class MainPage
                     ToggleStatsOverlay();
                     e.Handled = true;
                     return;
+
+                case VirtualKey.M:
+                    // Мини-плеер: компактное окно поверх всех окон.
+                    ToggleMiniPlayer();
+                    e.Handled = true;
+                    return;
             }
         }
 
