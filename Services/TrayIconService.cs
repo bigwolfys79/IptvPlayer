@@ -35,7 +35,12 @@ public sealed class TrayIconService : IDisposable
         _show = show;
         _exit = exit;
 
-        _icon = LoadImage(IntPtr.Zero, iconPath, 1 /*IMAGE_ICON*/, 0, 0, 0x10 /*LR_LOADFROMFILE*/);
+        // 32x32 из файла; LR_DEFAULTSIZE обязательна при cx=cy=0.
+        _icon = LoadImage(IntPtr.Zero, iconPath, 1 /*IMAGE_ICON*/, 0, 0, 0x10 | 0x40 /*LR_LOADFROMFILE|LR_DEFAULTSIZE*/);
+        if (_icon == IntPtr.Zero)
+        {
+            Serilog.Log.Warning("Трей: не удалось загрузить иконку {Path}.", iconPath);
+        }
 
         var closed = new ManualResetEvent(false);
         _messageThread = new Thread(() =>
@@ -66,6 +71,7 @@ public sealed class TrayIconService : IDisposable
 
         var data = new NOTIFYICONDATAW
         {
+            cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>(),
             hWnd = hwnd,
             uID = 1,
             uFlags = 0x2 /*NIF_MESSAGE*/ | 0x1 /*NIF_ICON*/ | 0x4 /*NIF_TIP*/,
@@ -73,7 +79,11 @@ public sealed class TrayIconService : IDisposable
             hIcon = _icon,
             szTip = "IptvPlayer"
         };
-        Shell_NotifyIcon(0x0 /*NIM_ADD*/, ref data);
+        if (!Shell_NotifyIcon(0x0 /*NIM_ADD*/, ref data))
+        {
+            Serilog.Log.Warning("Трей: Shell_NotifyIcon(NIM_ADD) не удался (код {Code}).",
+                Marshal.GetLastWin32Error());
+        }
         return hwnd;
     }
 
@@ -141,7 +151,12 @@ public sealed class TrayIconService : IDisposable
 
         try
         {
-            var data = new NOTIFYICONDATAW { hWnd = _window, uID = 1 };
+            var data = new NOTIFYICONDATAW
+            {
+                cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>(),
+                hWnd = _window,
+                uID = 1
+            };
             Shell_NotifyIcon(0x2 /*NIM_DELETE*/, ref data);
             PostMessage(_window, 0x0012 /*WM_QUIT*/, IntPtr.Zero, IntPtr.Zero);
         }
@@ -180,9 +195,12 @@ public sealed class TrayIconService : IDisposable
         public int ptY;
     }
 
+    // Полная современная разметка NOTIFYICONDATAW: без корректного cbSize
+    // (первое поле) Shell_NotifyIcon молча отклоняет вызов.
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct NOTIFYICONDATAW
     {
+        public uint cbSize;
         public IntPtr hWnd;
         public uint uID;
         public uint uFlags;
@@ -190,6 +208,16 @@ public sealed class TrayIconService : IDisposable
         public IntPtr hIcon;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
         public string szTip;
+        public uint dwState;
+        public uint dwStateMask;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string szInfo;
+        public uint uVersion; // union с uTimeout — оба 4 байта.
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string szInfoTitle;
+        public uint dwInfoFlags;
+        public Guid guidItem;
+        public IntPtr hBalloonIcon;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -221,7 +249,7 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool Shell_NotifyIcon(uint message, ref NOTIFYICONDATAW data);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
