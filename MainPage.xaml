@@ -76,53 +76,6 @@
             </StackPanel>
         </DataTemplate>
 
-        <DataTemplate x:Key="EPGEntryTemplate" x:DataType="vmModels:EPGEntry">
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" 
-                    CornerRadius="4"
-                    Margin="2"
-                    Padding="8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Vertical" Spacing="2">
-                        <TextBlock Text="{x:Bind StartTimeString}" FontSize="11" FontWeight="Bold" />
-                        <TextBlock Text="{x:Bind Duration, Converter={StaticResource TimeSpanConverter}}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="8,0,0,0" Orientation="Vertical" Spacing="2">
-                        <TextBlock Text="{x:Bind Title}" FontSize="13" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="2" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-        </DataTemplate>
-
-        <DataTemplate x:Key="EPGVerticalEntryTemplate" x:DataType="vmModels:EPGEntry">
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="4"
-                    Padding="12,10"
-                    Margin="2,1">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Vertical" Spacing="2" MinWidth="80">
-                        <TextBlock Text="{x:Bind StartTimeString}" FontSize="12" FontWeight="Bold" />
-                        <TextBlock Text="{x:Bind Duration, Converter={StaticResource TimeSpanConverter}}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Vertical" Spacing="2">
-                        <TextBlock Text="{x:Bind Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="3" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-        </DataTemplate>
     </Page.Resources>
 
     <Grid x:Name="RootGrid"
@@ -273,7 +226,7 @@
                                    Foreground="White" FontSize="14" FontWeight="SemiBold"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" />
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramTitle, Mode=OneWay}"
-                                   Foreground="#CCFFFFFF" FontSize="12.5"
+                                   Foreground="#CCFFFFFF" FontSize="13"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
@@ -1038,7 +991,7 @@
                 IsHitTestVisible="False">
             <TextBlock x:Name="StatsText"
                        FontFamily="Consolas"
-                       FontSize="12.5"
+                       FontSize="13"
                        Foreground="#FFE8E8E8"
                        Text="—" />
         </Border>
