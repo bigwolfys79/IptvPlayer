@@ -60,12 +60,38 @@ public sealed partial class MainWindow : Window
             {
                 e.Cancel = true;
                 AppWindow.Hide();
+                App.Tray?.Show(); // иконка в трее живёт только пока окно скрыто
                 return;
             }
 
+            MinimizeHook?.Dispose();
             App.Tray?.Dispose();
             App.Tray = null;
         };
+
+        // «Свернуть» прячет окно в трей (по настройке) — тогда в панели задач
+        // его нет, а иконка в трее, наоборот, появляется. OverlappedPresenter
+        // в этой версии Windows App SDK не имеет события состояния, поэтому
+        // перехватываем WM_SIZE через subclass оконной процедуры.
+        MinimizeHook = new MinimizeToTrayHook(this, () =>
+        {
+            bool minimizeToTray;
+            try
+            {
+                var settings = App.Services.GetRequiredService<ISettingsService>().LoadAsync().GetAwaiter().GetResult();
+                minimizeToTray = settings.MinimizeToTray;
+            }
+            catch
+            {
+                minimizeToTray = false; // настройки не прочитались — обычное сворачивание.
+            }
+
+            if (minimizeToTray)
+            {
+                AppWindow.Hide();
+                App.Tray?.Show();
+            }
+        });
 
         // Иконка создаётся один раз на сессию: клик — показать, правый клик — меню.
         App.Tray ??= new Services.TrayIconService(
@@ -79,6 +105,10 @@ public sealed partial class MainWindow : Window
 
     private bool _miniPlayer;
     private Windows.Graphics.RectInt32 _preMiniPlacement;
+
+    /// <summary>Subclass для перехвата сворачивания; поле обязательно —
+    /// иначе delegate соберётся GC и wndproc упадёт.</summary>
+    private Services.MinimizeToTrayHook? MinimizeHook;
 
     /// <summary>Активен ли компактный режим мини-плеера (always-on-top).</summary>
     public bool IsMiniPlayer => _miniPlayer;
@@ -119,6 +149,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Show();
         Activate();
         (AppWindow.Presenter as OverlappedPresenter)?.Restore();
+        App.Tray?.Hide(); // окно снова видно — иконка в трее не нужна
     }
 
     /// <summary>Пункт «Выход» в трее — настоящее закрытие окна.</summary>

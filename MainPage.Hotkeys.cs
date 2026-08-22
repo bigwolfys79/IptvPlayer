@@ -277,6 +277,11 @@ public sealed partial class MainPage
             var channel = ViewModel.DisplayedChannels[n - 1];
             ViewModel.SelectAndPlayChannelCommand.Execute(channel);
             ChannelsListView.ScrollIntoView(channel);
+
+            if (_isFullScreen)
+            {
+                OverlayChannelsListView.ScrollIntoView(channel);
+            }
         }
     }
 

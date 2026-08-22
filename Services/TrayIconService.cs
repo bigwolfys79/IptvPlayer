@@ -68,23 +68,61 @@ public sealed class TrayIconService : IDisposable
         };
         _classAtom = RegisterClass(ref wc);
         var hwnd = CreateWindowEx(0, "IptvPlayerTray", "", 0, 0, 0, 0, 0, -3 /*HWND_MESSAGE*/, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        return hwnd;
+    }
 
+    /// <summary>
+    /// Иконка в трее показывается только пока окно приложения скрыто
+    /// (свернуто/закрыто в трей). Изначально не добавляется — только по Show().
+    /// </summary>
+    private readonly object _visibilitySync = new();
+    private bool _addedToTray;
+
+    /// <summary>Добавляет иконку в трей (повторные вызовы — no-op).</summary>
+    public void Show()
+    {
+        lock (_visibilitySync)
+        {
+            if (_addedToTray || _disposed)
+            {
+                return;
+            }
+            NotifyTray(0x0 /*NIM_ADD*/);
+            _addedToTray = true;
+        }
+    }
+
+    /// <summary>Убирает иконку из трея (повторные вызовы — no-op).</summary>
+    public void Hide()
+    {
+        lock (_visibilitySync)
+        {
+            if (!_addedToTray)
+            {
+                return;
+            }
+            NotifyTray(0x2 /*NIM_DELETE*/);
+            _addedToTray = false;
+        }
+    }
+
+    private void NotifyTray(uint message)
+    {
         var data = new NOTIFYICONDATAW
         {
             cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>(),
-            hWnd = hwnd,
+            hWnd = _window,
             uID = 1,
             uFlags = 0x2 /*NIF_MESSAGE*/ | 0x1 /*NIF_ICON*/ | 0x4 /*NIF_TIP*/,
             uCallbackMessage = WM_TRAYICON,
             hIcon = _icon,
             szTip = "IptvPlayer"
         };
-        if (!Shell_NotifyIcon(0x0 /*NIM_ADD*/, ref data))
+        if (!Shell_NotifyIcon(message, ref data))
         {
-            Serilog.Log.Warning("Трей: Shell_NotifyIcon(NIM_ADD) не удался (код {Code}).",
-                Marshal.GetLastWin32Error());
+            Serilog.Log.Warning("Трей: Shell_NotifyIcon({Message}) не удался (код {Code}).",
+                message, Marshal.GetLastWin32Error());
         }
-        return hwnd;
     }
 
     private delegate IntPtr WndProcDelegate(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);

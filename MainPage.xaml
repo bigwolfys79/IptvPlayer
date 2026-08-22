@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:IptvPlayer"
+    xmlns:ictrl="using:IptvPlayer.Controls"
     xmlns:vm="using:IptvPlayer.ViewModels"
     xmlns:vmModels="using:IptvPlayer.Models"
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
@@ -78,7 +79,7 @@
 
     </Page.Resources>
 
-    <Grid x:Name="RootGrid"
+    <ictrl:CursorGrid x:Name="RootGrid"
           Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
           PointerMoved="RootGrid_PointerMoved"
           PointerWheelChanged="RootGrid_PointerWheelChanged">
@@ -818,10 +819,31 @@
                     <ListView x:Name="OverlayChannelsListView"
                               Grid.Row="1"
                               Background="Transparent"
+                              SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=OneWay}"
                               SelectionMode="Single"
                               IsItemClickEnabled="True"
                               ItemClick="ChannelsListView_ItemClick"
                               ItemTemplate="{StaticResource ChannelItemTemplate}">
+                        <!-- Те же переопределения выделения, что в оконном
+                             списке ChannelsListView: сплошная подложка
+                             ChannelSelectedBrush, иначе на тёмном фоне
+                             оверлея выделение текущего канала не видно. -->
+                        <ListView.Resources>
+                            <ResourceDictionary>
+                                <StaticResource x:Key="ListViewItemBackgroundSelected" ResourceKey="ChannelSelectedBrush"/>
+                                <StaticResource x:Key="ListViewItemBackgroundSelectedPointerOver" ResourceKey="ChannelSelectedHoverBrush"/>
+                                <StaticResource x:Key="ListViewItemBackgroundSelectedPressed" ResourceKey="ChannelSelectedPressedBrush"/>
+                                <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="White"/>
+                                <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver" Color="White"/>
+                                <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed" Color="White"/>
+                            </ResourceDictionary>
+                        </ListView.Resources>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="0" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
                         <ListView.GroupStyle>
                             <GroupStyle>
                                 <GroupStyle.HeaderTemplate>
@@ -995,5 +1017,5 @@
                        Foreground="#FFE8E8E8"
                        Text="—" />
         </Border>
-    </Grid>
+    </ictrl:CursorGrid>
 </Page>
