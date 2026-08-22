@@ -123,6 +123,11 @@ namespace IptvPlayer.Services
         private Task? _loadingTask;
         private readonly object _loadingTaskGate = new();
 
+        // Токен отмены идущей загрузки: перекачка EPG при переключении
+        // плейлиста / принудительном «Обновить» отменяет старую (её источники
+        // уже не актуальны), а не гоняется с ней за сеть и дисковый кэш.
+        private System.Threading.CancellationTokenSource _loadCts = new();
+
         // ApplyMissingLogosAsync мутирует ChannelViewModel.LogoUrl — объекты,
         // на которые подписаны x:Bind-привязки списка каналов. При RefreshEPGAsync
         // вся загрузка сервиса идёт в Task.Run (пул потоков), и уведомления
@@ -256,6 +261,7 @@ namespace IptvPlayer.Services
             }
             if (inFlight != null)
             {
+                _loadCts.Cancel();
                 try
                 {
                     await inFlight;
@@ -265,6 +271,7 @@ namespace IptvPlayer.Services
                     // Причина уже залогирована внутри DoEnsureEpgLoadedAsync —
                     // принудительная загрузка ниже выполнится в любом случае.
                 }
+                _loadCts = new System.Threading.CancellationTokenSource();
             }
 
             await EnsureEpgLoadedAsync(force: true);
@@ -291,6 +298,7 @@ namespace IptvPlayer.Services
             }
             if (inFlight != null)
             {
+                _loadCts.Cancel();
                 try
                 {
                     await inFlight;
@@ -299,6 +307,7 @@ namespace IptvPlayer.Services
                 {
                     // Причина уже залогирована внутри DoEnsureEpgLoadedAsync.
                 }
+                _loadCts = new System.Threading.CancellationTokenSource();
             }
 
             await EnsureEpgLoadedAsync(force: true);
@@ -482,6 +491,7 @@ namespace IptvPlayer.Services
 
         private async Task DoEnsureEpgLoadedAsync()
         {
+            var ct = _loadCts.Token;
             try
             {
                 // Таблица "имя -> tvg-id" нужна уже для первого сопоставления,
@@ -520,7 +530,14 @@ namespace IptvPlayer.Services
                 {
                     try
                     {
-                        sourceResults.Add(await _xmlTvService.LoadAsync(source, maxAge));
+                        sourceResults.Add(await _xmlTvService.LoadAsync(source, maxAge, ct));
+                    }
+                    catch (System.OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        // Переключение плейлиста/принудительное обновление —
+                        // выходим целиком, не помечая EPG загруженным.
+                        _logger.LogInformation("Загрузка EPG отменена (источник {Url}).", source.Url);
+                        return;
                     }
                     catch (Exception ex)
                     {
