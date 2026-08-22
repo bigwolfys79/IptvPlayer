@@ -182,6 +182,9 @@ public sealed partial class MainPage : Page
             DispatcherQueue.TryEnqueue(UpdateArchiveBanner);
         ViewModel.RecordingChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateRecordButtons);
+        // Родительский контроль: VM просит PIN при запуске канала
+        // заблокированной группы — показываем диалог с выбором длительности.
+        ViewModel.ParentalUnlockRequested += channel => ShowParentalPinDialogAsync(channel);
         ViewModel.EpgVisibilityChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(ApplyEpgVisibility);
         Player.PropertyChanged += (s, e) =>
@@ -384,7 +387,6 @@ public sealed partial class MainPage : Page
         {
             _ = ViewModel.CheckRemindersAsync();
             ViewModel.CheckScheduledRecordings();
-            ViewModel.CheckParentalControlTimer();
         };
         _reminderTimer.Start();
 
@@ -888,6 +890,12 @@ public sealed partial class MainPage : Page
     {
         try
         {
+            // Родительский контроль: автопродолжение заблокированной группы
+            // тоже требует PIN — тихо включать такой канал нельзя.
+            if (!await ViewModel.CanPlayChannelAsync(channel))
+            {
+                return;
+            }
             await PlayLiveAsync(channel);
         }
         catch (Exception ex)
@@ -1457,6 +1465,82 @@ public sealed partial class MainPage : Page
         }
     }
 
+    // ===================== Родительский контроль: PIN при запуске =====================
+
+    /// <summary>
+    /// Диалог PIN при запуске канала заблокированной группы: ввод PIN + выбор,
+    /// на сколько отключить запрос (15/30/45/60 мин, до выключения) или отмена.
+    /// Возвращает null (отмена), 0 («до выключения») или число минут.
+    /// </summary>
+    private async Task<int?> ShowParentalPinDialogAsync(ChannelViewModel channel)
+    {
+        var tcs = new System.Threading.Tasks.TaskCompletionSource<int?>();
+
+        var pinBox = new PasswordBox { PlaceholderText = "PIN", Width = 200, HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Left };
+        var errorText = new TextBlock
+        {
+            FontSize = 12,
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.OrangeRed),
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        void TryUnlock(int minutes)
+        {
+            if (Services.ParentalControlService.VerifyPin(ViewModel.AppSettings, pinBox.Password))
+            {
+                tcs.TrySetResult(minutes);
+                _pinDialog?.Hide();
+            }
+            else
+            {
+                errorText.Text = L.T("Неверный PIN.", "Wrong PIN.");
+            }
+        }
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing =8 };
+        foreach (var (label, minutes) in new (string, int)[]
+                 {
+                     (L.T("15 мин", "15 min"), 15),
+                     (L.T("30 мин", "30 min"), 30),
+                     (L.T("45 мин", "45 min"), 45),
+                     (L.T("1 час", "1 hour"), 60),
+                     (L.T("До выключения", "Until off"), 0),
+                 })
+        {
+            var captured = minutes;
+            var b = new Button { Content = label };
+            b.Click += (s, e) => TryUnlock(captured);
+            buttons.Children.Add(b);
+        }
+
+        var panel = new StackPanel { Spacing = 12, Width = 380 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = L.T(
+                $"Канал «{channel.Name}» закрыт родительским контролем. Введите PIN и выберите, на сколько разрешить просмотр.",
+                $"Channel \"{channel.Name}\" is locked by parental control. Enter the PIN and choose how long to allow viewing."),
+            TextWrapping = TextWrapping.Wrap
+        });
+        panel.Children.Add(pinBox);
+        panel.Children.Add(errorText);
+        panel.Children.Add(buttons);
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = L.T("Родительский контроль", "Parental control"),
+            Content = panel,
+            CloseButtonText = L.T("Отмена", "Cancel")
+        };
+        dialog.Closed += (s, e) => tcs.TrySetResult(null);
+        _pinDialog = dialog;
+        await dialog.ShowAsync();
+        _pinDialog = null;
+        return await tcs.Task;
+    }
+
+    private ContentDialog? _pinDialog;
+
     // ===================== Беззвучный режим и двойной клик =====================
 
     private void MuteButton_Click(object sender, RoutedEventArgs e) => Player.ToggleMute();
@@ -1932,9 +2016,6 @@ public sealed partial class MainPage : Page
             _settingsService,
             App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Dialogs.ParentalControlDialog>>());
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
-
-        // Состояние могло измениться — пересобрать список и группы.
-        ViewModel.ApplyParentalControl();
     }
 
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
