@@ -1,0 +1,43 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.AboutDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <StackPanel Spacing="10" Width="480">
+        <StackPanel Orientation="Horizontal" Spacing="14">
+            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="12" Padding="14,8">
+                <TextBlock Text="IPTV" Foreground="White" FontWeight="Bold" FontSize="16"/>
+            </Border>
+            <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                <TextBlock Text="IptvPlayer" FontSize="24" FontWeight="SemiBold"/>
+                <TextBlock x:Name="VersionText" FontSize="12"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <TextBlock x:Name="DescriptionText" FontSize="13" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                   Margin="0,6,0,0"/>
+
+        <TextBlock x:Name="FeaturesHeader" FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock x:Name="FeaturesText" FontSize="12" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+        <TextBlock x:Name="ComponentsHeader" FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock x:Name="ComponentsText" FontSize="12" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+        <TextBlock x:Name="PathsHeader" FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0"/>
+        <TextBlock x:Name="PathsText" FontSize="12" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
+            <Button x:Name="CheckUpdateButton" Click="CheckUpdateButton_Click"/>
+            <Button x:Name="OpenLogsButton" Click="OpenLogsButton_Click"/>
+        </StackPanel>
+        <TextBlock x:Name="UpdateStatusText" FontSize="12" TextWrapping="Wrap" Visibility="Collapsed"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+    </StackPanel>
+</UserControl>

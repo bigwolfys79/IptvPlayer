@@ -46,6 +46,16 @@ public partial class App : Application
     /// </summary>
     public static Window? MainWindow => _window;
 
+    /// <summary>
+    /// Разрешить настоящее закрытие окна: обычный крестик сворачивает в
+    /// трей (CloseToTray), реальный выход — через меню иконки в трее или
+    /// это явно запрошенное закрытие (таймер сна, shutdown).
+    /// </summary>
+    public static bool AllowClose;
+
+    /// <summary>Иконка в трее (null, пока не создана). Убирается при выходе.</summary>
+    public static Services.TrayIconService? Tray { get; set; }
+
     // Уровень "выше Fatal": ни одно событие Serilog через него не проходит —
     // так выключается файловый лог без пересоздания логгера.
     private const LogEventLevel FileLoggingDisabledLevel = (LogEventLevel)100;

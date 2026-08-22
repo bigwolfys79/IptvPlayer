@@ -116,6 +116,18 @@ namespace IptvPlayer.Dialogs
                 SleepTimerActionCombo.SelectedIndex = 0;
             }
 
+            // Трей: крестик сворачивает окно в трей, звук продолжает
+            // играть; полный выход — через меню иконки.
+            CloseToTrayToggle.Toggled -= CloseToTrayToggle_Toggled;
+            CloseToTrayToggle.IsOn = settings.CloseToTray;
+            CloseToTrayToggle.Header = L.T("Сворачивать в трей при закрытии", "Minimize to tray on close");
+            CloseToTrayToggle.OnContent = L.T("Вкл", "On");
+            CloseToTrayToggle.OffContent = L.T("Выкл", "Off");
+            CloseToTrayToggle.Toggled += CloseToTrayToggle_Toggled;
+            CloseToTrayHint.Text = L.T(
+                "Крестик окна прячет его в трей — воспроизведение продолжается. Полный выход — правый клик по иконке в трее → «Выход».",
+                "The close button hides the window to the tray — playback continues. To quit fully, right-click the tray icon → \"Exit\".");
+
             // Файловый лог (Serilog): применяется сразу через
             // LoggingLevelSwitch, без перезапуска. Вывод в Debug (окно
             // Output студии) остаётся всегда.
@@ -137,6 +149,13 @@ namespace IptvPlayer.Dialogs
             var enabled = FileLoggingToggle.IsOn;
             _viewModel.AppSettings.FileLoggingEnabled = enabled;
             App.SetFileLoggingEnabled(enabled);
+        }
+
+        /// <summary>Сворачивание в трей — применяется сразу, персистится в настройках.</summary>
+        private async void CloseToTrayToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AppSettings.CloseToTray = CloseToTrayToggle.IsOn;
+            await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
