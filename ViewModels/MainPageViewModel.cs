@@ -334,9 +334,13 @@ public partial class MainPageViewModel : ObservableObject
         var result = await handler(channel);
         if (result == null)
         {
+            _logger.LogInformation("Ввод PIN отменён — канал {Channel} не запущен.", channel.Name);
             return false; // отменено/неверный PIN.
         }
 
+        _logger.LogInformation(
+            "PIN принят: запрос отключается на {Minutes} мин, запуск канала {Channel}.",
+            result == 0 ? -1 : result, channel.Name);
         ParentalControlService.Unlock(AppSettings, result == 0 ? null : result);
         SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
         return true;

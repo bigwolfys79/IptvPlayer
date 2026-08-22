@@ -1445,7 +1445,36 @@ public sealed partial class MainPage : Page
         openItem.Click += OpenRecordingsFolder;
         flyout.Items.Add(openItem);
 
+        var folderItem = new MenuFlyoutItem
+        {
+            Text = L.T("Выбрать папку записей...", "Choose recordings folder...")
+        };
+        folderItem.Click += ChooseRecordingsFolder;
+        flyout.Items.Add(folderItem);
+
         flyout.ShowAt((FrameworkElement)sender);
+    }
+
+    /// <summary>Выбор папки для записей (FolderPicker требует HWND-владельца).</summary>
+    private async void ChooseRecordingsFolder(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        picker.FileTypeFilter.Add("*");
+        if (App.MainWindow is { } window)
+        {
+            WinRT.Interop.InitializeWithWindow.Initialize(
+                picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
+        }
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder == null)
+        {
+            return; // Отменили выбор.
+        }
+
+        ViewModel.AppSettings.RecordingsFolder = folder.Path;
+        await _settingsService.SaveAsync(ViewModel.AppSettings);
+        _logger.LogInformation("Папка записей изменена: {Folder}.", folder.Path);
     }
 
     private void OpenRecordingsFolder(object sender, RoutedEventArgs e)
@@ -1472,8 +1501,34 @@ public sealed partial class MainPage : Page
     /// на сколько отключить запрос (15/30/45/60 мин, до выключения) или отмена.
     /// Возвращает null (отмена), 0 («до выключения») или число минут.
     /// </summary>
+    private Task<int?>? _pinDialogInProgress;
+
     private async Task<int?> ShowParentalPinDialogAsync(ChannelViewModel channel)
     {
+        // Повторный запрос PIN, пока диалог уже открыт, упал бы на втором
+        // ContentDialog.ShowAsync («нельзя два диалога») и мог оставить UI в
+        // полузаблокированном состоянии — ждём результат уже открытого.
+        if (_pinDialogInProgress != null)
+        {
+            Serilog.Log.Warning("Повторный запрос PIN при открытом диалоге — присоединяемся к нему.");
+            return await _pinDialogInProgress;
+        }
+
+        var task = ShowParentalPinDialogCoreAsync(channel);
+        _pinDialogInProgress = task;
+        try
+        {
+            return await task;
+        }
+        finally
+        {
+            _pinDialogInProgress = null;
+        }
+    }
+
+    private async Task<int?> ShowParentalPinDialogCoreAsync(ChannelViewModel channel)
+    {
+        Serilog.Log.Information("PIN-диалог открыт для канала {Channel}.", channel.Name);
         var tcs = new System.Threading.Tasks.TaskCompletionSource<int?>();
 
         var pinBox = new PasswordBox { PlaceholderText = "PIN", Width = 200, HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Left };
@@ -1488,11 +1543,13 @@ public sealed partial class MainPage : Page
         {
             if (Services.ParentalControlService.VerifyPin(ViewModel.AppSettings, pinBox.Password))
             {
+                Serilog.Log.Information("PIN верен — отключение запроса на {Minutes} мин.", minutes);
                 tcs.TrySetResult(minutes);
                 _pinDialog?.Hide();
             }
             else
             {
+                Serilog.Log.Warning("Введен неверный PIN (канал {Channel}).", channel.Name);
                 errorText.Text = L.T("Неверный PIN.", "Wrong PIN.");
             }
         }
@@ -1536,6 +1593,7 @@ public sealed partial class MainPage : Page
         _pinDialog = dialog;
         await dialog.ShowAsync();
         _pinDialog = null;
+        Serilog.Log.Information("PIN-диалог закрыт, результат: {Result}.", await tcs.Task);
         return await tcs.Task;
     }
 

@@ -38,24 +38,6 @@ public sealed partial class SettingsDialog
         }
     }
 
-    /// <summary>Выбор папки записей (FolderPicker требует HWND-владельца).</summary>
-    private async void ChooseRecordingsFolderButton_Click(object sender, RoutedEventArgs e)
-    {
-        var picker = new Windows.Storage.Pickers.FolderPicker();
-        picker.FileTypeFilter.Add("*");
-        if (App.MainWindow is { } window)
-        {
-            WinRT.Interop.InitializeWithWindow.Initialize(
-                picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
-        }
-
-        var folder = await picker.PickSingleFolderAsync();
-        if (folder != null)
-        {
-            RecordingsFolderBox.Text = folder.Path;
-        }
-    }
-
     // ===================== Плейлист =====================
 
     private async void AddPlaylistButton_Click(object sender, RoutedEventArgs e)
