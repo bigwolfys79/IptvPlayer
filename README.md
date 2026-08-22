@@ -101,7 +101,7 @@ IPTV-плеер для плейлистов M3U/M3U8 с программой п�
 ### Инфраструктура и качество
 - [x] **Git-репозиторий** — инициализирован; `bin/`, `obj/`, `.vs/`, `AppPackages*`, тяжёлые бинарники `analysis/`/`installer/` в `.gitignore`.
 - [x] **Юнит-тесты** — `tests/IptvPlayer.Tests` (xunit): нормализация имён EPG, `M3UParserService.ParseContent` (атрибуты, tvg-rec/catchup-days, #EXTGRP), `ArchiveUrlBuilder`. Запуск: `dotnet test tests/IptvPlayer.Tests -p:Platform=x64 -p:WindowsAppSdkAutoInitialize=false` (флаг отключает автоинициализацию WinAppSDK в тестовом хосте).
-- [ ] **Этап 3 MVVM** — вынести из MainPage полноэкранный режим/оверлеи/таймеры в отдельные контролы (code-behind всё ещё ~1600 строк).
+- [x] **Этап 3 MVVM (частично)** — полноэкранный режим/оверлеи/горячие клавиши/оверлей статистики вынесены из MainPage в partial-файлы (`MainPage.FullScreen.cs`, `MainPage.Overlays.cs`, `MainPage.Hotkeys.cs`, `MainPage.StatsOverlay.cs`); SettingsDialog разбит на partial по зонам, из EPGService вынесены EpgNameNormalizer и EpgSourceMerger. Ядро MainPage — ~1900 строк.
 - [ ] **Несколько плейлистов** — переключение провайдеров без потери избранного (сейчас один URL).
 - [ ] **Автообновление** — проверка версии по URL + кнопка «скачать установщик».
 - [ ] **«Открыть папку логов/кэша»** — кнопки в настройках для диагностики.
