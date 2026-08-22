@@ -99,8 +99,8 @@ IPTV-плеер для плейлистов M3U/M3U8 с программой п�
 - [ ] **Аккуратная остановка ffmpeg** — `q` по stdin вместо Kill (заголовки TS допишутся чисто; для `-c copy` некритично).
 
 ### Инфраструктура и качество
-- [ ] **Git-репозиторий** — проект сейчас не под версионным контролем.
-- [ ] **Юнит-тесты** — `NormalizeChannelNameCore`/`MatchChannel` (EPGService), `M3UParserService.ParseExtinf`, `ArchiveUrlBuilder`: чистые функции с кучей краевых случаев.
+- [x] **Git-репозиторий** — инициализирован; `bin/`, `obj/`, `.vs/`, `AppPackages*`, тяжёлые бинарники `analysis/`/`installer/` в `.gitignore`.
+- [x] **Юнит-тесты** — `tests/IptvPlayer.Tests` (xunit): нормализация имён EPG, `M3UParserService.ParseContent` (атрибуты, tvg-rec/catchup-days, #EXTGRP), `ArchiveUrlBuilder`. Запуск: `dotnet test tests/IptvPlayer.Tests -p:Platform=x64 -p:WindowsAppSdkAutoInitialize=false` (флаг отключает автоинициализацию WinAppSDK в тестовом хосте).
 - [ ] **Этап 3 MVVM** — вынести из MainPage полноэкранный режим/оверлеи/таймеры в отдельные контролы (code-behind всё ещё ~1600 строк).
 - [ ] **Несколько плейлистов** — переключение провайдеров без потери избранного (сейчас один URL).
 - [ ] **Автообновление** — проверка версии по URL + кнопка «скачать установщик».
