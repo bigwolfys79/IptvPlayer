@@ -130,7 +130,10 @@ public sealed class RecordingService
             var safe = SanitizeFileName(fileNameBase);
             var path = Path.Combine(dir, $"{safe} {DateTime.Now:yyyy-MM-dd HHmmss}.ts");
 
-            var args = "-hide_banner -loglevel error -nostdin -y " +
+            // -nostdin убран: stdin перенаправлен, и аккуратная остановка
+            // идёт посылкой 'q' (ffmpeg допишет заголовки TS и выйдет сам),
+            // Kill остаётся запасным вариантом.
+            var args = "-hide_banner -loglevel error -y " +
                        $"-i \"{streamUrl}\" -c copy -f mpegts \"{path}\"";
             if (durationSec is > 0)
             {
@@ -142,7 +145,8 @@ public sealed class RecordingService
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardError = true,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                RedirectStandardInput = true
             };
 
             var process = Process.Start(psi);
@@ -212,17 +216,8 @@ public sealed class RecordingService
             _active.Remove(id);
         }
 
-        try
-        {
-            if (process is { HasExited: false })
-            {
-                process.Kill(entireProcessTree: true);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Не удалось остановить запись {Id}.", id);
-        }
+        // Ожидание выхода ffmpeg (до 3 с) — в фоне, UI не замирает.
+        System.Threading.Tasks.Task.Run(() => TryStopProcess(process));
 
         RecordingsChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -239,22 +234,49 @@ public sealed class RecordingService
 
         foreach (var process in processes)
         {
-            try
-            {
-                if (process is { HasExited: false })
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Не удалось остановить запись при StopAll.");
-            }
+            TryStopProcess(process);
         }
 
         if (processes.Count > 0)
         {
             RecordingsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Аккуратная остановка: 'q' в stdin — ffmpeg сам дописывает заголовки
+    /// TS и завершается (ждём до 3 с); не вышло — Kill (неполный TS всё
+    /// равно валиден, это запасной путь).
+    /// </summary>
+    private void TryStopProcess(Process? process)
+    {
+        if (process is not { HasExited: false })
+        {
+            return;
+        }
+
+        try
+        {
+            process.StandardInput.Write('q');
+            process.StandardInput.Flush();
+            if (process.WaitForExit(3000))
+            {
+                return;
+            }
+            _logger.LogWarning("ffmpeg не завершился по 'q' за 3 с — принудительная остановка.");
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Аккуратная остановка ffmpeg не удалась — пробуем Kill.");
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "Не удалось остановить процесс записи.");
+            }
         }
     }
 
