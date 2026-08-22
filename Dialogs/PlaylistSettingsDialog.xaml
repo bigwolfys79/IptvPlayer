@@ -62,25 +62,33 @@
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6"
                                                 Visibility="{x:Bind EditVisibility}">
                                         <TextBox x:Name="NameEditBox" Width="260" KeyDown="NameEditBox_KeyDown"/>
-                                        <Button Content="✓" Width="36" Height="32"
+                                        <Button Width="36" Height="32"
                                                 ToolTipService.ToolTip="Сохранить имя"
-                                                Click="SavePlaylistNameButton_Click"/>
+                                                Click="SavePlaylistNameButton_Click">
+                                            <Path Data="M2.5,8.5 L5,11 L13,3.5 L14.5,5 L5,14 L1,10 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
+                                        </Button>
                                     </StackPanel>
-                                    <Button Grid.Column="1" Content="✎" Width="36" Height="32"
+                                    <Button Grid.Column="1" Width="36" Height="32"
                                             ToolTipService.ToolTip="Переименовать"
                                             Click="RenamePlaylistButton_Click"
-                                            Visibility="{x:Bind ViewVisibility}"/>
+                                            Visibility="{x:Bind ViewVisibility}">
+                                            <Path Data="M2,14 L3.5,10.5 L11,3 L13,5 L5.5,12.5 Z M11.8,2.2 L13.8,4.2 L15,3 L13,1 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
+                                        </Button>
                                     <Button Grid.Column="2" Content="EPG" Height="32" MinWidth="44" Padding="8,0"
                                             ToolTipService.ToolTip="Источники EPG этого плейлиста"
                                             Click="EpgSectionButton_Click"/>
-                                    <Button Grid.Column="3" Content="✓" Width="36" Height="32"
+                                    <Button Grid.Column="3" Width="36" Height="32"
                                             ToolTipService.ToolTip="Активировать"
                                             Click="ActivatePlaylistButton_Click"
-                                            Visibility="{x:Bind ActivateButtonVisibility}"/>
-                                    <Button Grid.Column="4" Content="✕" Width="36" Height="32"
+                                            Visibility="{x:Bind ActivateButtonVisibility}">
+                                            <Path Data="M2.5,8.5 L5,11 L13,3.5 L14.5,5 L5,14 L1,10 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
+                                        </Button>
+                                    <Button Grid.Column="4" Width="36" Height="32"
                                             ToolTipService.ToolTip="Удалить"
                                             Click="RemovePlaylistButton_Click"
-                                            Visibility="{x:Bind ViewVisibility}"/>
+                                            Visibility="{x:Bind ViewVisibility}">
+                                            <Path Data="M3,3.8 L4.1,2.7 L8,6.6 L11.9,2.7 L13,3.8 L9.1,7.7 L13,11.6 L11.9,12.7 L8,8.8 L4.1,12.7 L3,11.6 L6.9,7.7 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="12" Height="12" />
+                                        </Button>
                                 </Grid>
 
                                 <!-- Источники EPG этого плейлиста (раскрывается кнопкой EPG):
@@ -100,10 +108,12 @@
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                                TextTrimming="CharacterEllipsis"/>
-                                                    <Button Content="✕" Width="32" Height="32"
+                                                    <Button Width="32" Height="32"
                                                             VerticalAlignment="Center"
                                                             ToolTipService.ToolTip="Удалить источник"
-                                                            Click="PlaylistEpgSourceRemoveButton_Click"/>
+                                                            Click="PlaylistEpgSourceRemoveButton_Click">
+                                                        <Path Data="M3,3.8 L4.1,2.7 L8,6.6 L11.9,2.7 L13,3.8 L9.1,7.7 L13,11.6 L11.9,12.7 L8,8.8 L4.1,12.7 L3,11.6 L6.9,7.7 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="12" Height="12" />
+                                                    </Button>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -111,10 +121,12 @@
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <TextBox Width="296" PlaceholderText="URL XMLTV"
                                                  KeyDown="PlaylistEpgUrlBox_KeyDown"/>
-                                        <Button Content="+" Width="36" Height="32"
+                                        <Button Width="36" Height="32"
                                                 VerticalAlignment="Center"
                                                 ToolTipService.ToolTip="Добавить источник EPG"
-                                                Click="PlaylistEpgSourceAddButton_Click"/>
+                                                Click="PlaylistEpgSourceAddButton_Click">
+                                            <Path Data="M8,2 H9.5 V7 H14.5 V8.5 H9.5 V13.5 H8 V8.5 H3 V7 H8 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
+                                        </Button>
                                     </StackPanel>
                                 </StackPanel>
                                 </StackPanel>
