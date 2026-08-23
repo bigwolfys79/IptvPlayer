@@ -188,6 +188,23 @@ public sealed partial class MainPage : Page
         // старте/остановке VOD и смене качества.
         Player.VodStateChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateVodQualityButtons);
+        // Выбор серии сериала портала: VM просит — показываем диалог.
+        ViewModel.PortalEpisodePickRequested += (channel, flick) =>
+        {
+            var completion = new TaskCompletionSource<(ChannelViewModel Channel, PortalEpisode Episode, System.Collections.Generic.List<PortalEpisode> Episodes)?>();
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    completion.SetResult(await Dialogs.EpisodePickerDialog.PickAsync(Content.XamlRoot, channel, flick));
+                }
+                catch (Exception ex)
+                {
+                    completion.SetException(ex);
+                }
+            });
+            return completion.Task;
+        };
         ViewModel.RecordingChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateRecordButtons);
         // Родительский контроль: VM просит PIN при запуске канала
@@ -739,6 +756,7 @@ public sealed partial class MainPage : Page
         // Полуавтоматическое обновление: фоновая проверка через пару минут
         // после старта (не чаще раза в сутки), см. RunAutoUpdateCheckAsync.
         ScheduleAutoUpdateCheck();
+        ApplyChannelViewMode();
 
         // Записи, прерванные прошлым закрытием: если передача ещё идёт —
         // предлагаем продолжить запись оставшейся части.
@@ -1057,6 +1075,29 @@ public sealed partial class MainPage : Page
         var setupPath = _pendingUpdateSetupPath;
         _pendingUpdateSetupPath = null;
         DispatcherQueue.TryEnqueue(() => _updateService.RunInstallerAndExit(setupPath));
+    }
+
+    /// <summary>
+    /// Вид списка каналов/каталога: строки ↔ сетка постеров (настройка
+    /// ChannelListPosterView). Скрывает один контейнер и показывает другой;
+    /// иконка кнопки отражает текущий вид.
+    /// </summary>
+    private void ApplyChannelViewMode()
+    {
+        var posters = ViewModel.AppSettings.ChannelListPosterView;
+        PosterGridView.Visibility = posters ? Visibility.Visible : Visibility.Collapsed;
+        ChannelsListView.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
+        PosterViewIconList.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
+        PosterViewIconList2.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
+        PosterViewIconList3.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
+        PosterViewIconGrid.Visibility = posters ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void PosterViewToggleButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.AppSettings.ChannelListPosterView = !ViewModel.AppSettings.ChannelListPosterView;
+        await _settingsService.SaveAsync(ViewModel.AppSettings);
+        ApplyChannelViewMode();
     }
 
     /// <summary>
@@ -1546,7 +1587,9 @@ public sealed partial class MainPage : Page
     // не менялись. Визуальная реакция (прогресс, ошибки, баннеры, подключение
     // MediaPlayerElement) — через события VM, подписки в конструкторе.
 
-    private Task PlayLiveAsync(ChannelViewModel channel) => ViewModel.PlayChannelAsync(channel);
+    // Автопродолжение: без диалога выбора серии (interactive:false —
+    // сериал портала продолжается с первой серии).
+    private Task PlayLiveAsync(ChannelViewModel channel) => ViewModel.PlayChannelAsync(channel, interactive: false);
 
     private void StopPlayback() => Player.Stop();
 
@@ -1582,6 +1625,14 @@ public sealed partial class MainPage : Page
         // качества: только элементы портала с вариантом потока.
         OverlayVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
         WindowedVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
+
+        UpdateVodSeasonEpisodeCombos();
+
+        // Кнопка EPG при просмотре портала не нужна — программ передач у
+        // фильмов/сериалов нет; на обычных каналах остаётся.
+        var epgVisible = Player.IsVodPlaying ? Visibility.Collapsed : Visibility.Visible;
+        VideoOverlayEpgButton.Visibility = epgVisible;
+        OverlayEpgButton.Visibility = epgVisible;
 
         if (Player.CurrentVodQuality is { } quality)
         {
@@ -1631,6 +1682,125 @@ public sealed partial class MainPage : Page
         if (sender is MenuFlyoutItem { Tag: string quality })
         {
             await Player.SwitchVodQualityAsync(quality);
+        }
+    }
+
+    // ===================== Сезон/серия VOD =====================
+
+    private bool _updatingVodCombos;
+
+    /// <summary>
+    /// Наполняет комбобоксы сезона и серии обеих панелей по текущему VOD:
+    /// сезон — соседние карточки каталога («Название. Сезон N»), серия —
+    /// список эпизодов из flick, живущий в PlayerViewModel. Скрыты, когда
+    /// выбора нет (фильм, эфир, одна серия).
+    /// </summary>
+    private void UpdateVodSeasonEpisodeCombos()
+    {
+        _updatingVodCombos = true;
+        try
+        {
+            var seasonsVisible = false;
+            var episodesVisible = false;
+
+            if (Player.IsVodPlaying && Player.VodChannel is { } vodChannel)
+            {
+                var siblings = ViewModel.GetPortalSeasonSiblings(vodChannel);
+                seasonsVisible = siblings.Count > 1;
+                if (seasonsVisible)
+                {
+                    foreach (var combo in new[] { WindowedVodSeasonCombo, OverlayVodSeasonCombo })
+                    {
+                        combo.Items.Clear();
+                        foreach (var sibling in siblings)
+                        {
+                            combo.Items.Add(new ComboBoxItem
+                            {
+                                Content = SeasonLabel(sibling.Name),
+                                Tag = sibling,
+                                IsSelected = ReferenceEquals(sibling, vodChannel)
+                            });
+                        }
+                    }
+                }
+
+                episodesVisible = Player.VodEpisodes.Count > 1;
+                if (episodesVisible)
+                {
+                    foreach (var combo in new[] { WindowedVodEpisodeCombo, OverlayVodEpisodeCombo })
+                    {
+                        combo.Items.Clear();
+                        for (var i = 0; i < Player.VodEpisodes.Count; i++)
+                        {
+                            combo.Items.Add(new ComboBoxItem
+                            {
+                                Content = $"{i + 1}. {Player.VodEpisodes[i].Title}",
+                                Tag = i,
+                                IsSelected = i == Player.CurrentVodEpisodeIndex
+                            });
+                        }
+                    }
+                }
+            }
+
+            WindowedVodSeasonCombo.Visibility = OverlayVodSeasonCombo.Visibility =
+                seasonsVisible ? Visibility.Visible : Visibility.Collapsed;
+            WindowedVodEpisodeCombo.Visibility = OverlayVodEpisodeCombo.Visibility =
+                episodesVisible ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!seasonsVisible)
+            {
+                WindowedVodSeasonCombo.Items.Clear();
+                OverlayVodSeasonCombo.Items.Clear();
+            }
+
+            if (!episodesVisible)
+            {
+                WindowedVodEpisodeCombo.Items.Clear();
+                OverlayVodEpisodeCombo.Items.Clear();
+            }
+        }
+        finally
+        {
+            _updatingVodCombos = false;
+        }
+    }
+
+    /// <summary>«Название. Сезон 3. (2021)» → «Сезон 3»; без пометки — как есть.</summary>
+    private static string SeasonLabel(string name) =>
+        MainPageViewModel.ParsePortalSeasonName(name).Season is { } season
+            ? (season.From == season.To
+                ? $"Сезон {season.From}"
+                : $"Сезон {season.From}–{season.To}")
+            : name;
+
+    private async void VodSeasonCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingVodCombos ||
+            sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: ChannelViewModel sibling } })
+        {
+            return;
+        }
+
+        // Сезон — соседняя карточка каталога: полный путь запуска без диалога
+        // (первая серия сезона; дальше — комбобоксом серий).
+        if (!ReferenceEquals(sibling, Player.VodChannel))
+        {
+            await ViewModel.PlayChannelAsync(sibling, interactive: false);
+        }
+    }
+
+    private async void VodEpisodeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingVodCombos ||
+            sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: int index } })
+        {
+            return;
+        }
+
+        if (index != Player.CurrentVodEpisodeIndex)
+        {
+            await Player.PlayVodEpisodeAsync(index);
         }
     }
 

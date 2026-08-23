@@ -340,7 +340,95 @@ public partial class MainPageViewModel : ObservableObject
         RefreshGroups();
         FilterChannels();
         UpdateChannelCountText();
+        _portalSeasonGroups = null;
     }
+
+    // ===================== Сезоны портала =====================
+    // Сезоны сериала — отдельные элементы каталога («Название. Сезон N» /
+    // «Сезон N-M»); группировка по базовому названию даёт комбобокс сезона.
+    private Dictionary<string, List<ChannelViewModel>>? _portalSeasonGroups;
+
+    /// <summary>
+    /// Соседние сезоны сериала портала (включая сам канал), отсортированные
+    /// по номерам сезонов. Один элемент — фильм/сериал без пометки сезона.
+    /// </summary>
+    public List<ChannelViewModel> GetPortalSeasonSiblings(ChannelViewModel channel)
+    {
+        if (string.IsNullOrEmpty(channel.PortalRequest))
+        {
+            return new List<ChannelViewModel> { channel };
+        }
+
+        _portalSeasonGroups ??= BuildPortalSeasonGroups();
+        if (ParsePortalSeasonName(channel.Name).BaseName is not { } baseName ||
+            !_portalSeasonGroups.TryGetValue(baseName, out var group))
+        {
+            return new List<ChannelViewModel> { channel };
+        }
+
+        return group;
+    }
+
+    private Dictionary<string, List<ChannelViewModel>> BuildPortalSeasonGroups()
+    {
+        var groups = new Dictionary<string, List<ChannelViewModel>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var channel in Channels)
+        {
+            if (string.IsNullOrEmpty(channel.PortalRequest))
+            {
+                continue;
+            }
+
+            if (ParsePortalSeasonName(channel.Name).BaseName is not { } baseName)
+            {
+                continue;
+            }
+
+            if (!groups.TryGetValue(baseName, out var list))
+            {
+                groups[baseName] = list = new List<ChannelViewModel>();
+            }
+
+            list.Add(channel);
+        }
+
+        foreach (var key in groups.Keys.ToList())
+        {
+            groups[key].Sort((a, b) => SeasonSortKey(a.Name).CompareTo(SeasonSortKey(b.Name)));
+        }
+
+        return groups;
+    }
+
+    /// <summary>
+    /// «Название. Сезон 3. (2021)» → («Название», (3, 3));
+    /// «Название. Сезон 1-7» → («Название», (1, 7)).
+    /// BaseName null — пометки сезона нет (фильм/сериал одной карточкой).
+    /// </summary>
+    internal static (string? BaseName, (int From, int To)? Season) ParsePortalSeasonName(string name)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            name,
+            @"^(.*?)[\s.]*Сезон\s+(\d+)(?:\s*[-–]\s*(\d+))?",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return (null, null);
+        }
+
+        var baseName = match.Groups[1].Value.Trim().TrimEnd('.').Trim();
+        if (baseName.Length == 0)
+        {
+            return (null, null);
+        }
+
+        var from = int.Parse(match.Groups[2].Value);
+        var to = match.Groups[3].Success ? int.Parse(match.Groups[3].Value) : from;
+        return (baseName, (from, to));
+    }
+
+    private static (int From, int To) SeasonSortKey(string name) =>
+        ParsePortalSeasonName(name).Season ?? (int.MaxValue, int.MaxValue);
 
     /// <summary>
     /// Пересобирает список и группы после изменения настроек родительского
@@ -944,6 +1032,16 @@ public partial class MainPageViewModel : ObservableObject
     /// Возвращает true, если воспроизведение запущено.
     /// </summary>
     public async Task<bool> PlayChannelAsync(ChannelViewModel channel)
+        => await PlayChannelAsync(channel, interactive: true);
+
+    /// <summary>
+    /// Запуск канала/фильма: обычный канал — прямой эфир как раньше; элемент
+    /// портала — episodes-запрос (flick). Фильм играет сразу; у сериала при
+    /// interactive=true представление спрашивает серию (событие
+    /// PortalEpisodePickRequested), interactive=false (автопродолжение) —
+    /// первая серия. Возвращает true, если воспроизведение запущено.
+    /// </summary>
+    public async Task<bool> PlayChannelAsync(ChannelViewModel channel, bool interactive)
     {
         if (!string.IsNullOrWhiteSpace(channel.PortalRequest))
         {
@@ -954,13 +1052,11 @@ public partial class MainPageViewModel : ObservableObject
                 return false;
             }
 
-            // flick вызывается даже у фильмов с готовым url — заодно приходят
-            // варианты качества (480/720/1080/auto).
-            PortalStreamResult stream;
+            PortalFlickResult flick;
             Player.IsBuffering = true;
             try
             {
-                stream = await _videoPortalService.ResolveStreamAsync(playlist, channel.PortalRequest);
+                flick = await _videoPortalService.ResolveEpisodesAsync(playlist, channel.PortalRequest);
             }
             catch (Exception ex)
             {
@@ -984,19 +1080,53 @@ public partial class MainPageViewModel : ObservableObject
                 Player.IsBuffering = false;
             }
 
+            var episode = flick.Episodes[0];
+            _logger.LogInformation(
+                "Портал: «{Name}» — эпизодов {Count}, interactive={Interactive}, подписчиков выбора {Subscribers}.",
+                channel.Name, flick.Episodes.Count, interactive, PortalEpisodePickRequested?.GetInvocationList().Length ?? 0);
+            if (flick.Episodes.Count > 1 && interactive && PortalEpisodePickRequested is { } pick)
+            {
+                var chosen = await pick(channel, flick);
+                if (chosen is not { } picked)
+                {
+                    // Пользователь закрыл диалог выбора серии — не играем ничего.
+                    return false;
+                }
+
+                // Сезон в диалоге могли сменить — играем выбранную карточку
+                // и её список серий.
+                channel = picked.Channel;
+                flick = new PortalFlickResult
+                {
+                    SerialTitle = picked.Channel.Name,
+                    Description = picked.Channel.Description,
+                    PosterUrl = picked.Channel.LogoUrl,
+                    Episodes = picked.Episodes
+                };
+                episode = picked.Episode;
+            }
+
             // Стартовое качество — из настроек приложения (PreferredQuality:
             // 0 = авто), если такой вариант у портала есть.
             var preferred = AppSettings.PreferredQuality > 0 ? AppSettings.PreferredQuality + "p" : "Авто";
-            var quality = stream.Variants.Count > 0 ? preferred : null;
+            var quality = episode.Variants.Count > 0 ? preferred : null;
 
-            await Player.StartPlaybackAsync(channel, stream.Url, archiveEntry: null, isVod: true,
-                vodVariants: stream.Variants, vodQuality: quality);
+            await Player.StartPlaybackAsync(channel, episode.StreamUrl, archiveEntry: null, isVod: true,
+                vodVariants: episode.Variants, vodQuality: quality,
+                vodEpisodes: flick.Episodes, vodEpisodeIndex: flick.Episodes.IndexOf(episode));
             return true;
         }
 
         await Player.PlayLiveAsync(channel);
         return !string.IsNullOrWhiteSpace(channel.StreamUrl);
     }
+
+    /// <summary>
+    /// Представление показывает диалог выбора серии (MainPage →
+    /// EpisodePickerDialog) и возвращает выбранную пару сезон/эпизод;
+    /// null — отменено.
+    /// </summary>
+    public event Func<ChannelViewModel, PortalFlickResult, Task<(ChannelViewModel Channel, PortalEpisode Episode, System.Collections.Generic.List<PortalEpisode> Episodes)?> >? PortalEpisodePickRequested;
 
     // ===================== EPG =====================
 

@@ -25,9 +25,19 @@ public partial class StringToImageSourceConverter : IValueConverter
             return null;
         }
 
+        var image = new BitmapImage(uri);
+
+        // ConverterParameter — ширина декодирования в пикселях (для крупных
+        // картинок: постеры каталога декодируются уменьшенно, иначе сетка на
+        // тысячи элементов съедает память). Без параметра — как раньше.
+        if (parameter is string widthText && int.TryParse(widthText, out var decodeWidth) && decodeWidth > 0)
+        {
+            image.DecodePixelWidth = decodeWidth;
+        }
+
         // BitmapImage по умолчанию кэшируется системой — повторные скроллы
         // списка не перезакачивают одни и те же логотипы.
-        return new BitmapImage(uri);
+        return image;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)

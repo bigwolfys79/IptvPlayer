@@ -146,6 +146,13 @@ public class AppSettings
     /// <summary>
     /// Ширина панели списка каналов, выбранная перетаскиванием разделителя.
     /// </summary>
+    /// <summary>
+    /// Отображение списка каналов/каталога: false — строки (по умолчанию),
+    /// true — сетка постеров (для каталога портала; постеры — поле img
+    /// каталога, у обычных каналов — логотипы tvg-logo).
+    /// </summary>
+    public bool ChannelListPosterView { get; set; }
+
     public double ChannelListWidth { get; set; }
 
     /// <summary>
