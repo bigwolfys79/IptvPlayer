@@ -79,6 +79,11 @@ public sealed partial class MainPage
             HideWindowedVideoOverlay(immediate: true);
             WindowedTopOverlay.Visibility = Visibility.Collapsed;
 
+            // VideoAreaBorder в оконном режиме держит Padding=12 вокруг
+            // видео (декоративная рамка) — в fullscreen он давал полосы
+            // ~3 мм по краям экрана. Убираем, при выходе возвращаем.
+            VideoAreaBorder.Padding = new Thickness(0);
+
             // Оверлей статистики уезжает правее списка каналов (320 px) и
             // НИЖЕ шапки с названием канала — раньше висел поверх неё.
             StatsOverlay.Margin = new Thickness(344, 100, 0, 0);
@@ -109,6 +114,9 @@ public sealed partial class MainPage
             SplitterColumn.Width = GridLength.Auto;
             ViewModel.IsEpgVisible = _wasEpgVisibleBeforeFullScreen;
             ApplyEpgVisibility();
+
+            // Возврат декоративной рамки вокруг видео (убрана в fullscreen).
+            VideoAreaBorder.Padding = new Thickness(12);
 
             StatsOverlay.Margin = new Thickness(12, 60, 0, 0);
 
