@@ -21,6 +21,7 @@ namespace IptvPlayer.ViewModels;
 public partial class PlayerViewModel : ObservableObject
 {
     private readonly IStreamService _streamService;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<PlayerViewModel> _logger;
 
     // Свойства ниже — не [ObservableProperty], а ручные: сгенерированные
@@ -357,9 +358,10 @@ public partial class PlayerViewModel : ObservableObject
     /// <summary>Изменилось состояние архива (старт/конец архива, пауза) — обновить кнопки/баннеры.</summary>
     public event EventHandler? ArchiveStateChanged;
 
-    public PlayerViewModel(IStreamService streamService, ILogger<PlayerViewModel> logger)
+    public PlayerViewModel(IStreamService streamService, ISettingsService settingsService, ILogger<PlayerViewModel> logger)
     {
         _streamService = streamService;
+        _settingsService = settingsService;
         _logger = logger;
     }
 
@@ -387,10 +389,16 @@ public partial class PlayerViewModel : ObservableObject
         StreamError = null;
         IsBuffering = true;
 
-        var startWait = System.Diagnostics.Stopwatch.StartNew();
-        try
-        {
-            var player = await _streamService.CreatePlayerAsync(streamUrl, isVod);
+            var startWait = System.Diagnostics.Stopwatch.StartNew();
+            var streamSettings = await _settingsService.LoadAsync();
+            var streamConfig = new PlaybackConfig(
+                streamSettings.DecoderMode,
+                streamSettings.AudioNormalization,
+                streamSettings.ReadAheadSeconds,
+                streamSettings.VodReadAheadSeconds);
+            try
+            {
+                var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod);
             _logger.LogInformation(
                 "ЗАПУСК-ТАЙМИНГ: CreatePlayerAsync «{Channel}» занял {Ms:F0} мс.",
                 channel.Name, startWait.Elapsed.TotalMilliseconds);

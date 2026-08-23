@@ -4,9 +4,19 @@ using IptvPlayer.Models;
 
 namespace IptvPlayer.Services
 {
+    /// <summary>
+    /// Параметры потока для CreatePlayerAsync — передаются вызывающим
+    /// кодом вместо чтения settings.json с диска.
+    /// </summary>
+    public record PlaybackConfig(
+        string? DecoderMode,
+        string? AudioNormalization,
+        int ReadAheadSeconds,
+        int VodReadAheadSeconds);
+
     public interface IStreamService
     {
-        Task<MediaPlayer> CreatePlayerAsync(string streamUrl, bool isVod = false);
+        Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig config, bool isVod = false);
         Task<StreamInfo> GetStreamInfoAsync(string streamUrl);
 
         /// <summary>
