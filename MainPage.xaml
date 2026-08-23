@@ -125,10 +125,11 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Group Filter + сортировка каталога -->
+                <!-- Group Filter + сортировка каталога + вид (список/постеры) -->
                 <Grid Grid.Row="1" Margin="12,8" ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <ComboBox x:Name="GroupFilterComboBox"
@@ -141,6 +142,23 @@
                               Grid.Column="1" Width="150"
                               SelectedIndex="{x:Bind ViewModel.SortModeIndex, Mode=TwoWay}"
                               ToolTipService.ToolTip="Сортировка списка" />
+                    <!-- Переключатель вида: строки ↔ сетка постеров. -->
+                    <Button x:Name="PosterViewToggleButton"
+                            Grid.Column="2" Width="36" Height="32" Padding="0"
+                            Click="PosterViewToggleButton_Click"
+                            ToolTipService.ToolTip="Вид: список / постеры">
+                        <Grid Width="16" Height="16">
+                            <Rectangle x:Name="PosterViewIconList" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Top" Margin="1,1.5,1,0" />
+                            <Rectangle x:Name="PosterViewIconList2" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="1,0,1,0" />
+                            <Rectangle x:Name="PosterViewIconList3" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Bottom" Margin="1,0,1,1.5" />
+                            <Grid x:Name="PosterViewIconGrid" Visibility="Collapsed">
+                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                        </Grid>
+                    </Button>
                 </Grid>
 
                 <!-- Channel List -->
@@ -173,6 +191,43 @@
                         </Style>
                     </ListView.ItemContainerStyle>
                 </ListView>
+
+                <!-- Сетка постеров (вид «Постеры»): та же коллекция DisplayedChannels,
+                     карточки с постером/названием/годом. Виртуализация ItemsWrapGrid +
+                     декодирование картинок уменьшенно (параметр конвертера) — иначе
+                     сетка на 20k элементов съедает память. -->
+                <GridView x:Name="PosterGridView"
+                          Grid.Row="2"
+                          Visibility="Collapsed"
+                          Padding="8"
+                          ItemsSource="{x:Bind ViewModel.DisplayedChannels, Mode=OneWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=TwoWay}"
+                          SelectionMode="Single"
+                          IsItemClickEnabled="True"
+                          ItemClick="ChannelsListView_ItemClick">
+                    <GridView.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid Orientation="Horizontal" ItemWidth="150" />
+                        </ItemsPanelTemplate>
+                    </GridView.ItemsPanel>
+                    <GridView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ChannelViewModel">
+                            <StackPanel Width="140" Spacing="4" Padding="4"
+                                        ToolTipService.ToolTip="{x:Bind Description, Mode=OneWay}"
+                                        ToolTipService.Placement="Mouse">
+                                <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                        CornerRadius="6" Height="200">
+                                    <Image Source="{x:Bind LogoUrl, Converter={StaticResource StringToImageConverter}, ConverterParameter=200, Mode=OneWay}"
+                                           Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Width="140" Height="200" />
+                                </Border>
+                                <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontSize="12"
+                                           TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                           HorizontalAlignment="Center" TextAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </GridView.ItemTemplate>
+                </GridView>
 
                 <!-- Channel Stats -->
                 <Border Grid.Row="3" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
@@ -618,6 +673,18 @@
                                    Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
                                    VerticalAlignment="Center" />
                     </StackPanel>
+                    <!-- Сезон/серия текущего VOD-сериала: сезон — соседние
+                         карточки каталога, серия — список из flick. -->
+                    <ComboBox x:Name="WindowedVodSeasonCombo"
+                              Width="120" FontSize="12"
+                              Visibility="Collapsed"
+                              SelectionChanged="VodSeasonCombo_SelectionChanged"
+                              ToolTipService.ToolTip="Сезон" />
+                    <ComboBox x:Name="WindowedVodEpisodeCombo"
+                              Width="150" FontSize="12"
+                              Visibility="Collapsed"
+                              SelectionChanged="VodEpisodeCombo_SelectionChanged"
+                              ToolTipService.ToolTip="Серия" />
                     <!-- Качество VOD портала — аналог кнопки в fullscreen-панели. -->
                     <Button x:Name="WindowedVodQualityButton"
                             Content="Авто" FontSize="12" Padding="12,4" MinWidth="56"
@@ -997,6 +1064,17 @@
                                        Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
                                        VerticalAlignment="Center" />
                         </StackPanel>
+                    <!-- Сезон/серия текущего VOD-сериала — аналог оконной панели. -->
+                    <ComboBox x:Name="OverlayVodSeasonCombo"
+                              Width="120" FontSize="12"
+                              Visibility="Collapsed"
+                              SelectionChanged="VodSeasonCombo_SelectionChanged"
+                              ToolTipService.ToolTip="Сезон" />
+                    <ComboBox x:Name="OverlayVodEpisodeCombo"
+                              Width="150" FontSize="12"
+                              Visibility="Collapsed"
+                              SelectionChanged="VodEpisodeCombo_SelectionChanged"
+                              ToolTipService.ToolTip="Серия" />
                     <!-- Качество VOD портала: метка текущего качества, меню
                          с вариантами строится в UpdateVodQualityButtons. -->
                     <Button x:Name="OverlayVodQualityButton"

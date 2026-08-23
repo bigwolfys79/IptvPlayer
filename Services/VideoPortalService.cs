@@ -45,6 +45,30 @@ public class PortalStreamResult
     public Dictionary<string, string> Variants { get; set; } = new();
 }
 
+/// <summary>Один эпизод сериала (или единственный фильм) из ответа flick.</summary>
+public class PortalEpisode
+{
+    public string Title { get; set; } = string.Empty;
+    public string StreamUrl { get; set; } = string.Empty;
+    public Dictionary<string, string> Variants { get; set; } = new();
+
+    /// <summary>request-объект эпизода (прозрачная команда, если URL устареет).</summary>
+    public string RequestJson { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Разобранный ответ flick: эпизоды (у фильма — один) плюс шапка сериала
+/// (название/описание/постер приходят в корне ответа и переиспользуются
+/// диалогом выбора серий).
+/// </summary>
+public class PortalFlickResult
+{
+    public string SerialTitle { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? PosterUrl { get; set; }
+    public List<PortalEpisode> Episodes { get; set; } = new();
+}
+
 public interface IVideoPortalService
 {
     /// <summary>
@@ -56,11 +80,11 @@ public interface IVideoPortalService
     Task<List<PortalCatalogItem>> LoadCatalogAsync(PlaylistSource source, CancellationToken ct = default);
 
     /// <summary>
-    /// Запрашивает у портала поток элемента (команда flick): сериалам возвращает
-    /// первый сезон/эпизод, фильмам — ссылку и варианты качества. Вызывается
-    /// лениво при клике; результат не кэшируется.
+    /// Запрашивает у портала эпизоды элемента (команда flick): сериалу возвращает
+    /// список серий с готовыми ссылками (у фильма — один элемент с вариантами
+    /// качества). Вызывается при клике; ссылки одноразовые, не кэшируются.
     /// </summary>
-    Task<PortalStreamResult> ResolveStreamAsync(PlaylistSource source, string requestJson, CancellationToken ct = default);
+    Task<PortalFlickResult> ResolveEpisodesAsync(PlaylistSource source, string requestJson, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -251,44 +275,65 @@ public class VideoPortalService : IVideoPortalService
             categoryTitle, MaxPagesPerCategory);
     }
 
-    public async Task<PortalStreamResult> ResolveStreamAsync(PlaylistSource source, string requestJson, CancellationToken ct = default)
+    public async Task<PortalFlickResult> ResolveEpisodesAsync(PlaylistSource source, string requestJson, CancellationToken ct = default)
     {
         var key = NormalizeKey(source);
         var body = MergeKey(requestJson, key);
         using var response = await PostAsync(source, CommandEndpoint(body), body, ct);
+        var root = response.RootElement;
 
-        // flick сериала возвращает {type:"multistream", items:[{type:"stream",
-        // url}]}; фильм — {type:"stream", url, variants:{...}} в корне.
-        string? url = null;
-        var variants = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        if (FindArray(response.RootElement, "items") is { } streamArray)
+        var result = new PortalFlickResult
         {
-            foreach (var stream in streamArray.EnumerateArray())
+            SerialTitle = GetString(root, "title") ?? string.Empty,
+            Description = GetString(root, "description"),
+            PosterUrl = GetString(root, "img") ?? GetString(root, "imglr")
+        };
+
+        // У сериала эпизоды — в items[] (type "stream" с готовым url); у фильма
+        // items нет — единственный поток лежит в корне ответа.
+        if (FindArray(root, "items") is { } itemArray)
+        {
+            foreach (var item in itemArray.EnumerateArray())
             {
-                if (GetString(stream, "url") is { Length: > 0 } streamUrl)
+                var url = GetString(item, "url");
+                if (string.IsNullOrWhiteSpace(url))
                 {
-                    url ??= streamUrl;
-                    CopyVariants(stream, variants);
-                    break; // Первый сезон/эпизод — по умолчанию.
+                    continue;
                 }
+
+                var variants = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                CopyVariants(item, variants);
+                result.Episodes.Add(new PortalEpisode
+                {
+                    Title = GetString(item, "title") ?? L.T("Эпизод", "Episode"),
+                    StreamUrl = url!,
+                    Variants = variants,
+                    RequestJson = GetObjectAsJson(item, "request") ?? string.Empty
+                });
             }
         }
 
-        if (GetString(response.RootElement, "url") is { Length: > 0 } rootUrl)
+        if (result.Episodes.Count == 0 && GetString(root, "url") is { Length: > 0 } rootUrl)
         {
-            url ??= rootUrl;
-            CopyVariants(response.RootElement, variants);
+            var variants = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            CopyVariants(root, variants);
+            result.Episodes.Add(new PortalEpisode
+            {
+                Title = result.SerialTitle is { Length: > 0 } t ? t : L.T("Воспроизвести", "Play"),
+                StreamUrl = rootUrl,
+                Variants = variants,
+                RequestJson = requestJson
+            });
         }
 
-        if (string.IsNullOrWhiteSpace(url))
+        if (result.Episodes.Count == 0)
         {
             throw new InvalidOperationException(L.T(
                 "Портал не вернул ссылку на поток (см. лог).",
                 "Portal returned no stream URL (see log)."));
         }
 
-        return new PortalStreamResult { Url = url!, Variants = variants };
+        return result;
     }
 
     /// <summary>Копирует объект variants (качество → url), если он есть в ответе.</summary>

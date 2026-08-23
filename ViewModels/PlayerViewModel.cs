@@ -92,6 +92,44 @@ public partial class PlayerViewModel : ObservableObject
     /// <summary>Выбранное качество текущего VOD (null — варианты недоступны).</summary>
     public string? CurrentVodQuality { get; private set; }
 
+    // ===================== Эпизоды VOD портала =====================
+    // Список серий текущего сериала: стартует из PlayChannelAsync (flick) и
+    // живёт в плеере — панели показывают комбобокс, выбор серии переключает
+    // поток без повторного запроса к порталу (ссылки уже получены).
+
+    private List<PortalEpisode> _vodEpisodes = new();
+
+    /// <summary>Эпизоды текущего VOD-сериала (пусто — фильм/эфир).</summary>
+    public IReadOnlyList<PortalEpisode> VodEpisodes { get; private set; } = Array.Empty<PortalEpisode>();
+
+    /// <summary>Индекс играющего эпизода в VodEpisodes (-1 — нет списка).</summary>
+    public int CurrentVodEpisodeIndex { get; private set; } = -1;
+
+    /// <summary>Канал-сериал текущего VOD (для сезонных переключений).</summary>
+    public ChannelViewModel? VodChannel => _vodChannel;
+
+    /// <summary>
+    /// Переключает серию текущего VOD-сериала: стартует поток выбранного
+    /// эпизода (ссылки уже получены flick'ом, без запроса к порталу), список
+    /// эпизодов сохраняется для комбобокса.
+    /// </summary>
+    public async Task PlayVodEpisodeAsync(int index)
+    {
+        if (!IsVodPlaying || _vodChannel == null ||
+            index < 0 || index >= _vodEpisodes.Count)
+        {
+            return;
+        }
+
+        var episode = _vodEpisodes[index];
+        _logger.LogInformation("VOD: серия {Current} → {Next} («{Title}»).",
+            CurrentVodEpisodeIndex + 1, index + 1, episode.Title);
+        await StartPlaybackAsync(_vodChannel, episode.StreamUrl, archiveEntry: null, isVod: true,
+            vodVariants: episode.Variants.Count > 0 ? episode.Variants : null,
+            vodQuality: CurrentVodQuality,
+            vodEpisodes: _vodEpisodes, vodEpisodeIndex: index);
+    }
+
     /// <summary>Изменилось состояние VOD (старт/стоп/смена качества) — обновить кнопки панелей.</summary>
     public event EventHandler? VodStateChanged;
 
@@ -342,7 +380,7 @@ public partial class PlayerViewModel : ObservableObject
     /// archivePlayStart — фактическая точка старта архивного показа (после
     /// перемотки отличается от ArchiveEntry.StartTime).
     /// </summary>
-    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null)
+    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1)
     {
         Stop();
 
@@ -383,6 +421,16 @@ public partial class PlayerViewModel : ObservableObject
                     _vodVariantUrls = vodVariants.ToDictionary(
                         kv => VodQualityLabel(kv.Key), kv => kv.Value, StringComparer.OrdinalIgnoreCase);
                 }
+
+                // Список эпизодов приходит при старте сериала; переключение
+                // качества передаёт null — текущий список сохраняется.
+                if (vodEpisodes is { Count: > 0 })
+                {
+                    _vodEpisodes = vodEpisodes.ToList();
+                    VodEpisodes = _vodEpisodes;
+                    CurrentVodEpisodeIndex = vodEpisodeIndex;
+                }
+
                 VodQualities = OrderVodQualities(_vodVariantUrls.Keys);
                 CurrentVodQuality = VodQualities.Contains(vodQuality) ? vodQuality : null;
 
@@ -407,6 +455,9 @@ public partial class PlayerViewModel : ObservableObject
                 _vodVariantUrls = new Dictionary<string, string>();
                 VodQualities = Array.Empty<string>();
                 CurrentVodQuality = null;
+                _vodEpisodes = new List<PortalEpisode>();
+                VodEpisodes = Array.Empty<PortalEpisode>();
+                CurrentVodEpisodeIndex = -1;
             }
 
             ArchiveEntry = archiveEntry;
@@ -463,6 +514,9 @@ public partial class PlayerViewModel : ObservableObject
         _vodVariantUrls = new Dictionary<string, string>();
         VodQualities = Array.Empty<string>();
         CurrentVodQuality = null;
+        _vodEpisodes = new List<PortalEpisode>();
+        VodEpisodes = Array.Empty<PortalEpisode>();
+        CurrentVodEpisodeIndex = -1;
         ArchiveEntry = null;
         _archiveChannel = null;
         _archivePausedAtUtc = null;
