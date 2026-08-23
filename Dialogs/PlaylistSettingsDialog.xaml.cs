@@ -265,7 +265,7 @@ namespace IptvPlayer.Dialogs
             }
 
             item.Playlist.EpgSources.Add(new EPGSource { Url = url, IsEnabled = true });
-            box.Text = string.Empty;
+            box!.Text = string.Empty;
             await PlaylistEpgSourcesChangedAsync(item.Playlist);
         }
 
@@ -276,7 +276,7 @@ namespace IptvPlayer.Dialogs
                 box.DataContext is PlaylistListItem item)
             {
                 item.Playlist.EpgSources.Add(new EPGSource { Url = box.Text.Trim(), IsEnabled = true });
-                box.Text = string.Empty;
+                box!.Text = string.Empty;
                 await PlaylistEpgSourcesChangedAsync(item.Playlist);
                 e.Handled = true;
             }

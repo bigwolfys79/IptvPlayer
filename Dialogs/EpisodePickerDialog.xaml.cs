@@ -197,7 +197,7 @@ public sealed partial class EpisodePickerDialog : UserControl
 
     private void PlayFirstButton_Click(object sender, RoutedEventArgs e)
     {
-        _result = (CurrentSeason, _flick.Episodes.FirstOrDefault(), _flick.Episodes);
+        _result = (CurrentSeason, _flick.Episodes.FirstOrDefault()!, _flick.Episodes);
         _hostDialog?.Hide();
     }
 
