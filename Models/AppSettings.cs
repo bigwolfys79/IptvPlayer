@@ -140,6 +140,14 @@ public class AppSettings
     /// </summary>
     public int ReadAheadSeconds { get; set; } = 15;
 
+    /// <summary>
+    /// Упреждающая буферизация ВИДЕОТЕКИ (сек, 2–15, по умолчанию 4): фильмы
+    /// портала стартуют через короткий буфер — большой (эфирный, 15 с) на
+    /// медленном CDN VOD держал старт потока по несколько секунд. Меньше —
+    /// быстрее старт, больше — плавнее на нестабильной сети.
+    /// </summary>
+    public int VodReadAheadSeconds { get; set; } = 4;
+
     /// <summary>Сохранённое состояние окна: позиция, размер, максимизация.</summary>
     public WindowPlacement? WindowPlacement { get; set; }
 

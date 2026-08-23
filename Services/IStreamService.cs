@@ -6,7 +6,7 @@ namespace IptvPlayer.Services
 {
     public interface IStreamService
     {
-        Task<MediaPlayer> CreatePlayerAsync(string streamUrl);
+        Task<MediaPlayer> CreatePlayerAsync(string streamUrl, bool isVod = false);
         Task<StreamInfo> GetStreamInfoAsync(string streamUrl);
 
         /// <summary>
