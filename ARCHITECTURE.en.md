@@ -1,0 +1,120 @@
+# How IptvPlayer Works
+
+Technical description of how the application is structured internally: how playback, rendering, EPG, archive, and video library work. Class/method names are real, taken directly from the code. The user-facing feature list is in README.md; here we only cover mechanisms and non-obvious design decisions.
+
+## General Scheme
+
+```
+PlaylistSource (m3u | portal)
+        │  M3UParserService / VideoPortalService
+        ▼
+ChannelRepository ──► MainPage / ViewModels ──► StreamService ──► FFmpegInteropX/FFmpeg ──► MediaPlayerElement
+        │                    │                                                        ▲
+        │                    ├── EpgViewModel ◄── EPGService ◄── XmlTvService            │
+        │                    │        (EPG, reminders)             (XMLTV + cache)        │
+        └── PlaylistCacheService (channel/catalog cache)                                 │
+                                                                                         │
+MediaPlayer.StartPlaybackAsync(channel, url, ...): live / archive (timeshift) / portal VOD ┘
+```
+
+Key classes:
+- `MainPage` (+ partial files `MainPage.FullScreen/Hotkeys/Overlays/StatsOverlay.cs`, ViewModels `MainPageViewModel`, `EpgViewModel`, `PlayerViewModel`, `ChannelViewModel`) — all UI and overlays.
+- `Services/StreamService` — single point of player creation (FFmpegInteropX).
+- `Services/VideoPortalService` — video portal client (catalog + streams).
+- `Services/EPGService` + `XmlTvService` — loading and matching the TV guide.
+
+---
+
+## 1. Application Startup
+
+`MainWindow` → `MainPage` → `InitializeAsync()` (the page is shown immediately, nothing is blocked):
+
+1. Settings are loaded (`SettingsService`, `%LocalAppData%\IptvPlayer\settings.json`); volume is restored from them.
+2. Channels of the active playlist (`PlaylistSource.Type`: `m3u` — parser, `portal` — portal catalog, both use `PlaylistCacheService` cache) are placed into `ChannelRepository`, assigned sequential `Id` values, and populate `ViewModel.Channels`.
+3. `SelectedChannel` is assigned immediately, `Task.Yield()` lets the UI render the list; then EPG is loaded in the background and auto-resume of the last channel is triggered.
+
+## 2. Rendering and Input
+
+Layers of the right area are set by `Canvas.ZIndex`: video (1) → header/control panel (2) → EPG overlay (3).
+
+**Channel list** (`ChannelItemTemplate`, shared between windowed and fullscreen overlay): logo (28x28, `StringToImageSourceConverter` with system cache) → archive indicator dot (`HasArchive`) → name; tooltip with description (for portal items).
+
+**Fullscreen mode** (`MainPage.FullScreen.cs` → `MainWindow.SetOsFullScreen`): OS presenter `AppWindowPresenterKind.FullScreen` stretches the window to fill the entire monitor (verified by measurements — the client area is exactly screen-sized); content wrapper is done manually: hiding the TitleBar row, collapsing channel list columns, zeroing out the decorative `Padding` of the video container (`VideoAreaBorder`, 12 px in windowed mode — without zeroing, bands appeared at the edges of the screen), rebuilding the video layout (`ForceVideoRelayout` — after changing the presenter, the DComp island draws using the old coordinates).
+
+**Overlays**: top header (channel name, current program + description, progress, archive/sleep timer indicators) and bottom control panel (record, pause, seek, VOD quality, volume, EPG, fullscreen) — in both windowed and fullscreen modes; they appear on mouse movement and hide after 3 seconds (`_overlayHideTimer`); in fullscreen, the cursor is hidden along with them (`CursorHider`, invisible `CursorGrid`).
+
+**Keyboard** (`OnPagePreviewKeyDown`, MainPage): the handler is attached to the **root XamlRoot element** — the tunneling event goes from the root to the focused element, and the window hosts the page inside a Grid+Frame, so subscribing on the page itself missed keys when nothing inside the page had focus. The root catches everything; open ContentDialogs are excluded by a focus check. The full list of hotkeys is in README; here the important thing is this routing rule and that arrows/PgUp/PgDn are not intercepted when navigation elements have focus (`IsNavigationControlFocused`, `VisualTreeHelper` traversal).
+
+## 3. Playlists and Video Library
+
+**Sources** — a `PlaylistSource` list in settings (`Dialogs/PlaylistSettingsDialog`), switching is done by `MainPage.SwitchPlaylistAsync`: stopping the player, reloading channels, favorites/groups/filter, EPG of the new playlist. Each source has its own set of EPG sources and its own auto-resume.
+
+**M3U** (`M3UParserService`): classic parsing of `#EXTINF` (tvg-logo/tvg-id/tvg-rec).
+
+**Portal** (`Services/VideoPortalService`, sources with `Type == "portal"`):
+- Protocol — POST requests `{baseURL}/{command}.json` with JSON body; authentication — `"key"` field in the body of each request; the `flicks` command returns paginated items (server limit — 300, next page marker `{type:"next"}`), `flick` — stream and quality options (480/720/1080/auto as separate links).
+- The client is "transparent": request objects from responses are passed to the server as-is, all fields are optional, unknown ones are ignored — new protocol commands do not require client changes. Each request/response is logged (truncated at 8 KB) — the protocol is refined based on logs.
+- The catalog is cached as a playlist (`PlaylistCacheService`), category = group, and items store the request object (`PortalRequest`) instead of a link — links are short-lived.
+- Seasons are separate catalog cards: `ParsePortalSeasonName` extracts the base name and season number(s) from the title, groups are built lazily and invalidated when channels change (`GetPortalSeasonSiblings`). Series episodes — a flat list from flick ("Episode N"), stored in `PlayerViewModel.VodEpisodes` and survives quality switches; switching episodes — `PlayVodEpisodeAsync` without a portal request, switching seasons — a full `PlayChannelAsync(interactive:false)` of the adjacent card.
+- Playback (`MainPageViewModel.PlayChannelAsync`): on click, `flick` is executed (lazily, without caching), starts in VOD mode (`PlayerViewModel.IsVodPlaying`) — pause without restarting the stream, seeking on the fly via `PlaybackSession.Position`, quality selection — restart with a new link and position transfer.
+
+## 4. EPG (XMLTV)
+
+`EPGService` loads sources of the active playlist (own list, fallback — global), merges them (`EpgSourceMerger`: the first source in the list wins when programs overlap in time) and matches them to channels: by `tvg-id` from the playlist → by a "name → tvg-id" lookup table (`Assets/epg-name-map.json`) → by normalized name (`EpgNameNormalizer`, timeshift suffixes are taken into account).
+
+`XmlTvService` parses XMLTV with a ±3 day window (programs outside the window are not parsed at all — this is the main savings for feeds with hundreds of thousands of programs). **Important**: iterating over `programme`/`channel` children is done via the main reader with exit exactly at the closing tag — `ReadElementContentAsString()` on a reader from `ReadSubtree()` in .NET "eats" subsequent siblings, which for a long time caused only title to be read (desc/category/icons were lost). Cache of parsed feeds — MemoryPack+Brotli (`EpgCacheStore`, format version is invalidated when serializable fields change).
+
+The current program of a channel (`CurrentProgramTitle/CurrentProgramDescription`) is recalculated by a timer; clicking a program that has started launches the archive.
+
+## 5. Archive (timeshift)
+
+Indicator — `tvg-rec`/`catchup-days` from the playlist (`ChannelViewModel.CatchupDays`). Launch: `ArchiveUrlBuilder.BuildUrl` adds `utc`/`lutc` parameters to the live URL — the provider returns a shifted HLS playlist.
+
+HLS-timeshift is not searched on the fly, so seeking is a stream restart with a new starting point; position is calculated in `PlayerViewModel` based on wall clock time from the start of playback minus total pause time, not beyond the live edge. (Portal VOD, unlike archive, is seeked by the engine on the fly — see §3.) The user mechanics of the seek bar are described in the README.
+
+## 6. Playback
+
+`StreamService.CreatePlayerAsync` — single point of player creation (a new `MediaPlayer` for each channel):
+
+1. **FFmpegInteropX + FFmpeg** — demuxing and decoding (the built-in Windows HLS stack does not decode HEVC in MPEG-TS, and AC-3 was removed from the system starting with 24H2). Configuration: decoder mode from settings (`VideoDecoderMode.Automatic` = GPU with fallback / `ForceFFmpegSoftwareDecoder` by default), `DownmixAudioStreamsToStereo = false` (multichannel sound is downmixed by the Windows audio engine — FFmpeg downmix is quieter), lookahead buffering 15s / 32 MB.
+2. **Source lifetime**: `FFmpegMediaSource` is tied to the player via `ConditionalWeakTable` — without this, GC would collect the source mid-playback (stutters → audio loss → crash 0xC00D36B6).
+3. **Fallback**: if FFmpeg couldn't open the URL — system `MediaSource.CreateFromUri`.
+4. **Diagnostics**: a snapshot of stream parameters is placed into `CurrentDiagnostics`, the stats overlay (Ctrl+J) adds live metrics on a one-second tick.
+5. Player errors are logged with codes (`MediaPlayer.MediaFailed`).
+
+**Pause** — only archive and portal VOD (spacebar, `ToggleArchivePause`): live broadcast cannot be paused, this is a deliberate limitation. For VOD, the same toggle works without archive clocks.
+
+**Application shutdown**: a subscription to `MainWindow.Closed` stops/releases the player and recordings and calls `Environment.Exit(0)` — otherwise the media pipeline would keep the process alive for several seconds.
+
+## 7. On-Disk Data
+
+| What | Where |
+|---|---|
+| Settings (sources, portals, frequencies, volume, decoder, favorites) | `%LocalAppData%\IptvPlayer\settings.json` |
+| Channel/catalog cache — one file per playlist (`playlist_cache_{id}.json`) | `%LocalAppData%\IptvPlayer\` |
+| Parsed XMLTV source cache (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
+| Recordings (ffmpeg, MPEG-TS without transcoding) | "Videos\IptvPlayer" or configured folder |
+| Log (Serilog, daily rolling, 14 days) | `%LocalAppData%\IptvPlayer\logs\` |
+
+In MSIX mode (Debug), `%LocalAppData%` paths are virtualized into the package; in unpackaged mode (Release/Inno), they are used directly — the code works identically in both.
+
+## 8. Large Catalog Performance
+
+Portal catalogs have 20k+ items; key decisions:
+- `FilterChannels` replaces `DisplayedChannels` entirely (one ItemsSource change instead of thousands of CollectionChanged events). Selection in lists uses **OneWay + SelectionChanged**: TwoWay binding was overwriting `SelectedChannel` to null when clearing the hidden view's ItemsSource (video is bound to `SelectedChannel.IsPlaying` and would disappear); after rebuilding, selection is restored to controls by MainPage via the FilterChanged event.
+- The grouped source for the fullscreen overlay (`RefreshOverlayChannelGroups`) is built only when the overlay is visible; on entering fullscreen — explicitly.
+- The hidden list/poster grid view is disconnected from data (ItemsSource = null).
+- Movie start: instantly from the catalog link, quality options are loaded by a background flick and applied (`PlayerViewModel.SetVodVariants`); series wait for flick (need the episode list).
+- Buffer: live — `ReadAheadSeconds` (15s / 32+ MB), VOD — separate `VodReadAheadSeconds` (4s / 8+ MB): a large buffer on slow CDN was keeping VOD stream startup at several seconds.
+
+## 9. Application Updates
+
+Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): background check 2 minutes after startup (no more than once per day — `AppSettings.LastUpdateCheckUtc`), GitHub API parsing is the same as the manual button in "About". The downloaded installer is verified by SHA256 (`assets[].digest`, if the source provided it). User consent — ContentDialog; installation — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` run from the shell (UAC: Program Files), the application closes normally, and after the silent install it is relaunched (a separate `[Run]` entry with `Check: WizardSilent` in .iss — does not affect interactive installs). While recordings are in progress, installation is deferred until the `RecordingsChanged` event. Any error is silent: the old version continues to work (Inno installs over it).
+
+## 10. Logging and DI
+
+**Serilog.** The static logger is configured first thing in the `App` constructor (before `InitializeComponent` — global exception handlers must already be able to write to the log): Debug output (always) + file sink with daily rolling. Classes receive `ILogger<T>` via constructor (source in the log = class name); the file log is toggled off at runtime via a `LoggingLevelSwitch` in settings.
+
+**DI.** `App` — composition root: `ServiceCollection` is assembled in the constructor, the provider is available as `App.Services`. All services and ViewModels are singletons (one session, one window). Pages resolve dependencies via `App.Services.GetRequiredService` in their constructors — WinUI does not allow injecting into XAML element constructors.
+
+**MVVM conventions.** Properties use manual `SetProperty` instead of `[ObservableProperty]` (the generator does not create WinRT projectors — MVVMTK0045, important for AOT/ABI); actions use `[RelayCommand]`; MainPage code-behind is split into partial files by zones.
