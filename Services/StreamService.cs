@@ -31,7 +31,6 @@ namespace IptvPlayer.Services
         // канала (Dispose старого плеера) источник освобождается сам.
         private static readonly ConditionalWeakTable<MediaPlayer, FFmpegMediaSource> LiveSources = new();
 
-        private readonly ISettingsService _settingsService;
         private readonly ILogger<StreamService> _logger;
 
         // Для измерения скорости загрузки
@@ -44,9 +43,8 @@ namespace IptvPlayer.Services
         /// </summary>
         public PlaybackDiagnostics? CurrentDiagnostics { get; private set; }
 
-        public StreamService(ISettingsService settingsService, ILogger<StreamService> logger)
+        public StreamService(ILogger<StreamService> logger)
         {
-            _settingsService = settingsService;
             _logger = logger;
         }
 
@@ -96,7 +94,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, bool isVod = false)
+        public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig streamConfig, bool isVod = false)
         {
             MediaPlayer player;
             try
@@ -108,18 +106,16 @@ namespace IptvPlayer.Services
                 throw new InvalidOperationException($"Не удалось создать плеер для потока '{streamUrl}'.", ex);
             }
 
-            var settings = await _settingsService.LoadAsync();
-
             try
             {
-                var config = new MediaSourceConfig();
+            var ffmpegConfig = new MediaSourceConfig();
 
                 // Режим декодирования из настроек (переключается в диалоге
                 // настроек): Hardware = GPU с автоматическим откатом на CPU
                 // (Automatic), Software = принудительно процессор. Неверное
                 // значение настроек трактуем как Software — рабочий по умолчанию.
-                config.Video.VideoDecoderMode =
-                    string.Equals(settings.DecoderMode, "Hardware", StringComparison.OrdinalIgnoreCase)
+                ffmpegConfig.Video.VideoDecoderMode =
+                    string.Equals(streamConfig.DecoderMode, "Hardware", StringComparison.OrdinalIgnoreCase)
                         ? VideoDecoderMode.Automatic
                         : VideoDecoderMode.ForceFFmpegSoftwareDecoder;
 
@@ -129,14 +125,14 @@ namespace IptvPlayer.Services
                 // использовалось раньше (все многоканальные каналы стали
                 // тише). Многоканальный PCM уходит в Windows как есть —
                 // система сводит его сама, как в системном плеере.
-                config.Audio.DownmixAudioStreamsToStereo = false;
+                ffmpegConfig.Audio.DownmixAudioStreamsToStereo = false;
 
                 // Нормализация громкости (переключается в настройках):
                 // тихие каналы подтягиваются к общему уровню.
-                var normFilter = GetAudioFilters(settings.AudioNormalization);
+                var normFilter = GetAudioFilters(streamConfig.AudioNormalization);
                 if (!string.IsNullOrEmpty(normFilter))
                 {
-                    config.Audio.FFmpegAudioFilters = normFilter;
+                    ffmpegConfig.Audio.FFmpegAudioFilters = normFilter;
                 }
 
                 // Упреждающая буферизация: провайдер отдаёт HLS сегментами по
@@ -147,7 +143,7 @@ namespace IptvPlayer.Services
                 // из настроек (слайдер "Буфер видео"): больше — плавнее на
                 // нестабильной сети, но дальше от эфира. Размер подбирается с
                 // запасом под 4K-битрейт (~4 МБ/с) и не меньше 32 МБ.
-                var readAheadSeconds = Math.Clamp(settings.ReadAheadSeconds, 5, 120);
+                var readAheadSeconds = Math.Clamp(streamConfig.ReadAheadSeconds, 5, 120);
                 var readAheadBytes = Math.Max(32 * 1024 * 1024, readAheadSeconds * 4 * 1024 * 1024);
                 if (isVod)
                 {
@@ -156,13 +152,13 @@ namespace IptvPlayer.Services
                     // секунд — плеер молча набивал буфер до порога. Здесь
                     // отдельная, меньшая глубина, настраиваемая независимо
                     // (VodReadAheadSeconds, слайдер «Буфер видеотеки»).
-                    readAheadSeconds = Math.Clamp(settings.VodReadAheadSeconds, 2, 15);
+                    readAheadSeconds = Math.Clamp(streamConfig.VodReadAheadSeconds, 2, 15);
                     readAheadBytes = Math.Max(8 * 1024 * 1024, readAheadSeconds * 2 * 1024 * 1024);
                 }
 
-                config.General.ReadAheadBufferEnabled = true;
-                config.General.ReadAheadBufferDuration = TimeSpan.FromSeconds(readAheadSeconds);
-                config.General.ReadAheadBufferSize = readAheadBytes;
+                ffmpegConfig.General.ReadAheadBufferEnabled = true;
+                ffmpegConfig.General.ReadAheadBufferDuration = TimeSpan.FromSeconds(readAheadSeconds);
+                ffmpegConfig.General.ReadAheadBufferSize = readAheadBytes;
 
                 // HTTP-протокол FFmpeg: провайдер отдаёт сегменты попеременно
                 // с двух серверов, поэтому keepalive-переиспользование
@@ -172,19 +168,21 @@ namespace IptvPlayer.Services
                 // затыкается и воспроизведение. multiple_requests=0 — сразу
                 // новое соединение без обречённой попытки; reconnect* —
                 // авто-восстановление при обрывах сети.
-                config.FFmpegOptions["multiple_requests"] = "0";
+                ffmpegConfig.FFmpegOptions["multiple_requests"] = "0";
                 // http_persistent — опция именно HLS-демуксера: он сам
-                // включает keepalive для сегментов, multiple_requests на
-                // внешний контекст не влияет.
-                config.FFmpegOptions["http_persistent"] = "0";
-                config.FFmpegOptions["reconnect"] = "1";
-                config.FFmpegOptions["reconnect_streamed"] = "1";
-                config.FFmpegOptions["reconnect_delay_max"] = "7";
+                // включает keepalive для сегментов. Для VOD включаем
+                // persistent connections — сегменты идут с одного CDN-
+                // сервера, keepalive убирает оверхед TCP+TLS на каждом
+                // сегменте и даёт буферу время набиться.
+                ffmpegConfig.FFmpegOptions["http_persistent"] = isVod ? "1" : "0";
+                ffmpegConfig.FFmpegOptions["reconnect"] = "1";
+                ffmpegConfig.FFmpegOptions["reconnect_streamed"] = "1";
+                ffmpegConfig.FFmpegOptions["reconnect_delay_max"] = "7";
 
-                var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(streamUrl, config);
+                var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(streamUrl, ffmpegConfig);
                 player.Source = ffmpegSource.CreateMediaPlaybackItem();
                 LiveSources.Add(player, ffmpegSource);
-                CurrentDiagnostics = BuildDiagnostics(ffmpegSource, config);
+                CurrentDiagnostics = BuildDiagnostics(ffmpegSource, ffmpegConfig);
             }
             catch (Exception ex)
             {
