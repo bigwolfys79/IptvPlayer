@@ -40,6 +40,19 @@
                     <TextBlock x:Name="BufferValueText"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <!-- Буфер видеотеки (портал): отдельно от эфирного —
+                         короткий ради быстрого старта фильмов. -->
+                    <TextBlock x:Name="VodBufferHeader" Text="Буфер видеотеки" FontSize="13" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="VodBufferHint"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <Slider x:Name="VodBufferSlider"
+                            Minimum="2" Maximum="15" StepFrequency="1"
+                            Width="320" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="VodBufferValueText"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
 
                 <!-- Качество -->

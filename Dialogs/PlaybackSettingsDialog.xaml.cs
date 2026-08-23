@@ -46,6 +46,7 @@ namespace IptvPlayer.Dialogs
             // стреляет ещё внутри InitializeComponent — до создания подписи
             // BufferValueText ниже по разметке (NRE, диалог не открывался).
             BufferSlider.ValueChanged += BufferSlider_ValueChanged;
+            VodBufferSlider.ValueChanged += BufferSlider_ValueChanged;
         }
 
         public async Task ShowAsync(XamlRoot xamlRoot)
@@ -95,9 +96,16 @@ namespace IptvPlayer.Dialogs
                 string.Equals(settings.DecoderMode, "Hardware", StringComparison.OrdinalIgnoreCase) ? 0 : 1;
 
             // Буфер видео.
-            BufferHeader.Text = L.T("Буферизация", "Buffering");
-            BufferHint.Text = L.T("Применится при следующем переключении канала.", "Applied on next channel switch.");
+            BufferHeader.Text = L.T("Буфер ТВ-каналов (прямой эфир)", "Live TV buffer");
+            BufferHint.Text = L.T(
+                "Глубина буфера для ТВ-каналов прямого эфира. Больше — плавнее на нестабильной сети, но дальше от живого эфира. Применится при следующем переключении канала.",
+                "Buffer depth for live TV channels. Higher — smoother on unstable networks, but further behind the live edge. Applied on next channel switch.");
             BufferSlider.Value = Math.Clamp(settings.ReadAheadSeconds, 5, 60);
+            VodBufferHeader.Text = L.T("Буфер видеотеки (фильмы портала)", "Video library buffer (portal movies)");
+            VodBufferHint.Text = L.T(
+                "Тот же буфер, но для фильмов и сериалов видеотеки. Меньше — быстрее начинается фильм, больше — меньше пауз при просмотре. Применится при следующем запуске фильма.",
+                "Same buffer, but for video library movies and series. Lower — movies start faster, higher — fewer pauses during playback. Applied on next movie start.");
+            VodBufferSlider.Value = Math.Clamp(settings.VodReadAheadSeconds, 2, 15);
             UpdateBufferLabel();
 
             // Качество видео.
@@ -167,8 +175,11 @@ namespace IptvPlayer.Dialogs
         private void UpdateBufferLabel()
         {
             BufferValueText.Text = L.T(
-                $"Буфер: {BufferSlider.Value:F0} c (задержка от эфира ~{BufferSlider.Value:F0} c)",
-                $"Buffer: {BufferSlider.Value:F0} s (live delay ~{BufferSlider.Value:F0} s)");
+                $"ТВ: буфер {BufferSlider.Value:F0} c (задержка от эфира ~{BufferSlider.Value:F0} c)",
+                $"Live TV: buffer {BufferSlider.Value:F0} s (live delay ~{BufferSlider.Value:F0} s)");
+            VodBufferValueText.Text = L.T(
+                $"Видеотека: буфер {VodBufferSlider.Value:F0} c",
+                $"Video library: buffer {VodBufferSlider.Value:F0} s");
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -184,6 +195,7 @@ namespace IptvPlayer.Dialogs
             }
 
             appSettings.ReadAheadSeconds = (int)Math.Clamp(BufferSlider.Value, 5, 60);
+            appSettings.VodReadAheadSeconds = (int)Math.Clamp(VodBufferSlider.Value, 2, 15);
 
             if (QualityCombo.SelectedItem is ComboBoxItem { Tag: int quality })
             {

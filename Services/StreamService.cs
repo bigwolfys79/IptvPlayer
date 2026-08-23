@@ -96,7 +96,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl)
+        public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, bool isVod = false)
         {
             MediaPlayer player;
             try
@@ -148,11 +148,21 @@ namespace IptvPlayer.Services
                 // нестабильной сети, но дальше от эфира. Размер подбирается с
                 // запасом под 4K-битрейт (~4 МБ/с) и не меньше 32 МБ.
                 var readAheadSeconds = Math.Clamp(settings.ReadAheadSeconds, 5, 120);
+                var readAheadBytes = Math.Max(32 * 1024 * 1024, readAheadSeconds * 4 * 1024 * 1024);
+                if (isVod)
+                {
+                    // VOD (фильмы портала): эфирный буфер (15 с / 32+ МБ) на
+                    // медленном CDN VOD держал старт потока по несколько
+                    // секунд — плеер молча набивал буфер до порога. Здесь
+                    // отдельная, меньшая глубина, настраиваемая независимо
+                    // (VodReadAheadSeconds, слайдер «Буфер видеотеки»).
+                    readAheadSeconds = Math.Clamp(settings.VodReadAheadSeconds, 2, 15);
+                    readAheadBytes = Math.Max(8 * 1024 * 1024, readAheadSeconds * 2 * 1024 * 1024);
+                }
+
                 config.General.ReadAheadBufferEnabled = true;
                 config.General.ReadAheadBufferDuration = TimeSpan.FromSeconds(readAheadSeconds);
-                config.General.ReadAheadBufferSize = Math.Max(
-                    32 * 1024 * 1024,
-                    readAheadSeconds * 4 * 1024 * 1024);
+                config.General.ReadAheadBufferSize = readAheadBytes;
 
                 // HTTP-протокол FFmpeg: провайдер отдаёт сегменты попеременно
                 // с двух серверов, поэтому keepalive-переиспользование

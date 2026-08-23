@@ -278,7 +278,24 @@ public sealed partial class MainPage : Page
             });
         ViewModel.FilterChanged += (s, e) =>
         {
-            DispatcherQueue.TryEnqueue(RefreshOverlayChannelGroups);
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                // После замены коллекции (FilterChannels) выделение в
+                // контролах сбрасывается визуально — OneWay-привязка не
+                // перепушит (SelectedChannel не менялся). Возвращаем сами.
+                _syncingListSelection = true;
+                try
+                {
+                    ChannelsListView.SelectedItem = ViewModel.SelectedChannel;
+                    PosterGridView.SelectedItem = ViewModel.SelectedChannel;
+                }
+                finally
+                {
+                    _syncingListSelection = false;
+                }
+
+                RefreshOverlayChannelGroups();
+            });
             // Пересборка DisplayedChannels (фильтр, поиск, фоновая загрузка
             // EPG) сбрасывает прокрутку списка наверх — возвращаем выбранный
             // канал в видимую область, иначе играющий канал оказывается
@@ -1091,6 +1108,20 @@ public sealed partial class MainPage : Page
         PosterViewIconList2.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
         PosterViewIconList3.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
         PosterViewIconGrid.Visibility = posters ? Visibility.Visible : Visibility.Collapsed;
+
+        // Скрытый вид отсоединяем от данных: невидимый ItemsControl всё равно
+        // обрабатывает смены ItemsSource (а на 20k+ элементов это заметно).
+        // Очередная смена DisplayedChannels вернёт источник через x:Bind.
+        if (posters)
+        {
+            ChannelsListView.ItemsSource = null;
+            PosterGridView.ItemsSource = ViewModel.DisplayedChannels;
+        }
+        else
+        {
+            PosterGridView.ItemsSource = null;
+            ChannelsListView.ItemsSource = ViewModel.DisplayedChannels;
+        }
     }
 
     private async void PosterViewToggleButton_Click(object sender, RoutedEventArgs e)
@@ -1439,6 +1470,14 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void RefreshOverlayChannelGroups()
     {
+        // Пересборка сгруппированного источника на 20k+ элементов дорогая —
+        // делаем её только когда полноэкранный оверлей реально виден; при
+        // входе в fullscreen SetFullScreenMode вызывает этот метод явно.
+        if (FullScreenOverlay.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
         var favorites = new List<ChannelViewModel>();
 
         // Dictionary держит ключи без учёта регистра (дубликаты групп
@@ -1675,6 +1714,33 @@ public sealed partial class MainPage : Page
 
         OverlayVodQualityButton.Flyout = menu;
         WindowedVodQualityButton.Flyout = menuCopy;
+    }
+
+    // ===================== Выбор канала в списке/сетке =====================
+
+    /// <summary>
+    /// Защита от петли: OneWay-привязка SelectedItem толкает выделение в
+    /// контролы, их SelectionChanged не должен писать обратно то же значение.
+    /// </summary>
+    private bool _syncingListSelection;
+
+    /// <summary>
+    /// Выбор в списке каналов/сетке постеров → SelectedChannel. Замена TwoWay
+    /// привязки: TwoWay затирал SelectedChannel в null при очистке ItemsSource
+    /// скрытого вида (переключение список↔постеры) — видео исчезало.
+    /// </summary>
+    private void ChannelList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingListSelection)
+        {
+            return;
+        }
+
+        if (sender is Microsoft.UI.Xaml.Controls.Primitives.Selector { SelectedItem: ChannelViewModel channel } &&
+            !ReferenceEquals(channel, ViewModel.SelectedChannel))
+        {
+            ViewModel.SelectedChannel = channel;
+        }
     }
 
     private async void VodQualityMenuItem_Click(object sender, RoutedEventArgs e)

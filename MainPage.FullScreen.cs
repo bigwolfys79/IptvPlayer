@@ -92,12 +92,12 @@ public sealed partial class MainPage
             SyncVolumeSliders(Player.Player?.Volume ?? Player.LastUserVolume ?? 1.0);
 
             // Сначала показываем оверлей. Группированный источник для оверлейного
-            // списка НЕ пересобираем здесь: он уже актуален — RefreshOverlayChannelGroups
-            // вызывается по событию FilterChanged при любом изменении DisplayedChannels.
-            // Лишняя пересборка сбрасывала выделение и прокрутку (а при первом
-            // входе оставляла список пустым).
+            // списка пересобираем ЗДЕСЬ: в оконном режиме RefreshOverlayChannelGroups
+            // по FilterChanged пропускается при скрытом оверлее (оптимизация
+            // больших каталогов) — при входе в fullscreen нужен свежий.
             _lastOverlayPointerPosition = new Windows.Foundation.Point(-1, -1);
             ShowFullScreenOverlay();
+            RefreshOverlayChannelGroups();
 
             // БИСЕКЦИЯ, шаг 2: входной нудж включён (проверяем связку).
             _ = NudgePointerDelayedAsync();

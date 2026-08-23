@@ -165,11 +165,12 @@
                 <ListView x:Name="ChannelsListView" 
                           Grid.Row="2"
                           ItemsSource="{x:Bind ViewModel.DisplayedChannels, Mode=OneWay}"
-                          SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=TwoWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=OneWay}"
                           ItemTemplate="{StaticResource ChannelItemTemplate}"
                           SelectionMode="Single"
                           IsItemClickEnabled="True"
-                          ItemClick="ChannelsListView_ItemClick">
+                          ItemClick="ChannelsListView_ItemClick"
+                          SelectionChanged="ChannelList_SelectionChanged">
                     <!-- Выделение заметнее стандартного: сплошная синяя
                          подложка вместо полупрозрачной, белый текст.
                          Это theme-ки ListViewItemPresenter — переопределяем
@@ -201,10 +202,11 @@
                           Visibility="Collapsed"
                           Padding="8"
                           ItemsSource="{x:Bind ViewModel.DisplayedChannels, Mode=OneWay}"
-                          SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=TwoWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=OneWay}"
                           SelectionMode="Single"
                           IsItemClickEnabled="True"
-                          ItemClick="ChannelsListView_ItemClick">
+                          ItemClick="ChannelsListView_ItemClick"
+                          SelectionChanged="ChannelList_SelectionChanged">
                     <GridView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <ItemsWrapGrid Orientation="Horizontal" ItemWidth="150" />

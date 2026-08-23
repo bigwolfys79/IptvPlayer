@@ -387,9 +387,13 @@ public partial class PlayerViewModel : ObservableObject
         StreamError = null;
         IsBuffering = true;
 
+        var startWait = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            var player = await _streamService.CreatePlayerAsync(streamUrl);
+            var player = await _streamService.CreatePlayerAsync(streamUrl, isVod);
+            _logger.LogInformation(
+                "ЗАПУСК-ТАЙМИНГ: CreatePlayerAsync «{Channel}» занял {Ms:F0} мс.",
+                channel.Name, startWait.Elapsed.TotalMilliseconds);
             player.MediaFailed += OnMediaFailed;
 
             // Громкость, выставленная пользователем, переносится на каждый
@@ -585,6 +589,27 @@ public partial class PlayerViewModel : ObservableObject
         IsArchivePlaying = false;
         ArchiveEntry = null;
         ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Подкладывает варианты качества в уже играющий VOD (фоновый flick для
+    /// фильма, стартовавшего мгновенно по ссылке каталога). Кнопка качества
+    /// появляется по событию VodStateChanged.
+    /// </summary>
+    public void SetVodVariants(Dictionary<string, string> variants)
+    {
+        if (!IsVodPlaying || variants.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var pair in variants)
+        {
+            _vodVariantUrls[VodQualityLabel(pair.Key)] = pair.Value;
+        }
+
+        VodQualities = OrderVodQualities(_vodVariantUrls.Keys);
+        VodStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>

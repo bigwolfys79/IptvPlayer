@@ -520,18 +520,14 @@ public partial class MainPageViewModel : ObservableObject
             _ => filtered.OrderByDescending(c => c.IsFavorite)
         };
 
-        // Clear() затирает выделение ListView (SelectedItem TwoWay уходит в
-        // null), а с ним SelectedChannel — на него завязана видимость видео
-        // (SelectedChannel.IsPlaying у MediaPlayerElement): получался
-        // «канал играет, но только звук». Если выбранный канал остался в
-        // отфильтрованном списке — возвращаем выбор.
         var selected = SelectedChannel;
 
-        DisplayedChannels.Clear();
-        foreach (var channel in filtered)
-        {
-            DisplayedChannels.Add(channel);
-        }
+        // Замена коллекции целиком: одна смена ItemsSource вместо тысяч
+        // событий CollectionChanged — на каталоге в 20k+ элементов это
+        // главное, что держало UI при пересборке. Выделение в контролах
+        // восстанавливает MainPage по событию FilterChanged (OneWay-привязка
+        // выделения не перепушит сама — SelectedChannel не меняется).
+        DisplayedChannels = new ObservableCollection<ChannelViewModel>(filtered);
 
         if (selected != null && SelectedChannel == null && DisplayedChannels.Contains(selected))
         {
@@ -1052,6 +1048,21 @@ public partial class MainPageViewModel : ObservableObject
                 return false;
             }
 
+            // Фильм с готовой ссылкой каталога стартует СРАЗУ — без ожидания
+            // flick-запроса (он и делал старт «долгим»). Варианты качества
+            // догружаются фоном (LoadPortalVariantsInBackgroundAsync) и
+            // подкладываются в играющий плеер.
+            if (!string.IsNullOrWhiteSpace(channel.StreamUrl))
+            {
+                await Player.StartPlaybackAsync(channel, channel.StreamUrl!, archiveEntry: null, isVod: true);
+                if (!string.IsNullOrWhiteSpace(channel.PortalRequest))
+                {
+                    _ = LoadPortalVariantsInBackgroundAsync(playlist, channel);
+                }
+
+                return true;
+            }
+
             PortalFlickResult flick;
             Player.IsBuffering = true;
             try
@@ -1119,6 +1130,30 @@ public partial class MainPageViewModel : ObservableObject
 
         await Player.PlayLiveAsync(channel);
         return !string.IsNullOrWhiteSpace(channel.StreamUrl);
+    }
+
+    /// <summary>
+    /// Фоновая догрузка вариантов качества для фильма, стартовавшего
+    /// мгновенно по ссылке каталога: результат подкладывается в играющий
+    /// плеер (SetVodVariants), если пользователь ещё на этом фильме.
+    /// </summary>
+    private async Task LoadPortalVariantsInBackgroundAsync(Models.PlaylistSource playlist, ChannelViewModel channel)
+    {
+        try
+        {
+            var flick = await _videoPortalService.ResolveEpisodesAsync(playlist, channel.PortalRequest!);
+            if (Player.IsVodPlaying && ReferenceEquals(Player.VodChannel, channel) &&
+                flick.Episodes.Count > 0)
+            {
+                Player.SetVodVariants(flick.Episodes[0].Variants);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Не критично: фильм уже играет по ссылке каталога, просто без
+            // выбора качества (кнопка не появится).
+            _logger.LogDebug(ex, "Фоновая догрузка вариантов качества для «{Item}» не удалась.", channel.Name);
+        }
     }
 
     /// <summary>
