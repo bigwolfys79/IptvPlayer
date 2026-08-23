@@ -147,8 +147,9 @@ public sealed partial class MainPage
 
             case VirtualKey.Space:
                 // Пауза живого эфира намеренно не поддерживается — как и кнопка
-                // паузы в панелях, пробел работает только на архиве.
-                if (Player.IsArchivePlaying && Player.Player != null)
+                // паузы в панелях. Пробел работает на архиве и на VOD портала
+                // (VOD перематывается/паузится самим движком без рестарта).
+                if ((Player.IsArchivePlaying || Player.IsVodPlaying) && Player.Player != null)
                 {
                     ViewModel.ToggleArchivePauseCommand.Execute(null);
                     e.Handled = true;

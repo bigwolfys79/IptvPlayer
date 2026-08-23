@@ -127,6 +127,8 @@ namespace IptvPlayer.Dialogs
             AddPlaylistHeader.Text = L.T("Добавить плейлист", "Add playlist");
             PlaylistNameBox.PlaceholderText = L.T("Имя (необязательно)", "Name (optional)");
             PlaylistUrlBox.PlaceholderText = L.T("URL плейлиста M3U/M3U8", "M3U/M3U8 playlist URL");
+            PortalKeyBox.PlaceholderText = L.T("Ключ портала (portal::[key:...])", "Portal key (portal::[key:...])");
+            PortalKeyBox.Header = L.T("Ключ портала", "Portal key");
             AddPlaylistButton.Content = L.T("Добавить", "Add");
             AddPlaylistFileButton.Content = L.T("Выбрать файл...", "Pick file...");
             PlaylistRefreshHeader.Text = L.T("Частота обновления плейлистов", "Playlist refresh rate");
@@ -137,6 +139,12 @@ namespace IptvPlayer.Dialogs
 
             PlaylistUrlBox.Text = string.Empty;
             PlaylistNameBox.Text = string.Empty;
+            PortalKeyBox.Text = string.Empty;
+            PlaylistTypeCombo.Items.Clear();
+            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Плейлист M3U/M3U8", "M3U/M3U8 playlist"), Tag = "m3u" });
+            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Видео-портал", "Video portal"), Tag = "portal" });
+            PlaylistTypeCombo.SelectedIndex = 0;
+            UpdatePlaylistTypeUi();
             PlaylistStatusText.Visibility = Visibility.Collapsed;
             DisarmRemove();
 
@@ -382,7 +390,54 @@ namespace IptvPlayer.Dialogs
                 return;
             }
 
-            await AddPlaylistAsync(url);
+            var isPortal = IsPortalTypeSelected;
+            var portalKey = PortalKeyBox.Text.Trim();
+            if (isPortal)
+            {
+                // Строка портала часто поставляется комбинированной:
+                // "portal::[key:KEY]https://host/api/v1/" — её вставляют в поле
+                // URL целиком. Вычленяем ключ и URL из неё.
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    url,
+                    @"^portal::\[key:([^\]]+)\]\s*(https?://.+)$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    portalKey = match.Groups[1].Value;
+                    url = match.Groups[2].Value.TrimEnd('/');
+                }
+
+                if (string.IsNullOrEmpty(portalKey))
+                {
+                    SetPlaylistStatus(L.T("Введите ключ портала.", "Enter the portal key."));
+                    return;
+                }
+            }
+
+            await AddPlaylistAsync(url, isPortal ? "portal" : "m3u", portalKey);
+        }
+
+        private bool IsPortalTypeSelected =>
+            PlaylistTypeCombo.SelectedItem is ComboBoxItem { Tag: string tag } &&
+            tag == "portal";
+
+        /// <summary>
+        /// Вид полей, зависящих от типа источника: у портала вместо URL M3U —
+        /// базовый адрес API и ключ доступа, выбор локального файла не нужен.
+        /// </summary>
+        private void UpdatePlaylistTypeUi()
+        {
+            var isPortal = IsPortalTypeSelected;
+            PortalKeyBox.Visibility = isPortal ? Visibility.Visible : Visibility.Collapsed;
+            AddPlaylistFileButton.Visibility = isPortal ? Visibility.Collapsed : Visibility.Visible;
+            PlaylistUrlBox.PlaceholderText = isPortal
+                ? L.T("Строка портала (portal::[key:...]URL) или базовый URL API", "Portal string (portal::[key:...]URL) or API base URL")
+                : L.T("URL плейлиста M3U/M3U8", "M3U/M3U8 playlist URL");
+        }
+
+        private void PlaylistTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdatePlaylistTypeUi();
         }
 
         private async void AddPlaylistFileButton_Click(object sender, RoutedEventArgs e)
@@ -409,17 +464,21 @@ namespace IptvPlayer.Dialogs
         }
 
         /// <summary>
-        /// Добавляет плейлист по URL или пути к локальному файлу M3U/M3U8:
-        /// создаёт PlaylistSource, активирует сразу, если он первый, и
-        /// переключает на него список каналов (SwitchPlaylistAsync сам
-        /// разберёт файл/скачает URL и сохранит кэш).
+        /// Добавляет источник по URL или пути к локальному файлу M3U/M3U8
+        /// (type "m3u") либо видео-портал по базовому URL API и ключу
+        /// (type "portal"): создаёт PlaylistSource, активирует сразу, если он
+        /// первый, и переключает на него список каналов (SwitchPlaylistAsync
+        /// сам скачает и разберёт источник и сохранит кэш).
         /// </summary>
-        private async Task AddPlaylistAsync(string urlOrPath)
+        private async Task AddPlaylistAsync(string urlOrPath, string type = "m3u", string? portalKey = null)
         {
             var name = PlaylistNameBox.Text.Trim();
+            var isPortal = type == "portal";
             AddPlaylistButton.IsEnabled = false;
             AddPlaylistFileButton.IsEnabled = false;
-            SetPlaylistStatus(L.T("Загрузка и разбор плейлиста...", "Loading and parsing playlist..."));
+            SetPlaylistStatus(isPortal
+                ? L.T("Загрузка каталога портала...", "Loading portal catalog...")
+                : L.T("Загрузка и разбор плейлиста...", "Loading and parsing playlist..."));
 
             try
             {
@@ -429,7 +488,9 @@ namespace IptvPlayer.Dialogs
                         ? 1
                         : _viewModel.AppSettings.Playlists.Max(p => p.Id) + 1,
                     Name = string.IsNullOrEmpty(name) ? MainPage.DefaultPlaylistName(urlOrPath) : name,
-                    Url = urlOrPath
+                    Url = urlOrPath,
+                    Type = type,
+                    PortalKey = isPortal ? portalKey : null
                 };
 
                 // Первый плейлист активируется сразу — это сценарий первого

@@ -189,6 +189,7 @@ public partial class App : Application
         services.AddSingleton<IStreamService, StreamService>();
         services.AddSingleton<IPlaylistCacheService, PlaylistCacheService>();
         services.AddSingleton<IM3UParserService, M3UParserService>();
+        services.AddSingleton<IVideoPortalService, VideoPortalService>();
         services.AddSingleton<ChannelRepository>();
         services.AddSingleton<IChannelRepository>(sp => sp.GetRequiredService<ChannelRepository>());
         services.AddSingleton<EPGService>();

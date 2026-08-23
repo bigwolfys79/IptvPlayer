@@ -52,6 +52,18 @@ public partial class ChannelViewModel : ObservableObject
         set => SetProperty(ref _currentProgramTitle, value);
     }
 
+    private string _currentProgramDescription = string.Empty;
+
+    /// <summary>
+    /// Описание текущей передачи из EPG — показывается в верхних оверлеях
+    /// под названием передачи (аналог описания фильма портала).
+    /// </summary>
+    public string CurrentProgramDescription
+    {
+        get => _currentProgramDescription;
+        set => SetProperty(ref _currentProgramDescription, value);
+    }
+
     private bool _isPlaying;
 
     public bool IsPlaying
@@ -74,6 +86,44 @@ public partial class ChannelViewModel : ObservableObject
     {
         get => _streamUrl;
         set => SetProperty(ref _streamUrl, value);
+    }
+
+    private string? _portalRequest;
+
+    /// <summary>
+    /// Request-объект элемента видео-портала (JSON, как пришёл из API).
+    /// Заполнен только у источников-порталов; StreamUrl у таких элементов
+    /// null до первого клика — по клику поток запрашивается у портала
+    /// (VideoPortalService.ResolveStreamAsync) и результат не кэшируется.
+    /// </summary>
+    public string? PortalRequest
+    {
+        get => _portalRequest;
+        set => SetProperty(ref _portalRequest, value);
+    }
+
+    private string? _description;
+
+    /// <summary>
+    /// Описание элемента каталога портала (аннотация фильма/сериала).
+    /// Показывается в верхнем оверлее; у обычных каналов M3U — null.
+    /// </summary>
+    public string? Description
+    {
+        get => _description;
+        set => SetProperty(ref _description, value);
+    }
+
+    private int _year;
+
+    /// <summary>
+    /// Год выпуска элемента портала (0 — не указан). Используется
+    /// сортировкой списка по году.
+    /// </summary>
+    public int Year
+    {
+        get => _year;
+        set => SetProperty(ref _year, value);
     }
 
     private string? _logoUrl;

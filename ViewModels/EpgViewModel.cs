@@ -331,15 +331,20 @@ public partial class EpgViewModel : ObservableObject
 
             var now = DateTime.Now;
             var current = entries.FirstOrDefault(e => e.StartTime <= now && now < e.EndTime);
+            _logger.LogInformation(
+                "EPG канал {ChannelId}: записей {Count}, текущая «{Title}», описание {DescLen} симв.",
+                channelId, entries.Count, current?.ProgramName ?? "—", current?.Description?.Length ?? 0);
             if (current != null)
             {
                 current.IsCurrent = true;
                 channel.CurrentProgramTitle = current.ProgramName;
+                channel.CurrentProgramDescription = current.Description ?? string.Empty;
                 channel.CurrentEPGEntry = current;
             }
             else
             {
                 channel.CurrentProgramTitle = string.Empty;
+                channel.CurrentProgramDescription = string.Empty;
                 channel.CurrentEPGEntry = null;
             }
         }
@@ -440,6 +445,7 @@ public partial class EpgViewModel : ObservableObject
 
             var current = entries.FirstOrDefault(e => e.StartTime <= now && now < e.EndTime);
             channel.CurrentProgramTitle = current?.ProgramName ?? string.Empty;
+            channel.CurrentProgramDescription = current?.Description ?? string.Empty;
             channel.CurrentEPGEntry = current;
             if (current != null)
             {
@@ -500,6 +506,7 @@ public partial class EpgViewModel : ObservableObject
                 }
 
                 channel.CurrentProgramTitle = current?.ProgramName ?? string.Empty;
+                channel.CurrentProgramDescription = current?.Description ?? string.Empty;
                 channel.CurrentEPGEntry = current;
             }
 

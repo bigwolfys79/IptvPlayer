@@ -69,6 +69,12 @@ public static class EpgSourceMerger
             list.Sort((a, b) => a.StartTime.CompareTo(b.StartTime));
         }
 
+        logger.LogInformation(
+            "Диагностика описаний: всего программ {Total}, с описанием {WithDesc}, пустых {Empty}.",
+            byChannel.Values.Sum(l => l.Count),
+            byChannel.Values.Sum(l => l.Count(e => !string.IsNullOrEmpty(e.Description))),
+            byChannel.Values.Sum(l => l.Count(e => string.IsNullOrEmpty(e.Description))));
+
         return (byChannel, iconsByChannelId, BuildNameIndex(byChannel, logger));
     }
 

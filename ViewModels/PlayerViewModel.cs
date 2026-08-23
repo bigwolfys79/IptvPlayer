@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using IptvPlayer.Models;
@@ -68,6 +70,114 @@ public partial class PlayerViewModel : ObservableObject
     public int? CurrentPlayerChannelId { get; private set; }
 
     public bool IsArchivePlaying { get; private set; }
+
+    /// <summary>
+    /// Играет ли VOD-элемент видео-портала. В отличие от HLS-эфира, MP4/HLS-VOD
+    /// перематывается и ставится на паузу самим медиа-движком — рестарт потока
+    /// не нужен, поэтому пробел (ToggleArchivePause) работает и на VOD.
+    /// </summary>
+    public bool IsVodPlaying { get; private set; }
+
+    // ===================== Качество VOD портала =====================
+    // Портал отдаёт варианты качества отдельными ссылками (480/720/1080/auto
+    // в ответе flick). Переключение = рестарт потока с новой ссылкой, позиция
+    // фильма переносится на новый плеер.
+
+    private ChannelViewModel? _vodChannel;
+    private Dictionary<string, string> _vodVariantUrls = new();
+
+    /// <summary>Доступные качества текущего VOD ("Авто", "1080p", ...) по убыванию.</summary>
+    public IReadOnlyList<string> VodQualities { get; private set; } = Array.Empty<string>();
+
+    /// <summary>Выбранное качество текущего VOD (null — варианты недоступны).</summary>
+    public string? CurrentVodQuality { get; private set; }
+
+    /// <summary>Изменилось состояние VOD (старт/стоп/смена качества) — обновить кнопки панелей.</summary>
+    public event EventHandler? VodStateChanged;
+
+    // ===================== Позиция VOD =====================
+    // В отличие от HLS-timeshift архива (позиция по стенным часам, seek —
+    // рестарт потока), VOD-поток перематывается самим медиа-движком:
+    // позиция и длительность читаются из PlaybackSession, seek — прямой
+    // player.Position = …
+
+    private double _vodPositionSeconds;
+    private double _vodDurationSeconds;
+
+    /// <summary>Тянется ли ползунок перемотки VOD в представлении.</summary>
+    public bool IsVodSeeking { get; set; }
+
+    public double VodPositionSeconds
+    {
+        get => _vodPositionSeconds;
+        private set => SetProperty(ref _vodPositionSeconds, value);
+    }
+
+    public double VodDurationSeconds
+    {
+        get => _vodDurationSeconds;
+        private set => SetProperty(ref _vodDurationSeconds, value);
+    }
+
+    public string VodPositionText { get; private set; } = "00:00";
+    public string VodDurationText { get; private set; } = "00:00";
+
+    /// <summary>
+    /// Обновляет позицию/длительность VOD из медиа-движка. Вызывается
+    /// секундным таймером представления; вне VOD — тихий no-op.
+    /// </summary>
+    public void RefreshVodPosition()
+    {
+        if (!IsVodPlaying || Player?.PlaybackSession == null)
+        {
+            return;
+        }
+
+        try
+        {
+            VodDurationSeconds = Player.PlaybackSession.NaturalDuration.TotalSeconds;
+            if (!IsVodSeeking)
+            {
+                VodPositionSeconds = Player.PlaybackSession.Position.TotalSeconds;
+            }
+
+            VodPositionText = FormatArchiveTime(VodPositionSeconds);
+            VodDurationText = FormatArchiveTime(VodDurationSeconds);
+            OnPropertyChanged(nameof(VodPositionText));
+            OnPropertyChanged(nameof(VodDurationText));
+        }
+        catch (Exception ex)
+        {
+            // NaturalDuration недоступен, пока источник не открылся, — штатно.
+            _logger.LogDebug(ex, "VOD: позиция недоступна.");
+        }
+    }
+
+    /// <summary>Перемотка VOD к позиции (сек) — напрямую через медиа-движок.</summary>
+    public void SeekVod(double positionSeconds)
+    {
+        if (!IsVodPlaying || Player?.PlaybackSession == null)
+        {
+            return;
+        }
+
+        var duration = Player.PlaybackSession.NaturalDuration.TotalSeconds;
+        if (duration > 0)
+        {
+            positionSeconds = Math.Clamp(positionSeconds, 0.0, Math.Max(0.0, duration - 1));
+        }
+
+        try
+        {
+            Player.PlaybackSession.Position = TimeSpan.FromSeconds(positionSeconds);
+            VodPositionSeconds = positionSeconds;
+            _logger.LogInformation("VOD: перемотка на {Position}.", TimeSpan.FromSeconds(positionSeconds));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "VOD: перемотка на {Position} не удалась.", positionSeconds);
+        }
+    }
 
     public EPGEntry? ArchiveEntry { get; private set; }
 
@@ -232,7 +342,7 @@ public partial class PlayerViewModel : ObservableObject
     /// archivePlayStart — фактическая точка старта архивного показа (после
     /// перемотки отличается от ArchiveEntry.StartTime).
     /// </summary>
-    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null)
+    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null)
     {
         Stop();
 
@@ -259,6 +369,46 @@ public partial class PlayerViewModel : ObservableObject
             Player = player;
             CurrentPlayerChannelId = channel.Id;
             IsArchivePlaying = archiveEntry != null;
+            IsVodPlaying = isVod && archiveEntry == null;
+
+            // Варианты качества портала: набор переживает переключения
+            // (SwitchVodQuality передаёт его заново), вне VOD — сбрасывается.
+            if (IsVodPlaying)
+            {
+                _vodChannel = channel;
+                if (vodVariants is { Count: > 0 })
+                {
+                    // Ключи — метки качеств ("Авто", "1080p"), как в VodQualities:
+                    // CycleVodQuality ищет ссылку именно по метке.
+                    _vodVariantUrls = vodVariants.ToDictionary(
+                        kv => VodQualityLabel(kv.Key), kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+                }
+                VodQualities = OrderVodQualities(_vodVariantUrls.Keys);
+                CurrentVodQuality = VodQualities.Contains(vodQuality) ? vodQuality : null;
+
+                // Возобновление позиции после смены качества: медиа-движок
+                // применит seek после открытия источника; если не применит —
+                // показ начнётся с начала (не критично).
+                if (resumePosition is { } resume && resume > TimeSpan.Zero)
+                {
+                    try
+                    {
+                        player.Position = resume;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "VOD: не удалось перемотать на прежнюю позицию {Position}.", resume);
+                    }
+                }
+            }
+            else
+            {
+                _vodChannel = null;
+                _vodVariantUrls = new Dictionary<string, string>();
+                VodQualities = Array.Empty<string>();
+                CurrentVodQuality = null;
+            }
+
             ArchiveEntry = archiveEntry;
             StreamId = streamUrl;
             channel.IsPlaying = true;
@@ -282,6 +432,7 @@ public partial class PlayerViewModel : ObservableObject
 
             PlayerChanged?.Invoke(this, EventArgs.Empty);
             ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
+            VodStateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
@@ -307,6 +458,11 @@ public partial class PlayerViewModel : ObservableObject
         Player = null;
         CurrentPlayerChannelId = null;
         IsArchivePlaying = false;
+        IsVodPlaying = false;
+        _vodChannel = null;
+        _vodVariantUrls = new Dictionary<string, string>();
+        VodQualities = Array.Empty<string>();
+        CurrentVodQuality = null;
         ArchiveEntry = null;
         _archiveChannel = null;
         _archivePausedAtUtc = null;
@@ -320,6 +476,7 @@ public partial class PlayerViewModel : ObservableObject
         // уже ПОСЛЕ Dispose).
         PlayerChanged?.Invoke(this, EventArgs.Empty);
         ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
+        VodStateChanged?.Invoke(this, EventArgs.Empty);
 
         try
         {
@@ -374,6 +531,66 @@ public partial class PlayerViewModel : ObservableObject
         IsArchivePlaying = false;
         ArchiveEntry = null;
         ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Переключает качество VOD на выбранную метку ("Авто", "1080p", ...):
+    /// рестарт потока с новой ссылкой и возобновлением позиции.
+    /// </summary>
+    public async Task SwitchVodQualityAsync(string quality)
+    {
+        if (!IsVodPlaying || _vodChannel == null || !_vodVariantUrls.TryGetValue(quality, out var url))
+        {
+            return;
+        }
+
+        var resume = Player?.Position ?? TimeSpan.Zero;
+        _logger.LogInformation("VOD: качество {Current} → {Next} (позиция {Position}).",
+            CurrentVodQuality ?? "?", quality, resume);
+        await StartPlaybackAsync(_vodChannel, url, archiveEntry: null, isVod: true,
+            vodVariants: _vodVariantUrls, vodQuality: quality, resumePosition: resume);
+    }
+
+    /// <summary>
+    /// Ключ портала → метка качества: "auto" → "Авто", "1080" → "1080p".
+    /// Идемпотентно: уже готовая метка ("1080p", "Авто") не меняется — при
+    /// переключении качества словарь ссылок (с метками) передаётся в
+    /// StartPlaybackAsync повторно и не должен обрабатываться дважды.
+    /// </summary>
+    private static string VodQualityLabel(string key)
+    {
+        if (key.Equals("auto", StringComparison.OrdinalIgnoreCase) || key == "Авто")
+        {
+            return "Авто";
+        }
+
+        if (key.EndsWith('p') && int.TryParse(key[..^1], out _))
+        {
+            return key;
+        }
+
+        return key + "p";
+    }
+
+    /// <summary>
+    /// Подписи качеств по убыванию: "Авто" первым, дальше числовые от большего
+    /// к меньшему ("1080p", "720p", "480p"), прочие ключи в конце как есть.
+    /// </summary>
+    private static IReadOnlyList<string> OrderVodQualities(IEnumerable<string> labels)
+    {
+        static string? NumericKey(string label) =>
+            label.EndsWith('p') && int.TryParse(label[..^1], out var n) ? n.ToString() : null;
+
+        var list = labels.Distinct().ToList();
+        var auto = list.Where(l => l == "Авто").ToList();
+        var numeric = list.Where(l => NumericKey(l) != null && l != "Авто")
+            .OrderByDescending(l => int.Parse(l[..^1]))
+            .ToList();
+        var other = list.Where(l => l != "Авто" && NumericKey(l) == null)
+            .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return auto.Concat(numeric).Concat(other).ToList();
     }
 
     /// <summary>Применяет громкость к текущему плееру (слайдер/колесо мыши).</summary>
