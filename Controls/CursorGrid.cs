@@ -13,7 +13,7 @@ namespace IptvPlayer.Controls;
 /// (полностью прозрачные маски) и IInputCursorStaticsInterop.CreateFromHCursor —
 /// по рецепту Simon Mourier (simonmourier.com/blog/Cursor-cur-in-WinUI-3).
 /// </summary>
-public sealed class CursorGrid : Grid
+public sealed partial class CursorGrid : Grid
 {
     private static Microsoft.UI.Input.InputCursor? _hiddenCursor;
 

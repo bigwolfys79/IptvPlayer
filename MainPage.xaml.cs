@@ -1008,10 +1008,10 @@ public sealed partial class MainPage : Page
                 return;
             }
 
+            var update = await _updateService.CheckForUpdateAsync();
+
             ViewModel.AppSettings.LastUpdateCheckUtc = DateTime.UtcNow;
             await _settingsService.SaveAsync(ViewModel.AppSettings);
-
-            var update = await _updateService.CheckForUpdateAsync();
             if (update == null)
             {
                 return;
