@@ -9,7 +9,7 @@
 ; Готовый файл: installer\output\IptvPlayer-Setup-<версия>-x64.exe
 
 #define MyAppName "IptvPlayer"
-#define MyAppVersion "1.9.1"
+#define MyAppVersion "1.10.0"
 #define MyAppExeName "IptvPlayer.exe"
 #define MyAppPublisher "IptvPlayer"
 ; Папка публикации из win-x64.pubxml
@@ -97,4 +97,8 @@ Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
   Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Add-AppxPackage -Path ''{app}\dolby\DolbyAC4DecoderOEM_1.0.0.0.AppxBundle''"""; \
   StatusMsg: "{cm:DolbyAC4Status}"; \
   Flags: runasoriginaluser; Check: DolbyDecoderMissing
+; Тихое автообновление (/VERYSILENT из UpdateService): запустить приложение
+; после установки без вопросов. Интерактивную установку не затрагивает —
+; там приложение запускается галочкой postinstall ниже.
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait runasoriginaluser; Check: WizardSilent
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent

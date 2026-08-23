@@ -143,6 +143,19 @@ namespace IptvPlayer.Dialogs
             // LoggingLevelSwitch, без перезапуска. Вывод в Debug (окно
             // Output студии) остаётся всегда.
             DiagnosticsHeader.Text = L.T("Диагностика", "Diagnostics");
+
+            // Полуавтоматическое обновление: фоновая проверка при запуске,
+            // скачивание и диалог установки (без установки при записях).
+            AutoUpdateToggle.Toggled -= AutoUpdateToggle_Toggled;
+            AutoUpdateToggle.IsOn = settings.AutoUpdateEnabled;
+            AutoUpdateToggle.Header = L.T("Проверять обновления автоматически", "Check for updates automatically");
+            AutoUpdateToggle.OnContent = L.T("Вкл", "On");
+            AutoUpdateToggle.OffContent = L.T("Выкл", "Off");
+            AutoUpdateToggle.Toggled += AutoUpdateToggle_Toggled;
+            AutoUpdateHint.Text = L.T(
+                "После запуска (не чаще раза в сутки) приложение само проверит GitHub Releases, скачает установщик и предложит установить. Пока идут записи, установка не запускается.",
+                "After startup (at most once a day) the app checks GitHub Releases by itself, downloads the installer and offers to install. Installation never starts while recordings are running.");
+
             FileLoggingToggle.Toggled -= FileLoggingToggle_Toggled;
             FileLoggingToggle.IsOn = settings.FileLoggingEnabled;
             FileLoggingToggle.Header = L.T("Файловый лог", "File log");
@@ -152,6 +165,13 @@ namespace IptvPlayer.Dialogs
             FileLoggingHint.Text = L.T(
                 $"Запись событий в {App.LogDirectory}. Выключение действует сразу, перезапуск не нужен.",
                 $"Writes events to {App.LogDirectory}. Turning it off takes effect immediately, no restart required.");
+        }
+
+        /// <summary>Автообновление — применяется сразу, персистится в настройках.</summary>
+        private async void AutoUpdateToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AppSettings.AutoUpdateEnabled = AutoUpdateToggle.IsOn;
+            await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 
         /// <summary>Включение/выключение файлового лога — действует сразу.</summary>

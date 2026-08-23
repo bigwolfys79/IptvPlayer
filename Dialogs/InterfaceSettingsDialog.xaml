@@ -58,6 +58,13 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
 
+                <!-- Обновления -->
+                <StackPanel Spacing="8">
+                    <ToggleSwitch x:Name="AutoUpdateToggle" HorizontalAlignment="Left" Toggled="AutoUpdateToggle_Toggled"/>
+                    <TextBlock x:Name="AutoUpdateHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
                 <!-- Диагностика -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="DiagnosticsHeader" FontSize="14" FontWeight="SemiBold"/>
