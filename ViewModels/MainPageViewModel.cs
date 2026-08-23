@@ -21,6 +21,7 @@ public partial class MainPageViewModel : ObservableObject
     private const string FavoritesOption = "★ Избранное";
 
     private readonly ISettingsService _settingsService;
+    private readonly IVideoPortalService _videoPortalService;
     private readonly ILogger<MainPageViewModel> _logger;
 
     // Все свойства ниже — ручные (поле + SetProperty) вместо [ObservableProperty]:
@@ -249,12 +250,14 @@ public partial class MainPageViewModel : ObservableObject
     public MainPageViewModel(
         EpgViewModel epgViewModel,
         ISettingsService settingsService,
+        IVideoPortalService videoPortalService,
         PlayerViewModel player,
         RecordingService recording,
         ILogger<MainPageViewModel> logger)
     {
         _epgViewModel = epgViewModel;
         _settingsService = settingsService;
+        _videoPortalService = videoPortalService;
         _logger = logger;
         Player = player;
         Recording = recording;
@@ -284,9 +287,53 @@ public partial class MainPageViewModel : ObservableObject
 
     // ===================== Автоматические реакции на смену свойств =====================
 
-    private void OnSearchQueryChanged(string value) => FilterChannels();
+    // Поиск по каталогу портала — это тысячи элементов: пересборка списка
+    // (FilterChannels + сгруппированный оверлей) на каждый символ намертво
+    // вешала UI. Фильтруем один раз, когда пользователь перестал печатать.
+    private System.Threading.CancellationTokenSource? _searchDebounceCts;
+
+    private void OnSearchQueryChanged(string value)
+    {
+        _searchDebounceCts?.Cancel();
+        _searchDebounceCts = new System.Threading.CancellationTokenSource();
+        var token = _searchDebounceCts.Token;
+        _ = DebouncedFilterAsync(token);
+    }
+
+    private async Task DebouncedFilterAsync(System.Threading.CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(300, ct);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        FilterChannels();
+    }
 
     private void OnSelectedGroupChanged(string value) => FilterChannels();
+
+    private int _sortModeIndex;
+
+    /// <summary>
+    /// Сортировка списка: 0 — как в каталоге (порядок портала/плейлиста),
+    /// 1 — по имени, 2 — по году убыванием (портал; у каналов M3U год 0
+    /// и они уходят в конец). Избранное остаётся наверху при любой сортировке.
+    /// </summary>
+    public int SortModeIndex
+    {
+        get => _sortModeIndex;
+        set
+        {
+            if (SetProperty(ref _sortModeIndex, value))
+            {
+                FilterChannels();
+            }
+        }
+    }
 
     private void OnChannelsChanged(ObservableCollection<ChannelViewModel> value)
     {
@@ -374,8 +421,16 @@ public partial class MainPageViewModel : ObservableObject
             filtered = filtered.Where(c => string.Equals(c.Group?.Trim(), selectedGroup, StringComparison.OrdinalIgnoreCase));
         }
 
-        // Избранные — наверху списка при любом фильтре.
-        filtered = filtered.OrderByDescending(c => c.IsFavorite);
+        // Избранные — наверху списка при любом фильтре и сортировке.
+        filtered = SortModeIndex switch
+        {
+            1 => filtered.OrderByDescending(c => c.IsFavorite)
+                .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
+            2 => filtered.OrderByDescending(c => c.IsFavorite)
+                .ThenByDescending(c => c.Year)
+                .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
+            _ => filtered.OrderByDescending(c => c.IsFavorite)
+        };
 
         // Clear() затирает выделение ListView (SelectedItem TwoWay уходит в
         // null), а с ним SelectedChannel — на него завязана видимость видео
@@ -531,7 +586,7 @@ public partial class MainPageViewModel : ObservableObject
         SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
 
         // Канал заигрывает сразу по выбору — без отдельного нажатия "Воспроизвести".
-        await Player.PlayLiveAsync(channel);
+        await PlayChannelAsync(channel);
 
         await EpgViewModel.LoadEPGForChannelAsync(channel.Id);
         ApplyReminderFlags();
@@ -867,15 +922,80 @@ public partial class MainPageViewModel : ObservableObject
 
     // ===================== Возврат к эфиру =====================
 
-    /// <summary>Возврат из архива к прямому эфиру выбранного канала.</summary>
+    /// <summary>
+    /// Возврат из архива к прямому эфиру выбранного канала. Для элемента
+    /// портала «эфир» — перезапуск фильма с начала (запрос нового потока).
+    /// </summary>
     [RelayCommand]
     private async Task BackToLiveAsync()
     {
         var channel = SelectedChannel;
         if (channel != null)
         {
-            await Player.PlayLiveAsync(channel);
+            await PlayChannelAsync(channel);
         }
+    }
+
+    /// <summary>
+    /// Запуск канала/фильма: обычный канал — прямой эфир как раньше; элемент
+    /// портала — воспроизведение в режиме VOD (пауза без рестарта потока).
+    /// Фильмы (type "stream") уже несут url в каталоге; сериалы — url нет,
+    /// поток запрашивается у портала по клику (лениво, не кэшируется).
+    /// Возвращает true, если воспроизведение запущено.
+    /// </summary>
+    public async Task<bool> PlayChannelAsync(ChannelViewModel channel)
+    {
+        if (!string.IsNullOrWhiteSpace(channel.PortalRequest))
+        {
+            var playlist = AppSettings.Playlists.FirstOrDefault(p => p.Id == AppSettings.ActivePlaylistId);
+            if (playlist == null)
+            {
+                Player.StreamError = L.T("Источник портала не найден.", "Portal source not found.");
+                return false;
+            }
+
+            // flick вызывается даже у фильмов с готовым url — заодно приходят
+            // варианты качества (480/720/1080/auto).
+            PortalStreamResult stream;
+            Player.IsBuffering = true;
+            try
+            {
+                stream = await _videoPortalService.ResolveStreamAsync(playlist, channel.PortalRequest);
+            }
+            catch (Exception ex)
+            {
+                if (!string.IsNullOrWhiteSpace(channel.StreamUrl))
+                {
+                    // Ссылка из каталога ещё дышит — играем без вариантов качества.
+                    _logger.LogWarning(ex,
+                        "Портал: flick для «{Item}» не удался, используется ссылка из каталога.", channel.Name);
+                    await Player.StartPlaybackAsync(channel, channel.StreamUrl, archiveEntry: null, isVod: true);
+                    return true;
+                }
+
+                _logger.LogError(ex, "Портал: не удалось получить поток для «{Item}».", channel.Name);
+                Player.StreamError = L.T(
+                    $"Портал не отдал поток: {ex.Message}",
+                    $"Portal did not return a stream: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                Player.IsBuffering = false;
+            }
+
+            // Стартовое качество — из настроек приложения (PreferredQuality:
+            // 0 = авто), если такой вариант у портала есть.
+            var preferred = AppSettings.PreferredQuality > 0 ? AppSettings.PreferredQuality + "p" : "Авто";
+            var quality = stream.Variants.Count > 0 ? preferred : null;
+
+            await Player.StartPlaybackAsync(channel, stream.Url, archiveEntry: null, isVod: true,
+                vodVariants: stream.Variants, vodQuality: quality);
+            return true;
+        }
+
+        await Player.PlayLiveAsync(channel);
+        return !string.IsNullOrWhiteSpace(channel.StreamUrl);
     }
 
     // ===================== EPG =====================

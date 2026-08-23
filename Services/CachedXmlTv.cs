@@ -18,10 +18,12 @@ public sealed partial class CachedXmlTv
     /// Версия бинарного формата кэша. При любом изменении сериализуемых
     /// полей (EPGEntry/CachedXmlTv) увеличивается — старый файл перестаёт
     /// читаться и воспринимается как промах кэша (источник перекачается).
+    /// v2 — кэш до починки чтения desc/category в XmlTvService хранит
+    /// записи без описаний; повышение версии вынуждает один раз перекачать.
     /// </summary>
     public int FormatVersion { get; set; } = CurrentFormatVersion;
 
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 2;
 
     public List<Models.EPGEntry> Entries { get; set; } = new();
 

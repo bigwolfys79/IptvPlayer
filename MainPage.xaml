@@ -23,9 +23,12 @@
         <converters:StringToImageSourceConverter x:Key="StringToImageConverter" />
         <converters:BoolToRecordColorConverter x:Key="BoolToRecordColorConverter" />
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisConverter" />
 
         <DataTemplate x:Key="ChannelItemTemplate" x:DataType="vm:ChannelViewModel">
-            <StackPanel Orientation="Horizontal" Padding="12,8" Spacing="12">
+            <StackPanel Orientation="Horizontal" Padding="12,8" Spacing="12"
+                        ToolTipService.ToolTip="{x:Bind Description, Mode=OneWay}"
+                        ToolTipService.Placement="Mouse">
                 <Image Width="28" Height="28"
                        Stretch="Uniform"
                        VerticalAlignment="Center"
@@ -122,13 +125,23 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Group Filter -->
-                <ComboBox x:Name="GroupFilterComboBox"
-                          Grid.Row="1"
-                          Margin="12,8"
-                          HorizontalAlignment="Stretch"
-                          ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
-                          SelectedItem="{x:Bind ViewModel.SelectedGroup, Mode=TwoWay}" />
+                <!-- Group Filter + сортировка каталога -->
+                <Grid Grid.Row="1" Margin="12,8" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="GroupFilterComboBox"
+                              HorizontalAlignment="Stretch"
+                              ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                              SelectedItem="{x:Bind ViewModel.SelectedGroup, Mode=TwoWay}" />
+                    <!-- Сортировка списка (по каталогу / имени / году); пункты
+                         заполняются в code-behind с локализацией. -->
+                    <ComboBox x:Name="SortOrderComboBox"
+                              Grid.Column="1" Width="150"
+                              SelectedIndex="{x:Bind ViewModel.SortModeIndex, Mode=TwoWay}"
+                              ToolTipService.ToolTip="Сортировка списка" />
+                </Grid>
 
                 <!-- Channel List -->
                 <ListView x:Name="ChannelsListView" 
@@ -213,11 +226,11 @@
             <Border x:Name="WindowedTopOverlay"
                     Canvas.ZIndex="2"
                     VerticalAlignment="Top"
-                    Height="44"
                     Background="{ThemeResource OverlayScrimBrush}"
-                    Padding="16,0"
+                    Padding="16,0,16,10"
                     Visibility="Collapsed">
-                <Grid>
+                <StackPanel>
+                <Grid MinHeight="44">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -263,17 +276,26 @@
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
                         </StackPanel>
                     </StackPanel>
-                    <!-- Прогресс текущей передачи по нижнему краю шапки (на всю
-                         ширину): сколько передачи уже прошло; обновляется
-                         30-секундным таймером через INPC SelectedChannel.
-                         Отрицательные поля растягивают полосу за Padding шапки. -->
+                </Grid>
+                    <!-- Прогресс текущей передачи: сколько прошло; обновляется
+                         30-секундным таймером через INPC SelectedChannel. -->
                     <ProgressBar Value="{x:Bind ViewModel.SelectedChannel.CurrentProgramProgress, Mode=OneWay}"
-                                 Grid.ColumnSpan="2"
                                  Maximum="1" Minimum="0"
-                                 VerticalAlignment="Bottom" Margin="-16,0,-16,0"
+                                 VerticalAlignment="Bottom" Margin="0,4,0,4"
                                  Height="3" CornerRadius="1.5,1.5,0,0" Padding="0"
                                  Foreground="{ThemeResource LiveGreenBrush}" />
-                </Grid>
+                    <!-- Описание фильма/сериала портала — под полосой, целиком
+                         (высота оверлея растёт по тексту, как в fullscreen). -->
+                    <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
+                               Foreground="#99FFFFFF" FontSize="12"
+                               TextWrapping="Wrap"
+                               Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
+                    <!-- Описание текущей передачи EPG (ТВ-каналы) — там же. -->
+                    <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
+                               Foreground="#99FFFFFF" FontSize="12"
+                               TextWrapping="Wrap"
+                               Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
+                </StackPanel>
             </Border>
 
             <!-- EPG-оверлей поверх видео -->
@@ -575,6 +597,32 @@
                                    Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
                                    VerticalAlignment="Center" />
                     </StackPanel>
+                    <!-- Полоса перемотки VOD портала (MP4/HLS-VOD перематывается
+                         движком на лету, без рестарта потока). -->
+                    <StackPanel x:Name="WindowedVodSeekPanel"
+                                Orientation="Horizontal" Spacing="8"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed"
+                                ToolTipService.ToolTip="Перемотка видео (отпустите ползунок)">
+                        <TextBlock x:Name="WindowedVodPositionText"
+                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   VerticalAlignment="Center" />
+                        <Slider x:Name="WindowedVodSeekBar"
+                                Width="150" Minimum="0" Maximum="1"
+                                VerticalAlignment="Center"
+                                ValueChanged="VodSeekBar_ValueChanged"
+                                PointerPressed="VodSeekBar_PointerPressed"
+                                PointerReleased="VodSeekBar_PointerReleased"
+                                PointerCaptureLost="VodSeekBar_PointerCaptureLost" />
+                        <TextBlock x:Name="WindowedVodDurationText"
+                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <!-- Качество VOD портала — аналог кнопки в fullscreen-панели. -->
+                    <Button x:Name="WindowedVodQualityButton"
+                            Content="Авто" FontSize="12" Padding="12,4" MinWidth="56"
+                            Visibility="Collapsed"
+                            ToolTipService.ToolTip="Качество видео" />
                     <!-- Кнопка беззвучного режима: иконку (динамик/динамик с
                          крестом) ставит UpdateMuteButtons; дублирует M. -->
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayMuteButton"
@@ -760,9 +808,20 @@
                              в списке каналов) через INPC SelectedChannel. -->
                         <ProgressBar Value="{x:Bind ViewModel.SelectedChannel.CurrentProgramProgress, Mode=OneWay}"
                                      Maximum="1" Minimum="0"
-                                     Width="260" HorizontalAlignment="Left"
+                                     HorizontalAlignment="Stretch"
                                      Height="3" CornerRadius="1.5" Padding="0" Margin="0,3,0,0"
                                      Foreground="{ThemeResource LiveGreenBrush}" />
+                        <!-- Описание фильма/сериала портала — под полосой, целиком
+                             (высота шапки растёт по тексту). -->
+                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
+                                   Foreground="#99FFFFFF" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,4,24,0"
+                                   Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
+                        <!-- Описание текущей передачи EPG (ТВ-каналы) — там же. -->
+                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
+                                   Foreground="#99FFFFFF" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,4,24,0"
+                                   Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                         <!-- Показывается вместо/рядом с текущей программой, когда в
                              fullscreen идёт архивная передача (UpdateArchiveBanner). -->
                         <StackPanel x:Name="OverlayArchiveIndicator"
@@ -918,6 +977,32 @@
                                        Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
                                        VerticalAlignment="Center" />
                         </StackPanel>
+                        <!-- Полоса перемотки VOD портала — аналог оконной. -->
+                        <StackPanel x:Name="OverlayVodSeekPanel"
+                                    Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Center"
+                                    Visibility="Collapsed"
+                                    ToolTipService.ToolTip="Перемотка видео (отпустите ползунок)">
+                            <TextBlock x:Name="OverlayVodPositionText"
+                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       VerticalAlignment="Center" />
+                            <Slider x:Name="OverlayVodSeekBar"
+                                    Width="190" Minimum="0" Maximum="1"
+                                    VerticalAlignment="Center"
+                                    ValueChanged="VodSeekBar_ValueChanged"
+                                    PointerPressed="VodSeekBar_PointerPressed"
+                                    PointerReleased="VodSeekBar_PointerReleased"
+                                    PointerCaptureLost="VodSeekBar_PointerCaptureLost" />
+                            <TextBlock x:Name="OverlayVodDurationText"
+                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    <!-- Качество VOD портала: метка текущего качества, меню
+                         с вариантами строится в UpdateVodQualityButtons. -->
+                    <Button x:Name="OverlayVodQualityButton"
+                            Content="Авто" FontSize="12" Padding="12,4" MinWidth="56"
+                            Visibility="Collapsed"
+                            ToolTipService.ToolTip="Качество видео" />
                     <!-- Кнопка беззвучного режима (дублирует M); иконку ставит
                          UpdateMuteButtons. -->
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayMuteButton"

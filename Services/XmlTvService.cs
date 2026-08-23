@@ -265,30 +265,42 @@ public class XmlTvService : IXmlTvService
         XmlReader reader, Dictionary<string, string> channelNames, Dictionary<string, string> channelIcons)
     {
         var id = reader.GetAttribute("id");
-        using var sub = reader.ReadSubtree();
 
+        // Без ReadSubtree по той же причине, что и в ReadProgramme: чтение
+        // контента на subtree-ридере съедает следующих соседей — icon после
+        // display-name никогда не дочитывался. Выход ровно на </channel>.
+        var channelDepth = reader.Depth;
         string? displayName = null;
-        while (sub.Read())
-        {
-            if (sub.NodeType != XmlNodeType.Element)
-            {
-                continue;
-            }
 
-            if (sub.Name == "display-name" && displayName == null)
+        if (!reader.IsEmptyElement)
+        {
+            while (reader.Depth > channelDepth || reader.NodeType != XmlNodeType.EndElement)
             {
-                displayName = sub.ReadElementContentAsString();
-            }
-            else if (sub.Name == "icon")
-            {
-                // <icon src="http://epg.one/img/8900.png" /> — лого канала из
-                // самого XMLTV-источника. Используется как резервный источник
-                // LogoUrl для каналов без tvg-logo в плейлисте (см.
-                // EPGService.ApplyMissingLogosAsync).
-                var src = sub.GetAttribute("src");
-                if (!string.IsNullOrWhiteSpace(src) && !string.IsNullOrEmpty(id))
+                if (reader.NodeType == XmlNodeType.Element)
                 {
-                    channelIcons.TryAdd(id, src.Trim());
+                    if (reader.Name == "display-name" && displayName == null)
+                    {
+                        displayName = reader.ReadElementContentAsString();
+                        continue;
+                    }
+
+                    if (reader.Name == "icon")
+                    {
+                        // <icon src="http://epg.one/img/8900.png" /> — лого канала из
+                        // самого XMLTV-источника. Используется как резервный источник
+                        // LogoUrl для каналов без tvg-logo в плейлисте (см.
+                        // EPGService.ApplyMissingLogosAsync).
+                        var src = reader.GetAttribute("src");
+                        if (!string.IsNullOrWhiteSpace(src) && !string.IsNullOrEmpty(id))
+                        {
+                            channelIcons.TryAdd(id, src.Trim());
+                        }
+                    }
+                }
+
+                if (!reader.Read())
+                {
+                    break;
                 }
             }
         }
@@ -325,33 +337,54 @@ public class XmlTvService : IXmlTvService
             return null;
         }
 
-        using var sub = reader.ReadSubtree();
-        var title = string.Empty;
-        var description = string.Empty;
+        // ВАЖНО: без ReadSubtree. ReadElementContentAsString() на ридере из
+        // ReadSubtree() «съедает» оставшихся соседей — читался только первый
+        // текстовый ребёнок programme (title), desc/category терялись всегда.
+        // Обходим детей по основному ридеру и выходим ровно на </programme>,
+        // чтобы внешний цикл ParseXmlTv корректно продолжил с следующего узла.
+        var programmeDepth = reader.Depth;
+        string title = string.Empty;
+        string description = string.Empty;
         string? category = null;
 
-        while (sub.Read())
+        if (!reader.IsEmptyElement)
         {
-            if (sub.NodeType != XmlNodeType.Element)
+            while (reader.Depth > programmeDepth || reader.NodeType != XmlNodeType.EndElement)
             {
-                continue;
-            }
+                if (reader.NodeType == XmlNodeType.Element)
+                {
+                    var handled = false;
+                    switch (reader.Name)
+                    {
+                        case "title" when string.IsNullOrEmpty(title):
+                            title = reader.ReadElementContentAsString();
+                            handled = true;
+                            break;
+                        case "desc" when string.IsNullOrEmpty(description):
+                            description = reader.ReadElementContentAsString();
+                            handled = true;
+                            break;
+                        case "category" when category == null:
+                            category = reader.ReadElementContentAsString();
+                            handled = true;
+                            break;
+                    }
 
-            switch (sub.Name)
-            {
-                case "title" when string.IsNullOrEmpty(title):
-                    title = sub.ReadElementContentAsString();
+                    // ReadElementContentAsString уже продвинул ридер за элемент.
+                    if (handled)
+                    {
+                        continue;
+                    }
+                }
+
+                if (!reader.Read())
+                {
                     break;
-                case "desc" when string.IsNullOrEmpty(description):
-                    description = sub.ReadElementContentAsString();
-                    break;
-                case "category" when category == null:
-                    category = sub.ReadElementContentAsString();
-                    break;
+                }
             }
         }
 
-        return new EPGEntry
+        var entry = new EPGEntry
         {
             EventId = $"{channelId}_{startRaw}",
             ChannelId = channelId,
@@ -362,6 +395,8 @@ public class XmlTvService : IXmlTvService
             StartTime = start,
             EndTime = stop
         };
+
+        return entry;
     }
 
     private static bool TryParseXmlTvDate(string raw, out DateTime result)

@@ -41,6 +41,7 @@ public sealed partial class MainPage : Page
     // (и ещё в шести местах по коду — выходили разные экземпляры
     // SettingsService).
     private readonly IM3UParserService _m3uParserService;
+    private readonly IVideoPortalService _videoPortalService;
     private readonly ISettingsService _settingsService;
     private readonly IPlaylistCacheService _playlistCacheService;
 
@@ -151,6 +152,7 @@ public sealed partial class MainPage : Page
         // DispatcherQueue.
         var services = App.Services;
         _m3uParserService = services.GetRequiredService<IM3UParserService>();
+        _videoPortalService = services.GetRequiredService<IVideoPortalService>();
         _settingsService = services.GetRequiredService<ISettingsService>();
         _playlistCacheService = services.GetRequiredService<IPlaylistCacheService>();
         _streamService = services.GetRequiredService<IStreamService>();
@@ -180,6 +182,10 @@ public sealed partial class MainPage : Page
         };
         Player.ArchiveStateChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateArchiveBanner);
+        // Качество VOD портала: кнопки в обеих нижних панелях обновляются при
+        // старте/остановке VOD и смене качества.
+        Player.VodStateChanged += (s, e) =>
+            DispatcherQueue.TryEnqueue(UpdateVodQualityButtons);
         ViewModel.RecordingChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateRecordButtons);
         // Родительский контроль: VM просит PIN при запуске канала
@@ -307,6 +313,13 @@ public sealed partial class MainPage : Page
             DispatcherQueue.TryEnqueue(UpdateSleepTimerDisplays);
 
         InitializeComponent();
+
+        // Сортировка списка каналов/каталога: 0 — порядок источника,
+        // 1 — по имени, 2 — по году (портал). Индекс связан с VM (TwoWay).
+        SortOrderComboBox.Items.Add(new ComboBoxItem { Content = L.T("По каталогу", "Catalog order") });
+        SortOrderComboBox.Items.Add(new ComboBoxItem { Content = L.T("По имени", "By name") });
+        SortOrderComboBox.Items.Add(new ComboBoxItem { Content = L.T("По году", "By year") });
+        SortOrderComboBox.SelectedIndex = 0;
         // Пока пользователь ни разу не кликнул по окну, ни один элемент не
         // имеет фокуса — туннелирующий PreviewKeyDown страницы в этом
         // состоянии может не приходить вовсе, и горячие клавиши «не работали
@@ -358,6 +371,8 @@ public sealed partial class MainPage : Page
         {
             Player.RefreshArchivePosition();
             UpdateArchiveSeekBar();
+            Player.RefreshVodPosition();
+            UpdateVodSeekBar();
             // Обновление текста StatsOverlay под курсором порождает
             // синтетические PointerMoved — input-site возвращал стрелку
             // (мелькание). Пока курсор спрятан, текст заморожен.
@@ -847,10 +862,21 @@ public sealed partial class MainPage : Page
 
         try
         {
-            // Локальный файл (m3u на диске) — без сети; URL — скачивание.
-            var playlistChannels = System.IO.File.Exists(playlist.Url)
-                ? await _m3uParserService.ParseFromFileAsync(playlist.Url)
-                : await _m3uParserService.ParseFromUrlAsync(playlist.Url, ct);
+            // Портал-источник: вместо M3U — каталог видео-портала (manifest →
+            // категории → элементы). Локальный файл — только для M3U.
+            List<ChannelViewModel> playlistChannels;
+            if (playlist.IsPortal)
+            {
+                var items = await _videoPortalService.LoadCatalogAsync(playlist, ct);
+                playlistChannels = items.Select(PortalItemToChannel).ToList();
+            }
+            else
+            {
+                playlistChannels = System.IO.File.Exists(playlist.Url)
+                    ? await _m3uParserService.ParseFromFileAsync(playlist.Url)
+                    : await _m3uParserService.ParseFromUrlAsync(playlist.Url, ct);
+            }
+
             result.AddRange(playlistChannels);
             await SavePlaylistCacheAsync(playlist.Id, playlistChannels);
         }
@@ -877,7 +903,26 @@ public sealed partial class MainPage : Page
         LogoUrl = cached.LogoUrl,
         Group = cached.Group,
         TvgId = cached.TvgId,
-        CatchupDays = cached.CatchupDays
+        CatchupDays = cached.CatchupDays,
+        PortalRequest = cached.PortalRequest,
+        Description = cached.Description,
+        Year = cached.Year
+    };
+
+    /// <summary>
+    /// Элемент каталога портала → канал: категория становится группой
+    /// (фильтр групп работает без изменений), StreamUrl остаётся null до
+    /// клика — поток у портала одноразовый и запрашивается по клику.
+    /// </summary>
+    private static ChannelViewModel PortalItemToChannel(PortalCatalogItem item) => new()
+    {
+        Name = item.Name,
+        Group = item.Group,
+        LogoUrl = item.LogoUrl,
+        StreamUrl = item.StreamUrl,
+        PortalRequest = item.RequestJson,
+        Description = item.Description,
+        Year = item.Year
     };
 
     /// <summary>
@@ -1367,7 +1412,7 @@ public sealed partial class MainPage : Page
     // не менялись. Визуальная реакция (прогресс, ошибки, баннеры, подключение
     // MediaPlayerElement) — через события VM, подписки в конструкторе.
 
-    private Task PlayLiveAsync(ChannelViewModel channel) => Player.PlayLiveAsync(channel);
+    private Task PlayLiveAsync(ChannelViewModel channel) => ViewModel.PlayChannelAsync(channel);
 
     private void StopPlayback() => Player.Stop();
 
@@ -1387,6 +1432,160 @@ public sealed partial class MainPage : Page
     /// панелями управления (по движению мыши) и прячется вместе с ними.
     /// Вызывается при каждой смене состояния плеера.
     /// </summary>
+    /// <summary>
+    /// Кнопка качества VOD портала в нижних панелях (оконной и fullscreen):
+    /// видна только когда портал отдал варианты качества; метка — текущее
+    /// качество, меню со всеми вариантами строится заново при каждом старте
+    /// VOD (галочкой отмечен активный, клик переключает).
+    /// </summary>
+    private void UpdateVodQualityButtons()
+    {
+        var visible = Player.IsVodPlaying && Player.VodQualities.Count > 1;
+        OverlayVodQualityButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        WindowedVodQualityButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+
+        // Полосы перемотки VOD — те же условия видимости, что у кнопки
+        // качества: только элементы портала с вариантом потока.
+        OverlayVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
+        WindowedVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
+
+        if (Player.CurrentVodQuality is { } quality)
+        {
+            OverlayVodQualityButton.Content = quality;
+            WindowedVodQualityButton.Content = quality;
+        }
+
+        if (!visible)
+        {
+            return;
+        }
+
+        var menu = new MenuFlyout();
+        foreach (var option in Player.VodQualities)
+        {
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = option,
+                IsChecked = option == Player.CurrentVodQuality,
+                Tag = option
+            };
+            item.Click += VodQualityMenuItem_Click;
+            menu.Items.Add(item);
+        }
+
+        // Один и тот же MenuFlyout нельзя показать у двух владельцев —
+        // каждой кнопке своя копия.
+        var menuCopy = new MenuFlyout();
+        foreach (var option in Player.VodQualities)
+        {
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = option,
+                IsChecked = option == Player.CurrentVodQuality,
+                Tag = option
+            };
+            item.Click += VodQualityMenuItem_Click;
+            menuCopy.Items.Add(item);
+        }
+
+        OverlayVodQualityButton.Flyout = menu;
+        WindowedVodQualityButton.Flyout = menuCopy;
+    }
+
+    private async void VodQualityMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem { Tag: string quality })
+        {
+            await Player.SwitchVodQualityAsync(quality);
+        }
+    }
+
+    // ===================== Перемотка VOD =====================
+
+    private bool _updatingVodSeekBarValue;
+    private Slider? _activeVodSlider;
+
+    /// <summary>
+    /// Толкает позицию/длительность VOD в слайдеры и подписи обеих панелей.
+    /// Пока пользователь тянет ползунок (IsVodSeeking), Value не трогаем.
+    /// </summary>
+    private void UpdateVodSeekBar()
+    {
+        if (!Player.IsVodPlaying)
+        {
+            return;
+        }
+
+        WindowedVodPositionText.Text = Player.VodPositionText;
+        OverlayVodPositionText.Text = Player.VodPositionText;
+        WindowedVodDurationText.Text = Player.VodDurationText;
+        OverlayVodDurationText.Text = Player.VodDurationText;
+
+        if (Player.IsVodSeeking)
+        {
+            return;
+        }
+
+        var duration = Math.Max(1.0, Player.VodDurationSeconds);
+        var position = Math.Clamp(Player.VodPositionSeconds, 0.0, duration);
+
+        _updatingVodSeekBarValue = true;
+        try
+        {
+            WindowedVodSeekBar.Maximum = duration;
+            WindowedVodSeekBar.Value = position;
+            OverlayVodSeekBar.Maximum = duration;
+            OverlayVodSeekBar.Value = position;
+        }
+        finally
+        {
+            _updatingVodSeekBarValue = false;
+        }
+    }
+
+    private void VodSeekBar_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (sender is not Slider slider || _updatingVodSeekBarValue)
+        {
+            return;
+        }
+
+        _activeVodSlider = slider;
+        Player.IsVodSeeking = true;
+
+        var text = PlayerViewModel.FormatArchiveTime(slider.Value);
+        WindowedVodPositionText.Text = text;
+        OverlayVodPositionText.Text = text;
+    }
+
+    private void VodSeekBar_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Slider slider)
+        {
+            _activeVodSlider = slider;
+        }
+        Player.IsVodSeeking = true;
+    }
+
+    // Перемотка VOD дешёвая (без рестарта потока) — коммитим сразу по
+    // отпусканию ползунка; на CaptureLost тоже, см. комментарий у архива.
+    private void VodSeekBar_PointerReleased(object sender, PointerRoutedEventArgs e) => CommitVodSeek();
+
+    private void VodSeekBar_PointerCaptureLost(object sender, PointerRoutedEventArgs e) => CommitVodSeek();
+
+    private void CommitVodSeek()
+    {
+        Player.IsVodSeeking = false;
+        if (_activeVodSlider == null || !Player.IsVodPlaying)
+        {
+            return;
+        }
+
+        var target = _activeVodSlider.Value;
+        _activeVodSlider = null;
+        Player.SeekVod(target);
+    }
+
     private void UpdateArchiveBanner()
     {
         if (Player.IsArchivePlaying && Player.ArchiveEntry != null)
@@ -2162,7 +2361,10 @@ public sealed partial class MainPage : Page
                 LogoUrl = c.LogoUrl,
                 Group = c.Group,
                 TvgId = c.TvgId,
-                CatchupDays = c.CatchupDays
+                CatchupDays = c.CatchupDays,
+                PortalRequest = c.PortalRequest,
+                Description = c.Description,
+                Year = c.Year
             }).ToList()
         };
 

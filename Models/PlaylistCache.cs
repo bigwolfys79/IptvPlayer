@@ -14,12 +14,14 @@ namespace IptvPlayer.Models;
 public class PlaylistCache
 {
     /// <summary>
-    /// Версия формата кэша. При добавлении новых полей (CatchupDays) или
-    /// смене их смысла — увеличивается: кэш старой версии считается
-    /// устаревшим и плейлист перекачивается один раз при первом запуске
-    /// обновлённого приложения (см. InitializeAsync).
+    /// Версия формата кэша. При добавлении новых полей (CatchupDays,
+    /// PortalRequest) или смене их смысла — увеличивается: кэш старой версии
+    /// считается устаревшим и плейлист перекачивается один раз при первом
+    /// запуске обновлённого приложения (см. InitializeAsync).
+    /// v2 — элементы портала получили год в названии.
+    /// v3 — элементы портала получили Description и Year отдельными полями.
     /// </summary>
-    public const int CurrentFormatVersion = 1;
+    public const int CurrentFormatVersion = 3;
 
     public int FormatVersion { get; set; }
 
@@ -47,4 +49,16 @@ public class CachedChannel
     /// (0 — архива нет). От него зависит зелёный маркер в списке каналов.
     /// </summary>
     public int CatchupDays { get; set; }
+
+    /// <summary>
+    /// Request-объект элемента видео-портала (только источники-порталы):
+    /// кэш каталога должен переживать перезапуск, а ссылка на поток у
+    /// портала одноразовая — вместо неё кэшируется команда её получения.
+    /// </summary>
+    public string? PortalRequest { get; set; }
+
+    /// <summary>Описание и год элемента портала (Description показывается в оверлее).</summary>
+    public string? Description { get; set; }
+
+    public int Year { get; set; }
 }

@@ -253,6 +253,23 @@ public class PlaylistSource
     public string Url { get; set; } = string.Empty;
 
     /// <summary>
+    /// Тип источника: "m3u" (по умолчанию, обычный плейлист M3U/M3U8) или
+    /// "portal" (видео-портал: URL = базовый адрес API, ключ в PortalKey,
+    /// каталог загружается VideoPortalService). Отсутствие поля в старых
+    /// настройках = "m3u", миграция не нужна.
+    /// </summary>
+    public string Type { get; set; } = "m3u";
+
+    /// <summary>
+    /// Ключ доступа к видео-порталу (portal::[key:...]). Используется только
+    /// для источников Type == "portal".
+    /// </summary>
+    public string? PortalKey { get; set; }
+
+    /// <summary>Истинно для источников-порталов (Type == "portal").</summary>
+    public bool IsPortal => string.Equals(Type, "portal", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Последний смотренный канал ЭТОГО плейлиста (по имени) — автопродолжение
     /// восстанавливается при возврате на плейлист. Пер-плейлист, а не глобальный,
     /// чтобы переключение провайдеров не переносило канал из одного набора в другой.

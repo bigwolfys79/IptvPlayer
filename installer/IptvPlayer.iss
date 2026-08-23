@@ -9,7 +9,7 @@
 ; Готовый файл: installer\output\IptvPlayer-Setup-<версия>-x64.exe
 
 #define MyAppName "IptvPlayer"
-#define MyAppVersion "1.8.0"
+#define MyAppVersion "1.9.0"
 #define MyAppExeName "IptvPlayer.exe"
 #define MyAppPublisher "IptvPlayer"
 ; Папка публикации из win-x64.pubxml
