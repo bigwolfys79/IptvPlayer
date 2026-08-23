@@ -172,6 +172,16 @@ public class AppSettings
     public string? UpdateCheckUrl { get; set; }
 
     /// <summary>
+    /// Полуавтоматическое обновление: фоновая проверка при запуске (не чаще
+    /// раза в сутки), скачивание установщика, диалог «установить сейчас».
+    /// Установка не запускается, пока идут записи передач.
+    /// </summary>
+    public bool AutoUpdateEnabled { get; set; } = true;
+
+    /// <summary>Момент последней фоновой проверки обновлений (UTC).</summary>
+    public DateTime? LastUpdateCheckUtc { get; set; }
+
+    /// <summary>
     /// Сворачивать окно в трей вместо выхода при закрытии (крестик).
     /// Полный выход — через меню иконки в трее.
     /// </summary>

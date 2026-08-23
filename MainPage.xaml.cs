@@ -42,6 +42,7 @@ public sealed partial class MainPage : Page
     // SettingsService).
     private readonly IM3UParserService _m3uParserService;
     private readonly IVideoPortalService _videoPortalService;
+    private readonly IUpdateService _updateService;
     private readonly ISettingsService _settingsService;
     private readonly IPlaylistCacheService _playlistCacheService;
 
@@ -153,6 +154,7 @@ public sealed partial class MainPage : Page
         var services = App.Services;
         _m3uParserService = services.GetRequiredService<IM3UParserService>();
         _videoPortalService = services.GetRequiredService<IVideoPortalService>();
+        _updateService = services.GetRequiredService<IUpdateService>();
         _settingsService = services.GetRequiredService<ISettingsService>();
         _playlistCacheService = services.GetRequiredService<IPlaylistCacheService>();
         _streamService = services.GetRequiredService<IStreamService>();
@@ -734,6 +736,10 @@ public sealed partial class MainPage : Page
         ViewModel.FilterChannels();
         UpdatePlaylistMenu();
 
+        // Полуавтоматическое обновление: фоновая проверка через пару минут
+        // после старта (не чаще раза в сутки), см. RunAutoUpdateCheckAsync.
+        ScheduleAutoUpdateCheck();
+
         // Записи, прерванные прошлым закрытием: если передача ещё идёт —
         // предлагаем продолжить запись оставшейся части.
         _ = OfferInterruptedRecordingsAsync();
@@ -924,6 +930,134 @@ public sealed partial class MainPage : Page
         Description = item.Description,
         Year = item.Year
     };
+
+    // ===================== Полуавтоматическое обновление =====================
+
+    /// <summary>
+    /// Скачанный установщик, ожидающий окончания записей: установка не
+    /// запускается, пока идёт хотя бы одна запись (прерывать нельзя).
+    /// </summary>
+    private string? _pendingUpdateSetupPath;
+
+    /// <summary>
+    /// Планирует фоновую проверку обновлений: через 2 минуты после старта,
+    /// не чаще раза в сутки (LastUpdateCheckUtc), только если включена в
+    /// настройках. Ошибки сети/скачивания полностью тихие — старая версия
+    /// продолжает работать, проверка повторится при следующем запуске.
+    /// </summary>
+    private void ScheduleAutoUpdateCheck()
+    {
+        if (!ViewModel.AppSettings.AutoUpdateEnabled)
+        {
+            return;
+        }
+
+        if (ViewModel.AppSettings.LastUpdateCheckUtc is { } last &&
+            DateTime.UtcNow - last < TimeSpan.FromHours(20))
+        {
+            return;
+        }
+
+        _ = RunAutoUpdateCheckAsync();
+    }
+
+    private async Task RunAutoUpdateCheckAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMinutes(2));
+
+            // Пользователь мог выключить тумблер, пока шла задержка.
+            if (!ViewModel.AppSettings.AutoUpdateEnabled)
+            {
+                return;
+            }
+
+            ViewModel.AppSettings.LastUpdateCheckUtc = DateTime.UtcNow;
+            await _settingsService.SaveAsync(ViewModel.AppSettings);
+
+            var update = await _updateService.CheckForUpdateAsync();
+            if (update == null)
+            {
+                return;
+            }
+
+            var setupPath = await _updateService.DownloadAsync(update);
+            DispatcherQueue.TryEnqueue(() => _ = OfferUpdateInstallAsync(update.Version, setupPath));
+        }
+        catch (Exception ex)
+        {
+            // Обновление — не критичная функция: любая ошибка (сеть, сумма,
+            // диск) оставляет текущую версию работающей, попытка повторится
+            // при следующем запуске.
+            _logger.LogWarning(ex, "Автообновление: шаг не удался, текущая версия продолжает работать.");
+        }
+    }
+
+    /// <summary>
+    /// Диалог «установить сейчас?»: согласие → тихая установка (или откладывание,
+    /// если идут записи — установится автоматически после последней), отказ —
+    /// ничего не делаем, установщик остаётся во временной папке.
+    /// </summary>
+    private async Task OfferUpdateInstallAsync(Version version, string setupPath)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = L.T("Доступно обновление", "Update available"),
+            Content = L.T(
+                $"Версия {version} скачана. Установить сейчас? Приложение закроется на время установки и запустится снова.",
+                $"Version {version} is downloaded. Install now? The app will close during installation and restart after."),
+            PrimaryButtonText = L.T("Установить сейчас", "Install now"),
+            CloseButtonText = L.T("Позже", "Later"),
+            DefaultButton = ContentDialogButton.Primary
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            _logger.LogInformation("Обновление {Version}: пользователь отложил установку.", version);
+            return;
+        }
+
+        if (ViewModel.Recording.Active.Count > 0)
+        {
+            // Установить нельзя, пока идут записи — откладываем до окончания
+            // последней (согласие уже получено, повторного вопроса не будет).
+            _pendingUpdateSetupPath = setupPath;
+            ViewModel.Recording.RecordingsChanged += OnRecordingsChanged_InstallUpdate;
+            _logger.LogInformation(
+                "Обновление {Version} отложено: идут записи ({Count}), установится после их окончания.",
+                version, ViewModel.Recording.Active.Count);
+
+            var info = new ContentDialog
+            {
+                XamlRoot = Content.XamlRoot,
+                Title = L.T("Обновление отложено", "Update postponed"),
+                Content = L.T(
+                    "Идёт запись передач — обновление установится автоматически после её окончания.",
+                    "A recording is in progress — the update will install automatically when it finishes."),
+                CloseButtonText = L.T("Понятно", "OK")
+            };
+            await info.ShowAsync();
+            return;
+        }
+
+        _updateService.RunInstallerAndExit(setupPath);
+    }
+
+    private void OnRecordingsChanged_InstallUpdate(object? sender, EventArgs e)
+    {
+        if (_pendingUpdateSetupPath == null || ViewModel.Recording.Active.Count > 0)
+        {
+            return;
+        }
+
+        // Последняя запись завершилась — ставим отложенное обновление.
+        ViewModel.Recording.RecordingsChanged -= OnRecordingsChanged_InstallUpdate;
+        var setupPath = _pendingUpdateSetupPath;
+        _pendingUpdateSetupPath = null;
+        DispatcherQueue.TryEnqueue(() => _updateService.RunInstallerAndExit(setupPath));
+    }
 
     /// <summary>
     /// Наполняет подменю «Сменить плейлист» в меню настроек: активный отмечен
