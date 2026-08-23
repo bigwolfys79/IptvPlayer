@@ -45,28 +45,33 @@ public sealed partial class AboutDialog : UserControl
         VersionText.Text = L.T($"Версия {v}", $"Version {v}");
 
         DescriptionText.Text = L.T(
-            "IPTV-плеер для плейлистов M3U/M3U8 с программой передач (EPG), архивом передач, записью и родительским контролем.",
-            "IPTV player for M3U/M3U8 playlists with an electronic programme guide (EPG), catch-up archive, recording and parental control.");
+            "IPTV-плеер для плейлистов M3U/M3U8 с EPG, архивом передач, видеотекой, записью и родительским контролем.",
+            "IPTV player for M3U/M3U8 playlists with EPG, catch-up archive, video library, recording and parental control.");
 
         FeaturesHeader.Text = L.T("Возможности", "Features");
         FeaturesText.Text = L.T(
-            "• Воспроизведение прямых эфиров и архивов (timeshift) с перемоткой\n" +
-            "• Программа передач XMLTV из нескольких источников, напоминания\n" +
+            "• Прямые эфиры и архивы (timeshift) с перемоткой\n" +
+            "• Видеотека (видео-портал): фильмы, сериалы, выбор качества\n" +
+            "• Программа передач XMLTV, напоминания о передачах\n" +
             "• Запись каналов и передач (ffmpeg, до 3 параллельных)\n" +
             "• Избранное, история, «предыдущий канал» (Backspace)\n" +
-            "• Родительский контроль: группы за PIN с временной разблокировкой\n" +
-            "• Тёмная/светлая тема, русский/английский интерфейс",
+            "• Мини-плеер (Ctrl+M), статистика потока (Ctrl+J)\n" +
+            "• Полуавтоматическое обновление (GitHub Releases)\n" +
+            "• Родительский контроль, тёмная тема, русский/английский",
             "• Live streams and catch-up archives with seeking\n" +
-            "• XMLTV programme guide from multiple sources, reminders\n" +
+            "• Video library (portal): films, series, quality selection\n" +
+            "• XMLTV programme guide, programme reminders\n" +
             "• Channel/programme recording (ffmpeg, up to 3 parallel)\n" +
             "• Favorites, history, previous channel (Backspace)\n" +
-            "• Parental control: groups behind a PIN with timed unlock\n" +
-            "• Dark/light theme, Russian/English interface");
+            "• Mini player (Ctrl+M), stream stats (Ctrl+J)\n" +
+            "• Semi-automatic updates (GitHub Releases)\n" +
+            "• Parental control, dark theme, Russian/English");
 
         ComponentsHeader.Text = L.T("Компоненты", "Components");
         ComponentsText.Text =
             "FFmpeg / FFmpegInteropX (демуксинг и декодирование HEVC, AC-3 и др.)\n" +
-            "Windows App SDK (WinUI 3), .NET 8\n" +
+            "Windows App SDK (WinUI 3), .NET 8, CommunityToolkit\n" +
+            "Serilog (логирование), Inno Setup (установщик)\n" +
             L.T("EPG: XMLTV (epg.one), сопоставление каналов — таблица epg.one/setup-playlist",
                 "EPG: XMLTV (epg.one), channel matching via the epg.one/setup-playlist table");
 
