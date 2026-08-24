@@ -159,18 +159,6 @@ public sealed partial class MainWindow : Window
         Close();
     }
 
-    /// <summary>
-    /// Включает/выключает настоящий полноэкранный режим уровня ОС через
-    /// AppWindow presenter. В отличие от простого разворачивания панелей
-    /// внутри страницы, это убирает рамку и заголовок окна и разворачивает
-    /// его на весь экран средствами Windows (AppWindowPresenterKind.FullScreen).
-    ///
-    /// Важно: AppWindowPresenterKind.FullScreen убирает только системную
-    /// рамку/заголовок ОС. Наш собственный элемент TitleBar (AppTitleBar) —
-    /// это часть контента страницы в отдельной строке Grid'а, presenter его
-    /// не трогает, поэтому его нужно скрывать вручную, иначе сверху экрана
-    /// останется полоса и контент не займёт весь монитор.
-    /// </summary>
     public void SetOsFullScreen(bool enable)
     {
         AppWindow.SetPresenter(enable
