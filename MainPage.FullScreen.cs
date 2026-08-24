@@ -168,6 +168,19 @@ public sealed partial class MainPage
         }
         _lastOverlayPointerPosition = position;
 
+        // EPG-панель видна — полноэкранный оверлей не показываем
+        // независимо от позиции курсора. Скрим (EpgScrimBorder) покрывает
+        // весь экран, клик по нему закрывает EPG.
+        if (EpgPanelBorder.Visibility == Visibility.Visible)
+        {
+            if (FullScreenOverlay.Visibility == Visibility.Visible)
+            {
+                HideFullScreenOverlay(immediate: true);
+                _overlayHideTimer.Stop();
+            }
+            return;
+        }
+
         ShowFullScreenOverlay();
         _overlayHideTimer.Stop();
         _overlayHideTimer.Start();
@@ -183,8 +196,6 @@ public sealed partial class MainPage
     {
         if (_isFullScreen)
         {
-            // В fullscreen оверлеем управляет RootGrid_PointerMoved — иначе
-            // два обработчика перезапускали бы друг друга поверх чужой логики.
             return;
         }
 
@@ -195,6 +206,9 @@ public sealed partial class MainPage
             return;
         }
         _lastWindowedOverlayPointerPosition = position;
+
+        Serilog.Log.Debug("VideoArea move: EpgVisible={Epg} isFullScreen={FS}",
+            ViewModel.IsEpgVisible, _isFullScreen);
 
         ShowWindowedVideoOverlay();
         _overlayHideTimer.Stop();
@@ -210,15 +224,12 @@ public sealed partial class MainPage
     /// </summary>
     private void RootGrid_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        // Открытый EPG-оверлей занимает часть видео: колесо над ним должно
-        // прокручивать список передач, а не менять громкость.
+        // EPG-оверлей覆盖 весь экран (скрим + панель): колесо над ним
+        // прокручивает список передач, а не меняет громкость.
         if (EpgPanelBorder.Visibility == Visibility.Visible)
         {
-            var ep = e.GetCurrentPoint(EpgPanelBorder).Position;
-            if (ep.X >= 0 && ep.Y >= 0 && ep.X <= EpgPanelBorder.ActualWidth && ep.Y <= EpgPanelBorder.ActualHeight)
-            {
-                return;
-            }
+            Serilog.Log.Debug("Wheel: EPG visible — BLOCKED");
+            return;
         }
 
         var position = e.GetCurrentPoint(VideoAreaBorder).Position;
@@ -226,6 +237,8 @@ public sealed partial class MainPage
             position.X > VideoAreaBorder.ActualWidth ||
             position.Y > VideoAreaBorder.ActualHeight)
         {
+            Serilog.Log.Debug("Wheel: outside VideoAreaBorder ({X:F0},{Y:F0}) vs ({W:F0}x{H:F0}) — ignored",
+                position.X, position.Y, VideoAreaBorder.ActualWidth, VideoAreaBorder.ActualHeight);
             return;
         }
 
@@ -244,6 +257,7 @@ public sealed partial class MainPage
             return;
         }
 
+        Serilog.Log.Debug("Wheel: VOLUME {Cur:F2} -> {Tgt:F2}", current, target);
         OnVolumeSliderChanged(target);
 
         if (_isFullScreen)

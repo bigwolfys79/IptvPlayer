@@ -2,7 +2,7 @@
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.11.3
+- **Version:** 1.11.5
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -19,6 +19,9 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ---
 
 ## Implemented
+
+### v1.11.5
+- **EPG as separate overlay** — EPG panel moved to the full window level (previously video area only): scrim covers the entire screen (including channel list), clicking outside the panel closes EPG. In both windowed and fullscreen modes, the fullscreen overlay no longer intercepts mouse when EPG is open. Mouse wheel scrolls the EPG program list only when the panel is visible.
 
 ### Playback
 - **FFmpegInteropX + FFmpeg** — demuxing and decoding any streams (including HEVC in MPEG-TS and AC-3, which the built-in Windows player cannot handle); rendering is done via the standard MediaPlayerElement.

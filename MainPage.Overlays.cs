@@ -436,6 +436,12 @@ public sealed partial class MainPage
 
     private void ShowFullScreenOverlay()
     {
+        // EPG открыт — оверлей не показываем независимо от вызывающего кода
+        if (ViewModel.IsEpgVisible)
+        {
+            return;
+        }
+
         if (FullScreenOverlay.Visibility == Visibility.Visible && _fullScreenOverlayFadingIn)
         {
             return;

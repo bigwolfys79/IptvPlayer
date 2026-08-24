@@ -173,7 +173,16 @@ public sealed partial class MainPage
                 break;
 
             case VirtualKey.Escape:
-                if (_isFullScreen)
+                // Esc в fullscreen сначала закрывает открытое EPG-окно
+                // (пока курсор над ним, оверлей с кнопками не показывается),
+                // повторное нажатие — выход из полноэкранного режима.
+                if (ViewModel.IsEpgVisible)
+                {
+                    ViewModel.IsEpgVisible = false;
+                    ApplyEpgVisibility();
+                    e.Handled = true;
+                }
+                else if (_isFullScreen)
                 {
                     SetFullScreenMode(false);
                     e.Handled = true;

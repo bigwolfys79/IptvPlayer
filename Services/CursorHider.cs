@@ -33,6 +33,7 @@ public sealed class CursorHider : IDisposable
     private POINT _lastPointer;
     private DateTime _lastClickUtc = DateTime.MinValue;
     private DateTime _clickWatchUntil = DateTime.MinValue;
+    private bool _buttonWasDown;
 
     public CursorHider(IntPtr mainHwnd, Action wake, Action wakeByClick, Action wakeByDoubleClick, Action<int> wheel)
     {
@@ -64,6 +65,10 @@ public sealed class CursorHider : IDisposable
                     return;
                 }
 
+                bool buttonDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+                bool newPress = buttonDown && !_buttonWasDown;
+                _buttonWasDown = buttonDown;
+
                 if (_hidden)
                 {
                     // Указатель фактически над XAML-окнами нашего потока (мост
@@ -71,7 +76,7 @@ public sealed class CursorHider : IDisposable
                     // «хвостовые» курсоры элементов (слайдеры, сплиттеры).
                     SetCursor(IntPtr.Zero);
 
-                    if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0)
+                    if (newPress)
                     {
                         if ((now - _lastClickUtc).TotalMilliseconds <= 500)
                         {
@@ -88,7 +93,7 @@ public sealed class CursorHider : IDisposable
                         return;
                     }
                 }
-                else if ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0)
+                else if (newPress)
                 {
                     // Второй клик в окне наблюдения после пробуждения.
                     if ((now - _lastClickUtc).TotalMilliseconds <= 500)

@@ -355,164 +355,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- EPG-оверлей поверх видео -->
-            <Border x:Name="EpgPanelBorder"
-                    Canvas.ZIndex="3"
-                    Visibility="Collapsed"
-                    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="0,0,0,1">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
 
-                    <!-- EPG Content — вертикальный список программ выбранного канала -->
-                    <Grid Grid.Row="1">
-                        <!-- Заголовок с названием канала -->
-                        <Border Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="16,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" VerticalAlignment="Top">
-                            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                                <Ellipse Width="14" Height="14" Fill="{x:Bind ViewModel.SelectedChannel.IsLive, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}" VerticalAlignment="Center" />
-                                <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                <TextBlock x:Name="EpgHeaderText" Text="— Программа передач" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                                <TextBlock x:Name="EpgHeaderHintText" Text="клик по передаче — смотреть с начала" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Список программ передач. Клик по уже начавшейся передаче
-                             запускает её в архиве (timeshift) — см. EPGProgramsListView_ItemClick. -->
-                        <ListView x:Name="EPGProgramsListView"
-                                  ItemsSource="{x:Bind ViewModel.SelectedChannel.EPGEntries, Mode=OneWay}"
-                                  Margin="0,52,0,0"
-                                  SelectionMode="None"
-                                  IsItemClickEnabled="True"
-                                  ItemClick="EPGProgramsListView_ItemClick"
-                                  Loaded="EPGProgramsListView_Loaded">
-                            <ListView.ItemContainerStyle>
-                                <Style TargetType="ListViewItem">
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                    <Setter Property="Padding" Value="4,2" />
-                                </Style>
-                            </ListView.ItemContainerStyle>
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="vmModels:EPGEntry">
-                                    <Grid>
-                                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="4"
-                                                Padding="12,10">
-                                            <StackPanel Orientation="Vertical" Spacing="0">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel Orientation="Vertical" Spacing="2" MinWidth="80">
-                                                        <TextBlock Text="{x:Bind StartTimeString}" FontSize="12" FontWeight="Bold" />
-                                                        <TextBlock Text="{x:Bind Duration, Converter={StaticResource TimeSpanConverter}}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                    </StackPanel>
-                                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Vertical" Spacing="2">
-                                                        <TextBlock Text="{x:Bind Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="3" TextWrapping="Wrap" />
-                                                    </StackPanel>
-                                                    <!-- Значок доступности архива (только у начавшихся передач)
-                                                         и колокольчик напоминания (только у будущих). -->
-                                                    <StackPanel Grid.Column="2"
-                                                                Margin="8,0,0,0"
-                                                                Orientation="Horizontal"
-                                                                Spacing="4"
-                                                                VerticalAlignment="Center">
-                                                        <Path Data="M4.5,2 L13,8 L4.5,14 Z"
-                                                              Width="14" Height="14" Stretch="Uniform"
-                                                              Fill="{ThemeResource AccentFillColorDefaultBrush}"
-                                                              Visibility="{x:Bind CanPlayArchive, Converter={StaticResource BoolToVisConverter}}"
-                                                              ToolTipService.ToolTip="Смотреть с начала (архив)" />
-                                                        <!-- Напоминание: зелёный колокольчик = стоит. Доступно
-                                                             только передачам, которые ещё не начались. -->
-                                                        <Button x:Name="ReminderButton"
-                                                                Width="32" Height="32"
-                                                                Padding="0"
-                                                                Background="Transparent"
-                                                                BorderThickness="0"
-                                                                Click="ReminderButton_Click"
-                                                                Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
-                                                                ToolTipService.ToolTip="Напомнить о передаче">
-                                                            <!-- Нарисованный колокольчик: цвет — серый/зелёный
-                                                                 по HasReminder. -->
-                                                            <Grid Width="14" Height="14">
-                                                                <Path Data="M8,1.7 C5.5,1.7 3.8,3.9 3.8,6.5 V9.1 L2.2,11.7 H13.8 L12.2,9.1 V6.5 C12.2,3.9 10.5,1.7 8,1.7 Z M6.7,13 A1.35,1.35 0 0 0 9.3,13 Z"
-                                                                      Fill="{x:Bind HasReminder, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}"
-                                                                      Stretch="Uniform" />
-                                                            </Grid>
-                                                        </Button>
-                                                        <!-- Запланировать запись передачи (тоже только будущей):
-                                                             зелёная точка записи = запланировано. -->
-                                                        <Button x:Name="ScheduleRecordButton"
-                                                                Width="32" Height="32"
-                                                                Padding="0"
-                                                                Background="Transparent"
-                                                                BorderThickness="0"
-                                                                Click="ScheduleRecordButton_Click"
-                                                                Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
-                                                                ToolTipService.ToolTip="Записать передачу">
-                                                            <!-- Нарисованная кнопка записи: кольцо с точкой,
-                                                                 серые — без записи, красные — запланирована. -->
-                                                            <Grid Width="14" Height="14">
-                                                                <Ellipse StrokeThickness="1.5"
-                                                                         Stroke="{x:Bind HasScheduleRecord, Converter={StaticResource BoolToRecordColorConverter}, Mode=OneWay}" />
-                                                                <Ellipse Width="6.5" Height="6.5"
-                                                                         Fill="{x:Bind HasScheduleRecord, Converter={StaticResource BoolToRecordColorConverter}, Mode=OneWay}" />
-                                                            </Grid>
-                                                        </Button>
-                                                    </StackPanel>
-                                                </Grid>
-                                                <!-- Сколько текущей передачи уже прошло: тонкая полоса
-                                                     внизу карточки, есть только у идущей передачи. -->
-                                                <ProgressBar Value="{x:Bind LiveProgress, Mode=OneWay}"
-                                                             Maximum="1" Minimum="0"
-                                                             Height="3" CornerRadius="1.5" Padding="0" Margin="0,6,0,0"
-                                                             Visibility="{x:Bind IsCurrent, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Подсветка текущей передачи (OneWay: минутный таймер
-                                             переносит IsCurrent на новую передачу на лету). -->
-                                        <Border Background="{ThemeResource LiveGreenSoftBrush}"
-                                                BorderBrush="{ThemeResource LiveGreenBrush}"
-                                                BorderThickness="2"
-                                                CornerRadius="4"
-                                                Visibility="{x:Bind IsCurrent, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-
-                        <!-- Пустое состояние — если нет EPG данных у выбранного канала -->
-                        <StackPanel x:Name="EmptyChannelEPGState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,52,0,0">
-                            <Path Data="M3.7,1.7 H12.3 V14.3 H3.7 Z M5.8,5.4 H10.2 M5.8,8.2 H10.2 M5.8,11 H8.8"
-                                  Width="36" Height="36" Stretch="Uniform"
-                                  Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2"
-                                  HorizontalAlignment="Center" />
-                            <TextBlock x:Name="EmptyChannelEpgText" Text="Нет данных о программах для этого канала" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" Margin="0,8,0,0" />
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Empty State -->
-                    <Grid x:Name="EmptyEPGState" Grid.Row="1" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <StackPanel Orientation="Vertical" Spacing="16" HorizontalAlignment="Center">
-                            <Path Data="M3.7,1.7 H12.3 V14.3 H3.7 Z M5.8,5.4 H10.2 M5.8,8.2 H10.2 M5.8,11 H8.8"
-                                  Width="48" Height="48" Stretch="Uniform"
-                                  Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2" />
-                            <TextBlock x:Name="EmptyEpgTitle" Text="EPG данные недоступны" FontSize="18" FontWeight="Medium" />
-                            <TextBlock x:Name="EmptyEpgHint" Text="Выберите источник EPG или обновите данные" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" />
-                                                        <Button x:Name="EmptyEpgRefreshButton" Content="Обновить EPG" Command="{x:Bind ViewModel.EpgViewModel.RefreshEpgCommand}" />
-                        </StackPanel>
-                    </Grid>
-                </Grid>
-            </Border>
 
             <!-- Now Playing Bar убрана: громкость, EPG и полноэкранный режим
                  теперь в оверлее поверх видео (WindowedVideoOverlay ниже),
@@ -831,6 +674,173 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- Затемнение вокруг плавающего EPG-окна: клик по нему закрывает
+             EPG (стандартный способ «вне окна»). Видимость синхронна с
+             EpgPanelBorder (ApplyEpgVisibility). Раньше жил внутри RightPanelGrid
+             (только колонка видео) — теперь на уровне RootGrid со ColumnSpan=3,
+             чтобы затемнять весь экран (список каналов + видео). -->
+        <Border x:Name="EpgScrimBorder"
+                Grid.ColumnSpan="3"
+                Canvas.ZIndex="20"
+                Visibility="Collapsed"
+                Background="#66000000"
+                Tapped="EpgScrimBorder_Tapped" />
+
+        <!-- EPG — плавающее окно по центру всего окна с отступами со всех
+             сторон: stretch + Margin дают «рамку» вокруг панели, MaxWidth
+             не даёт растянуться бесконечно на широких экранах. ColumnSpan=3
+             чтобы позиционироваться относительно всего окна, а не только
+             области видео. -->
+        <Border x:Name="EpgPanelBorder"
+                Grid.ColumnSpan="3"
+                Canvas.ZIndex="21"
+                Visibility="Collapsed"
+                Margin="64"
+                MaxWidth="960"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                CornerRadius="8"
+                Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- EPG Content — вертикальный список программ выбранного канала -->
+                <Grid Grid.Row="1">
+                    <!-- Заголовок с названием канала -->
+                    <Border Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="16,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" VerticalAlignment="Top">
+                        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                            <Ellipse Width="14" Height="14" Fill="{x:Bind ViewModel.SelectedChannel.IsLive, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}" VerticalAlignment="Center" />
+                            <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock x:Name="EpgHeaderText" Text="— Программа передач" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="EpgHeaderHintText" Text="клик по передаче — смотреть с начала" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Список программ передач. Клик по уже начавшейся передаче
+                         запускает её в архиве (timeshift) — см. EPGProgramsListView_ItemClick. -->
+                    <ListView x:Name="EPGProgramsListView"
+                              ItemsSource="{x:Bind ViewModel.SelectedChannel.EPGEntries, Mode=OneWay}"
+                              Margin="0,52,0,0"
+                              SelectionMode="None"
+                              IsItemClickEnabled="True"
+                              ItemClick="EPGProgramsListView_ItemClick"
+                              Loaded="EPGProgramsListView_Loaded">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="4,2" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vmModels:EPGEntry">
+                                <Grid>
+                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Padding="12,10">
+                                        <StackPanel Orientation="Vertical" Spacing="0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Orientation="Vertical" Spacing="2" MinWidth="80">
+                                                    <TextBlock Text="{x:Bind StartTimeString}" FontSize="12" FontWeight="Bold" />
+                                                    <TextBlock Text="{x:Bind Duration, Converter={StaticResource TimeSpanConverter}}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Vertical" Spacing="2">
+                                                    <TextBlock Text="{x:Bind Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind Description}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="3" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2"
+                                                            Margin="8,0,0,0"
+                                                            Orientation="Horizontal"
+                                                            Spacing="4"
+                                                            VerticalAlignment="Center">
+                                                    <Path Data="M4.5,2 L13,8 L4.5,14 Z"
+                                                          Width="14" Height="14" Stretch="Uniform"
+                                                          Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                                                          Visibility="{x:Bind CanPlayArchive, Converter={StaticResource BoolToVisConverter}}"
+                                                          ToolTipService.ToolTip="Смотреть с начала (архив)" />
+                                                    <Button x:Name="ReminderButton"
+                                                            Width="32" Height="32"
+                                                            Padding="0"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Click="ReminderButton_Click"
+                                                            Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
+                                                            ToolTipService.ToolTip="Напомнить о передаче">
+                                                        <Grid Width="14" Height="14">
+                                                            <Path Data="M8,1.7 C5.5,1.7 3.8,3.9 3.8,6.5 V9.1 L2.2,11.7 H13.8 L12.2,9.1 V6.5 C12.2,3.9 10.5,1.7 8,1.7 Z M6.7,13 A1.35,1.35 0 0 0 9.3,13 Z"
+                                                                  Fill="{x:Bind HasReminder, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}"
+                                                                  Stretch="Uniform" />
+                                                        </Grid>
+                                                    </Button>
+                                                    <Button x:Name="ScheduleRecordButton"
+                                                            Width="32" Height="32"
+                                                            Padding="0"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Click="ScheduleRecordButton_Click"
+                                                            Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
+                                                            ToolTipService.ToolTip="Записать передачу">
+                                                        <Grid Width="14" Height="14">
+                                                            <Ellipse StrokeThickness="1.5"
+                                                                     Stroke="{x:Bind HasScheduleRecord, Converter={StaticResource BoolToRecordColorConverter}, Mode=OneWay}" />
+                                                            <Ellipse Width="6.5" Height="6.5"
+                                                                     Fill="{x:Bind HasScheduleRecord, Converter={StaticResource BoolToRecordColorConverter}, Mode=OneWay}" />
+                                                        </Grid>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
+                                            <ProgressBar Value="{x:Bind LiveProgress, Mode=OneWay}"
+                                                         Maximum="1" Minimum="0"
+                                                         Height="3" CornerRadius="1.5" Padding="0" Margin="0,6,0,0"
+                                                         Visibility="{x:Bind IsCurrent, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Background="{ThemeResource LiveGreenSoftBrush}"
+                                            BorderBrush="{ThemeResource LiveGreenBrush}"
+                                            BorderThickness="2"
+                                            CornerRadius="4"
+                                            Visibility="{x:Bind IsCurrent, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <!-- Пустое состояние — если нет EPG данных у выбранного канала -->
+                    <StackPanel x:Name="EmptyChannelEPGState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,52,0,0">
+                        <Path Data="M3.7,1.7 H12.3 V14.3 H3.7 Z M5.8,5.4 H10.2 M5.8,8.2 H10.2 M5.8,11 H8.8"
+                              Width="36" Height="36" Stretch="Uniform"
+                              Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2"
+                              HorizontalAlignment="Center" />
+                        <TextBlock x:Name="EmptyChannelEpgText" Text="Нет данных о программах для этого канала" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" Margin="0,8,0,0" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Empty State -->
+                <Grid x:Name="EmptyEPGState" Grid.Row="1" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <StackPanel Orientation="Vertical" Spacing="16" HorizontalAlignment="Center">
+                        <Path Data="M3.7,1.7 H12.3 V14.3 H3.7 Z M5.8,5.4 H10.2 M5.8,8.2 H10.2 M5.8,11 H8.8"
+                              Width="48" Height="48" Stretch="Uniform"
+                              Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2" />
+                        <TextBlock x:Name="EmptyEpgTitle" Text="EPG данные недоступны" FontSize="18" FontWeight="Medium" />
+                        <TextBlock x:Name="EmptyEpgHint" Text="Выберите источник EPG или обновите данные" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" />
+                        <Button x:Name="EmptyEpgRefreshButton" Content="Обновить EPG" Command="{x:Bind ViewModel.EpgViewModel.RefreshEpgCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
 
         <!-- ================= Full-Screen Overlay ================= -->
         <!-- Виден только в полноэкранном режиме. Появляется по движению мыши

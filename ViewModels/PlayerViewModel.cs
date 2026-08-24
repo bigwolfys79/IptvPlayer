@@ -417,6 +417,7 @@ public partial class PlayerViewModel : ObservableObject
             }
 
             Player = player;
+            EnsureDisplayRequest(); // экран не гаснет, пока идёт воспроизведение
             CurrentPlayerChannelId = channel.Id;
             IsArchivePlaying = archiveEntry != null;
             IsVodPlaying = isVod && archiveEntry == null;
@@ -509,9 +510,53 @@ public partial class PlayerViewModel : ObservableObject
         }
     }
 
+    // ===================== Подавление гашения экрана =====================
+
+    // DisplayRequest активен, пока есть живой плеер: экран и заставка не
+    // гаснут при просмотре. Запрос/снятие считаются системой, поэтому
+    // строго парные — флаг не даёт рассинхрониться при повторных вызовах.
+    private bool _displayRequested;
+    private readonly Windows.System.Display.DisplayRequest _displayRequest = new();
+
+    private void EnsureDisplayRequest()
+    {
+        if (_displayRequested)
+        {
+            return;
+        }
+        try
+        {
+            _displayRequest.RequestActive();
+            _displayRequested = true;
+            _logger.LogDebug("DisplayRequest: активен (экран не гаснет)");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DisplayRequest: RequestActive не сработал");
+        }
+    }
+
+    private void ReleaseDisplayRequest()
+    {
+        if (!_displayRequested)
+        {
+            return;
+        }
+        try
+        {
+            _displayRequest.RequestRelease();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DisplayRequest: RequestRelease не сработал");
+        }
+        _displayRequested = false;
+    }
+
     /// <summary>Полная остановка текущего плеера (смена канала, закрытие).</summary>
     public void Stop()
     {
+        ReleaseDisplayRequest();
         if (Player == null)
         {
             return;

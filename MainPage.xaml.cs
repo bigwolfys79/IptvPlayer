@@ -1992,6 +1992,21 @@ public sealed partial class MainPage : Page
     {
         var visible = ViewModel.IsEpgVisible;
         EpgPanelBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        EpgScrimBorder.Visibility = EpgPanelBorder.Visibility;
+        Serilog.Log.Debug("EPG: {Vis} (fullScreen={FS})", visible ? "open" : "close", _isFullScreen);
+
+        // В полноэкранном режиме EPG-скрим (ZIndex 20) лежит выше FullScreenOverlay.
+        // Если оверлей оставить видимым, он продолжает реагировать на таймер
+        // автоскрытия и мерцает под скримом. Прячем при открытии EPG,
+        // восстанавливаем при закрытии.
+        if (_isFullScreen)
+        {
+            if (visible)
+            {
+                HideFullScreenOverlay(immediate: true);
+                _overlayHideTimer.Stop();
+            }
+        }
 
         // Иконка кнопки EPG — всегда календарь (E787), как в полноэкранном
         // оверлее: раньше для скрытого состояния ставился E785 «Unlock»
@@ -2005,9 +2020,17 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void FullScreenButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Клик по затемнению вокруг EPG-окна — закрыть EPG («вне окна»).
+    /// </summary>
+    private void EpgScrimBorder_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
-        SetFullScreenMode(!_isFullScreen);
+        ViewModel.IsEpgVisible = false;
+        ApplyEpgVisibility();
+    }
+
+    private void FullScreenButton_Click(object sender, RoutedEventArgs e)
+    {        SetFullScreenMode(!_isFullScreen);
     }
 
     private void ExitFullScreenButton_Click(object sender, RoutedEventArgs e)
