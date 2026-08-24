@@ -1999,13 +1999,12 @@ public sealed partial class MainPage : Page
         // Если оверлей оставить видимым, он продолжает реагировать на таймер
         // автоскрытия и мерцает под скримом. Прячем при открытии EPG,
         // восстанавливаем при закрытии.
-        if (_isFullScreen)
+        if (_isFullScreen && visible)
         {
-            if (visible)
-            {
-                HideFullScreenOverlay(immediate: true);
-                _overlayHideTimer.Stop();
-            }
+            Serilog.Log.Debug("EPG: fullscreen — скрыть оверлей, показать курсор для EPG-панели");
+            HideFullScreenOverlay(immediate: true);
+            _overlayHideTimer.Stop();
+            ShowCursorOverVideo();
         }
 
         // Иконка кнопки EPG — всегда календарь (E787), как в полноэкранном

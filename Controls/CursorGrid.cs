@@ -23,11 +23,16 @@ public sealed partial class CursorGrid : Grid
         if (_hiddenCursor == null)
         {
             _hiddenCursor = CreateInvisibleCursor();
-            Serilog.Log.Debug("CursorGrid: невидимый курсор создан: {Ok}", _hiddenCursor != null);
+            Serilog.Log.Information("CursorGrid.HideCursorOverWindow: невидимый курсор создан={Created}", _hiddenCursor != null);
         }
         if (_hiddenCursor != null)
         {
             ProtectedCursor = _hiddenCursor;
+            Serilog.Log.Debug("CursorGrid.HideCursorOverWindow: ProtectedCursor установлен (скрыт)");
+        }
+        else
+        {
+            Serilog.Log.Warning("CursorGrid.HideCursorOverWindow: невидимый курсор не создан, ProtectedCursor не установлен");
         }
     }
 
@@ -35,30 +40,7 @@ public sealed partial class CursorGrid : Grid
     public void ShowCursorOverWindow()
     {
         ProtectedCursor = null;
-    }
-
-    /// <summary>
-    /// Новая независимая копия невидимого курсора — для другого элемента:
-    /// один и тот же экземпляр InputCursor на двух элементах одновременно
-    /// input-site, судя по всему, не поддерживает (молча снимает с первого).
-    /// </summary>
-    /// <summary>
-    /// Общий невидимый курсор (создаётся один раз). Повторные CreateCursor/
-    /// CreateFromHCursor в одном сеансе падают с 0x80070716 (ресурс не
-    /// найден), поэтому плодить по экземпляру на элемент нельзя.
-    /// </summary>
-    private static Microsoft.UI.Input.InputCursor? _sharedHiddenCursor;
-
-    public Microsoft.UI.Input.InputCursor? CreateHiddenCursor()
-    {
-        if (_sharedHiddenCursor != null)
-        {
-            return _sharedHiddenCursor;
-        }
-        _sharedHiddenCursor = CreateInvisibleCursor();
-        Serilog.Log.Information("CursorGrid: общий невидимый курсор создан: {Ok}",
-            _sharedHiddenCursor != null);
-        return _sharedHiddenCursor;
+        Serilog.Log.Debug("CursorGrid.ShowCursorOverWindow: ProtectedCursor=null (показ)");
     }
 
     private static Microsoft.UI.Input.InputCursor? CreateInvisibleCursor()
