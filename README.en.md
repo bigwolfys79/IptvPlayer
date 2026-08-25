@@ -1,5 +1,11 @@
 # IptvPlayer
 
+## License
+
+This project is licensed under the **Prosperity Public License 3.0.0**. 
+
+It is free for noncommercial and personal use, but commercial use is limited to a 30-day trial period. For more details, please see the [LICENSE](LICENSE) file.
+
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
 - **Version:** 1.11.5
