@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -32,6 +33,45 @@ public class PortalCatalogItem
 
     /// <summary>Год выпуска (0 — не указан). Используется сортировкой каталога.</summary>
     public int Year { get; set; }
+
+    /// <summary>Жанр из фильтра manifest (null — жанр не определён).</summary>
+    public string? Genre { get; set; }
+}
+
+/// <summary>Элемент фильтра жанров из manifest.controls.filters.</summary>
+public class PortalGenreFilter
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string FilterRequestJson { get; set; } = string.Empty;
+}
+
+/// <summary>Категория видео-портала из manifest (fid → название типа контента).</summary>
+public class PortalCategoryInfo
+{
+    public int Fid { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string RequestJson { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Элемент фильтра годов из manifest.controls.filters.
+/// Title — то, что видит пользователь в комбобоксе (например,
+/// «2024» или «2021-2026»). YearsValue — строка, передаваемая
+/// в request.years на сервер (совпадает с Title для этого фильтра).
+/// </summary>
+public class PortalYearFilter
+{
+    public string Title { get; set; } = string.Empty;
+    public string YearsValue { get; set; } = string.Empty;
+}
+
+/// <summary>Результат загрузки каталога: элементы + жанры + request JSON категорий.</summary>
+public class PortalCatalogLoadResult
+{
+    public List<PortalCatalogItem> Items { get; set; } = new();
+    public List<PortalGenreFilter> Genres { get; set; } = new();
+    public Dictionary<int, string> CategoryRequests { get; set; } = new();
 }
 
 /// <summary>
@@ -78,6 +118,44 @@ public interface IVideoPortalService
     /// делает вызывающий (MainPage через PlaylistCacheService, как для M3U).
     /// </summary>
     Task<List<PortalCatalogItem>> LoadCatalogAsync(PlaylistSource source, CancellationToken ct = default);
+
+    /// <summary>
+    /// Загружает жанры, года и все категории из manifest для серверных фильтров.
+    /// Возвращает (genreFilters, yearFilters, categories) — категории с fid и заголовками.
+    /// </summary>
+    Task<(List<PortalGenreFilter> Genres, List<PortalYearFilter> Years, List<PortalCategoryInfo> Categories)> LoadManifestInfoAsync(PlaylistSource source, CancellationToken ct = default);
+
+    /// <summary>
+    /// Загружает одну категорию с фильтром по жанру (по запросу пользователя).
+    /// Вызывается при выборе жанра в ComboBox.
+    /// </summary>
+    Task<List<PortalCatalogItem>> LoadCategoryByGenreAsync(
+        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Загружает одну категорию с фильтром по году (по запросу пользователя).
+    /// yearOrRange: "2025" или "2021-2026".
+    /// </summary>
+    Task<List<PortalCatalogItem>> LoadCategoryByYearAsync(
+        PlaylistSource source, string categoryRequestJson, string yearOrRange,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Загружает одну категорию с комбинированным фильтром по жанру и году.
+    /// </summary>
+    Task<List<PortalCatalogItem>> LoadCategoryByGenreAndYearAsync(
+        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
+        string yearOrRange, CancellationToken ct = default);
+
+    /// <summary>
+    /// Прямой запрос фильтра (без categoryRequestJson): строит запрос из
+    /// fid категории и параметров фильтра. Используется при смене фильтра
+    /// жанра/года в UI — вместо загрузки всего каталога.
+    /// </summary>
+    Task<List<PortalCatalogItem>> LoadFilteredAsync(
+        PlaylistSource source, int fid, int? genreId, string? yearOrRange,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Запрашивает у портала эпизоды элемента (команда flick): сериалу возвращает
@@ -143,6 +221,9 @@ public class VideoPortalService : IVideoPortalService
 
         using var manifest = await PostAsync(source, "manifest.json", $"{{\"key\":\"{key}\"}}", ct);
 
+        var genres = ParseGenreFilters(manifest.RootElement);
+        _logger.LogInformation("Портал: жанров из manifest: {Count}.", genres.Count);
+
         var categories = FindArray(manifest.RootElement, "items");
         if (categories is not { } categoryArray)
         {
@@ -167,28 +248,308 @@ public class VideoPortalService : IVideoPortalService
                 continue;
             }
 
-            // «Продолжить просмотр» (fid 10001) — персональная история
-            // просмотров: её элементы дублируют фильмы из обычных категорий
-            // и засоряют поиск.
             using (var requestDoc = JsonDocument.Parse(requestJson))
             {
-                if (GetInt(requestDoc.RootElement, "fid") == 10001)
+                var fid = GetInt(requestDoc.RootElement, "fid");
+                if (fid == 10001)
                 {
                     _logger.LogInformation("Портал: категория «{Category}» пропущена (история просмотров).", categoryTitle);
                     continue;
                 }
             }
 
-            await LoadCategoryAsync(source, key, requestJson, categoryTitle, result, ct);
+            await LoadCategoryAsync(source, key, requestJson, categoryTitle, null, result, ct);
         }
 
-        _logger.LogInformation("Портал {Url}: каталог загружен, элементов: {Count}.", source.Url, result.Count);
+        _logger.LogInformation("Портал {Url}: каталог загрушен, элементов: {Count}.", source.Url, result.Count);
         return result;
+    }
+
+    /// <summary>
+    /// Загружает жанры и все категории из manifest для серверных фильтров.
+    /// Возвращает (genreFilters, categories) — категории с fid и заголовками.
+    /// </summary>
+    public async Task<(List<PortalGenreFilter> Genres, List<PortalYearFilter> Years, List<PortalCategoryInfo> Categories)> LoadManifestInfoAsync(
+        PlaylistSource source, CancellationToken ct = default)
+    {
+        var key = NormalizeKey(source);
+
+        using var manifest = await PostAsync(source, "manifest.json", $"{{\"key\":\"{key}\"}}", ct);
+        var genres = ParseGenreFilters(manifest.RootElement);
+        var years = ParseYearFilters(manifest.RootElement);
+
+        var categories = new List<PortalCategoryInfo>();
+        var categoryArray = FindArray(manifest.RootElement, "items");
+        if (categoryArray is { } arr)
+        {
+            foreach (var category in arr.EnumerateArray())
+            {
+                if (category.ValueKind != JsonValueKind.Object ||
+                    !string.Equals(GetString(category, "type"), "category", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var title = GetString(category, "title");
+                var requestJson = GetObjectAsJson(category, "request");
+                if (requestJson == null) continue;
+
+                using var reqDoc = JsonDocument.Parse(requestJson);
+                var fid = GetInt(reqDoc.RootElement, "fid") ?? 0;
+                if (fid <= 0 || fid == 10001) continue;
+
+                categories.Add(new PortalCategoryInfo
+                {
+                    Fid = fid,
+                    Title = title ?? L.T("Без категории", "Uncategorized"),
+                    RequestJson = requestJson
+                });
+            }
+        }
+
+        return (genres, years, categories);
+    }
+
+    /// <summary>Загружает одну категорию с фильтром по жанру (по запросу пользователя).</summary>
+    public async Task<List<PortalCatalogItem>> LoadCategoryByGenreAsync(
+        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
+        CancellationToken ct = default)
+    {
+        var key = NormalizeKey(source);
+        var result = new List<PortalCatalogItem>();
+
+        var genreRequest = MergeFields(categoryRequestJson, new Dictionary<string, JsonElement>
+        {
+            ["filter"] = JsonSerializer.SerializeToElement("on"),
+            ["genre"] = JsonSerializer.SerializeToElement(genreId)
+        });
+
+        await LoadCategoryAsync(source, key, genreRequest, genreTitle, genreTitle, result, ct);
+        return result;
+    }
+
+    /// <summary>Загружает одну категорию с фильтром по году (по запросу пользователя).</summary>
+    public async Task<List<PortalCatalogItem>> LoadCategoryByYearAsync(
+        PlaylistSource source, string categoryRequestJson, string yearOrRange,
+        CancellationToken ct = default)
+    {
+        var key = NormalizeKey(source);
+        var result = new List<PortalCatalogItem>();
+
+        var yearRequest = MergeFields(categoryRequestJson, new Dictionary<string, JsonElement>
+        {
+            ["filter"] = JsonSerializer.SerializeToElement("on"),
+            ["years"] = JsonSerializer.SerializeToElement(yearOrRange)
+        });
+
+        await LoadCategoryAsync(source, key, yearRequest, yearOrRange, null, result, ct);
+        return result;
+    }
+
+    /// <summary>Загружает одну категорию с комбинированным фильтром по жанру и году.</summary>
+    public async Task<List<PortalCatalogItem>> LoadCategoryByGenreAndYearAsync(
+        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
+        string yearOrRange, CancellationToken ct = default)
+    {
+        var key = NormalizeKey(source);
+        var result = new List<PortalCatalogItem>();
+
+        var combinedRequest = MergeFields(categoryRequestJson, new Dictionary<string, JsonElement>
+        {
+            ["filter"] = JsonSerializer.SerializeToElement("on"),
+            ["genre"] = JsonSerializer.SerializeToElement(genreId),
+            ["years"] = JsonSerializer.SerializeToElement(yearOrRange)
+        });
+
+        var label = $"{genreTitle} ({yearOrRange})";
+        await LoadCategoryAsync(source, key, combinedRequest, label, genreTitle, result, ct);
+        return result;
+    }
+
+    /// <summary>
+    /// Прямой запрос фильтра (без categoryRequestJson): строит запрос из
+    /// fid категории и параметров фильтра. Используется при смене фильтра
+    /// жанра/года в UI — вместо загрузки всего каталога.
+    /// </summary>
+    public async Task<List<PortalCatalogItem>> LoadFilteredAsync(
+        PlaylistSource source, int fid, int? genreId, string? yearOrRange,
+        CancellationToken ct = default)
+    {
+        var key = NormalizeKey(source);
+        var result = new List<PortalCatalogItem>();
+
+        // Согласно документации OttPlayer (genre.md §3 vs §5/§9),
+        // сервер различает ДВА режима запросов по составу полей:
+        //
+        //   • Категория (без фильтра):  {key, cmd:"flicks", fid:N, offset, limit}
+        //     — возвращает ВСЕ элементы категории.
+        //
+        //   • Фильтр:                    {key, filter:"on", genre?:G, years?:"Y", offset, limit}
+        //     — БЕЗ cmd и fid. Сервер использует сессионный контекст
+        //       (предыдущий flicks-запрос категории) и применяет фильтр.
+        //
+        // Раньше мы отправляли cmd+fid+filter в одном теле — сервер
+        // воспринимал это как запрос категории и молча игнорировал
+        // filter/genre/years. Лог подтверждал: при выборе жанра «ужасы»
+        // сервер возвращал те же 12938 элементов, что и без фильтра.
+        string filterRequest;
+        var hasYear = !string.IsNullOrEmpty(yearOrRange);
+        var hasGenre = genreId.HasValue;
+
+        if (hasGenre || hasYear)
+        {
+            // Режим фильтра — тело без cmd и fid (документация §5/§9).
+            // Локальная переменная genreValue достаётся через GetValueOrDefault()
+            // — это безопасный доступ к Nullable<int> без предупреждения CS8629
+            // (GetValueOrDefault документированно возвращает default(int)=0,
+            // если HasValue=false, но мы используем genreValue только когда
+            // hasGenre=true, проверив это выше).
+            var genreValue = genreId.GetValueOrDefault();
+            var sb = new System.Text.StringBuilder("{");
+            sb.Append($"\"key\":\"{key}\"");
+            sb.Append(",\"filter\":\"on\"");
+            if (hasGenre)
+            {
+                sb.Append($",\"genre\":{genreValue}");
+            }
+            if (hasYear)
+            {
+                sb.Append($",\"years\":\"{yearOrRange}\"");
+            }
+            sb.Append(",\"offset\":0,\"limit\":0}");
+            filterRequest = sb.ToString();
+        }
+        else
+        {
+            // Фильтр не выбран — обычная загрузка категории (документация §3).
+            // Это, по сути, повтор того, что делает LoadCatalogAsync на старте,
+            // но только для одной выбранной категории fid.
+            filterRequest = $"{{\"key\":\"{key}\",\"cmd\":\"flicks\",\"fid\":{fid},\"offset\":0,\"limit\":0}}";
+        }
+
+        var label = BuildFilterLabel(genreId, yearOrRange);
+        _logger.LogInformation(
+            "Портал: запрос фильтра — genre={Genre}, year={Year}, fid={Fid}, mode={Mode}.",
+            genreId?.ToString() ?? "-", yearOrRange ?? "-", fid,
+            (hasGenre || hasYear) ? "filter" : "category");
+
+        // GetValueOrDefault безопасно достаёт значение из Nullable<int>;
+        // мы передаём его в GetGenreTitle только когда hasGenre=true.
+        await LoadCategoryAsync(source, key, filterRequest, label,
+            hasGenre ? GetGenreTitle(genreId.GetValueOrDefault()) : null, result, ct);
+        return result;
+    }
+
+    private static string BuildFilterLabel(int? genreId, string? yearOrRange)
+    {
+        var parts = new List<string>();
+        // GetValueOrDefault безопасно достаёт значение из Nullable<int>
+        // без предупреждения CS8629 (используем только когда HasValue).
+        if (genreId.HasValue) parts.Add(GetGenreTitle(genreId.GetValueOrDefault()));
+        if (!string.IsNullOrEmpty(yearOrRange)) parts.Add(yearOrRange);
+        return parts.Count > 0 ? string.Join(" ", parts) : "Все";
+    }
+
+    private static string GetGenreTitle(int genreId) => genreId switch
+    {
+        1 => "биография", 2 => "боевик", 3 => "вестерны", 4 => "военные",
+        5 => "детективы", 6 => "документальные", 7 => "драмы", 8 => "исторические",
+        9 => "комедии", 10 => "криминальные", 11 => "мелодрамы", 12 => "мистические",
+        13 => "мультфильмы", 14 => "мюзиклы", 15 => "приключения", 16 => "семейные",
+        17 => "спортивные", 18 => "тв-передачи", 19 => "триллеры", 20 => "ужасы",
+        21 => "фантастика", 22 => "фэнтези", 24 => "телекарапузики", 25 => "обучающие",
+        26 => "короткометражный", 27 => "юмор", 40 => "Новогодний",
+        _ => $"жанр {genreId}"
+    };
+
+    /// <summary>Категории, для которых стоит загружать жанры (fid=1 фильмы, fid=2 сериалы).</summary>
+    private static bool IsGenreableCategory(string requestJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(requestJson);
+            var fid = GetInt(doc.RootElement, "fid");
+            return fid is 1 or 2;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private async Task LoadCategoryWithGenresAsync(
+        PlaylistSource source, string key, string requestJson, string categoryTitle,
+        List<PortalGenreFilter> genres, List<PortalCatalogItem> result, CancellationToken ct)
+    {
+        var seenFids = new HashSet<int>();
+        foreach (var genre in genres)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            var genreRequest = MergeFields(requestJson, new Dictionary<string, JsonElement>
+            {
+                ["filter"] = JsonSerializer.SerializeToElement("on"),
+                ["genre"] = JsonSerializer.SerializeToElement(genre.Id)
+            });
+
+            var countBefore = result.Count;
+            await LoadCategoryAsync(source, key, genreRequest, categoryTitle, genre.Title, result, ct);
+
+            for (var i = countBefore; i < result.Count; i++)
+            {
+                var item = result[i];
+                if (string.IsNullOrEmpty(item.Genre))
+                {
+                    item.Genre = genre.Title;
+                }
+
+                if (!string.IsNullOrEmpty(item.RequestJson))
+                {
+                    using var reqDoc = JsonDocument.Parse(item.RequestJson);
+                    if (GetInt(reqDoc.RootElement, "fid") is { } itemFid)
+                    {
+                        seenFids.Add(itemFid);
+                    }
+                }
+            }
+
+            _logger.LogInformation(
+                "Портал: категория «{Category}» — жанр «{Genre}»: {Count} элементов.",
+                categoryTitle, genre.Title, result.Count - countBefore);
+        }
+
+        var allGenreRequest = MergeKey(requestJson, key);
+        var beforeAll = result.Count;
+        await LoadCategoryAsync(source, key, allGenreRequest, categoryTitle, null, result, ct);
+
+        var added = 0;
+        for (var i = beforeAll; i < result.Count; i++)
+        {
+            if (!string.IsNullOrEmpty(result[i].RequestJson))
+            {
+                using var reqDoc = JsonDocument.Parse(result[i].RequestJson);
+                if (GetInt(reqDoc.RootElement, "fid") is { } itemFid && seenFids.Contains(itemFid))
+                {
+                    result.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+            }
+
+            added++;
+        }
+
+        if (added > 0)
+        {
+            _logger.LogInformation(
+                "Портал: категория «{Category}» — без жанра: {Count} элементов.",
+                categoryTitle, added);
+        }
     }
 
     private async Task LoadCategoryAsync(
         PlaylistSource source, string key, string requestJson, string categoryTitle,
-        List<PortalCatalogItem> result, CancellationToken ct)
+        string? genre, List<PortalCatalogItem> result, CancellationToken ct)
     {
         var offset = 0;
         var total = (int?)null;
@@ -197,77 +558,103 @@ public class VideoPortalService : IVideoPortalService
         while (pages++ < MaxPagesPerCategory)
         {
             var pageRequest = MergeKey(WithPaging(requestJson, offset, PageSize), key);
-            using var response = await PostAsync(source, CommandEndpoint(pageRequest), pageRequest, ct);
 
-            total ??= GetInt(response.RootElement, "count");
-            var items = FindArray(response.RootElement, "items");
-            if (items is not { } itemArray)
+            // OttPlayer-сервер иногда возвращает битый JSON на последней
+            // пустой странице пагинации — массив items открывается запятой
+            // без первого элемента: "items":[,{"type":"next",...}].
+            // System.Text.Json в этом случае бросает JsonReaderException,
+            // и без try/catch исключение пробрасывалось до самого верха
+            // (LoadFilteredFromServerAsync), теряя ВСЕ уже загруженные на
+            // предыдущих страницах элементы. Ловим здесь и выходим из
+            // пагинации, сохраняя накопленный результат — пользователь
+            // получит 427/435 мюзиклов вместо 0.
+            JsonDocument response;
+            try
             {
-                _logger.LogWarning("Портал: категория «{Category}» — в ответе нет массива items.", categoryTitle);
+                response = await PostAsync(source, CommandEndpoint(pageRequest), pageRequest, ct);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                _logger.LogWarning(
+                    "Портал: категория «{Category}» — сервер вернул невалидный JSON " +
+                    "(часто последняя пустая страница): {Error}. Сохраняем {Count} уже загруженных элементов.",
+                    categoryTitle, ex.Message, result.Count);
                 return;
             }
-
-            var added = 0;
-            var hasNext = false;
-            foreach (var item in itemArray.EnumerateArray())
+            using (response)
             {
-                if (item.ValueKind != JsonValueKind.Object)
+                total ??= GetInt(response.RootElement, "count");
+                var items = FindArray(response.RootElement, "items");
+                if (items is not { } itemArray)
                 {
-                    continue;
+                    _logger.LogWarning("Портал: категория «{Category}» — в ответе нет массива items.", categoryTitle);
+                    return;
                 }
 
-                var type = GetString(item, "type");
-                if (string.Equals(type, "next", StringComparison.OrdinalIgnoreCase))
+                var added = 0;
+                var hasNext = false;
+                foreach (var item in itemArray.EnumerateArray())
                 {
-                    hasNext = true;
-                    continue;
+                    if (item.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    var type = GetString(item, "type");
+                    if (string.Equals(type, "next", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasNext = true;
+                        continue;
+                    }
+
+                    if (string.Equals(type, "category", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue; // Вложенные категории не замечены — на всякий случай.
+                    }
+
+                    var name = GetString(item, "title");
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
+                    // Жанров API портала не отдаёт (фильтры из manifest сервер
+                    // игнорирует), единственная классификация элемента — год.
+                    var year = GetInt(item, "year");
+                    if (year > 0)
+                    {
+                        name = $"{name} ({year})";
+                    }
+
+                    result.Add(new PortalCatalogItem
+                    {
+                        Name = name!,
+                        Group = categoryTitle,
+                        LogoUrl = GetString(item, "img") ?? GetString(item, "imglr"),
+                        StreamUrl = GetString(item, "url"),
+                        RequestJson = GetObjectAsJson(item, "request") ?? string.Empty,
+                        Description = GetString(item, "description"),
+                        Year = year ?? 0,
+                        Genre = genre
+                    });
+                    added++;
                 }
 
-                if (string.Equals(type, "category", StringComparison.OrdinalIgnoreCase))
+                if (added == 0 || !hasNext)
                 {
-                    continue; // Вложенные категории не замечены — на всякий случай.
+                    return;
                 }
 
-                var name = GetString(item, "title");
-                if (string.IsNullOrWhiteSpace(name))
+                offset += added;
+
+                if (total.HasValue && offset >= total.Value)
                 {
-                    continue;
+                    return;
                 }
 
-                // Жанров API портала не отдаёт (фильтры из manifest сервер
-                // игнорирует), единственная классификация элемента — год.
-                var year = GetInt(item, "year");
-                if (year > 0)
-                {
-                    name = $"{name} ({year})";
-                }
-
-                result.Add(new PortalCatalogItem
-                {
-                    Name = name!,
-                    Group = categoryTitle,
-                    LogoUrl = GetString(item, "img") ?? GetString(item, "imglr"),
-                    StreamUrl = GetString(item, "url"),
-                    RequestJson = GetObjectAsJson(item, "request") ?? string.Empty,
-                    Description = GetString(item, "description"),
-                    Year = year ?? 0
-                });
-                added++;
-            }
-
-            if (added == 0 || !hasNext)
-            {
-                return;
-            }
-
-            offset += added;
-            if (total.HasValue && offset >= total.Value)
-            {
-                return;
-            }
-
-            _logger.LogInformation(
-                "Портал: категория «{Category}» — загружено {Loaded}/{Total}.", categoryTitle, offset, total);
+                _logger.LogInformation(
+                    "Портал: категория «{Category}» — загружено {Loaded}/{Total}.", categoryTitle, offset, total);
+            } // end using (response)
         }
 
         _logger.LogWarning(
@@ -381,7 +768,14 @@ public class VideoPortalService : IVideoPortalService
         return key;
     }
 
-    /// <summary>Эндпоинт команды: request вида {"cmd":"flicks",...} → flicks.json.</summary>
+    /// <summary>
+    /// Эндпоинт команды по телу запроса:
+    ///   • {"cmd":"flicks",...}      → flicks.json  (загрузка категории, §3)
+    ///   • {"filter":"on",...}        → flicks.json  (фильтр, §5/§9 — без cmd)
+    ///   • {"cmd":"flick",...}        → flick.json   (один элемент, §4)
+    ///   • {"cmd":"search",...}       → search.json  (поиск, §8)
+    ///   • прочее                     → manifest.json
+    /// </summary>
     private static string CommandEndpoint(string requestJson)
     {
         try
@@ -392,6 +786,16 @@ public class VideoPortalService : IVideoPortalService
                 !string.IsNullOrWhiteSpace(cmd.GetString()))
             {
                 return cmd.GetString()!.Trim() + ".json";
+            }
+
+            // Запрос фильтра не содержит "cmd", но имеет "filter":"on".
+            // По документации OttPlayer это тоже идёт на flicks.json —
+            // сервер различает режимы по составу полей тела, а не по URL.
+            if (doc.RootElement.TryGetProperty("filter", out var filter) &&
+                filter.ValueKind == JsonValueKind.String &&
+                string.Equals(filter.GetString(), "on", StringComparison.OrdinalIgnoreCase))
+            {
+                return "flicks.json";
             }
         }
         catch (JsonException)
@@ -441,6 +845,10 @@ public class VideoPortalService : IVideoPortalService
         }
     }
 
+    private static readonly string DumpDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "IptvPlayer", "portal_dump");
+
     private async Task<JsonDocument> PostAsync(
         PlaylistSource source, string endpoint, string bodyJson, CancellationToken ct)
     {
@@ -458,7 +866,26 @@ public class VideoPortalService : IVideoPortalService
         var body = await response.Content.ReadAsStringAsync(ct);
         _logger.LogInformation("Портал ← {Url}: {Body}", url, Truncate(body));
 
+        DumpJson(endpoint, bodyJson, body);
+
         return JsonDocument.Parse(body);
+    }
+
+    private static void DumpJson(string endpoint, string requestJson, string responseJson)
+    {
+        try
+        {
+            Directory.CreateDirectory(DumpDir);
+            var safeName = string.Concat(endpoint.Where(c => char.IsLetterOrDigit(c) || c == '_'));
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            var path = Path.Combine(DumpDir, $"{timestamp}_{safeName}.json");
+            var text = $"// REQUEST: {endpoint}\n// BODY:\n{requestJson}\n\n// RESPONSE:\n{responseJson}\n";
+            File.WriteAllText(path, text, Encoding.UTF8);
+        }
+        catch
+        {
+            // Дамп не критичен — не падаем
+        }
     }
 
     private static string BuildUrl(string baseUrl, string endpoint)
@@ -512,4 +939,120 @@ public class VideoPortalService : IVideoPortalService
 
     private static string Truncate(string text) =>
         text.Length <= MaxLoggedChars ? text : text[..MaxLoggedChars] + "…(обрезано)";
+
+    // ===================== Парсинг жанров =====================
+
+    private static List<PortalGenreFilter> ParseGenreFilters(JsonElement manifest)
+    {
+        var genres = new List<PortalGenreFilter>();
+        if (manifest.ValueKind != JsonValueKind.Object ||
+            !manifest.TryGetProperty("controls", out var controls) ||
+            controls.ValueKind != JsonValueKind.Object ||
+            !controls.TryGetProperty("filters", out var filters) ||
+            filters.ValueKind != JsonValueKind.Array)
+        {
+            return genres;
+        }
+
+        foreach (var filter in filters.EnumerateArray())
+        {
+            if (filter.ValueKind != JsonValueKind.Object) continue;
+            if (!string.Equals(GetString(filter, "type"), "enum", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!string.Equals(GetString(filter, "title"), "Жанр", StringComparison.OrdinalIgnoreCase)) continue;
+
+            if (FindArray(filter, "items") is not { } genreArray) continue;
+
+            foreach (var genreItem in genreArray.EnumerateArray())
+            {
+                if (genreItem.ValueKind != JsonValueKind.Object) continue;
+
+                var title = GetString(genreItem, "title");
+                var filterRequest = GetObjectAsJson(genreItem, "request");
+                if (title == null || filterRequest == null) continue;
+
+                var genreId = 0;
+                try
+                {
+                    using var reqDoc = JsonDocument.Parse(filterRequest);
+                    genreId = GetInt(reqDoc.RootElement, "genre") ?? 0;
+                }
+                catch (JsonException) { }
+
+                if (genreId > 0)
+                {
+                    genres.Add(new PortalGenreFilter
+                    {
+                        Id = genreId,
+                        Title = title,
+                        FilterRequestJson = filterRequest
+                    });
+                }
+            }
+        }
+
+        return genres;
+    }
+
+    // ===================== Парсинг годов =====================
+
+    /// <summary>
+    /// Извлекает список годов/диапазонов из manifest.controls.filters,
+    /// где filter.title == "Год". Каждый элемент описан как
+    /// { title: "2024" | "2021-2026", request: { filter: "on", years: "..." } }.
+    /// Title используется как подпись в комбобоксе, YearsValue —
+    /// как значение request.years при загрузке отфильтрованной категории.
+    /// </summary>
+    private static List<PortalYearFilter> ParseYearFilters(JsonElement manifest)
+    {
+        var years = new List<PortalYearFilter>();
+        if (manifest.ValueKind != JsonValueKind.Object ||
+            !manifest.TryGetProperty("controls", out var controls) ||
+            controls.ValueKind != JsonValueKind.Object ||
+            !controls.TryGetProperty("filters", out var filters) ||
+            filters.ValueKind != JsonValueKind.Array)
+        {
+            return years;
+        }
+
+        foreach (var filter in filters.EnumerateArray())
+        {
+            if (filter.ValueKind != JsonValueKind.Object) continue;
+            if (!string.Equals(GetString(filter, "type"), "enum", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!string.Equals(GetString(filter, "title"), "Год", StringComparison.OrdinalIgnoreCase)) continue;
+
+            if (FindArray(filter, "items") is not { } yearArray) continue;
+
+            foreach (var yearItem in yearArray.EnumerateArray())
+            {
+                if (yearItem.ValueKind != JsonValueKind.Object) continue;
+
+                var title = GetString(yearItem, "title");
+                if (string.IsNullOrWhiteSpace(title)) continue;
+
+                // YearsValue лежит в request.years; для этого фильтра он
+                // совпадает с title («2024» или «2021-2026»). Если поле
+                // вдруг отсутствует — используем title как запасной вариант.
+                string yearsValue = title;
+                var filterRequest = GetObjectAsJson(yearItem, "request");
+                if (filterRequest != null)
+                {
+                    try
+                    {
+                        using var reqDoc = JsonDocument.Parse(filterRequest);
+                        var y = GetString(reqDoc.RootElement, "years");
+                        if (!string.IsNullOrWhiteSpace(y)) yearsValue = y;
+                    }
+                    catch (JsonException) { }
+                }
+
+                years.Add(new PortalYearFilter
+                {
+                    Title = title,
+                    YearsValue = yearsValue
+                });
+            }
+        }
+
+        return years;
+    }
 }

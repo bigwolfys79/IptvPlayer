@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using IptvPlayer.Models;
 using IptvPlayer.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml;
 
 namespace IptvPlayer.ViewModels;
 
@@ -18,6 +19,8 @@ namespace IptvPlayer.ViewModels;
 public partial class MainPageViewModel : ObservableObject
 {
     private const string AllGroupsOption = "Все группы";
+    private const string AllGenresOption = "Все жанры";
+    private const string AllYearsOption = "Все годы";
     private const string FavoritesOption = "★ Избранное";
 
     private readonly ISettingsService _settingsService;
@@ -28,6 +31,33 @@ public partial class MainPageViewModel : ObservableObject
     // сгенерированные генератором в WinUI-сценариях не создают WinRT-проекторов
     // (предупреждение MVVMTK0045), а семантика INotifyPropertyChanged та же.
     private EpgViewModel _epgViewModel;
+
+    /// <summary>Жанры из manifest.controls.filters (id → title) для серверных фильтров.</summary>
+    private List<Services.PortalGenreFilter> _portalGenreFilters = new();
+
+    /// <summary>Года из manifest.controls.filters (title → years-value) для серверных фильтров.</summary>
+    private List<Services.PortalYearFilter> _portalYearFilters = new();
+
+    /// <summary>Категории видео-портала из manifest (fid → title) для фильтра типа контента.</summary>
+    private List<Services.PortalCategoryInfo> _portalCategories = new();
+
+    /// <summary>Загружен ли каталог из портала (серверные фильтры доступны).</summary>
+    private bool _isPortalSource;
+
+    /// <summary>
+    /// Флаг подавления серверной перезагрузки при программном сбросе
+    /// фильтров (SetPortalInfo / ClearPortalInfo / ResetPortalFilters).
+    /// Без него установка SelectedXxx = AllXxxOption в этих методах
+    /// запускала LoadFilteredFromServerAsync — дублирующую загрузку
+    /// каталога, который уже загружен в LoadCatalogAsync.
+    /// </summary>
+    private bool _suppressFilterLoad;
+
+    /// <summary>
+    /// Текущий источник портала для серверных фильтров (свой на каждую сессию).
+    /// Заполняется при загрузке каталога портала из code-behind.
+    /// </summary>
+    public Models.PlaylistSource? PortalSource { get; set; }
 
     public EpgViewModel EpgViewModel
     {
@@ -122,6 +152,106 @@ public partial class MainPageViewModel : ObservableObject
         get => _groups;
         set => SetProperty(ref _groups, value);
     }
+
+    private string _selectedGenre = AllGenresOption;
+
+    public string SelectedGenre
+    {
+        get => _selectedGenre;
+        set
+        {
+            if (SetProperty(ref _selectedGenre, value))
+            {
+                OnSelectedGenreChanged(value);
+            }
+        }
+    }
+
+    private ObservableCollection<string> _genres = new();
+
+    public ObservableCollection<string> Genres
+    {
+        get => _genres;
+        set => SetProperty(ref _genres, value);
+    }
+
+    public Visibility IsGenreFilterVisible => Genres.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+    private string _selectedYear = "Все годы";
+
+    public string SelectedYear
+    {
+        get => _selectedYear;
+        set
+        {
+            if (SetProperty(ref _selectedYear, value))
+            {
+                OnSelectedYearChanged(value);
+            }
+        }
+    }
+
+    private ObservableCollection<string> _years = new();
+
+    public ObservableCollection<string> Years
+    {
+        get => _years;
+        set => SetProperty(ref _years, value);
+    }
+
+    public Visibility IsYearFilterVisible => Years.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+    // ===================== Тип контента видео-портала =====================
+
+    private const string AllContentTypesOption = "Все типы";
+
+    private string _selectedContentType = AllContentTypesOption;
+
+    /// <summary>Выбранный тип контента (fid категории) в комбобоксе портала.</summary>
+    public string SelectedContentType
+    {
+        get => _selectedContentType;
+        set
+        {
+            if (SetProperty(ref _selectedContentType, value))
+            {
+                OnSelectedContentTypeChanged(value);
+            }
+        }
+    }
+
+    private ObservableCollection<string> _contentTypes = new();
+
+    /// <summary>Типы контента из manifest (Фильмы, Сериалы и т.д.).</summary>
+    public ObservableCollection<string> ContentTypes
+    {
+        get => _contentTypes;
+        set => SetProperty(ref _contentTypes, value);
+    }
+
+    /// <summary>Показывать ли комбобокс типа контента (только для портальных источников).</summary>
+    public Visibility IsContentTypeFilterVisible => _isPortalSource && ContentTypes.Count > 1
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    /// <summary>Показывать ли комбобокс групп (только для M3U-источников).</summary>
+    public Visibility IsGroupFilterVisible => !_isPortalSource
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+    private bool _isFilterLoading;
+
+    /// <summary>Идёт ли серверная загрузка фильтра (показать прогресс-индикатор).</summary>
+    public bool IsFilterLoading
+    {
+        get => _isFilterLoading;
+        set => SetProperty(ref _isFilterLoading, value);
+    }
+
+    private CancellationTokenSource? _filterLoadCts;
+
+    /// <summary>Идёт ли серверная загрузка фильтра (не сбрасывать жанр/год в RefreshGroups).</summary>
+    private bool _isLoadingFiltered;
 
     private string _channelCountText = "Каналов: 0";
 
@@ -316,6 +446,318 @@ public partial class MainPageViewModel : ObservableObject
 
     private void OnSelectedGroupChanged(string value) => FilterChannels();
 
+    private void OnSelectedContentTypeChanged(string value)
+    {
+        if (_suppressFilterLoad) return;
+        if (_isPortalSource && PortalSource != null)
+        {
+            _ = LoadFilteredFromServerAsync();
+        }
+        else
+        {
+            FilterChannels();
+        }
+    }
+
+    private void OnSelectedGenreChanged(string value)
+    {
+        if (_suppressFilterLoad) return;
+        if (_isPortalSource && PortalSource != null)
+        {
+            _ = LoadFilteredFromServerAsync();
+        }
+        else
+        {
+            FilterChannels();
+        }
+    }
+
+    private void OnSelectedYearChanged(string value)
+    {
+        if (_suppressFilterLoad) return;
+        if (_isPortalSource && PortalSource != null)
+        {
+            _ = LoadFilteredFromServerAsync();
+        }
+        else
+        {
+            FilterChannels();
+        }
+    }
+
+    /// <summary>
+    /// Устанавливает информацию об источнике портала для серверных фильтров.
+    /// Вызывается из code-behind после загрузки каталога.
+    /// </summary>
+    public void SetPortalInfo(Models.PlaylistSource source, List<Services.PortalGenreFilter> genres, List<Services.PortalYearFilter> years, List<Services.PortalCategoryInfo> categories)
+    {
+        PortalSource = source;
+        _portalGenreFilters = genres;
+        _portalYearFilters = years;
+        _portalCategories = categories;
+        _isPortalSource = true;
+
+        // Подавляем серверную перезагрузку при установке дефолтов —
+        // каталог уже загружен в LoadCatalogAsync, а каждый OnSelectedXxxChanged
+        // без этого флага запускал бы LoadFilteredFromServerAsync (дубль).
+        _suppressFilterLoad = true;
+        try
+        {
+            ContentTypes.Clear();
+            ContentTypes.Add(AllContentTypesOption);
+            foreach (var cat in categories)
+            {
+                ContentTypes.Add(cat.Title);
+            }
+            SelectedContentType = AllContentTypesOption;
+
+            // Жанры для портала берём напрямую из manifest.controls.filters
+            // (а не из Channels — у каталога жанр не проставлен до применения
+            // фильтра). Иначе Genres содержал бы только «Все жанры» и комбобокс
+            // оставался скрытым, хотя в manifest приходит 28 жанров.
+            Genres.Clear();
+            Genres.Add(AllGenresOption);
+            foreach (var g in genres)
+            {
+                if (!string.IsNullOrWhiteSpace(g.Title))
+                {
+                    Genres.Add(g.Title);
+                }
+            }
+            SelectedGenre = AllGenresOption;
+
+            // Года тоже берём из manifest (80+ пунктов: конкретные года и
+            // диапазоны вроде «2021-2026»). Раньше Years наполнялся из
+            // Channels[i].Year, но год в каталоге может отсутствовать или
+            // парситься как строка — комбобокс оставался скрытым.
+            Years.Clear();
+            Years.Add(AllYearsOption);
+            foreach (var y in years)
+            {
+                if (!string.IsNullOrWhiteSpace(y.Title))
+                {
+                    Years.Add(y.Title);
+                }
+            }
+            SelectedYear = AllYearsOption;
+        }
+        finally
+        {
+            _suppressFilterLoad = false;
+        }
+
+        // Принудительно пушим PropertyChanged для SelectedXxx, даже если
+        // SetProperty внутри сеттера вернул false (значение не изменилось).
+        // Без этого ComboBox после Clear+Add не пере-select'ит дефолтный
+        // элемент и остаётся пустым визуально, хотя SelectedItem
+        // в ViewModel корректен.
+        OnPropertyChanged(nameof(SelectedContentType));
+        OnPropertyChanged(nameof(SelectedGenre));
+        OnPropertyChanged(nameof(SelectedYear));
+
+        OnPropertyChanged(nameof(IsContentTypeFilterVisible));
+        OnPropertyChanged(nameof(IsGroupFilterVisible));
+        OnPropertyChanged(nameof(IsGenreFilterVisible));
+        OnPropertyChanged(nameof(IsYearFilterVisible));
+    }
+
+    /// <summary>Сбрасывает информацию об источнике портала (M3U-плейлист).</summary>
+    public void ClearPortalInfo()
+    {
+        PortalSource = null;
+        _portalGenreFilters.Clear();
+        _portalYearFilters.Clear();
+        _portalCategories.Clear();
+        _isPortalSource = false;
+
+        // Подавляем серверную перезагрузку при сбросе (как в SetPortalInfo).
+        _suppressFilterLoad = true;
+        try
+        {
+            ContentTypes.Clear();
+            SelectedContentType = AllContentTypesOption;
+
+            // Возврат в M3U-режим: Genres снова наполняется из Channels
+            // в RefreshGroups — оставляем только заглушку «Все жанры».
+            Genres.Clear();
+            Genres.Add(AllGenresOption);
+            SelectedGenre = AllGenresOption;
+
+            // Возврат в M3U-режим: Years тоже наполняется из Channels
+            // в RefreshGroups — оставляем только заглушку «Все годы».
+            Years.Clear();
+            Years.Add(AllYearsOption);
+            SelectedYear = AllYearsOption;
+        }
+        finally
+        {
+            _suppressFilterLoad = false;
+        }
+
+        // Принудительный PropertyChanged — ComboBox после Clear без
+        // этого остаётся пустым даже при корректном SelectedItem в VM.
+        OnPropertyChanged(nameof(SelectedContentType));
+        OnPropertyChanged(nameof(SelectedGenre));
+        OnPropertyChanged(nameof(SelectedYear));
+
+        OnPropertyChanged(nameof(IsContentTypeFilterVisible));
+        OnPropertyChanged(nameof(IsGroupFilterVisible));
+        OnPropertyChanged(nameof(IsGenreFilterVisible));
+        OnPropertyChanged(nameof(IsYearFilterVisible));
+    }
+
+    /// <summary>
+    /// Сброс всех фильтров портала к дефолтным значениям:
+    /// «Все типы», «Все жанры», «Все годы». Запускает одну
+    /// серверную перезагрузку с итоговым состоянием (а не три
+    /// отдельных, как было бы без _suppressFilterLoad).
+    /// </summary>
+    public void ResetPortalFilters()
+    {
+        if (!_isPortalSource || PortalSource == null) return;
+
+        // Подавляем серверную перезагрузку на каждое присваивание —
+        // иначе получили бы три LoadFilteredFromServerAsync подряд.
+        // Достаточно одной в конце с финальным состоянием фильтров.
+        _suppressFilterLoad = true;
+        try
+        {
+            SelectedContentType = AllContentTypesOption;
+            SelectedGenre = AllGenresOption;
+            SelectedYear = AllYearsOption;
+        }
+        finally
+        {
+            _suppressFilterLoad = false;
+        }
+
+        // Принудительный PropertyChanged — гарантия, что ComboBox
+        // отрисует дефолтные пункты, даже если SelectedXxx формально
+        // не изменился (например, был уже «Все жанры»).
+        OnPropertyChanged(nameof(SelectedContentType));
+        OnPropertyChanged(nameof(SelectedGenre));
+        OnPropertyChanged(nameof(SelectedYear));
+
+        // Одна серверная перезагрузка с итоговым состоянием.
+        _ = LoadFilteredFromServerAsync();
+    }
+
+    /// <summary>
+    /// Серверная загрузка с фильтрами типа контента/жанра/года. Вызывается при смене
+    /// типа контента, жанра или года в ComboBox для портальных источников.
+    /// </summary>
+    private async Task LoadFilteredFromServerAsync()
+    {
+        if (PortalSource == null) return;
+
+        var fid = ResolveCurrentFid();
+        if (fid <= 0) return;
+
+        _filterLoadCts?.Cancel();
+        _filterLoadCts = new CancellationTokenSource();
+        var ct = _filterLoadCts.Token;
+
+        IsFilterLoading = true;
+        _isLoadingFiltered = true;
+        try
+        {
+            int? genreId = null;
+            var genreTitle = string.Empty;
+            if (!string.IsNullOrEmpty(SelectedGenre) && SelectedGenre != AllGenresOption)
+            {
+                var match = _portalGenreFilters.FirstOrDefault(
+                    g => string.Equals(g.Title, SelectedGenre, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    genreId = match.Id;
+                    genreTitle = match.Title;
+                }
+            }
+
+            string? yearRange = null;
+            if (!string.IsNullOrEmpty(SelectedYear) && SelectedYear != AllYearsOption)
+            {
+                yearRange = SelectedYear;
+            }
+
+            var items = await _videoPortalService.LoadFilteredAsync(
+                PortalSource, fid, genreId, yearRange, ct);
+
+            if (ct.IsCancellationRequested) return;
+
+            var channels = items.Select(item => new ChannelViewModel
+            {
+                Name = item.Name,
+                Group = item.Group,
+                LogoUrl = item.LogoUrl,
+                StreamUrl = item.StreamUrl,
+                PortalRequest = item.RequestJson,
+                Description = item.Description,
+                Year = item.Year,
+                Genre = item.Genre ?? genreTitle
+            }).ToList();
+
+            Channels = new ObservableCollection<ChannelViewModel>(channels);
+            UpdateChannelCountText();
+
+            // ВАЖНО: Channels обновился, но UI показывается из
+            // DisplayedChannels. Без FilterChannels() список визуально
+            // не менялся — пользователь менял фильтр, сервер возвращал
+            // новый набор, но на экране оставался старый.
+            // Клиентские фильтры в FilterChannels проходят весь набор
+            // насквозь (сервер уже отфильтровал по fid/genre/year),
+            // так что это безопасно.
+            FilterChannels();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка серверной загрузки фильтра: жанр={Genre}, год={Year}.", SelectedGenre, SelectedYear);
+        }
+        finally
+        {
+            _isLoadingFiltered = false;
+            IsFilterLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Определяет fid текущей категории по выбранному типу контента.
+    /// Если тип не выбран («Все типы») — берёт fid из первой категории.
+    /// </summary>
+    private int ResolveCurrentFid()
+    {
+        if (!string.IsNullOrEmpty(SelectedContentType) && SelectedContentType != AllContentTypesOption)
+        {
+            var match = _portalCategories.FirstOrDefault(
+                c => string.Equals(c.Title, SelectedContentType, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                return match.Fid;
+            }
+        }
+
+        return _portalCategories.Count > 0 ? _portalCategories[0].Fid : 0;
+    }
+
+    /// <summary>Извлекает fid из JSON-запроса элемента портала (0, если не удалось).</summary>
+    private static int ExtractFidFromRequest(string? requestJson)
+    {
+        if (string.IsNullOrEmpty(requestJson)) return 0;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(requestJson);
+            if (doc.RootElement.TryGetProperty("fid", out var fidProp) &&
+                fidProp.ValueKind == System.Text.Json.JsonValueKind.Number &&
+                fidProp.TryGetInt32(out var fid))
+            {
+                return fid;
+            }
+        }
+        catch (System.Text.Json.JsonException) { }
+        return 0;
+    }
+
     private int _sortModeIndex;
 
     /// <summary>
@@ -484,14 +926,13 @@ public partial class MainPageViewModel : ObservableObject
     // ===================== Фильтрация каналов =====================
 
     /// <summary>
-    /// Пересчитывает DisplayedChannels с учётом текста поиска и выбранной группы.
-    /// Избранные каналы всегда стоят первыми (OrderingDescending по IsFavorite —
-    /// стабильная сортировка сохраняет исходный порядок внутри каждой части).
+    /// Пересчитывает DisplayedChannels с учётом текста поиска, выбранного типа
+    /// контента (портал) или группы (M3U), жанра и года.
+    /// Избранные каналы всегда стоят первыми.
     /// </summary>
     public void FilterChannels()
     {
         var query = SearchQuery?.Trim() ?? string.Empty;
-        var selectedGroup = SelectedGroup;
 
         IEnumerable<ChannelViewModel> filtered = Channels;
 
@@ -500,13 +941,54 @@ public partial class MainPageViewModel : ObservableObject
             filtered = filtered.Where(c => c.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
         }
 
-        if (!string.IsNullOrEmpty(selectedGroup) && selectedGroup == FavoritesOption)
+        if (_isPortalSource)
         {
-            filtered = filtered.Where(c => c.IsFavorite);
+            // Портал: фильтрацию по типу контента/жанру/году выполняет САМ
+            // сервер в LoadFilteredFromServerAsync → LoadFilteredAsync.
+            // Раньше здесь дополнительно фильтровали по fid из PortalRequest
+            // каждого элемента, но это flick-идентификатор (12345), а не fid
+            // категории (1/2/3...). Сравнение 12345 == 2 всегда ложно, и
+            // список превращался в пустой. Аналогично с жанром/годом:
+            // сервер уже отфильтровал, дублирующий клиентский фильтр
+            // лишь отсекал элементы с незаполненным полем (например, у
+            // части элементов нет year — они бы выпали).
+            // Сейчас доверяем серверу: клиент фильтрует только по строке
+            // поиска (это единственный фильтр, не имеющий серверного аналога).
         }
-        else if (!string.IsNullOrEmpty(selectedGroup) && selectedGroup != AllGroupsOption)
+        else
         {
-            filtered = filtered.Where(c => string.Equals(c.Group?.Trim(), selectedGroup, StringComparison.OrdinalIgnoreCase));
+            // M3U: фильтр по группе + жанру + году целиком на клиенте.
+            var selectedGroup = SelectedGroup;
+            if (!string.IsNullOrEmpty(selectedGroup) && selectedGroup == FavoritesOption)
+            {
+                filtered = filtered.Where(c => c.IsFavorite);
+            }
+            else if (!string.IsNullOrEmpty(selectedGroup) && selectedGroup != AllGroupsOption)
+            {
+                filtered = filtered.Where(c => string.Equals(c.Group?.Trim(), selectedGroup, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var selectedGenre = SelectedGenre;
+            if (!string.IsNullOrEmpty(selectedGenre) && selectedGenre != AllGenresOption)
+            {
+                filtered = filtered.Where(c => string.Equals(c.Genre?.Trim(), selectedGenre, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrEmpty(SelectedYear) && SelectedYear != AllYearsOption)
+            {
+                if (int.TryParse(SelectedYear, out var year))
+                {
+                    filtered = filtered.Where(c => c.Year == year);
+                }
+                else if (SelectedYear.Contains('-'))
+                {
+                    var parts = SelectedYear.Split('-', '–');
+                    if (parts.Length == 2 && int.TryParse(parts[0].Trim(), out var from) && int.TryParse(parts[1].Trim(), out var to))
+                    {
+                        filtered = filtered.Where(c => c.Year >= from && c.Year <= to);
+                    }
+                }
+            }
         }
 
         // Избранные — наверху списка при любом фильтре и сортировке.
@@ -561,6 +1043,70 @@ public partial class MainPageViewModel : ObservableObject
         SelectedGroup = (previouslySelected != null && Groups.Contains(previouslySelected))
             ? previouslySelected
             : AllGroupsOption;
+
+        // Для портальных источников Genres уже заполнен из manifest в
+        // SetPortalInfo — у каталога жанр не проставлен, и rebuild из
+        // Channels обнулил бы список и скрыл комбобокс. Только M3U.
+        if (!_isPortalSource)
+        {
+            var genres = Channels
+                .Select(c => c.Genre)
+                .Where(g => !string.IsNullOrWhiteSpace(g))
+                .Select(g => g!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            Genres.Clear();
+            Genres.Add(AllGenresOption);
+            foreach (var genre in genres)
+            {
+                Genres.Add(genre);
+            }
+
+            // При серверной загрузке фильтра не сбрасываем выбранные жанр/год.
+            if (!_isLoadingFiltered)
+            {
+                SelectedGenre = AllGenresOption;
+            }
+        }
+        else if (!_isLoadingFiltered)
+        {
+            SelectedGenre = AllGenresOption;
+        }
+
+        OnPropertyChanged(nameof(IsGenreFilterVisible));
+
+        // Для портальных источников Years уже заполнен из manifest в
+        // SetPortalInfo — rebuild из Channels обнулил бы список и скрыл
+        // комбобокс. Только M3U.
+        if (!_isPortalSource)
+        {
+            var years = Channels
+                .Where(c => c.Year > 0)
+                .Select(c => c.Year)
+                .Distinct()
+                .OrderByDescending(y => y)
+                .Select(y => y.ToString())
+                .ToList();
+
+            Years.Clear();
+            Years.Add(AllYearsOption);
+            foreach (var year in years)
+            {
+                Years.Add(year);
+            }
+
+            if (!_isLoadingFiltered)
+            {
+                SelectedYear = AllYearsOption;
+            }
+        }
+        else if (!_isLoadingFiltered)
+        {
+            SelectedYear = AllYearsOption;
+        }
+        OnPropertyChanged(nameof(IsYearFilterVisible));
     }
 
     public void UpdateChannelCountText()
