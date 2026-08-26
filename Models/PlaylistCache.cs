@@ -21,7 +21,7 @@ public class PlaylistCache
     /// v2 — элементы портала получили год в названии.
     /// v3 — элементы портала получили Description и Year отдельными полями.
     /// </summary>
-    public const int CurrentFormatVersion = 3;
+    public const int CurrentFormatVersion = 5;
 
     public int FormatVersion { get; set; }
 
@@ -61,4 +61,7 @@ public class CachedChannel
     public string? Description { get; set; }
 
     public int Year { get; set; }
+
+    /// <summary>Жанр элемента портала (из фильтра manifest.controls.filters).</summary>
+    public string? Genre { get; set; }
 }

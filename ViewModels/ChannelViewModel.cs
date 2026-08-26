@@ -126,6 +126,18 @@ public partial class ChannelViewModel : ObservableObject
         set => SetProperty(ref _year, value);
     }
 
+    private string? _genre;
+
+    /// <summary>
+    /// Жанр элемента портала (из фильтра manifest.controls.filters).
+    /// null у M3U-каналов и элементов без жанра.
+    /// </summary>
+    public string? Genre
+    {
+        get => _genre;
+        set => SetProperty(ref _genre, value);
+    }
+
     private string? _logoUrl;
 
     public string? LogoUrl

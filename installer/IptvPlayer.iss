@@ -9,7 +9,7 @@
 ; Готовый файл: installer\output\IptvPlayer-Setup-<версия>-x64.exe
 
 #define MyAppName "IptvPlayer"
-#define MyAppVersion "1.11.6"
+#define MyAppVersion "1.11.7"
 #define MyAppExeName "IptvPlayer.exe"
 #define MyAppPublisher "IptvPlayer"
 ; Папка публикации из win-x64.pubxml
@@ -38,12 +38,15 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 
+; Базовый файл лицензии по умолчанию (если выбран не русский язык)
+LicenseFile=LICENSE_en.txt
+
 ; Два языка мастера — под них локализовано само приложение. При нескольких
 ; языках Inno Setup сам показывает диалог выбора языка при запуске установки
 ; (ShowLanguageDialog по умолчанию yes); русский первым — выбор по умолчанию.
 ; Английский — штатный Default.isl компилятора.
 [Languages]
-Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"
+Name: "ru"; MessagesFile: "compiler:Languages\Russian.isl"; LicenseFile: "LICENSE_ru.txt"
 Name: "en"; MessagesFile: "compiler:Default.isl"
 
 ; Локализуемые строки, которых нет в стандартных .isl (используются через
@@ -59,6 +62,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "LICENSE_ru.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LICENSE_en.txt"; DestDir: "{app}"; Flags: ignoreversion
 ; Декодеры Dolby (AC-3/E-AC-3/AC-4) — Microsoft убрала их из состава Windows 11
 ; 24H2+, из-за чего IPTV-потоки с дорожкой Dolby Digital не играют. Пакеты
 ; официально подписаны Dolby/Microsoft (те же, что в Store для OEM); ставятся

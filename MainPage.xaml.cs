@@ -898,6 +898,23 @@ public sealed partial class MainPage : Page
             _logger.LogInformation(
                 "Плейлист {Playlist} взят из локального кэша (возраст {Age:F1} ч) — скачивание пропущено.",
                 playlist.Name, (DateTime.UtcNow - playlistCache.SavedAtUtc).TotalHours);
+
+            // Для портала: загружаем жанры/категории из manifest даже при
+            // использовании кэша — иначе комбобоксы фильтров пустые.
+            if (playlist.IsPortal)
+            {
+                try
+                {
+                    var (genres, years, categories) = await _videoPortalService.LoadManifestInfoAsync(playlist, ct);
+                    ViewModel.SetPortalInfo(playlist, genres, years, categories);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось загрузить manifest info из кэша.");
+                    ViewModel.ClearPortalInfo();
+                }
+            }
+
             return result;
         }
 
@@ -910,12 +927,25 @@ public sealed partial class MainPage : Page
             {
                 var items = await _videoPortalService.LoadCatalogAsync(playlist, ct);
                 playlistChannels = items.Select(PortalItemToChannel).ToList();
+
+                // Загружаем жанры и категории из manifest для серверных фильтров.
+                try
+                {
+                    var (genres, years, categories) = await _videoPortalService.LoadManifestInfoAsync(playlist, ct);
+                    ViewModel.SetPortalInfo(playlist, genres, years, categories);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Не удалось загрузить manifest info для серверных фильтров.");
+                    ViewModel.ClearPortalInfo();
+                }
             }
             else
             {
                 playlistChannels = System.IO.File.Exists(playlist.Url)
                     ? await _m3uParserService.ParseFromFileAsync(playlist.Url)
                     : await _m3uParserService.ParseFromUrlAsync(playlist.Url, ct);
+                ViewModel.ClearPortalInfo();
             }
 
             result.AddRange(playlistChannels);
@@ -947,7 +977,8 @@ public sealed partial class MainPage : Page
         CatchupDays = cached.CatchupDays,
         PortalRequest = cached.PortalRequest,
         Description = cached.Description,
-        Year = cached.Year
+        Year = cached.Year,
+        Genre = cached.Genre
     };
 
     /// <summary>
@@ -963,7 +994,8 @@ public sealed partial class MainPage : Page
         StreamUrl = item.StreamUrl,
         PortalRequest = item.RequestJson,
         Description = item.Description,
-        Year = item.Year
+        Year = item.Year,
+        Genre = item.Genre
     };
 
     // ===================== Полуавтоматическое обновление =====================
@@ -1124,6 +1156,15 @@ public sealed partial class MainPage : Page
         }
     }
 
+    /// <summary>
+    /// Кнопка сброса фильтров портала: возвращает «Все типы / Все жанры / Все годы»
+    /// и запускает одну серверную перезагрузку каталога с итоговым состоянием.
+    /// </summary>
+    private void ResetFiltersButton_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ResetPortalFilters();
+    }
+
     private async void PosterViewToggleButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.AppSettings.ChannelListPosterView = !ViewModel.AppSettings.ChannelListPosterView;
@@ -1192,6 +1233,12 @@ public sealed partial class MainPage : Page
         _activePlaylist = playlist;
         ViewModel.AppSettings.ActivePlaylistId = playlist.Id;
         await _settingsService.SaveAsync(ViewModel.AppSettings);
+
+        // Сбрасываем серверные фильтры при смене плейлиста.
+        if (!playlist.IsPortal)
+        {
+            ViewModel.ClearPortalInfo();
+        }
 
         _playlistLoadCts?.Cancel();
         _playlistLoadCts = new System.Threading.CancellationTokenSource();
@@ -2756,7 +2803,8 @@ public sealed partial class MainPage : Page
                 CatchupDays = c.CatchupDays,
                 PortalRequest = c.PortalRequest,
                 Description = c.Description,
-                Year = c.Year
+                Year = c.Year,
+                Genre = c.Genre
             }).ToList()
         };
 

@@ -187,7 +187,7 @@ public partial class App : Application
         services.AddSingleton<ICacheService, CacheService>();
         services.AddSingleton<IXmlTvService, XmlTvService>();
         services.AddSingleton<IStreamService, StreamService>();
-        services.AddSingleton<IPlaylistCacheService, PlaylistCacheService>();
+        services.AddSingleton<IPlaylistCacheService, PlaylistDatabaseService>();
         services.AddSingleton<IM3UParserService, M3UParserService>();
         services.AddSingleton<IVideoPortalService, VideoPortalService>();
         services.AddSingleton<IUpdateService, UpdateService>();
