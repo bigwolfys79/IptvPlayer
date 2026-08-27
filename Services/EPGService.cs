@@ -502,6 +502,11 @@ namespace IptvPlayer.Services
                 var enabledSources = settings.GetActiveEpgSources()
                     .Where(s => s.IsEnabled).ToList();
 
+                // Кэш-файлы удалённых из настроек источников (по 30 МБ на
+                // XMLTV) больше не нужны — чистим раз при загрузке EPG.
+                EpgCacheStore.CleanupOrphans(
+                    enabledSources.Select(s => s.Url));
+
                 // Периодичность обновления EPG из настроек (1/3/7 дней):
                 // пока кэш источника младше maxAge, XmlTvService берёт его с
                 // диска без сети. 0 = "только вручную" — MaxValue, явный
