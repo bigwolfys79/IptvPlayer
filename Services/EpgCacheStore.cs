@@ -38,6 +38,35 @@ public static class EpgCacheStore
         }
     }
 
+    /// <summary>
+    /// Удаляет кэш-файлы осиротевших источников: после правки списка EPG
+    /// источников старые .mpck.br (десятки мегабайт каждый) иначе остаются
+    /// на диске навсегда. Вызывается раз при запуске после загрузки списка
+    /// источников; ключи — те же URL, что в ReadAsync/WriteAsync.
+    /// </summary>
+    public static void CleanupOrphans(IEnumerable<string> liveKeys)
+    {
+        try
+        {
+            var live = liveKeys
+                .Select(k => Path.GetFileName(PathForKey(k)))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var file in Directory.EnumerateFiles(CacheDir, "*.mpck.br"))
+            {
+                if (!live.Contains(Path.GetFileName(file)))
+                {
+                    File.Delete(file);
+                    Log.Information("Удалён осиротевший кэш EPG {File}.", Path.GetFileName(file));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "Очистка осиротевших кэшей EPG не удалась (не критично).");
+        }
+    }
+
     private static string PathForKey(string key)
     {
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
