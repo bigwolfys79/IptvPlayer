@@ -41,6 +41,14 @@ namespace IptvPlayer.Dialogs
         public Visibility EditVisibility => ToVisibility(IsEditing);
 
         public Visibility EpgSectionVisibility => ToVisibility(IsEpgExpanded);
+
+        /// <summary>
+        /// Ссылка плейлиста для показа в списке: учётные данные (username,
+        /// password, token) в query-строке маскируются «***» — это фактически
+        /// пароль от подписки. Структура URL (хост, путь, имена параметров)
+        /// остаётся видимой — по ней плейлист опознаётся.
+        /// </summary>
+        public string DisplayUrl => Services.SecretProtector.Mask(Playlist.Url);
     }
 
     /// <summary>

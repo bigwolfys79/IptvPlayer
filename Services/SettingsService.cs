@@ -48,7 +48,9 @@ public class SettingsService : ISettingsService
             }
 
             var json = File.ReadAllText(SettingsPath);
-            return Task.FromResult(JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings());
+            var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            UnprotectSecrets(settings);
+            return Task.FromResult(settings);
         }
         catch (Exception ex)
         {
@@ -64,13 +66,64 @@ public class SettingsService : ISettingsService
         try
         {
             Directory.CreateDirectory(SettingsDir);
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, JsonOptions));
+            var toSave = ProtectSecrets(settings);
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(toSave, JsonOptions));
             return Task.CompletedTask;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Не удалось сохранить настройки.");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Шифрует секретные поля для записи на диск: ключ портала и URL
+    /// плейлистов/EPG-источников (в m3u/EPG URL обычно зашиты username,
+    /// password или токены). Работает с копией, переданный объект не меняется.
+    /// </summary>
+    private static AppSettings ProtectSecrets(AppSettings settings)
+    {
+        var clone = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
+        foreach (var playlist in clone.Playlists)
+        {
+            playlist.Url = SecretProtector.Protect(playlist.Url) ?? string.Empty;
+            if (playlist.PortalKey != null)
+            {
+                playlist.PortalKey = SecretProtector.Protect(playlist.PortalKey);
+            }
+            foreach (var epg in playlist.EpgSources)
+            {
+                epg.Url = SecretProtector.Protect(epg.Url) ?? epg.Url;
+            }
+        }
+
+        foreach (var epg in clone.EpgSources)
+        {
+            epg.Url = SecretProtector.Protect(epg.Url) ?? epg.Url;
+        }
+
+        return clone;
+    }
+
+    private static void UnprotectSecrets(AppSettings settings)
+    {
+        foreach (var playlist in settings.Playlists)
+        {
+            playlist.Url = SecretProtector.Unprotect(playlist.Url) ?? string.Empty;
+            if (playlist.PortalKey != null)
+            {
+                playlist.PortalKey = SecretProtector.Unprotect(playlist.PortalKey);
+            }
+            foreach (var epg in playlist.EpgSources)
+            {
+                epg.Url = SecretProtector.Unprotect(epg.Url) ?? epg.Url;
+            }
+        }
+
+        foreach (var epg in settings.EpgSources)
+        {
+            epg.Url = SecretProtector.Unprotect(epg.Url) ?? epg.Url;
         }
     }
 }
