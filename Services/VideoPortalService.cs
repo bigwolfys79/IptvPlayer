@@ -861,9 +861,13 @@ public class VideoPortalService : IVideoPortalService
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadAsStringAsync(ct);
-        // Ответ маскируется так же, как запрос: в нём прямые ссылки на VOD
-        // с токенами доступа в пути — их нельзя оставлять в файловом логе.
-        _logger.LogInformation("Портал ← {Url}: {Body}", SecretProtector.Mask(url),
+        // Полное тело ответа (манифест — тысячи символов фильтров) пишем
+        // только в Debug; в Information — сводка: размер и маскированное
+        // содержимое недоступно, лог остаётся компактным. Маскировка — как
+        // в запросе: в ответах бывают прямые ссылки с токенами доступа.
+        _logger.LogInformation("Портал ← {Url}: получено {Bytes} байт.",
+            SecretProtector.Mask(url), body.Length);
+        _logger.LogDebug("Портал ← {Url}: {Body}", SecretProtector.Mask(url),
             Truncate(SecretProtector.Mask(body)));
 
         return JsonDocument.Parse(body);
