@@ -1576,6 +1576,122 @@ public partial class MainPageViewModel : ObservableObject
     public async Task<bool> PlayChannelAsync(ChannelViewModel channel)
         => await PlayChannelAsync(channel, interactive: true);
 
+    // ===================== Возобновление просмотра VOD =====================
+
+    /// <summary>Позиций в настройках хватит надолго; старые вытесняются по UpdatedAt.</summary>
+    private const int MaxVodResumeEntries = 200;
+
+    /// <summary>Порог, с которого предложение «продолжить» имеет смысл.</summary>
+    private const double MinVodResumeSeconds = 30;
+
+    /// <summary>Досмотренное почти до конца не предлагаем продолжать.</summary>
+    private const double VodResumeWatchedFraction = 0.95;
+
+    private DateTime _lastVodResumeSaveRequest = DateTime.MinValue;
+
+    /// <summary>
+    /// Вопрос к пользователю «продолжить с сохранённого места?» — показывает
+    /// диалог представление (там XamlRoot). true — продолжить с позиции.
+    /// </summary>
+    public event Func<string, TimeSpan, Task<bool>>? VodResumePromptRequested;
+
+    /// <summary>Ключ сохранённой позиции: фильм — название, серия — название + индекс.</summary>
+    internal static string VodResumeKey(string title, int episodeIndex)
+        => episodeIndex >= 0 ? $"{title}::{episodeIndex}" : title;
+
+    /// <summary>
+    /// Сохранённая позиция этого VOD, если продолжать есть смысл: больше
+    /// порога и не досмотрено до конца. Иначе null.
+    /// </summary>
+    public TimeSpan? GetSavedVodPosition(string title, int episodeIndex)
+    {
+        if (AppSettings.VodResumePositions.TryGetValue(VodResumeKey(title, episodeIndex),
+                out var entry) && entry.PositionSeconds >= MinVodResumeSeconds &&
+            (entry.DurationSeconds <= 0 ||
+             entry.PositionSeconds <= entry.DurationSeconds * VodResumeWatchedFraction))
+        {
+            return TimeSpan.FromSeconds(entry.PositionSeconds);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Спрашивает пользователя, продолжать ли с сохранённого места.
+    /// Возвращает позицию для resumePosition или null (смотреть сначала /
+    /// диалога не было / сохранённой позиции нет).
+    /// </summary>
+    public async Task<TimeSpan?> OfferVodResumeAsync(string title, int episodeIndex)
+    {
+        var saved = GetSavedVodPosition(title, episodeIndex);
+        if (saved == null || VodResumePromptRequested == null)
+        {
+            return null;
+        }
+
+        return await VodResumePromptRequested(title, saved.Value) ? saved : null;
+    }
+
+    /// <summary>
+    /// Запоминает текущую позицию играющего VOD. Вызывается секундным таймером
+    /// представления; запись в настройки — с прореживанием (запрос сохранения
+    /// не чаще раза в 5 секунд), чтобы не писать файл каждую секунду.
+    /// </summary>
+    public void CaptureVodPosition()
+    {
+        if (!Player.IsVodPlaying || Player.VodChannel is not { } channel ||
+            string.IsNullOrWhiteSpace(channel.Name))
+        {
+            return;
+        }
+
+        var position = Player.VodPositionSeconds;
+        if (position < MinVodResumeSeconds)
+        {
+            // Начало просмотра: сохранённую позицию прошлого раза гасим,
+            // чтобы в следующий раз не предлагали давно проигранное место.
+            AppSettings.VodResumePositions.Remove(VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex));
+            return;
+        }
+
+        AppSettings.VodResumePositions[VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex)] =
+            new VodResumePosition
+            {
+                PositionSeconds = position,
+                DurationSeconds = Player.VodDurationSeconds,
+                EpisodeIndex = Player.CurrentVodEpisodeIndex,
+                UpdatedAt = DateTime.Now
+            };
+
+        PruneVodResumeEntries();
+
+        if ((DateTime.Now - _lastVodResumeSaveRequest).TotalSeconds >= 5)
+        {
+            _lastVodResumeSaveRequest = DateTime.Now;
+            SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Досмотренное до конца и самые старые записи вытесняются.</summary>
+    private void PruneVodResumeEntries()
+    {
+        var positions = AppSettings.VodResumePositions;
+        var finished = positions.Where(kv => kv.Value.DurationSeconds > 0 &&
+                                             kv.Value.PositionSeconds > kv.Value.DurationSeconds * VodResumeWatchedFraction)
+            .Select(kv => kv.Key)
+            .ToList();
+        foreach (var key in finished)
+        {
+            positions.Remove(key);
+        }
+
+        while (positions.Count > MaxVodResumeEntries)
+        {
+            var oldest = positions.OrderBy(kv => kv.Value.UpdatedAt).First().Key;
+            positions.Remove(oldest);
+        }
+    }
+
     /// <summary>
     /// Запуск канала/фильма: обычный канал — прямой эфир как раньше; элемент
     /// портала — episodes-запрос (flick). Фильм играет сразу; у сериала при
@@ -1600,7 +1716,11 @@ public partial class MainPageViewModel : ObservableObject
             // подкладываются в играющий плеер.
             if (!string.IsNullOrWhiteSpace(channel.StreamUrl))
             {
-                await Player.StartPlaybackAsync(channel, channel.StreamUrl!, archiveEntry: null, isVod: true);
+                var catalogResume = interactive
+                    ? await OfferVodResumeAsync(channel.Name, -1)
+                    : null;
+                await Player.StartPlaybackAsync(channel, channel.StreamUrl!, archiveEntry: null,
+                    isVod: true, resumePosition: catalogResume);
                 if (!string.IsNullOrWhiteSpace(channel.PortalRequest))
                 {
                     _ = LoadPortalVariantsInBackgroundAsync(playlist, channel);
@@ -1668,8 +1788,12 @@ public partial class MainPageViewModel : ObservableObject
             var preferred = AppSettings.PreferredQuality > 0 ? AppSettings.PreferredQuality + "p" : "Авто";
             var quality = episode.Variants.Count > 0 ? preferred : null;
 
+            var episodeResume = interactive
+                ? await OfferVodResumeAsync(channel.Name, flick.Episodes.IndexOf(episode))
+                : null;
             await Player.StartPlaybackAsync(channel, episode.StreamUrl, archiveEntry: null, isVod: true,
                 vodVariants: episode.Variants, vodQuality: quality,
+                resumePosition: episodeResume,
                 vodEpisodes: flick.Episodes, vodEpisodeIndex: flick.Episodes.IndexOf(episode));
             return true;
         }

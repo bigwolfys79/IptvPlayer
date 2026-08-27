@@ -8,7 +8,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.11.7
+- **Version:** 1.12.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -25,6 +25,10 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ---
 
 ## Implemented
+
+### v1.12.0
+- **Resume playback for portal movies** — when reopening a movie/episode you stopped at more than 30 seconds in (and not near the end), a dialog appears: "Resume / Start over" with the stop time (e.g. "you stopped at 25:53"). The position is remembered per movie; for serials — per episode; stored in settings (last 200 entries), disk writes are throttled (at most once per 5 seconds), fully watched items are evicted automatically. Resuming seeks the media engine directly, no stream restart.
+- **Readable seek bar tooltip** — dragging the VOD seek bar now shows the time as h:mm:ss in the thumb tooltip (previously raw seconds: "3360" instead of "0:56:00").
 
 ### v1.11.5
 - **EPG as separate overlay** — EPG panel moved to the full window level (previously video area only): scrim covers the entire screen (including channel list), clicking outside the panel closes EPG. In both windowed and fullscreen modes, the fullscreen overlay no longer intercepts mouse when EPG is open. Mouse wheel scrolls the EPG program list only when the panel is visible.

@@ -24,6 +24,8 @@
         <converters:BoolToRecordColorConverter x:Key="BoolToRecordColorConverter" />
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisConverter" />
         <converters:StringToVisibilityConverter x:Key="StringToVisConverter" />
+        <!-- Формат подсказки над бегунком ползунка перемотки (ThumbToolTip). -->
+        <converters:SecondsToTimeConverter x:Key="SecondsToTimeConverter" />
 
         <DataTemplate x:Key="ChannelItemTemplate" x:DataType="vm:ChannelViewModel">
             <StackPanel Orientation="Horizontal" Padding="12,8" Spacing="12"
@@ -569,6 +571,7 @@
                                    VerticalAlignment="Center" />
                         <Slider x:Name="WindowedVodSeekBar"
                                 Width="150" Minimum="0" Maximum="1"
+                                ThumbToolTipValueConverter="{StaticResource SecondsToTimeConverter}"
                                 VerticalAlignment="Center"
                                 ValueChanged="VodSeekBar_ValueChanged"
                                 PointerPressed="VodSeekBar_PointerPressed"
@@ -1127,6 +1130,7 @@
                                        VerticalAlignment="Center" />
                             <Slider x:Name="OverlayVodSeekBar"
                                     Width="190" Minimum="0" Maximum="1"
+                                    ThumbToolTipValueConverter="{StaticResource SecondsToTimeConverter}"
                                     VerticalAlignment="Center"
                                     ValueChanged="VodSeekBar_ValueChanged"
                                     PointerPressed="VodSeekBar_PointerPressed"

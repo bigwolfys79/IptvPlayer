@@ -205,6 +205,39 @@ public sealed partial class MainPage : Page
             });
             return completion.Task;
         };
+        // Возобновление VOD: VM нашла сохранённую позицию — спрашиваем,
+        // продолжать ли с места остановки (Primary = продолжить).
+        ViewModel.VodResumePromptRequested += (title, position) =>
+        {
+            var resumeCompletion = new TaskCompletionSource<bool>();
+            DispatcherQueue.TryEnqueue(async () =>
+            {
+                try
+                {
+                    var dialog = new ContentDialog
+                    {
+                        XamlRoot = Content.XamlRoot,
+                        Title = L.T("Продолжить просмотр", "Resume playback"),
+                        Content = new TextBlock
+                        {
+                            Text = L.T(
+                                $"«{title}»: вы остановились на {PlayerViewModel.FormatArchiveTime(position.TotalSeconds)}. Продолжить с этого места?",
+                                $"“{title}”: you stopped at {PlayerViewModel.FormatArchiveTime(position.TotalSeconds)}. Resume from there?"),
+                            TextWrapping = TextWrapping.Wrap
+                        },
+                        PrimaryButtonText = L.T("Продолжить", "Resume"),
+                        CloseButtonText = L.T("Смотреть сначала", "Start over")
+                    };
+                    resumeCompletion.SetResult(await dialog.ShowAsync() == ContentDialogResult.Primary);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Warning(ex, "Диалог возобновления VOD не показался.");
+                    resumeCompletion.SetResult(false);
+                }
+            });
+            return resumeCompletion.Task;
+        };
         ViewModel.RecordingChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateRecordButtons);
         // Родительский контроль: VM просит PIN при запуске канала
@@ -409,6 +442,9 @@ public sealed partial class MainPage : Page
             UpdateArchiveSeekBar();
             Player.RefreshVodPosition();
             UpdateVodSeekBar();
+            // Позиция VOD для предложения «продолжить с места остановки»
+            // при следующем открытии фильма.
+            ViewModel.CaptureVodPosition();
             // Обновление текста StatsOverlay под курсором порождает
             // синтетические PointerMoved — input-site возвращал стрелку
             // (мелькание). Пока курсор спрятан, текст заморожен.

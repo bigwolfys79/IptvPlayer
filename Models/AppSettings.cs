@@ -215,6 +215,13 @@ public class AppSettings
     /// </summary>
     public List<InterruptedRecording> InterruptedRecordings { get; set; } = new();
 
+    /// <summary>
+    /// Позиции просмотра фильмов/серий портала: при повторном открытии
+    /// предлагается продолжить с места остановки. Ключ — название карточки,
+    /// для серий — с индексом эпизода (см. MainPageViewModel.VodResumeKey).
+    /// </summary>
+    public Dictionary<string, VodResumePosition> VodResumePositions { get; set; } = new();
+
     public bool ParentalControlEnabled { get; set; }
     public string? ParentalControlPinHash { get; set; }
     public List<string> ParentalControlBlockedGroups { get; set; } = new();
