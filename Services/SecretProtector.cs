@@ -64,10 +64,17 @@ public static class SecretProtector
         "(username|password|token)=([^&\\s\"']+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // Прямые ссылки на медиа (ответы портала на flick): содержат токены
+    // доступа в пути — пока живы, открывают фильм без пароля.
+    private static readonly Regex MediaUrlRegex = new(
+        "https?://[^\\s\"'\\\\]+\\.(?:m3u8|mp4|ts)[^\\s\"'\\\\]*",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     /// <summary>
-    /// Маскирует секреты в строке для записи в логи/dump: значение поля
-    /// "key" в JSON-теле запроса портала и параметры username/password/token
-    /// в query-строке URL плейлиста или EPG-источника.
+    /// Маскирует секреты в строке для записи в логи: значение поля "key" в
+    /// JSON-теле запроса портала, параметры username/password/token в
+    /// query-строке URL плейлиста или EPG-источника и прямые ссылки на
+    /// медиа-потоки (m3u8/mp4/ts) с токенами доступа в пути.
     /// </summary>
     public static string Mask(string? value)
     {
@@ -77,6 +84,7 @@ public static class SecretProtector
         }
 
         var masked = KeyFieldRegex.Replace(value, "\"key\":\"***\"");
+        masked = MediaUrlRegex.Replace(masked, "***");
         return CredentialParamRegex.Replace(masked, "$1=***");
     }
 }
