@@ -183,8 +183,9 @@ public sealed partial class AboutDialog : UserControl
                 $"Installer for version {_update.Version} downloaded.");
 
             // Дальше идёт другой ContentDialog («Установить сейчас?»), а два
-            // одновременно открытыми быть не могут.
+            // одновременно открытыми быть не могут; даём этому закрыться.
             _hostDialog?.Hide();
+            await Task.Delay(50);
 
             await _installHandler(_update.Version, setupPath);
         }

@@ -26,12 +26,21 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 
 ## Implemented
 
+### v1.12.1 (follow-up)
+- **Fixed settings export/import buttons** — both failed silently (ArgumentException: WinRT pickers reject compound extensions like ".iptvplayer.json"); the export file format is now ".iptvplayer", and any failure before the file dialog opens is shown as a message instead of being swallowed.
+- **Movie resume positions moved to SQLite** (`iptvplayer_cache.db`, vod_resume table) — settings.json is no longer rewritten every 5 seconds during playback; existing positions migrate automatically on first start. The "Resume playback" behavior is unchanged.
+- **Portal debug dump removed** — the `portal_dump` folder (contained direct movie links with access tokens, hundreds of megabytes) is no longer created, and accumulated dumps are deleted at startup; portal responses in logs are now masked just like requests.
+- **Playlist URLs hidden in the list** — the URL line under the playlist name in "Settings → Playlists" is removed entirely (subscription credentials are usually embedded in the URL).
+- **Cancel/Save/Done buttons always visible** — in all settings dialogs (Playlists, EPG, Playback, Interface, Recordings) the buttons moved out of the scrollable area.
+- **Resilient settings loading** — an empty or non-standard date value (e.g. `LastUpdateCheckUtc: ""` after manually editing settings.json) no longer resets all settings to defaults: the field is simply ignored.
+
 ### v1.12.1
 - **No more plaintext secrets** — the portal key and playlist/EPG source URLs (which usually embed a username, password or token) are encrypted with Windows DPAPI and written to settings.json as opaque `dpapi:...` strings; existing settings migrate automatically on first save.
 - **Secret removed from auxiliary storage** — the "key" field is no longer written to the SQLite channel cache (it is re-injected from settings when a portal request is sent), and keys/passwords are masked in file logs and portal_dump.
 - **"Download and install" button in "About"** — when a manual update check finds a new version, the check button becomes "Download and install": the installer is downloaded to the temp folder (SHA256 verified, with progress) and then the same flow as the automatic check runs (consent dialog, postponement during active recordings, silent install). The duplicate GitHub request code in the dialog has been removed.
 - **Removed the channel list sort combo box** ("catalog order / by name / by year") — order is always as in the source, favorites stay on top.
 - **Playlist URLs masked in settings** — in the playlist list, username/password/token values in the URL are shown as "***" (EPG URLs left as is).
+- **Password-protected settings export/import** — "Export..."/"Import..." buttons added to "Settings → Playlists": transfer settings between machines (DPAPI encryption of settings.json makes copying the file useless). The export file is password-protected (AES-GCM + PBKDF2) and contains everything except machine-specific data (resume positions, recordings, timer state); on import you choose "replace all" or "add playlists only" (duplicates by URL are skipped).
 
 ### v1.12.0
 - **Resume playback for portal movies** — when reopening a movie/episode you stopped at more than 30 seconds in (and not near the end), a dialog appears: "Resume / Start over" with the stop time (e.g. "you stopped at 25:53"). The position is remembered per movie; for serials — per episode; stored in settings (last 200 entries), disk writes are throttled (at most once per 5 seconds), fully watched items are evicted automatically. Resuming seeks the media engine directly, no stream restart.

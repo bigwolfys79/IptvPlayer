@@ -50,19 +50,20 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextWrapping="Wrap"/>
                 <ComboBox x:Name="EpgRefreshCombo" HorizontalAlignment="Stretch"/>
-
-                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,24,0,0">
-                    <Button x:Name="CancelButton"
-                            Content="Отмена"
-                            Width="100" Height="36"
-                            Click="CancelButton_Click"/>
-                    <Button x:Name="SaveButton"
-                            Content="Сохранить"
-                            Width="100" Height="36"
-                            Style="{ThemeResource AccentButtonStyle}"
-                            Click="SaveButton_Click"/>
-                </StackPanel>
             </StackPanel>
         </ScrollViewer>
+
+        <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
+        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+            <Button x:Name="CancelButton"
+                    Content="Отмена"
+                    Width="100" Height="36"
+                    Click="CancelButton_Click"/>
+            <Button x:Name="SaveButton"
+                    Content="Сохранить"
+                    Width="100" Height="36"
+                    Style="{ThemeResource AccentButtonStyle}"
+                    Click="SaveButton_Click"/>
+        </StackPanel>
     </StackPanel>
 </UserControl>

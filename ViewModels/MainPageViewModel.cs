@@ -25,6 +25,10 @@ public partial class MainPageViewModel : ObservableObject
 
     private readonly ISettingsService _settingsService;
     private readonly IVideoPortalService _videoPortalService;
+    private readonly Services.VodResumeStore _vodResumeStore;
+
+    /// <summary>Позиции досмотра VOD — в кэш-БД, не в settings.json.</summary>
+    private readonly Dictionary<string, VodResumePosition> _vodResumePositions = new();
     private readonly ILogger<MainPageViewModel> _logger;
 
     // Все свойства ниже — ручные (поле + SetProperty) вместо [ObservableProperty]:
@@ -383,11 +387,13 @@ public partial class MainPageViewModel : ObservableObject
         IVideoPortalService videoPortalService,
         PlayerViewModel player,
         RecordingService recording,
+        Services.VodResumeStore vodResumeStore,
         ILogger<MainPageViewModel> logger)
     {
         _epgViewModel = epgViewModel;
         _settingsService = settingsService;
         _videoPortalService = videoPortalService;
+        _vodResumeStore = vodResumeStore;
         _logger = logger;
         Player = player;
         Recording = recording;
@@ -1573,12 +1579,49 @@ public partial class MainPageViewModel : ObservableObject
         => episodeIndex >= 0 ? $"{title}::{episodeIndex}" : title;
 
     /// <summary>
+    /// Загружает позиции досмотра из кэш-БД. Заодно разовая миграция: записи
+    /// прежних версий жили в settings.json — переносим в БД и вычищаем из
+    /// настроек. Не фатально при сбое: продолжим без «продолжить просмотр».
+    /// </summary>
+    public async Task LoadVodResumePositionsAsync()
+    {
+        var stored = await _vodResumeStore.LoadAllAsync();
+        foreach (var (key, position) in stored)
+        {
+            _vodResumePositions[key] = position;
+        }
+
+        if (AppSettings.VodResumePositions.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (key, position) in AppSettings.VodResumePositions)
+        {
+            _vodResumePositions[key] = position;
+        }
+
+        AppSettings.VodResumePositions.Clear();
+        try
+        {
+            await _settingsService.SaveAsync(AppSettings);
+            await _vodResumeStore.SaveAllAsync(_vodResumePositions);
+            _logger.LogInformation("Позиции просмотра перенесены из settings.json в БД ({Count} шт.).",
+                _vodResumePositions.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Миграция позиций просмотра в БД не удалась.");
+        }
+    }
+
+    /// <summary>
     /// Сохранённая позиция этого VOD, если продолжать есть смысл: больше
     /// порога и не досмотрено до конца. Иначе null.
     /// </summary>
     public TimeSpan? GetSavedVodPosition(string title, int episodeIndex)
     {
-        if (AppSettings.VodResumePositions.TryGetValue(VodResumeKey(title, episodeIndex),
+        if (_vodResumePositions.TryGetValue(VodResumeKey(title, episodeIndex),
                 out var entry) && entry.PositionSeconds >= MinVodResumeSeconds &&
             (entry.DurationSeconds <= 0 ||
              entry.PositionSeconds <= entry.DurationSeconds * VodResumeWatchedFraction))
@@ -1607,8 +1650,8 @@ public partial class MainPageViewModel : ObservableObject
 
     /// <summary>
     /// Запоминает текущую позицию играющего VOD. Вызывается секундным таймером
-    /// представления; запись в настройки — с прореживанием (запрос сохранения
-    /// не чаще раза в 5 секунд), чтобы не писать файл каждую секунду.
+    /// представления; запись в кэш-БД — с прореживанием (не чаще раза в
+    /// 5 секунд), чтобы не открывать соединение каждую секунду.
     /// </summary>
     public void CaptureVodPosition()
     {
@@ -1623,11 +1666,11 @@ public partial class MainPageViewModel : ObservableObject
         {
             // Начало просмотра: сохранённую позицию прошлого раза гасим,
             // чтобы в следующий раз не предлагали давно проигранное место.
-            AppSettings.VodResumePositions.Remove(VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex));
+            _vodResumePositions.Remove(VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex));
             return;
         }
 
-        AppSettings.VodResumePositions[VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex)] =
+        _vodResumePositions[VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex)] =
             new VodResumePosition
             {
                 PositionSeconds = position,
@@ -1641,14 +1684,14 @@ public partial class MainPageViewModel : ObservableObject
         if ((DateTime.Now - _lastVodResumeSaveRequest).TotalSeconds >= 5)
         {
             _lastVodResumeSaveRequest = DateTime.Now;
-            SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
+            _ = _vodResumeStore.SaveAllAsync(_vodResumePositions);
         }
     }
 
     /// <summary>Досмотренное до конца и самые старые записи вытесняются.</summary>
     private void PruneVodResumeEntries()
     {
-        var positions = AppSettings.VodResumePositions;
+        var positions = _vodResumePositions;
         var finished = positions.Where(kv => kv.Value.DurationSeconds > 0 &&
                                              kv.Value.PositionSeconds > kv.Value.DurationSeconds * VodResumeWatchedFraction)
             .Select(kv => kv.Key)

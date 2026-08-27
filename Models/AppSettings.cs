@@ -216,9 +216,9 @@ public class AppSettings
     public List<InterruptedRecording> InterruptedRecordings { get; set; } = new();
 
     /// <summary>
-    /// Позиции просмотра фильмов/серий портала: при повторном открытии
-    /// предлагается продолжить с места остановки. Ключ — название карточки,
-    /// для серий — с индексом эпизода (см. MainPageViewModel.VodResumeKey).
+    /// Legacy: позиции досмотра VOD жили здесь до переноса в кэш-БД
+    /// (VodResumeStore). Поле оставлено только для разовой миграции при
+    /// загрузке — новые записи сюда не пишутся.
     /// </summary>
     public Dictionary<string, VodResumePosition> VodResumePositions { get; set; } = new();
 
