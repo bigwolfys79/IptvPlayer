@@ -1,6 +1,8 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using IptvPlayer.Models;
 using Microsoft.Extensions.Logging;
@@ -28,7 +30,8 @@ public class SettingsService : ISettingsService
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true
+        WriteIndented = true,
+        Converters = { new NullableDateTimeConverter() }
     };
 
     private readonly ILogger<SettingsService> _logger;
@@ -124,6 +127,73 @@ public class SettingsService : ISettingsService
         foreach (var epg in settings.EpgSources)
         {
             epg.Url = SecretProtector.Unprotect(epg.Url) ?? epg.Url;
+        }
+    }
+
+    /// <summary>
+    /// Терпимый читатель Nullable-дат: пустая строка (остаётся после ручной
+    /// правки settings.json — как "" в LastUpdateCheckUtc) или дата в другом
+    /// формате не должна ронять загрузку ВСЕХ настроек — превращаем в null.
+    /// Пишется всегда ISO 8601, как ожидает System.Text.Json.
+    /// </summary>
+    private sealed class NullableDateTimeConverter : JsonConverter<DateTime?>
+    {
+        private static readonly string[] FallbackFormats =
+        {
+            "yyyy-MM-dd HH:mm:ss", "yyyy-MM-ddTHH:mm:ss", "dd.MM.yyyy HH:mm:ss"
+        };
+
+        public override DateTime? Read(
+            ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                return null;
+            }
+
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var raw = reader.GetString();
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    return null;
+                }
+
+                if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                        out var parsed))
+                {
+                    return parsed;
+                }
+
+                foreach (var format in FallbackFormats)
+                {
+                    if (DateTime.TryParseExact(raw, format, CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                            out var exact))
+                    {
+                        return exact;
+                    }
+                }
+
+                // Нераспознанная дата — теряем одну метку, не весь файл.
+                return null;
+            }
+
+            return null;
+        }
+
+        public override void Write(
+            Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)
+        {
+            if (value is { } date)
+            {
+                writer.WriteStringValue(date);
+            }
+            else
+            {
+                writer.WriteNullValue();
+            }
         }
     }
 }

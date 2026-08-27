@@ -41,14 +41,6 @@ namespace IptvPlayer.Dialogs
         public Visibility EditVisibility => ToVisibility(IsEditing);
 
         public Visibility EpgSectionVisibility => ToVisibility(IsEpgExpanded);
-
-        /// <summary>
-        /// Ссылка плейлиста для показа в списке: учётные данные (username,
-        /// password, token) в query-строке маскируются «***» — это фактически
-        /// пароль от подписки. Структура URL (хост, путь, имена параметров)
-        /// остаётся видимой — по ней плейлист опознаётся.
-        /// </summary>
-        public string DisplayUrl => Services.SecretProtector.Mask(Playlist.Url);
     }
 
     /// <summary>
@@ -144,6 +136,9 @@ namespace IptvPlayer.Dialogs
                 "Как часто при запуске перекачивать активный плейлист.",
                 "How often to re-download the active playlist on startup.");
             CloseButton.Content = L.T("Готово", "Done");
+            TransferHeader.Text = L.T("Перенос настроек", "Settings transfer");
+            ExportSettingsButton.Content = L.T("Экспортировать...", "Export...");
+            ImportSettingsButton.Content = L.T("Импортировать...", "Import...");
 
             PlaylistUrlBox.Text = string.Empty;
             PlaylistNameBox.Text = string.Empty;
@@ -643,6 +638,296 @@ namespace IptvPlayer.Dialogs
 
             await _settingsService.SaveAsync(_viewModel.AppSettings);
             _hostDialog?.Hide();
+        }
+
+        // ===================== Экспорт / импорт настроек =====================
+
+        private readonly Services.SettingsTransferService _transferService = new();
+
+        /// <summary>
+        /// Диалог пароля поверх «Плейлистов»: два ContentDialog одновременно
+        /// показать нельзя, поэтому хост прячется. При отмене хост возвращается
+        /// здесь; при успехе вызывающий код сам показывает его (или следующий
+        /// диалог) в конце своей цепочки.
+        /// confirm=true — с повтором пароля (экспорт).
+        /// </summary>
+        private async Task<string?> PromptPasswordAsync(string title, string hint, bool confirm)
+        {
+            // XamlRoot берём ДО Hide: после скрытия хост-диалога этот
+            // UserControl выгружается из дерева и его XamlRoot становится
+            // null — ContentDialog без XamlRoot падает COMException'ом.
+            var root = _hostDialog?.XamlRoot ?? XamlRoot;
+            await HideHostAsync();
+
+            var box = new PasswordBox { Header = hint, PlaceholderText = "••••••••" };
+            PasswordBox? repeat = null;
+            var panel = new StackPanel { Spacing = 10, MinWidth = 300 };
+            panel.Children.Add(box);
+            if (confirm)
+            {
+                repeat = new PasswordBox { Header = L.T("Повторите пароль", "Repeat password") };
+                panel.Children.Add(repeat);
+            }
+
+            while (true)
+            {
+                var dialog = new ContentDialog
+                {
+                    XamlRoot = root,
+                    Title = title,
+                    Content = panel,
+                    PrimaryButtonText = L.T("ОК", "OK"),
+                    CloseButtonText = L.T("Отмена", "Cancel"),
+                    DefaultButton = ContentDialogButton.Primary
+                };
+                if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                {
+                    _ = ReshowHostAsync();
+                    return null;
+                }
+
+                if (box.Password.Length < 4)
+                {
+                    await ShowTransferErrorAsync(L.T(
+                        "Пароль — минимум 4 символа.", "Password must be at least 4 characters."));
+                    continue;
+                }
+
+                if (repeat != null && box.Password != repeat.Password)
+                {
+                    await ShowTransferErrorAsync(L.T("Пароли не совпадают.", "Passwords do not match."));
+                    continue;
+                }
+
+                break;
+            }
+
+            return box.Password;
+        }
+
+        /// <summary>
+        /// Скрывает хост-диалог «Плейлисты» и выжидает такт диспетчера:
+        /// следующий ContentDialog нельзя открыть, пока предыдущий не успел
+        /// закрыться («Only one ContentDialog», COMException 0x80000019).
+        /// </summary>
+        private async Task HideHostAsync()
+        {
+            if (_hostDialog == null)
+            {
+                return;
+            }
+
+            _hostDialog.Hide();
+            await Task.Delay(50);
+        }
+
+        /// <summary>Показывает хост-диалог «Плейлисты» снова (после вложенного диалога).</summary>
+        private async Task ReshowHostAsync()
+        {
+            if (_hostDialog != null)
+            {
+                await _hostDialog.ShowAsync();
+            }
+        }
+
+        private async Task ShowTransferErrorAsync(string message)
+        {
+            var dialog = new ContentDialog
+            {
+                XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
+                Title = L.T("Перенос настроек", "Settings transfer"),
+                Content = message,
+                CloseButtonText = L.T("Понятно", "OK")
+            };
+            await dialog.ShowAsync();
+        }
+
+        private async void ExportSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await ExportSettingsAsync();
+            }
+            catch (Exception ex)
+            {
+                // До выбора файла исключения улетали в App.UnhandledException
+                // и выглядели для пользователя как «кнопка не работает».
+                _logger.LogError(ex, "Экспорт настроек: сбой до открытия пикера.");
+                await ShowTransferErrorAsync(L.T(
+                    $"Не удалось открыть диалог экспорта: {ex.Message}",
+                    $"Failed to open the export dialog: {ex.Message}"));
+            }
+        }
+
+        private async Task ExportSettingsAsync()
+        {
+            var picker = new Windows.Storage.Pickers.FileSavePicker
+            {
+                SuggestedFileName = $"iptvplayer-settings-{DateTime.Now:yyyyMMdd}",
+                SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary
+            };
+            // Расширение с одной точкой: WinRT-пикеры отвергают составные
+            // расширения вроде ".iptvplayer.json" (ArgumentException).
+            picker.FileTypeChoices.Add(
+                "IptvPlayer export (*.iptvplayer)",
+                new System.Collections.Generic.List<string> { ".iptvplayer" });
+            if (App.MainWindow is { } window)
+            {
+                WinRT.Interop.InitializeWithWindow.Initialize(
+                    picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
+            }
+
+            var file = await picker.PickSaveFileAsync();
+            if (file == null)
+            {
+                return; // Отмена выбора файла.
+            }
+
+            var password = await PromptPasswordAsync(
+                L.T("Пароль экспорта", "Export password"),
+                L.T(
+                    "Файл будет содержать ссылки и ключи в защищённом виде — без пароля его не открыть.",
+                    "The file will contain links and keys in encrypted form — it cannot be opened without the password."),
+                confirm: true);
+            if (password == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _transferService.ExportAsync(_viewModel.AppSettings, file.Path, password);
+                SetPlaylistStatus(L.T(
+                    $"Настройки экспортированы: {file.Name}",
+                    $"Settings exported: {file.Name}"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Экспорт настроек в {Path}.", file.Path);
+                await ShowTransferErrorAsync(L.T(
+                    $"Не удалось экспортировать настройки: {ex.Message}",
+                    $"Failed to export settings: {ex.Message}"));
+            }
+            finally
+            {
+                _ = ReshowHostAsync();
+            }
+        }
+
+        private async void ImportSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await ImportSettingsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Импорт настроек: сбой до выбора файла.");
+                await ShowTransferErrorAsync(L.T(
+                    $"Не удалось открыть диалог импорта: {ex.Message}",
+                    $"Failed to open the import dialog: {ex.Message}"));
+            }
+        }
+
+        private async Task ImportSettingsAsync()
+        {
+            var picker = new Windows.Storage.Pickers.FileOpenPicker();
+            // Составное расширение ".iptvplayer.json" пикер не принимает.
+            picker.FileTypeFilter.Add(".iptvplayer");
+            // Файл мог быть переименован вручную — пустим и .json.
+            picker.FileTypeFilter.Add(".json");
+            if (App.MainWindow is { } window)
+            {
+                WinRT.Interop.InitializeWithWindow.Initialize(
+                    picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
+            }
+
+            var file = await picker.PickSingleFileAsync();
+            if (file == null)
+            {
+                return; // Отмена выбора файла.
+            }
+
+            var password = await PromptPasswordAsync(
+                L.T("Пароль файла", "File password"),
+                L.T("Пароль, заданный при экспорте.", "The password set during export."),
+                confirm: false);
+            if (password == null)
+            {
+                return;
+            }
+
+            Models.AppSettings imported;
+            try
+            {
+                imported = await _transferService.ImportAsync(file.Path, password);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Импорт настроек из {Path}.", file.Path);
+                await ShowTransferErrorAsync(L.T(
+                    $"Не удалось прочитать файл: {ex.Message}",
+                    $"Failed to read the file: {ex.Message}"));
+                _ = ReshowHostAsync();
+                return;
+            }
+
+            if (imported.Playlists.Count == 0)
+            {
+                await ShowTransferErrorAsync(L.T(
+                    "В файле экспорта нет плейлистов.", "The export file has no playlists."));
+                _ = ReshowHostAsync();
+                return;
+            }
+
+            // Хост уже скрыт PromptPasswordAsync; XamlRoot хоста ещё жив.
+            var modeDialog = new ContentDialog
+            {
+                XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
+                Title = L.T("Импорт настроек", "Import settings"),
+                Content = L.T(
+                    "Заменить все настройки или добавить только плейлисты из файла?",
+                    "Replace all settings or add only the playlists from the file?"),
+                PrimaryButtonText = L.T("Заменить всё", "Replace all"),
+                SecondaryButtonText = L.T("Добавить плейлисты", "Add playlists"),
+                CloseButtonText = L.T("Отмена", "Cancel")
+            };
+            var result = await modeDialog.ShowAsync();
+            if (result == ContentDialogResult.None)
+            {
+                _ = ReshowHostAsync();
+                return;
+            }
+
+            var mode = result == ContentDialogResult.Primary
+                ? Services.SettingsTransferService.ImportMode.ReplaceAll
+                : Services.SettingsTransferService.ImportMode.PlaylistsOnly;
+
+            var count = Services.SettingsTransferService.Apply(
+                _viewModel.AppSettings, imported, mode);
+
+            await _settingsService.SaveAsync(_viewModel.AppSettings);
+
+            // После «заменить всё» активный плейлист новый — переключаем
+            // список каналов; при «добавить» текущий не трогаем.
+            if (mode == Services.SettingsTransferService.ImportMode.ReplaceAll &&
+                _viewModel.AppSettings.Playlists.FirstOrDefault() is { } active)
+            {
+                await _switchPlaylist(active);
+            }
+            else if (_viewModel.AppSettings.ActivePlaylistId == 0 &&
+                     _viewModel.AppSettings.Playlists.FirstOrDefault() is { } first)
+            {
+                await _switchPlaylist(first);
+            }
+
+            RebuildPlaylistItems();
+            SetPlaylistStatus(mode == Services.SettingsTransferService.ImportMode.ReplaceAll
+                ? L.T($"Настройки заменены, плейлистов: {count}.",
+                    $"Settings replaced, playlists: {count}.")
+                : L.T($"Добавлено плейлистов: {count}.",
+                    $"Playlists added: {count}."));
+            _ = ReshowHostAsync();
         }
     }
 }

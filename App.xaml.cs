@@ -202,6 +202,7 @@ public partial class App : Application
         services.AddSingleton<EpgViewModel>();
         services.AddSingleton<PlayerViewModel>();
         services.AddSingleton<MainPageViewModel>();
+        services.AddSingleton<VodResumeStore>();
     }
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
@@ -240,6 +241,18 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
+        // Отладочные дампы запросов/ответов портала (portal_dump) писались
+        // прежними версиями и содержали прямые ссылки с токенами доступа —
+        // удаляем накопленное, дамп больше не ведётся.
+        try
+        {
+            Directory.Delete(Path.Combine(LogDirectory, "..", "portal_dump"), recursive: true);
+        }
+        catch (Exception ex) when (ex is DirectoryNotFoundException or IOException or UnauthorizedAccessException)
+        {
+            // Нет папки или файл занят — не препятствие для запуска.
+        }
+
         _window = new MainWindow();
         (_window as MainWindow)?.RestorePlacement();
         _window.Activate();

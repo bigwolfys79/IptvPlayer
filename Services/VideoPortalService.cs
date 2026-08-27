@@ -845,10 +845,6 @@ public class VideoPortalService : IVideoPortalService
         }
     }
 
-    private static readonly string DumpDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "IptvPlayer", "portal_dump");
-
     private async Task<JsonDocument> PostAsync(
         PlaylistSource source, string endpoint, string bodyJson, CancellationToken ct)
     {
@@ -865,28 +861,12 @@ public class VideoPortalService : IVideoPortalService
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadAsStringAsync(ct);
-        _logger.LogInformation("Портал ← {Url}: {Body}", url, Truncate(body));
-
-        DumpJson(endpoint, SecretProtector.Mask(bodyJson), body);
+        // Ответ маскируется так же, как запрос: в нём прямые ссылки на VOD
+        // с токенами доступа в пути — их нельзя оставлять в файловом логе.
+        _logger.LogInformation("Портал ← {Url}: {Body}", SecretProtector.Mask(url),
+            Truncate(SecretProtector.Mask(body)));
 
         return JsonDocument.Parse(body);
-    }
-
-    private static void DumpJson(string endpoint, string requestJson, string responseJson)
-    {
-        try
-        {
-            Directory.CreateDirectory(DumpDir);
-            var safeName = string.Concat(endpoint.Where(c => char.IsLetterOrDigit(c) || c == '_'));
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-            var path = Path.Combine(DumpDir, $"{timestamp}_{safeName}.json");
-            var text = $"// REQUEST: {endpoint}\n// BODY:\n{requestJson}\n\n// RESPONSE:\n{responseJson}\n";
-            File.WriteAllText(path, text, Encoding.UTF8);
-        }
-        catch
-        {
-            // Дамп не критичен — не падаем
-        }
     }
 
     private static string BuildUrl(string baseUrl, string endpoint)

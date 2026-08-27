@@ -694,6 +694,10 @@ public sealed partial class MainPage : Page
         // список, а не пустой.
         var savedSettings = await _settingsService.LoadAsync();
         ViewModel.AppSettings = savedSettings;
+
+        // Позиции досмотра VOD — из кэш-БД (с миграцией старых из settings.json).
+        await ViewModel.LoadVodResumePositionsAsync();
+
         var initialChannels = new List<ChannelViewModel>();
 
         // Язык и тема — до построения любого UI-текста.

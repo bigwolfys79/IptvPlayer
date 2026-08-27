@@ -54,9 +54,8 @@
                                             <TextBlock Text="{x:Bind Playlist.Name}" FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
-                                        <TextBlock Text="{x:Bind DisplayUrl}" FontSize="11"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                   TextTrimming="CharacterEllipsis"/>
+                                        <!-- URL плейлиста в списке не показываем:
+                                             ссылка с ключом портала — секрет. -->
                                     </StackPanel>
                                     <!-- Режим переименования: поле имени + сохранение. -->
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6"
@@ -175,14 +174,29 @@
                            TextWrapping="Wrap"/>
                 <ComboBox x:Name="PlaylistRefreshCombo" HorizontalAlignment="Stretch"/>
 
-                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0,24,0,0">
-                    <Button x:Name="CloseButton"
-                            Content="Готово"
-                            Width="100" Height="36"
-                            Style="{ThemeResource AccentButtonStyle}"
-                            Click="CloseButton_Click"/>
+                <!-- Экспорт/импорт настроек: перенос между машинами (секреты в
+                     settings.json зашифрованы DPAPI и копированием не
+                     переносятся); файл экспорта защищён паролем. -->
+                <TextBlock x:Name="TransferHeader" Text="Перенос настроек" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="ExportSettingsButton"
+                            Content="Экспортировать..."
+                            Click="ExportSettingsButton_Click"/>
+                    <Button x:Name="ImportSettingsButton"
+                            Content="Импортировать..."
+                            Click="ImportSettingsButton_Click"/>
                 </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
+
+        <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
+        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+            <Button x:Name="CloseButton"
+                    Content="Готово"
+                    Width="100" Height="36"
+                    Style="{ThemeResource AccentButtonStyle}"
+                    Click="CloseButton_Click"/>
+        </StackPanel>
     </StackPanel>
 </UserControl>
