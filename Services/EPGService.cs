@@ -536,7 +536,7 @@ namespace IptvPlayer.Services
                     {
                         // Переключение плейлиста/принудительное обновление —
                         // выходим целиком, не помечая EPG загруженным.
-                        _logger.LogInformation("Загрузка EPG отменена (источник {Url}).", source.Url);
+                        _logger.LogInformation("Загрузка EPG отменена (источник {Url}).", SecretProtector.Mask(source.Url));
                         return;
                     }
                     catch (Exception ex)
@@ -546,7 +546,7 @@ namespace IptvPlayer.Services
                         // полностью молчаливым catch{continue} — если у вас EPG не
                         // появлялся, вы никак не могли узнать, что именно (таймаут?
                         // 404? битый XML?) отвалилось. Теперь причина попадает в лог.
-                        _logger.LogError(ex, "Источник EPG недоступен/битый: {Url}", source.Url);
+                        _logger.LogError(ex, "Источник EPG недоступен/битый: {Url}", SecretProtector.Mask(source.Url));
                     }
                 }
 

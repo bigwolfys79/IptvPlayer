@@ -188,16 +188,6 @@
                                   Data="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M16.24,7.76A1,1 0 0,1 18.18,7.76A1,1 0 0,1 18.18,9.18L15.89,11.46L18.18,13.75A1,1 0 0,1 18.18,15.18A1,1 0 0,1 16.24,15.18L13.95,12.89L11.66,15.18A1,1 0 0,1 10.22,15.18A1,1 0 0,1 10.22,13.75L12.51,11.46L10.22,9.18A1,1 0 0,1 10.22,7.76A1,1 0 0,1 11.66,7.76L13.95,10.05Z" />
                         </Button>
                     </StackPanel>
-                    <!-- Сортировка списка (по каталогу / имени / году); пункты
-                         заполняются в code-behind с локализацией.
-                         На портале не нужна — сервер уже отдаёт каталог
-                         в нужном порядке, скрываем через IsGroupFilterVisible
-                         (Visible только для M3U). -->
-                    <ComboBox x:Name="SortOrderComboBox"
-                              Grid.Column="1" Grid.RowSpan="2" Width="150"
-                              SelectedIndex="{x:Bind ViewModel.SortModeIndex, Mode=TwoWay}"
-                              Visibility="{x:Bind ViewModel.IsGroupFilterVisible, Mode=OneWay}"
-                              ToolTipService.ToolTip="Сортировка списка" />
                     <!-- Индикатор загрузки серверного фильтра. -->
                     <ProgressRing x:Name="FilterLoadingRing"
                                   Grid.Column="2" Grid.RowSpan="2"

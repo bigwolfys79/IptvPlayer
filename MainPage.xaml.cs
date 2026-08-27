@@ -383,12 +383,6 @@ public sealed partial class MainPage : Page
 
         InitializeComponent();
 
-        // Сортировка списка каналов/каталога: 0 — порядок источника,
-        // 1 — по имени, 2 — по году (портал). Индекс связан с VM (TwoWay).
-        SortOrderComboBox.Items.Add(new ComboBoxItem { Content = L.T("По каталогу", "Catalog order") });
-        SortOrderComboBox.Items.Add(new ComboBoxItem { Content = L.T("По имени", "By name") });
-        SortOrderComboBox.Items.Add(new ComboBoxItem { Content = L.T("По году", "By year") });
-        SortOrderComboBox.SelectedIndex = 0;
         // Пока пользователь ни разу не кликнул по окну, ни один элемент не
         // имеет фокуса — туннелирующий PreviewKeyDown страницы в этом
         // состоянии может не приходить вовсе, и горячие клавиши «не работали
@@ -2907,7 +2901,9 @@ public sealed partial class MainPage : Page
 
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Dialogs.AboutDialog(ViewModel.AppSettings);
+        // Установка — тот же сценарий, что при автообновлении (OfferUpdateInstallAsync):
+        // согласие пользователя, откладывание при активных записях, тихая установка.
+        var dialog = new Dialogs.AboutDialog(_updateService, OfferUpdateInstallAsync);
         await dialog.ShowAsync(((FrameworkElement)sender).XamlRoot);
     }
 

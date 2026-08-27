@@ -8,7 +8,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.12.0
+- **Version:** 1.12.1
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -25,6 +25,13 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ---
 
 ## Implemented
+
+### v1.12.1
+- **No more plaintext secrets** — the portal key and playlist/EPG source URLs (which usually embed a username, password or token) are encrypted with Windows DPAPI and written to settings.json as opaque `dpapi:...` strings; existing settings migrate automatically on first save.
+- **Secret removed from auxiliary storage** — the "key" field is no longer written to the SQLite channel cache (it is re-injected from settings when a portal request is sent), and keys/passwords are masked in file logs and portal_dump.
+- **"Download and install" button in "About"** — when a manual update check finds a new version, the check button becomes "Download and install": the installer is downloaded to the temp folder (SHA256 verified, with progress) and then the same flow as the automatic check runs (consent dialog, postponement during active recordings, silent install). The duplicate GitHub request code in the dialog has been removed.
+- **Removed the channel list sort combo box** ("catalog order / by name / by year") — order is always as in the source, favorites stay on top.
+- **Playlist URLs masked in settings** — in the playlist list, username/password/token values in the URL are shown as "***" (EPG URLs left as is).
 
 ### v1.12.0
 - **Resume playback for portal movies** — when reopening a movie/episode you stopped at more than 30 seconds in (and not near the end), a dialog appears: "Resume / Start over" with the stop time (e.g. "you stopped at 25:53"). The position is remembered per movie; for serials — per episode; stored in settings (last 200 entries), disk writes are throttled (at most once per 5 seconds), fully watched items are evicted automatically. Resuming seeks the media engine directly, no stream restart.

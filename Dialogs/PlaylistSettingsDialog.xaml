@@ -54,7 +54,7 @@
                                             <TextBlock Text="{x:Bind Playlist.Name}" FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
-                                        <TextBlock Text="{x:Bind Playlist.Url}" FontSize="11"
+                                        <TextBlock Text="{x:Bind DisplayUrl}" FontSize="11"
                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>

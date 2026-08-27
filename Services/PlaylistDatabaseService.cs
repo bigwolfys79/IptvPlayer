@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using IptvPlayer.Models;
@@ -181,7 +182,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                     insertCmd.Parameters.AddWithValue("$group", (object?)ch.Group ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$tvg", (object?)ch.TvgId ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$catchup", ch.CatchupDays);
-                    insertCmd.Parameters.AddWithValue("$portal", (object?)ch.PortalRequest ?? DBNull.Value);
+                    insertCmd.Parameters.AddWithValue("$portal", (object?)StripPortalKey(ch.PortalRequest) ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$desc", (object?)ch.Description ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$year", ch.Year);
                     insertCmd.Parameters.AddWithValue("$genre", (object?)ch.Genre ?? DBNull.Value);
@@ -278,7 +279,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                     insertCmd.Parameters.AddWithValue("$group", (object?)ch.Group ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$tvg", (object?)ch.TvgId ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$catchup", ch.CatchupDays);
-                    insertCmd.Parameters.AddWithValue("$portal", (object?)ch.PortalRequest ?? DBNull.Value);
+                    insertCmd.Parameters.AddWithValue("$portal", (object?)StripPortalKey(ch.PortalRequest) ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$desc", (object?)ch.Description ?? DBNull.Value);
                     insertCmd.Parameters.AddWithValue("$year", ch.Year);
                     insertCmd.Parameters.AddWithValue("$genre", (object?)ch.Genre ?? DBNull.Value);
@@ -298,6 +299,39 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         {
             _logger.LogWarning(ex, "Не удалось мигрировать JSON-кэш плейлиста {PlaylistId}.", playlistId);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Убирает поле "key" из кэшируемого запроса портала: при отправке запроса
+    /// VideoPortalService подставляет актуальный ключ из source.PortalKey, так
+    /// что хранить его в БД не нужно (и небезопасно — БД пишется открытым
+    /// текстом). При ошибке разбора возвращается исходная строка.
+    /// </summary>
+    private static string? StripPortalKey(string? portalRequest)
+    {
+        if (string.IsNullOrEmpty(portalRequest))
+        {
+            return portalRequest;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(portalRequest);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object ||
+                !doc.RootElement.TryGetProperty("key", out _))
+            {
+                return portalRequest;
+            }
+
+            var withoutKey = doc.RootElement.EnumerateObject()
+                .Where(p => !string.Equals(p.Name, "key", StringComparison.OrdinalIgnoreCase))
+                .ToDictionary(p => p.Name, p => p.Value);
+            return JsonSerializer.Serialize(withoutKey);
+        }
+        catch (JsonException)
+        {
+            return portalRequest;
         }
     }
 }

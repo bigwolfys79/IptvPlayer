@@ -1,8 +1,5 @@
 using System;
-using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
-using IptvPlayer.Models;
 using IptvPlayer.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -13,29 +10,32 @@ namespace IptvPlayer.Dialogs;
 /// «О программе»: описание, компоненты, пути настроек/логов, кнопки
 /// «Проверить обновления» и «Открыть папку логов».
 ///
-/// Проверка обновлений — из GitHub Releases репозитория проекта (по
-/// умолчанию) или по своему URL (AppSettings.UpdateCheckUrl): ожидается
-/// JSON {"version": "1.7.0", "url": "https://.../setup.exe"} либо ответ
-/// GitHub API /releases/latest (tag_name + assets[].browser_download_url).
-/// Если версия больше текущей — кнопка «Скачать обновление» открывает
-/// установщик в браузере.
+/// Проверка и установка обновлений идут через <see cref="IUpdateService"/> —
+/// тот же сценарий, что и при автоматической проверке при старте: найденная
+/// версия превращает кнопку в «Скачать и установить», установщик качается во
+/// временную папку (с проверкой SHA256), затем вызывается
+/// <c>_installHandler</c> (MainPage): диалог «Установить сейчас?», откладывание
+/// при активных записях, тихая установка и перезапуск.
 /// </summary>
 public sealed partial class AboutDialog : UserControl
 {
-    private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+    private readonly IUpdateService _updateService;
 
-    /// <summary>GitHub Releases проекта — источник обновлений по умолчанию.</summary>
-    private const string DefaultUpdateUrl =
-        "https://api.github.com/repos/bigwolfys79/IptvPlayer/releases/latest";
-
-    private readonly AppSettings _settings;
+    /// <summary>
+    /// Запускает установку уже скачанного установщика (диалог согласия,
+    /// учёт записей, тихая установка). Диалог «О программе» перед вызовом
+    /// закрывается сам — открыть второй ContentDialog поверх нельзя.
+    /// </summary>
+    private readonly Func<Version, string, Task> _installHandler;
 
     private ContentDialog? _hostDialog;
-    private string? _updateUrl;
+    private UpdateInfo? _update;
 
-    public AboutDialog(AppSettings settings)
+    public AboutDialog(IUpdateService updateService,
+        Func<Version, string, Task> installHandler)
     {
-        _settings = settings;
+        _updateService = updateService;
+        _installHandler = installHandler;
         InitializeComponent();
     }
 
@@ -81,7 +81,11 @@ public sealed partial class AboutDialog : UserControl
                 $"Settings and cache: {Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)}\\IptvPlayer") + "\n" +
             L.T($"Лог: {App.LogDirectory}", $"Log: {App.LogDirectory}");
 
+        // Каждый показ диалога начинается заново: прежний результат проверки
+        // внутри одного запуска приложения уже неактуален.
+        _update = null;
         CheckUpdateButton.Content = L.T("Проверить обновления", "Check for updates");
+        UpdateStatusText.Visibility = Visibility.Collapsed;
         OpenLogsButton.Content = L.T("Открыть папку логов", "Open logs folder");
 
         var dialog = new ContentDialog
@@ -111,72 +115,44 @@ public sealed partial class AboutDialog : UserControl
 
     private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_update == null)
+        {
+            await CheckForUpdateAsync();
+        }
+        else
+        {
+            await DownloadAndOfferAsync();
+        }
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
         UpdateStatusText.Visibility = Visibility.Visible;
-
-        var url = string.IsNullOrWhiteSpace(_settings.UpdateCheckUrl)
-            ? DefaultUpdateUrl
-            : _settings.UpdateCheckUrl;
-
         CheckUpdateButton.IsEnabled = false;
         UpdateStatusText.Text = L.T("Проверяю обновления...", "Checking for updates...");
+
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            // GitHub API требует User-Agent.
-            request.Headers.UserAgent.ParseAdd("IptvPlayer-UpdateCheck");
-            using var response = await Http.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync();
-
-            var current = Version.Parse(GetAppVersion());
-            string? availableText;
-            string? downloadUrl;
-
-            using (var doc = JsonDocument.Parse(json))
-            {
-                var root = doc.RootElement;
-                if (root.TryGetProperty("tag_name", out var tag))
-                {
-                    // Формат GitHub API /releases/latest.
-                    availableText = tag.GetString()?.TrimStart('v', 'V');
-                    downloadUrl = root.TryGetProperty("assets", out var assets) && assets.GetArrayLength() > 0
-                        ? assets[0].TryGetProperty("browser_download_url", out var assetUrl)
-                            ? assetUrl.GetString()
-                            : null
-                        : root.TryGetProperty("html_url", out var html) ? html.GetString() : null;
-                }
-                else
-                {
-                    // Простой формат {"version": "...", "url": "..."}.
-                    availableText = root.TryGetProperty("version", out var v) ? v.GetString() : null;
-                    downloadUrl = root.TryGetProperty("url", out var u) ? u.GetString() : null;
-                }
-            }
-
-            var available = Version.Parse(availableText ?? "0.0.0");
-
-            if (available > current && !string.IsNullOrEmpty(downloadUrl))
-            {
-                _updateUrl = downloadUrl;
-                UpdateStatusText.Text = L.T(
-                    $"Доступна версия {available} (у вас {current}).",
-                    $"Version {available} is available (you have {current}).");
-                CheckUpdateButton.Content = L.T("Скачать обновление", "Download update");
-                CheckUpdateButton.IsEnabled = true;
-                CheckUpdateButton.Click -= CheckUpdateButton_Click;
-                CheckUpdateButton.Click += DownloadUpdateButton_Click;
-            }
-            else
+            var update = await _updateService.CheckForUpdateAsync();
+            if (update == null)
             {
                 UpdateStatusText.Text = L.T(
-                    $"У вас последняя версия ({current}).",
-                    $"You are up to date ({current}).");
+                    $"У вас последняя версия ({GetAppVersion()}).",
+                    $"You are up to date ({GetAppVersion()}).");
                 CheckUpdateButton.IsEnabled = true;
+                return;
             }
+
+            _update = update;
+            UpdateStatusText.Text = L.T(
+                $"Доступна версия {update.Version} (у вас {GetAppVersion()}).",
+                $"Version {update.Version} is available (you have {GetAppVersion()}).");
+            CheckUpdateButton.Content = L.T("Скачать и установить", "Download and install");
+            CheckUpdateButton.IsEnabled = true;
         }
         catch (Exception ex)
         {
-            Serilog.Log.Warning(ex, "Проверка обновлений по {Url} не удалась.", _settings.UpdateCheckUrl);
+            Serilog.Log.Warning(ex, "Проверка обновлений в «О программе» не удалась.");
             UpdateStatusText.Text = L.T(
                 $"Не удалось проверить обновления: {ex.Message}",
                 $"Update check failed: {ex.Message}");
@@ -184,15 +160,42 @@ public sealed partial class AboutDialog : UserControl
         }
     }
 
-    private async void DownloadUpdateButton_Click(object sender, RoutedEventArgs e)
+    private async Task DownloadAndOfferAsync()
     {
-        if (_updateUrl == null)
+        if (_update == null)
         {
             return;
         }
-        // Скачивание установщика — в браузер: он докачает и запустит,
-        // отдельный http-клиент с прогрессом тут избыточен.
-        await Windows.System.Launcher.LaunchUriAsync(new Uri(_updateUrl));
+
+        CheckUpdateButton.IsEnabled = false;
+        UpdateStatusText.Text = L.T("Скачиваю установщик... 0%", "Downloading installer... 0%");
+
+        try
+        {
+            var progress = new Progress<double>(p =>
+                UpdateStatusText.Text = L.T(
+                    $"Скачиваю установщик... {p:F0}%",
+                    $"Downloading installer... {p:F0}%"));
+            var setupPath = await _updateService.DownloadAsync(_update, progress);
+
+            UpdateStatusText.Text = L.T(
+                $"Установщик версии {_update.Version} скачан.",
+                $"Installer for version {_update.Version} downloaded.");
+
+            // Дальше идёт другой ContentDialog («Установить сейчас?»), а два
+            // одновременно открытыми быть не могут.
+            _hostDialog?.Hide();
+
+            await _installHandler(_update.Version, setupPath);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Скачивание обновления в «О программе» не удалось.");
+            UpdateStatusText.Text = L.T(
+                $"Не удалось скачать обновление: {ex.Message}",
+                $"Failed to download the update: {ex.Message}");
+            CheckUpdateButton.IsEnabled = true;
+        }
     }
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e)
@@ -208,12 +211,4 @@ public sealed partial class AboutDialog : UserControl
             Serilog.Log.Warning(ex, "Не удалось открыть папку логов.");
         }
     }
-
-    private sealed class UpdateInfo
-    {
-        public string? Version { get; set; }
-        public string? Url { get; set; }
-    }
-
-
 }

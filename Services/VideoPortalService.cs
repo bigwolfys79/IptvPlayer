@@ -261,7 +261,7 @@ public class VideoPortalService : IVideoPortalService
             await LoadCategoryAsync(source, key, requestJson, categoryTitle, null, result, ct);
         }
 
-        _logger.LogInformation("Портал {Url}: каталог загрушен, элементов: {Count}.", source.Url, result.Count);
+        _logger.LogInformation("Портал {Url}: каталог загрушен, элементов: {Count}.", SecretProtector.Mask(source.Url), result.Count);
         return result;
     }
 
@@ -857,7 +857,8 @@ public class VideoPortalService : IVideoPortalService
         using var pause = _speedMonitor.PauseScope();
 
         var url = BuildUrl(source.Url, endpoint);
-        _logger.LogInformation("Портал → POST {Url} тело: {Body}", url, Truncate(bodyJson));
+        _logger.LogInformation("Портал → POST {Url} тело: {Body}", SecretProtector.Mask(url),
+            Truncate(SecretProtector.Mask(bodyJson)));
 
         using var content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
         using var response = await _httpClient.PostAsync(url, content, ct);
@@ -866,7 +867,7 @@ public class VideoPortalService : IVideoPortalService
         var body = await response.Content.ReadAsStringAsync(ct);
         _logger.LogInformation("Портал ← {Url}: {Body}", url, Truncate(body));
 
-        DumpJson(endpoint, bodyJson, body);
+        DumpJson(endpoint, SecretProtector.Mask(bodyJson), body);
 
         return JsonDocument.Parse(body);
     }

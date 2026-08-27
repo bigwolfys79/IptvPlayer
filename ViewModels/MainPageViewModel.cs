@@ -758,25 +758,6 @@ public partial class MainPageViewModel : ObservableObject
         return 0;
     }
 
-    private int _sortModeIndex;
-
-    /// <summary>
-    /// Сортировка списка: 0 — как в каталоге (порядок портала/плейлиста),
-    /// 1 — по имени, 2 — по году убыванием (портал; у каналов M3U год 0
-    /// и они уходят в конец). Избранное остаётся наверху при любой сортировке.
-    /// </summary>
-    public int SortModeIndex
-    {
-        get => _sortModeIndex;
-        set
-        {
-            if (SetProperty(ref _sortModeIndex, value))
-            {
-                FilterChannels();
-            }
-        }
-    }
-
     private void OnChannelsChanged(ObservableCollection<ChannelViewModel> value)
     {
         RefreshGroups();
@@ -991,16 +972,8 @@ public partial class MainPageViewModel : ObservableObject
             }
         }
 
-        // Избранные — наверху списка при любом фильтре и сортировке.
-        filtered = SortModeIndex switch
-        {
-            1 => filtered.OrderByDescending(c => c.IsFavorite)
-                .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
-            2 => filtered.OrderByDescending(c => c.IsFavorite)
-                .ThenByDescending(c => c.Year)
-                .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase),
-            _ => filtered.OrderByDescending(c => c.IsFavorite)
-        };
+        // Избранные — наверху списка; порядок остальных — как в источнике.
+        filtered = filtered.OrderByDescending(c => c.IsFavorite);
 
         var selected = SelectedChannel;
 
