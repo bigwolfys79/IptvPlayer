@@ -69,7 +69,7 @@ public sealed partial class EpisodePickerDialog : UserControl
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
-            Title = L.T("Выбор серии", "Pick episode"),
+            Title = L.T("Vybor_Serii"),
             Content = control
         };
         control._hostDialog = dialog;
@@ -93,9 +93,9 @@ public sealed partial class EpisodePickerDialog : UserControl
             PosterImage.Visibility = Visibility.Collapsed;
         }
 
-        CancelButton.Content = L.T("Отмена", "Cancel");
-        PlayFirstButton.Content = L.T("Смотреть с первой", "Play first episode");
-        SeasonLabel.Text = L.T("Сезон:", "Season:");
+        CancelButton.Content = L.T("Otmena_Lbl");
+        PlayFirstButton.Content = L.T("Smotret_S_Pervoy_Lbl");
+        SeasonLabel.Text = L.T("Sezon_Lbl");
 
         // Комбобокс сезона — только когда сезонов в каталоге больше одного.
         SeasonPanel.Visibility = Seasons.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
@@ -123,8 +123,8 @@ public sealed partial class EpisodePickerDialog : UserControl
     private static string SeasonLabelOf(string name) =>
         MainPageViewModel.ParsePortalSeasonName(name).Season is { } season
             ? (season.From == season.To
-                ? $"Сезон {season.From}"
-                : $"Сезон {season.From}–{season.To}")
+                ? string.Format(L.T("Sezon_0"), season.From)
+                : string.Format(L.T("Sezon_0_1"), season.From, season.To))
             : name;
 
     private void FillEpisodes()
@@ -142,9 +142,7 @@ public sealed partial class EpisodePickerDialog : UserControl
             index++;
         }
 
-        EpisodesCountText.Text = L.T(
-            $"Серий: {_flick.Episodes.Count}",
-            $"{_flick.Episodes.Count} episodes");
+        EpisodesCountText.Text = string.Format(L.T("Seriy_0"), _flick.Episodes.Count, _flick.Episodes.Count);
 
         if (Episodes.Count > 0)
         {

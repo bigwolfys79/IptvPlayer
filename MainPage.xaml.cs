@@ -32,8 +32,8 @@ namespace IptvPlayer;
 /// </summary>
 public sealed partial class MainPage : Page
 {
-    private const string AllGroupsOption = "Все группы";
-    private const string FavoritesOption = "★ Избранное";
+    private static string AllGroupsOption => L.T("Vse_Gruppy");
+    private static string FavoritesOption => L.T("Izbrannoe");
 
     // Все сервисы и ViewModel резолвятся в конструкторе из DI-контейнера
     // App.Services (WinUI не даёт внедрять зависимости в конструкторы
@@ -217,16 +217,14 @@ public sealed partial class MainPage : Page
                     var dialog = new ContentDialog
                     {
                         XamlRoot = Content.XamlRoot,
-                        Title = L.T("Продолжить просмотр", "Resume playback"),
+                        Title = L.T("Prodolzhit_Prosmotr"),
                         Content = new TextBlock
                         {
-                            Text = L.T(
-                                $"«{title}»: вы остановились на {PlayerViewModel.FormatArchiveTime(position.TotalSeconds)}. Продолжить с этого места?",
-                                $"“{title}”: you stopped at {PlayerViewModel.FormatArchiveTime(position.TotalSeconds)}. Resume from there?"),
+                            Text = string.Format(L.T("0_Vy_Ostanovilis_Na_1_Prodolzhit"), title, PlayerViewModel.FormatArchiveTime(position.TotalSeconds), title, PlayerViewModel.FormatArchiveTime(position.TotalSeconds)),
                             TextWrapping = TextWrapping.Wrap
                         },
-                        PrimaryButtonText = L.T("Продолжить", "Resume"),
-                        CloseButtonText = L.T("Смотреть сначала", "Start over")
+                        PrimaryButtonText = L.T("Prodolzhit"),
+                        CloseButtonText = L.T("Smotret_Snachala")
                     };
                     resumeCompletion.SetResult(await dialog.ShowAsync() == ContentDialogResult.Primary);
                 }
@@ -613,20 +611,18 @@ public sealed partial class MainPage : Page
 
             var names = string.Join(Environment.NewLine, ViewModel.AppSettings.InterruptedRecordings
                 .Select(r => $"• {r.ChannelName}" +
-                             (r.EndTime != null ? $" (до {r.EndTime:HH:mm})" : "")));
+                             (r.EndTime != null ? string.Format(L.T("Do_Vremeni_0"), $"{r.EndTime:HH:mm}") : "")));
             var dialog = new ContentDialog
             {
                 XamlRoot = Content.XamlRoot,
-                Title = L.T("Прерванная запись", "Interrupted recording"),
+                Title = L.T("Prervannaya_Zapis"),
                 Content = new TextBlock
                 {
-                    Text = L.T(
-                        $"При прошлом закрытии приложения прервалась запись:{Environment.NewLine}{names}{Environment.NewLine}{Environment.NewLine}Продолжить запись оставшейся части?",
-                        $"A recording was interrupted when the app closed:{Environment.NewLine}{names}{Environment.NewLine}{Environment.NewLine}Resume recording the remaining part?"),
+                    Text = string.Format(L.T("Pri_Proshlom_Zakrytii_Prilozheniya_Prervalas_Zapis"), Environment.NewLine, names, Environment.NewLine, Environment.NewLine, Environment.NewLine, names, Environment.NewLine, Environment.NewLine),
                     TextWrapping = TextWrapping.Wrap
                 },
-                PrimaryButtonText = L.T("Продолжить", "Resume"),
-                CloseButtonText = L.T("Нет", "No")
+                PrimaryButtonText = L.T("Prodolzhit"),
+                CloseButtonText = L.T("Net")
             };
             var resume = await dialog.ShowAsync();
 
@@ -653,7 +649,7 @@ public sealed partial class MainPage : Page
                     : (int?)null;
                 ViewModel.Recording.Start(
                     channel.StreamUrl,
-                    $"{rec.ChannelName} (продолжение)",
+                    string.Format(L.T("Prodolzhenie"), rec.ChannelName),
                     rec.ChannelName,
                     remaining,
                     ViewModel.AppSettings.RecordingsFolder);
@@ -701,9 +697,8 @@ public sealed partial class MainPage : Page
         var initialChannels = new List<ChannelViewModel>();
 
         // Язык и тема — до построения любого UI-текста.
-        L.SetLanguage(savedSettings.Language);
         ApplyTheme(savedSettings.Theme);
-        ApplyLanguage();
+        ApplyInitialState();
 
         // Ширина панели каналов, выбранная перетаскиванием разделителя.
         if (savedSettings.ChannelListWidth >= 240 && savedSettings.ChannelListWidth <= 640)
@@ -735,7 +730,7 @@ public sealed partial class MainPage : Page
 
         // Миграция с одной версии настроек: единственный PlaylistUrl прошлых
         // версий становится первым плейлистом списка (Id=1 — под него же
-        // мигрируется и старый файл кэша плейлиста в PlaylistCacheService).
+        // мигрируется и старая запись кэша плейлиста).
         if (ViewModel.AppSettings.Playlists.Count == 0 &&
             !string.IsNullOrWhiteSpace(savedSettings.PlaylistUrl))
         {
@@ -870,7 +865,7 @@ public sealed partial class MainPage : Page
         await Task.Yield();
 
         // Загрузка EPG больше не блокирует UI (тяжёлая работа в пуле
-        // потоков — см. CacheService и EPGService.MergeSources), а
+        // потоков — см. EpgCacheStore и EPGService.MergeSources), а
         // программы догружаются в панели по мере готовности.
         await ViewModel.EpgViewModel.LoadEPGAsync();
 
@@ -1105,12 +1100,10 @@ public sealed partial class MainPage : Page
         var dialog = new ContentDialog
         {
             XamlRoot = Content.XamlRoot,
-            Title = L.T("Доступно обновление", "Update available"),
-            Content = L.T(
-                $"Версия {version} скачана. Установить сейчас? Приложение закроется на время установки и запустится снова.",
-                $"Version {version} is downloaded. Install now? The app will close during installation and restart after."),
-            PrimaryButtonText = L.T("Установить сейчас", "Install now"),
-            CloseButtonText = L.T("Позже", "Later"),
+            Title = L.T("Dostupno_Obnovlenie"),
+            Content = string.Format(L.T("Versiya_0_Skachana_Ustanovit_Seychas_Prilozhenie"), version, version),
+            PrimaryButtonText = L.T("Ustanovit_Seychas"),
+            CloseButtonText = L.T("Pozzhe"),
             DefaultButton = ContentDialogButton.Primary
         };
 
@@ -1133,11 +1126,9 @@ public sealed partial class MainPage : Page
             var info = new ContentDialog
             {
                 XamlRoot = Content.XamlRoot,
-                Title = L.T("Обновление отложено", "Update postponed"),
-                Content = L.T(
-                    "Идёт запись передач — обновление установится автоматически после её окончания.",
-                    "A recording is in progress — the update will install automatically when it finishes."),
-                CloseButtonText = L.T("Понятно", "OK")
+                Title = L.T("Obnovlenie_Otlozheno"),
+                Content = L.T("Idet_Zapis_Peredach_Obnovlenie_Ustanovitsya_Avtomaticheski"),
+                CloseButtonText = L.T("Ponyatno")
             };
             await info.ShowAsync();
             return;
@@ -1479,28 +1470,12 @@ public sealed partial class MainPage : Page
     /// переводятся в момент построения — диалог настроек пересобирается при
     /// каждом открытии, поэтому подхватывает язык сразу.
     /// </summary>
-    private void ApplyLanguage()
+    /// <summary>
+    /// Начальное состояние динамических элементов плеера/оверлеев (язык
+    /// фиксируется при старте через x:Uid + MRT, тексты здесь не ставятся).
+    /// </summary>
+    private void ApplyInitialState()
     {
-        ChannelsHeaderText.Text = L.T("Каналы", "Channels");
-        OverlayChannelsHeaderText.Text = L.T("Каналы", "Channels");
-        ChannelSearchBox.PlaceholderText = L.T("Поиск...", "Search...");
-
-        EpgHeaderText.Text = L.T("— Программа передач", "— TV Guide");
-        EpgHeaderHintText.Text = L.T("клик по передаче — смотреть с начала", "click a programme to watch from the start");
-        EmptyChannelEpgText.Text = L.T("Нет данных о программах для этого канала", "No programme data for this channel");
-        EmptyEpgTitle.Text = L.T("EPG данные недоступны", "EPG data unavailable");
-        EmptyEpgHint.Text = L.T("Выберите источник EPG или обновите данные", "Choose an EPG source or refresh the data");
-        EmptyEpgRefreshButton.Content = L.T("Обновить EPG", "Refresh EPG");
-
-        // Кнопки «В эфир» и подсказки панелей управления.
-        VideoOverlayBackToLiveButton.Content = L.T("В эфир", "Live");
-        OverlayBackToLiveButton.Content = L.T("В эфир", "Live");
-        ToolTipService.SetToolTip(VideoOverlaySettingsButton, L.T("Настройки", "Settings"));
-        ToolTipService.SetToolTip(VideoOverlayFullScreenButton, L.T("Развернуть плеер на весь экран (F или двойной клик)", "Full screen (F or double-click)"));
-        ToolTipService.SetToolTip(OverlayEpgButton, L.T("Показать/скрыть EPG", "Show/hide TV guide"));
-        ToolTipService.SetToolTip(ExitFullScreenButton, L.T("Выйти из полноэкранного режима (Esc)", "Exit full screen (Esc)"));
-        ToolTipService.SetToolTip(OverlayPauseButton, L.T("Пауза (архив, пробел)", "Pause (archive, Space)"));
-
         ViewModel.UpdateChannelCountText();
         ApplyEpgVisibility();
         UpdateArchivePauseButton();
@@ -1574,7 +1549,7 @@ public sealed partial class MainPage : Page
                 continue;
             }
 
-            var key = string.IsNullOrWhiteSpace(channel.Group) ? "Без группы" : channel.Group!.Trim();
+            var key = string.IsNullOrWhiteSpace(channel.Group) ? L.T("Bez_Gruppy") : channel.Group!.Trim();
             if (!buckets.TryGetValue(key, out var group))
             {
                 group = new ChannelGroup(key, Enumerable.Empty<ChannelViewModel>());
@@ -1632,15 +1607,15 @@ public sealed partial class MainPage : Page
     {
         var dialog = new ContentDialog
         {
-            Title = "Добавить канал",
-            PrimaryButtonText = "Добавить",
-            CloseButtonText = "Отмена",
+            Title = L.T("Dobavit_Kanal"),
+            PrimaryButtonText = L.T("Dobavit_Lbl"),
+            CloseButtonText = L.T("Otmena_Lbl"),
             XamlRoot = ((Button)sender).XamlRoot
         };
 
         var panel = new StackPanel { Orientation = Microsoft.UI.Xaml.Controls.Orientation.Vertical, Spacing = 12, Width = 300 };
-        var nameBox = new TextBox { Header = "Название", PlaceholderText = "Введите название канала" };
-        var urlBox = new TextBox { Header = "URL потока", PlaceholderText = "Введите URL потока (m3u8)" };
+        var nameBox = new TextBox { Header = L.T("Nazvanie"), PlaceholderText = L.T("Vvedite_Nazvanie_Kanala") };
+        var urlBox = new TextBox { Header = L.T("URL_Potoka"), PlaceholderText = L.T("Vvedite_URL_Potoka") };
         panel.Children.Add(nameBox);
         panel.Children.Add(urlBox);
         dialog.Content = panel;
@@ -1696,9 +1671,9 @@ public sealed partial class MainPage : Page
 
         // Нарисованные иконки (AppIcons): «плей» — на паузе, «пауза» — играет.
         OverlayPauseButton.Content = isPaused ? AppIcons.Play(20) : AppIcons.Pause(20);
-        ToolTipService.SetToolTip(OverlayPauseButton, isPaused ? L.T("Продолжить (архив, пробел)", "Resume (archive, Space)") : L.T("Пауза (архив, пробел)", "Pause (archive, Space)"));
+        ToolTipService.SetToolTip(OverlayPauseButton, isPaused ? L.T("Prodolzhit_Arkhiv_Probel") : L.T("Pauza_Arkhiv_Probel"));
         VideoOverlayPauseButton.Content = isPaused ? AppIcons.Play(16) : AppIcons.Pause(16);
-        ToolTipService.SetToolTip(VideoOverlayPauseButton, isPaused ? L.T("Продолжить (архив, пробел)", "Resume (archive, Space)") : L.T("Пауза (архив, пробел)", "Pause (archive, Space)"));
+        ToolTipService.SetToolTip(VideoOverlayPauseButton, isPaused ? L.T("Prodolzhit_Arkhiv_Probel") : L.T("Pauza_Arkhiv_Probel"));
     }
 
     // ===================== Делегаты к PlayerViewModel =====================
@@ -1917,8 +1892,8 @@ public sealed partial class MainPage : Page
     private static string SeasonLabel(string name) =>
         MainPageViewModel.ParsePortalSeasonName(name).Season is { } season
             ? (season.From == season.To
-                ? $"Сезон {season.From}"
-                : $"Сезон {season.From}–{season.To}")
+                ? string.Format(L.T("Sezon_0"), season.From)
+                : string.Format(L.T("Sezon_0_1"), season.From, season.To))
             : name;
 
     private async void VodSeasonCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -2041,12 +2016,12 @@ public sealed partial class MainPage : Page
     {
         if (Player.IsArchivePlaying && Player.ArchiveEntry != null)
         {
-            var title = $"Архив: {Player.ArchiveEntry.ProgramName} ({Player.ArchiveEntry.StartTime:dd.MM HH:mm})";
+            var title = string.Format(L.T("Arkhiv_0_1"), Player.ArchiveEntry.ProgramName, $"{Player.ArchiveEntry.StartTime:dd.MM HH:mm}");
 
-            OverlayArchiveText.Text = $"Архив: {Player.ArchiveEntry.ProgramName}";
+            OverlayArchiveText.Text = string.Format(L.T("Arkhiv_0"), Player.ArchiveEntry.ProgramName);
             OverlayArchiveIndicator.Visibility = Visibility.Visible;
 
-            WindowedArchiveText.Text = $"Архив: {Player.ArchiveEntry.ProgramName}";
+            WindowedArchiveText.Text = string.Format(L.T("Arkhiv_0"), Player.ArchiveEntry.ProgramName);
             WindowedArchiveIndicator.Visibility = Visibility.Visible;
 
             // Подсказки кнопок "В эфир" несут ту же информацию, что старый
@@ -2092,7 +2067,7 @@ public sealed partial class MainPage : Page
         // оверлее: раньше для скрытого состояния ставился E785 «Unlock»
         // (открытый замок) — читался как «неправильная иконка». Состояние
         // и так видно по самой панели, меняется только подсказка.
-        ToolTipService.SetToolTip(VideoOverlayEpgButton, visible ? L.T("Скрыть EPG", "Hide guide") : L.T("Показать EPG", "Show guide"));
+        ToolTipService.SetToolTip(VideoOverlayEpgButton, visible ? L.T("Skryt_EPG") : L.T("Pokazat_EPG_Lbl"));
 
         if (visible)
         {
@@ -2226,8 +2201,8 @@ public sealed partial class MainPage : Page
         try
         {
             new CommunityToolkit.WinUI.Notifications.ToastContentBuilder()
-                .AddText($"Скоро в эфире: {reminder.ProgramName}")
-                .AddText($"{reminder.ChannelName} • начало в {reminder.StartTime:HH:mm}")
+                .AddText(string.Format(L.T("Skoro_V_Efire_0"), reminder.ProgramName))
+                .AddText(string.Format(L.T("Nachalo_V_0"), reminder.ChannelName, $"{reminder.StartTime:HH:mm}"))
                 .Show();
         }
         catch (Exception ex)
@@ -2266,13 +2241,13 @@ public sealed partial class MainPage : Page
         // кнопки не трогаем.
         VideoOverlayRecordButton.Content = active ? AppIcons.StopSquare(13) : AppIcons.RecordDot(14);
         ToolTipService.SetToolTip(VideoOverlayRecordButton, active
-            ? L.T($"Остановить запись ({currentPath})", $"Stop recording ({currentPath})")
-            : L.T("Записать канал", "Record channel"));
+            ? string.Format(L.T("Ostanovit_Zapis_0"), currentPath, currentPath)
+            : L.T("Zapisat_Kanal_Lbl"));
 
         OverlayRecordButton.Content = active ? AppIcons.StopSquare(17) : AppIcons.RecordDot(18);
         ToolTipService.SetToolTip(OverlayRecordButton, active
-            ? L.T("Остановить запись", "Stop recording")
-            : L.T("Записать канал", "Record channel"));
+            ? L.T("Ostanovit_Zapis")
+            : L.T("Zapisat_Kanal_Lbl"));
     }
 
     // ===================== Мини-плеер =====================
@@ -2367,18 +2342,18 @@ public sealed partial class MainPage : Page
             else
             {
                 Serilog.Log.Warning("Введен неверный PIN (канал {Channel}).", channel.Name);
-                errorText.Text = L.T("Неверный PIN.", "Wrong PIN.");
+                errorText.Text = L.T("Nevernyy_PIN");
             }
         }
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing =8 };
         foreach (var (label, minutes) in new (string, int)[]
                  {
-                     (L.T("15 мин", "15 min"), 15),
-                     (L.T("30 мин", "30 min"), 30),
-                     (L.T("45 мин", "45 min"), 45),
-                     (L.T("1 час", "1 hour"), 60),
-                     (L.T("До выключения", "Until off"), 0),
+                     (L.T("15_Min_Lbl"), 15),
+                     (L.T("30_Min_Lbl"), 30),
+                     (L.T("45_Min_Lbl"), 45),
+                     (L.T("1_Chas_Lbl"), 60),
+                     (L.T("Do_Vyklyucheniya"), 0),
                  })
         {
             var captured = minutes;
@@ -2390,9 +2365,7 @@ public sealed partial class MainPage : Page
         var panel = new StackPanel { Spacing = 12, Width = 380 };
         panel.Children.Add(new TextBlock
         {
-            Text = L.T(
-                $"Канал «{channel.Name}» закрыт родительским контролем. Введите PIN и выберите, на сколько разрешить просмотр.",
-                $"Channel \"{channel.Name}\" is locked by parental control. Enter the PIN and choose how long to allow viewing."),
+            Text = string.Format(L.T("Kanal_0_Zakryt_Roditelskim_Kontrolem_Vvedite"), channel.Name, channel.Name),
             TextWrapping = TextWrapping.Wrap
         });
         panel.Children.Add(pinBox);
@@ -2402,9 +2375,9 @@ public sealed partial class MainPage : Page
         var dialog = new ContentDialog
         {
             XamlRoot = Content.XamlRoot,
-            Title = L.T("Родительский контроль", "Parental control"),
+            Title = L.T("Roditelskiy_Kontrol_Lbl"),
             Content = panel,
-            CloseButtonText = L.T("Отмена", "Cancel")
+            CloseButtonText = L.T("Otmena_Lbl")
         };
         dialog.Closed += (s, e) => tcs.TrySetResult(null);
         _pinDialog = dialog;
@@ -2431,8 +2404,8 @@ public sealed partial class MainPage : Page
         OverlayMuteButton.Content = Player.IsMuted ? AppIcons.SpeakerMuted(18) : AppIcons.SpeakerOn(18);
 
         var tooltip = Player.IsMuted
-            ? L.T("Включить звук (M)", "Unmute (M)")
-            : L.T("Без звука (M)", "Mute (M)");
+            ? L.T("Vklyuchit_Zvuk_M")
+            : L.T("Bez_Zvuka_M_Lbl");
         ToolTipService.SetToolTip(VideoOverlayMuteButton, tooltip);
         ToolTipService.SetToolTip(OverlayMuteButton, tooltip);
 
@@ -2493,9 +2466,9 @@ public sealed partial class MainPage : Page
         // Диалог выбора времени таймера сна
         var dialog = new ContentDialog
         {
-            Title = L.T("Таймер сна", "Sleep Timer"),
-            PrimaryButtonText = L.T("Установить", "Set"),
-            CloseButtonText = L.T("Отмена", "Cancel"),
+            Title = L.T("Taymer_Sna_Lbl"),
+            PrimaryButtonText = L.T("Ustanovit"),
+            CloseButtonText = L.T("Otmena_Lbl"),
             XamlRoot = ((Button)sender).XamlRoot
         };
 
@@ -2508,7 +2481,7 @@ public sealed partial class MainPage : Page
         {
             radioPanel.Children.Add(new RadioButton
             {
-                Content = L.T("Отключить таймер", "Turn off timer"),
+                Content = L.T("Otklyuchit_Taymer"),
                 Tag = 0,
                 GroupName = "SleepTimer"
             });
@@ -2518,7 +2491,7 @@ public sealed partial class MainPage : Page
         {
             radioPanel.Children.Add(new RadioButton
             {
-                Content = L.T($"{minutes} мин", $"{minutes} min"),
+                Content = string.Format(L.T("0_Min"), minutes, minutes),
                 Tag = minutes,
                 GroupName = "SleepTimer"
             });
@@ -2527,22 +2500,22 @@ public sealed partial class MainPage : Page
         // Пользовательский ввод
         var customBox = new TextBox
         {
-            Header = L.T("Своё значение (минуты)", "Custom (minutes)"),
+            Header = L.T("Svoe_Znachenie_Minuty"),
             PlaceholderText = "60",
             Width = 200
         };
 
         // Подсказка о действии по истечении — чтобы «выключить компьютер»
         // из настроек не оказалось сюрпризом.
-        var (actionRu, actionEn) = ViewModel.AppSettings.SleepTimerAction switch
+        var action = ViewModel.AppSettings.SleepTimerAction switch
         {
-            "Exit" => ("закроет программу", "close the app"),
-            "Shutdown" => ("выключит компьютер", "shut down the PC"),
-            _ => ("остановит воспроизведение", "stop playback")
+            "Exit" => L.T("SleepTimer_Exit"),
+            "Shutdown" => L.T("SleepTimer_Shutdown"),
+            _ => L.T("SleepTimer_Stop")
         };
         var actionHint = new TextBlock
         {
-            Text = L.T($"По истечении таймера: {actionRu}.", $"When the timer ends: {actionEn}."),
+            Text = string.Format(L.T("Po_Istechenii_Taymera_0"), action),
             FontSize = 12,
             Opacity = 0.7,
             TextWrapping = TextWrapping.Wrap
@@ -2671,15 +2644,13 @@ public sealed partial class MainPage : Page
 
     private void UpdateStretchButtons()
     {
-        var (mode, modeEn) = MediaPlayer.Stretch switch
+        var mode = MediaPlayer.Stretch switch
         {
-            Stretch.Fill => ("растянуть", "stretch"),
-            Stretch.UniformToFill => ("обрезать", "crop"),
-            _ => ("вписать", "fit")
+            Stretch.Fill => L.T("Stretch_Rastyanut"),
+            Stretch.UniformToFill => L.T("Stretch_Oberezat"),
+            _ => L.T("Stretch_Vpisat")
         };
-        var tooltip = L.T(
-            $"Режим отображения: {mode} (V)",
-            $"Video mode: {modeEn} (V)");
+        var tooltip = string.Format(L.T("Rezhim_Otobrazheniya_0_V"), mode);
         ToolTipService.SetToolTip(VideoOverlayStretchButton, tooltip);
         ToolTipService.SetToolTip(OverlayStretchButton, tooltip);
     }
@@ -2817,9 +2788,10 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
-    /// Сохраняет разобранные каналы плейлиста в локальный дисковый кэш
-    /// (PlaylistCacheService) — при следующем запуске, если срок обновления
-    /// из настроек ещё не наступил, плейлист не придётся перекачивать.
+    /// Сохраняет разобранные каналы плейлиста в локальный кэш SQLite
+    /// (PlaylistDatabaseService) — при следующем запуске, если срок
+    /// обновления из настроек ещё не наступил, плейлист не придётся
+    /// перекачивать.
     /// </summary>
     private Task SavePlaylistCacheAsync(int playlistId, List<ChannelViewModel> channels)
     {
@@ -2859,8 +2831,7 @@ public sealed partial class MainPage : Page
         var dialog = new Dialogs.InterfaceSettingsDialog(
             ViewModel,
             _settingsService,
-            ApplyTheme,
-            ApplyLanguage);
+            ApplyTheme);
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 

@@ -88,6 +88,10 @@ public partial class App : Application
         {
             initialSettings = new AppSettings();
         }
+        // Язык применяется к MRT-контексту до InitializeComponent: x:Uid
+        // тексты фиксируются при разборе XAML, поэтому локализация целиком
+        // выбирается на старте (смена в настройках — после перезапуска).
+        L.SetLanguage(initialSettings.Language);
         FileLogSwitch.MinimumLevel = initialSettings.FileLoggingEnabled
             ? LogEventLevel.Information
             : FileLoggingDisabledLevel;
@@ -184,7 +188,6 @@ public partial class App : Application
         // MainPage — для строки «Скорость потока (изм.)» в оверлее.
         services.AddSingleton<ProcessSpeedMonitor>();
         services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<ICacheService, CacheService>();
         services.AddSingleton<IXmlTvService, XmlTvService>();
         services.AddSingleton<IStreamService, StreamService>();
         services.AddSingleton<IPlaylistCacheService, PlaylistDatabaseService>();

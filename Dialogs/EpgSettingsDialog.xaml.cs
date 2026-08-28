@@ -49,7 +49,7 @@ namespace IptvPlayer.Dialogs
             var dialog = new ContentDialog
             {
                 XamlRoot = xamlRoot,
-                Title = L.T("Настройки EPG", "EPG settings"),
+                Title = L.T("Nastroyki_EPG_Lbl"),
                 Content = this
             };
             _hostDialog = dialog;
@@ -60,27 +60,21 @@ namespace IptvPlayer.Dialogs
         {
             var settings = await _settingsService.LoadAsync();
 
-            TitleText.Text = L.T("Настройки EPG", "EPG settings");
-            EpgSourcesHeader.Text = L.T("Источники EPG", "EPG sources");
+            TitleText.Text = L.T("Nastroyki_EPG_Lbl");
+            EpgSourcesHeader.Text = L.T("Istochniki_EPG_Lbl");
 
             // Вкладка правит ОБЩИЙ список источников: он действует только для
             // плейлистов без собственных (PlaylistSource.EpgSources пуст).
             // Свои источники плейлист настраивается в диалоге «Плейлист».
-            EpgSourcesHint.Text = L.T(
-                "Общие источники EPG (XMLTV): действуют для плейлистов без своих источников. Свои источники задаются у каждого плейлиста в диалоге «Плейлист».",
-                "Shared EPG (XMLTV) sources: used by playlists that have no sources of their own. Per-playlist sources are configured in the Playlist dialog.");
-            EpgUrlBox.PlaceholderText = L.T("URL XMLTV", "XMLTV URL");
-            AddEpgSourceButton.Content = L.T("Добавить", "Add");
-            RemindersHeader.Text = L.T("Напоминания EPG", "EPG reminders");
-            RemindersHint.Text = L.T(
-                "За сколько минут до начала передачи показывать тост-напоминание.",
-                "How many minutes before a programme starts to show a toast reminder.");
-            EpgRefreshHeader.Text = L.T("EPG (программа передач)", "EPG (TV guide)");
-            EpgRefreshHint.Text = L.T(
-                "Как часто при запуске перекачивать XMLTV-источники.",
-                "How often to re-download XMLTV sources on startup.");
-            CancelButton.Content = L.T("Отмена", "Cancel");
-            SaveButton.Content = L.T("Сохранить", "Save");
+            EpgSourcesHint.Text = L.T("Obshchie_Istochniki_EPG_XMLTV_Deystvuyut_Dlya");
+            EpgUrlBox.PlaceholderText = L.T("URL_XMLTV");
+            AddEpgSourceButton.Content = L.T("Dobavit_Lbl");
+            RemindersHeader.Text = L.T("Napominaniya_EPG_Lbl");
+            RemindersHint.Text = L.T("Za_Skolko_Minut_Do_Nachala_Peredachi_Lbl");
+            EpgRefreshHeader.Text = L.T("EPG_Programma_Peredach_Lbl");
+            EpgRefreshHint.Text = L.T("Kak_Chasto_Pri_Zapuske_Perekachivat_XMLTV_Lbl");
+            CancelButton.Content = L.T("Otmena_Lbl");
+            SaveButton.Content = L.T("Sokhranit_Lbl");
 
             _epgSources.Clear();
             foreach (var source in settings.EpgSources)
@@ -96,7 +90,7 @@ namespace IptvPlayer.Dialogs
             {
                 ReminderMinutesCombo.Items.Add(new ComboBoxItem
                 {
-                    Content = L.T($"За {minutes} мин до начала", $"{minutes} min before start"),
+                    Content = string.Format(L.T("Za_0_Min_Do_Nachala"), minutes, minutes),
                     Tag = minutes
                 });
                 if (minutes == settings.ReminderMinutes)
@@ -113,10 +107,10 @@ namespace IptvPlayer.Dialogs
             EpgRefreshCombo.Items.Clear();
             foreach (var (label, days) in new[]
                      {
-                         (L.T("Каждый день", "Daily"), 1),
-                         (L.T("Каждые 3 дня", "Every 3 days"), 3),
-                         (L.T("Каждую неделю", "Weekly"), 7),
-                         (L.T("Только вручную", "Manual only"), 0),
+                         (L.T("Kazhdyy_Den"), 1),
+                         (L.T("Kazhdye_3_Dnya"), 3),
+                         (L.T("Kazhduyu_Nedelyu"), 7),
+                         (L.T("Tolko_Vruchnuyu"), 0),
                      })
             {
                 EpgRefreshCombo.Items.Add(new ComboBoxItem { Content = label, Tag = days });
@@ -144,7 +138,7 @@ namespace IptvPlayer.Dialogs
                     IsChecked = source.IsEnabled,
                     VerticalAlignment = VerticalAlignment.Center
                 };
-                ToolTipService.SetToolTip(checkBox, L.T("Использовать источник", "Use this source"));
+                ToolTipService.SetToolTip(checkBox, L.T("Ispolzovat_Istochnik_Lbl"));
                 checkBox.Checked += (_, _) => source.IsEnabled = true;
                 checkBox.Unchecked += (_, _) => source.IsEnabled = false;
 
@@ -164,7 +158,7 @@ namespace IptvPlayer.Dialogs
                     Height = 32,
                     VerticalAlignment = VerticalAlignment.Center
                 };
-                ToolTipService.SetToolTip(removeButton, L.T("Удалить источник", "Remove source"));
+                ToolTipService.SetToolTip(removeButton, L.T("Udalit_Istochnik_Lbl"));
                 removeButton.Click += (_, _) =>
                 {
                     _epgSources.Remove(source);

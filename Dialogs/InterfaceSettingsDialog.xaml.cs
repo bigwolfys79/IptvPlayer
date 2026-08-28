@@ -19,7 +19,6 @@ namespace IptvPlayer.Dialogs
         private readonly MainPageViewModel _viewModel;
         private readonly ISettingsService _settingsService;
         private readonly Action<string> _applyTheme;
-        private readonly Action _applyLanguage;
 
         // Контейнер-ContentDialog создаётся в ShowAsync; кнопки внутри
         // UserControl закрывают его через эту ссылку (искать родителя по
@@ -30,13 +29,11 @@ namespace IptvPlayer.Dialogs
         public InterfaceSettingsDialog(
             MainPageViewModel viewModel,
             ISettingsService settingsService,
-            Action<string> applyTheme,
-            Action applyLanguage)
+            Action<string> applyTheme)
         {
             _viewModel = viewModel;
             _settingsService = settingsService;
             _applyTheme = applyTheme;
-            _applyLanguage = applyLanguage;
             InitializeComponent();
         }
 
@@ -50,7 +47,7 @@ namespace IptvPlayer.Dialogs
             var dialog = new ContentDialog
             {
                 XamlRoot = xamlRoot,
-                Title = L.T("Настройки интерфейса", "Interface settings"),
+                Title = L.T("Nastroyki_Interfeysa_Lbl"),
                 Content = this
             };
             _hostDialog = dialog;
@@ -61,29 +58,25 @@ namespace IptvPlayer.Dialogs
         {
             var settings = await _settingsService.LoadAsync();
 
-            TitleText.Text = L.T("Настройки интерфейса", "Interface settings");
-            CancelButton.Content = L.T("Отмена", "Cancel");
-            SaveButton.Content = L.T("Сохранить", "Save");
+            TitleText.Text = L.T("Nastroyki_Interfeysa_Lbl");
+            CancelButton.Content = L.T("Otmena_Lbl");
+            SaveButton.Content = L.T("Sokhranit_Lbl");
 
             // Язык: локализатор поддерживает ru/en.
-            LanguageHeader.Text = L.T("Язык интерфейса", "Interface language");
-            LanguageHint.Text = L.T(
-                "Основные тексты интерфейса переводятся на лету.",
-                "Main interface texts are translated on the fly.");
+            LanguageHeader.Text = L.T("YAzyk_Interfeysa_Lbl");
+            LanguageHint.Text = L.T("Osnovnye_Teksty_Interfeysa_Perevodyatsya_Na_Letu_Lbl");
             LanguageCombo.Items.Clear();
             LanguageCombo.Items.Add("Русский");
             LanguageCombo.Items.Add("English");
             LanguageCombo.SelectedIndex = L.IsRussian ? 0 : 1;
 
             // Тема: применяется после сохранения.
-            ThemeHeader.Text = L.T("Тема интерфейса", "Interface theme");
-            ThemeHint.Text = L.T(
-                "Применяется сразу после сохранения, без перезапуска.",
-                "Applied right after saving, no restart needed.");
+            ThemeHeader.Text = L.T("Tema_Interfeysa_Lbl");
+            ThemeHint.Text = L.T("Primenyaetsya_Srazu_Posle_Sokhraneniya_Bez_Perezapuska_Lbl");
             ThemeRadio.Items.Clear();
-            ThemeRadio.Items.Add(new RadioButton { Content = L.T("Светлая", "Light"), Tag = "Light" });
-            ThemeRadio.Items.Add(new RadioButton { Content = L.T("Тёмная", "Dark"), Tag = "Dark" });
-            ThemeRadio.Items.Add(new RadioButton { Content = L.T("Системная", "System"), Tag = "Default" });
+            ThemeRadio.Items.Add(new RadioButton { Content = L.T("Svetlaya"), Tag = "Light" });
+            ThemeRadio.Items.Add(new RadioButton { Content = L.T("Temnaya"), Tag = "Dark" });
+            ThemeRadio.Items.Add(new RadioButton { Content = L.T("Sistemnaya"), Tag = "Default" });
             ThemeRadio.SelectedIndex = settings.Theme switch
             {
                 "Light" => 0,
@@ -93,16 +86,14 @@ namespace IptvPlayer.Dialogs
 
             // Действие таймера сна по истечении: остановить воспроизведение,
             // закрыть приложение или выключить компьютер (shutdown /s /t 0).
-            SleepTimerHeader.Text = L.T("Таймер сна: по истечении", "Sleep timer: when it ends");
-            SleepTimerHint.Text = L.T(
-                "Применяется к уже взведённому таймеру, действие видно при его установке.",
-                "Applies to an armed timer immediately; the action is shown when setting it.");
+            SleepTimerHeader.Text = L.T("Taymer_Sna_Po_Istechenii_Lbl");
+            SleepTimerHint.Text = L.T("Primenyaetsya_K_Uzhe_Vzvedennomu_Taymeru_Deystvie_Lbl");
             SleepTimerActionCombo.Items.Clear();
             foreach (var (label, action) in new[]
                      {
-                         (L.T("Остановить воспроизведение", "Stop playback"), "Stop"),
-                         (L.T("Закрыть программу", "Close the app"), "Exit"),
-                         (L.T("Выключить компьютер", "Shut down the PC"), "Shutdown"),
+                         (L.T("Ostanovit_Vosproizvedenie"), "Stop"),
+                         (L.T("Zakryt_Programmu"), "Exit"),
+                         (L.T("Vyklyuchit_Kompyuter"), "Shutdown"),
                      })
             {
                 SleepTimerActionCombo.Items.Add(new ComboBoxItem { Content = label, Tag = action });
@@ -121,50 +112,42 @@ namespace IptvPlayer.Dialogs
             // играть); полный выход — через меню иконки.
             MinimizeToTrayToggle.Toggled -= MinimizeToTrayToggle_Toggled;
             MinimizeToTrayToggle.IsOn = settings.MinimizeToTray;
-            MinimizeToTrayToggle.Header = L.T("Сворачивать в трей при сворачивании", "Minimize to tray on minimize");
-            MinimizeToTrayToggle.OnContent = L.T("Вкл", "On");
-            MinimizeToTrayToggle.OffContent = L.T("Выкл", "Off");
+            MinimizeToTrayToggle.Header = L.T("Svorachivat_V_Trey_Pri_Svorachivanii");
+            MinimizeToTrayToggle.OnContent = L.T("Vkl");
+            MinimizeToTrayToggle.OffContent = L.T("Vykl");
             MinimizeToTrayToggle.Toggled += MinimizeToTrayToggle_Toggled;
-            MinimizeToTrayHint.Text = L.T(
-                "Кнопка «Свернуть» прячет окно в трей вместо панели задач.",
-                "The minimize button hides the window to the tray instead of the taskbar.");
+            MinimizeToTrayHint.Text = L.T("Knopka_Svernut_Pryachet_Okno_V_Trey");
 
             CloseToTrayToggle.Toggled -= CloseToTrayToggle_Toggled;
             CloseToTrayToggle.IsOn = settings.CloseToTray;
-            CloseToTrayToggle.Header = L.T("Сворачивать в трей при закрытии", "Minimize to tray on close");
-            CloseToTrayToggle.OnContent = L.T("Вкл", "On");
-            CloseToTrayToggle.OffContent = L.T("Выкл", "Off");
+            CloseToTrayToggle.Header = L.T("Svorachivat_V_Trey_Pri_Zakrytii");
+            CloseToTrayToggle.OnContent = L.T("Vkl");
+            CloseToTrayToggle.OffContent = L.T("Vykl");
             CloseToTrayToggle.Toggled += CloseToTrayToggle_Toggled;
-            CloseToTrayHint.Text = L.T(
-                "Крестик окна прячет его в трей — воспроизведение продолжается. Полный выход — правый клик по иконке в трее → «Выход».",
-                "The close button hides the window to the tray — playback continues. To quit fully, right-click the tray icon → \"Exit\".");
+            CloseToTrayHint.Text = L.T("Krestik_Okna_Pryachet_Ego_V_Trey");
 
             // Файловый лог (Serilog): применяется сразу через
             // LoggingLevelSwitch, без перезапуска. Вывод в Debug (окно
             // Output студии) остаётся всегда.
-            DiagnosticsHeader.Text = L.T("Диагностика", "Diagnostics");
+            DiagnosticsHeader.Text = L.T("Diagnostika");
 
             // Полуавтоматическое обновление: фоновая проверка при запуске,
             // скачивание и диалог установки (без установки при записях).
             AutoUpdateToggle.Toggled -= AutoUpdateToggle_Toggled;
             AutoUpdateToggle.IsOn = settings.AutoUpdateEnabled;
-            AutoUpdateToggle.Header = L.T("Проверять обновления автоматически", "Check for updates automatically");
-            AutoUpdateToggle.OnContent = L.T("Вкл", "On");
-            AutoUpdateToggle.OffContent = L.T("Выкл", "Off");
+            AutoUpdateToggle.Header = L.T("Proveryat_Obnovleniya_Avtomaticheski");
+            AutoUpdateToggle.OnContent = L.T("Vkl");
+            AutoUpdateToggle.OffContent = L.T("Vykl");
             AutoUpdateToggle.Toggled += AutoUpdateToggle_Toggled;
-            AutoUpdateHint.Text = L.T(
-                "После запуска (не чаще раза в сутки) приложение само проверит GitHub Releases, скачает установщик и предложит установить. Пока идут записи, установка не запускается.",
-                "After startup (at most once a day) the app checks GitHub Releases by itself, downloads the installer and offers to install. Installation never starts while recordings are running.");
+            AutoUpdateHint.Text = L.T("Posle_Zapuska_Ne_Chashche_Raza_V");
 
             FileLoggingToggle.Toggled -= FileLoggingToggle_Toggled;
             FileLoggingToggle.IsOn = settings.FileLoggingEnabled;
-            FileLoggingToggle.Header = L.T("Файловый лог", "File log");
-            FileLoggingToggle.OnContent = L.T("Вкл", "On");
-            FileLoggingToggle.OffContent = L.T("Выкл", "Off");
+            FileLoggingToggle.Header = L.T("Faylovyy_Log");
+            FileLoggingToggle.OnContent = L.T("Vkl");
+            FileLoggingToggle.OffContent = L.T("Vykl");
             FileLoggingToggle.Toggled += FileLoggingToggle_Toggled;
-            FileLoggingHint.Text = L.T(
-                $"Запись событий в {App.LogDirectory}. Выключение действует сразу, перезапуск не нужен.",
-                $"Writes events to {App.LogDirectory}. Turning it off takes effect immediately, no restart required.");
+            FileLoggingHint.Text = string.Format(L.T("Zapis_Sobytiy_V_0_Vyklyuchenie_Deystvuet"), App.LogDirectory, App.LogDirectory);
         }
 
         /// <summary>Автообновление — применяется сразу, персистится в настройках.</summary>
@@ -218,11 +201,11 @@ namespace IptvPlayer.Dialogs
 
             await _settingsService.SaveAsync(appSettings);
 
-            // Тема и язык применяются к окну немедленно — компетенция
-            // представления, поэтому MainPage передал колбэки.
-            L.SetLanguage(appSettings.Language);
+            // Тема применяется к окну немедленно — компетенция
+            // представления, поэтому MainPage передал колбэк. Язык
+            // применяется при следующем запуске (MRT фиксирует тексты
+            // при разборе XAML, на лету их не поменять).
             _applyTheme(theme);
-            _applyLanguage();
 
             CloseDialog();
         }

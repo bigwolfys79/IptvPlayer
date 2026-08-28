@@ -13,14 +13,14 @@
          (имя необязательное — по умолчанию хост URL) и удаление.
          Частота обновления — общая на все плейлисты. -->
     <StackPanel Spacing="12" Width="480">
-        <TextBlock x:Name="TitleText" Text="Плейлист" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock x:Name="TitleText" x:Uid="Pleylist" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="12">
 
-                <TextBlock x:Name="PlaylistHeader" Text="Плейлисты" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="PlaylistHeader" x:Uid="Pleylisty" FontSize="14" FontWeight="SemiBold"/>
                 <TextBlock x:Name="PlaylistHint"
-                           Text="Каналы в списке — из активного плейлиста. Переключайтесь комбобоксом над списком каналов."
+                           x:Uid="Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista_2"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextWrapping="Wrap"/>
@@ -62,28 +62,28 @@
                                                 Visibility="{x:Bind EditVisibility}">
                                         <TextBox x:Name="NameEditBox" Width="260" KeyDown="NameEditBox_KeyDown"/>
                                         <Button Width="36" Height="32"
-                                                ToolTipService.ToolTip="Сохранить имя"
+                                                x:Uid="Sokhranit_Imya"
                                                 Click="SavePlaylistNameButton_Click">
                                             <Path Data="M2.5,8.5 L5,11 L13,3.5 L14.5,5 L5,14 L1,10 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
                                         </Button>
                                     </StackPanel>
                                     <Button Grid.Column="1" Width="36" Height="32"
-                                            ToolTipService.ToolTip="Переименовать"
+                                            x:Uid="Pereimenovat"
                                             Click="RenamePlaylistButton_Click"
                                             Visibility="{x:Bind ViewVisibility}">
                                             <Path Data="M2,14 L3.5,10.5 L11,3 L13,5 L5.5,12.5 Z M11.8,2.2 L13.8,4.2 L15,3 L13,1 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
                                         </Button>
                                     <Button Grid.Column="2" Content="EPG" Height="32" MinWidth="44" Padding="8,0"
-                                            ToolTipService.ToolTip="Источники EPG этого плейлиста"
+                                            x:Uid="Istochniki_EPG_Etogo_Pleylista"
                                             Click="EpgSectionButton_Click"/>
                                     <Button Grid.Column="3" Width="36" Height="32"
-                                            ToolTipService.ToolTip="Активировать"
+                                            x:Uid="Aktivirovat"
                                             Click="ActivatePlaylistButton_Click"
                                             Visibility="{x:Bind ActivateButtonVisibility}">
                                             <Path Data="M2.5,8.5 L5,11 L13,3.5 L14.5,5 L5,14 L1,10 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
                                         </Button>
                                     <Button Grid.Column="4" Width="36" Height="32"
-                                            ToolTipService.ToolTip="Удалить"
+                                            x:Uid="Udalit"
                                             Click="RemovePlaylistButton_Click"
                                             Visibility="{x:Bind ViewVisibility}">
                                             <Path Data="M3,3.8 L4.1,2.7 L8,6.6 L11.9,2.7 L13,3.8 L9.1,7.7 L13,11.6 L11.9,12.7 L8,8.8 L4.1,12.7 L3,11.6 L6.9,7.7 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="12" Height="12" />
@@ -102,14 +102,14 @@
                                                               VerticalAlignment="Center"
                                                               Checked="PlaylistEpgSource_CheckedChanged"
                                                               Unchecked="PlaylistEpgSource_CheckedChanged"
-                                                              ToolTipService.ToolTip="Использовать источник"/>
+                                                              x:Uid="Ispolzovat_Istochnik"/>
                                                     <TextBlock Text="{x:Bind Url}" FontSize="11" Width="260"
                                                                VerticalAlignment="Center"
                                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                                TextTrimming="CharacterEllipsis"/>
                                                     <Button Width="32" Height="32"
                                                             VerticalAlignment="Center"
-                                                            ToolTipService.ToolTip="Удалить источник"
+                                                            x:Uid="Udalit_Istochnik"
                                                             Click="PlaylistEpgSourceRemoveButton_Click">
                                                         <Path Data="M3,3.8 L4.1,2.7 L8,6.6 L11.9,2.7 L13,3.8 L9.1,7.7 L13,11.6 L11.9,12.7 L8,8.8 L4.1,12.7 L3,11.6 L6.9,7.7 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="12" Height="12" />
                                                     </Button>
@@ -122,7 +122,7 @@
                                                  KeyDown="PlaylistEpgUrlBox_KeyDown"/>
                                         <Button Width="36" Height="32"
                                                 VerticalAlignment="Center"
-                                                ToolTipService.ToolTip="Добавить источник EPG"
+                                                x:Uid="Dobavit_Istochnik_EPG"
                                                 Click="PlaylistEpgSourceAddButton_Click">
                                             <Path Data="M8,2 H9.5 V7 H14.5 V8.5 H9.5 V13.5 H8 V8.5 H3 V7 H8 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="14" Height="14" />
                                         </Button>
@@ -140,35 +140,34 @@
                            TextWrapping="Wrap"
                            Visibility="Collapsed"/>
 
-                <TextBlock x:Name="AddPlaylistHeader" Text="Добавить плейлист" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                <TextBlock x:Name="AddPlaylistHeader" x:Uid="Dobavit_Pleylist" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
                 <ComboBox x:Name="PlaylistTypeCombo" HorizontalAlignment="Stretch"
                           SelectionChanged="PlaylistTypeCombo_SelectionChanged"/>
                 <TextBox x:Name="PlaylistNameBox"
-                         PlaceholderText="Имя (необязательно)"
+                         x:Uid="Imya_Neobyazatelno"
                          HorizontalAlignment="Stretch"/>
                 <TextBox x:Name="PlaylistUrlBox"
-                         PlaceholderText="URL плейлиста M3U/M3U8"
+                         x:Uid="URL_Pleylista_M3U_M3U8"
                          HorizontalAlignment="Stretch"/>
                 <!-- Поле ключа — только для типа «Видео-портал». -->
                 <TextBox x:Name="PortalKeyBox"
-                         PlaceholderText="Ключ портала"
-                         Header="Ключ портала"
+                         x:Uid="Klyuch_Portala"
                          HorizontalAlignment="Stretch"
                          Visibility="Collapsed"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button x:Name="AddPlaylistButton"
-                            Content="Добавить"
+                            x:Uid="Dobavit"
                             HorizontalAlignment="Left"
                             Click="AddPlaylistButton_Click"/>
                     <Button x:Name="AddPlaylistFileButton"
-                            Content="Выбрать файл..."
+                            x:Uid="Vybrat_Fayl"
                             HorizontalAlignment="Left"
                             Click="AddPlaylistFileButton_Click"/>
                 </StackPanel>
 
-                <TextBlock x:Name="PlaylistRefreshHeader" Text="Частота обновления плейлистов" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="PlaylistRefreshHeader" x:Uid="CHastota_Obnovleniya_Pleylistov" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
                 <TextBlock x:Name="PlaylistRefreshHint"
-                           Text="Как часто при запуске перекачивать активный плейлист."
+                           x:Uid="Kak_Chasto_Pri_Zapuske_Perekachivat_Aktivnyy"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextWrapping="Wrap"/>
@@ -177,13 +176,13 @@
                 <!-- Экспорт/импорт настроек: перенос между машинами (секреты в
                      settings.json зашифрованы DPAPI и копированием не
                      переносятся); файл экспорта защищён паролем. -->
-                <TextBlock x:Name="TransferHeader" Text="Перенос настроек" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="TransferHeader" x:Uid="Perenos_Nastroek" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button x:Name="ExportSettingsButton"
-                            Content="Экспортировать..."
+                            x:Uid="Eksportirovat"
                             Click="ExportSettingsButton_Click"/>
                     <Button x:Name="ImportSettingsButton"
-                            Content="Импортировать..."
+                            x:Uid="Importirovat"
                             Click="ImportSettingsButton_Click"/>
                 </StackPanel>
 
@@ -193,7 +192,7 @@
         <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CloseButton"
-                    Content="Готово"
+                    x:Uid="Gotovo"
                     Width="100" Height="36"
                     Style="{ThemeResource AccentButtonStyle}"
                     Click="CloseButton_Click"/>

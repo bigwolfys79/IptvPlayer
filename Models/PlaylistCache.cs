@@ -6,9 +6,9 @@ namespace IptvPlayer.Models;
 /// <summary>
 /// Дисковый кэш разобранного плейлиста: чтобы при запуске не перекачивать
 /// M3U, пока не истекла периодичность обновления из настроек
-/// (AppSettings.PlaylistRefreshDays). Хранится отдельным файлом через
-/// PlaylistCacheService — намеренно НЕ через CacheService: тот живёт в
-/// подпапке cache и стирается целиком при "Обновить EPG", а кэш плейлиста
+/// (AppSettings.PlaylistRefreshDays). Хранится в SQLite через
+/// PlaylistDatabaseService — отдельно от EPG-кэша (EpgCacheStore):
+/// тот стирается целиком при "Обновить EPG", а кэш плейлиста
 /// переживать это должен.
 /// </summary>
 public class PlaylistCache

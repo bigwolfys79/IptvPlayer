@@ -28,7 +28,7 @@ public class AppSettings
 
     /// <summary>
     /// Источники плейлистов пользователя. Каналы в список загружаются только
-    /// из активного (ActivePlaylistId); кэш — свой на каждый (PlaylistCacheService).
+    /// из активного (ActivePlaylistId); кэш — свой на каждый (PlaylistDatabaseService).
     /// </summary>
     public List<PlaylistSource> Playlists { get; set; } = new();
 

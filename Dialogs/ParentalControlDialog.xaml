@@ -22,10 +22,10 @@
                     <TextBlock x:Name="UnlockHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="15 мин" Tag="15" Click="UnlockButton_Click"/>
-                        <Button Content="30 мин" Tag="30" Click="UnlockButton_Click"/>
-                        <Button Content="45 мин" Tag="45" Click="UnlockButton_Click"/>
-                        <Button Content="1 час" Tag="60" Click="UnlockButton_Click"/>
+                        <Button x:Uid="15_Min" Tag="15" Click="UnlockButton_Click"/>
+                        <Button x:Uid="30_Min" Tag="30" Click="UnlockButton_Click"/>
+                        <Button x:Uid="45_Min" Tag="45" Click="UnlockButton_Click"/>
+                        <Button x:Uid="1_Chas" Tag="60" Click="UnlockButton_Click"/>
                         <Button x:Name="UnlockForeverButton" Click="UnlockForeverButton_Click"/>
                     </StackPanel>
                 </StackPanel>

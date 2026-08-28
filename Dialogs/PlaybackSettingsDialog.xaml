@@ -10,16 +10,16 @@
          декодер, буфер, качество, аудио и видео-фильтры. Радиогруппы и
          комбобоксы наполняются в code-behind (LoadAsync) с Tag-значениями. -->
     <StackPanel Spacing="12" Width="480">
-        <TextBlock x:Name="TitleText" Text="Настройки воспроизведения" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock x:Name="TitleText" x:Uid="Nastroyki_Vosproizvedeniya" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="16">
 
                 <!-- Декодер -->
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="DecoderHeader" Text="Декодирование видео" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="DecoderHeader" x:Uid="Dekodirovanie_Video" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="DecoderHint"
-                               Text="Применится при следующем переключении канала."
+                               x:Uid="Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
@@ -28,9 +28,9 @@
 
                 <!-- Буфер -->
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="BufferHeader" Text="Буферизация" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="BufferHeader" x:Uid="Buferizatsiya" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="BufferHint"
-                               Text="Применится при следующем переключении канала."
+                               x:Uid="Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
@@ -42,7 +42,7 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <!-- Буфер видеотеки (портал): отдельно от эфирного —
                          короткий ради быстрого старта фильмов. -->
-                    <TextBlock x:Name="VodBufferHeader" Text="Буфер видеотеки" FontSize="13" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="VodBufferHeader" x:Uid="Bufer_Videoteki" FontSize="13" FontWeight="SemiBold" Margin="0,8,0,0"/>
                     <TextBlock x:Name="VodBufferHint"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -57,9 +57,9 @@
 
                 <!-- Качество -->
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="QualityHeader" Text="Качество видео" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="QualityHeader" x:Uid="Kachestvo_Video" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="QualityHint"
-                               Text="Максимальное качество потока или ограничение разрешения. Применится при следующем переключении канала."
+                               x:Uid="Maksimalnoe_Kachestvo_Potoka_Ili_Ogranichenie_Razresheniya"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
@@ -68,11 +68,11 @@
 
                 <!-- Аудио -->
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="AudioHeader" Text="Звук" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="AudioHeader" x:Uid="Zvuk" FontSize="14" FontWeight="SemiBold"/>
 
-                    <TextBlock x:Name="AudioNormHeader" Text="Нормализация громкости" FontSize="12" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="AudioNormHeader" x:Uid="Normalizatsiya_Gromkosti" FontSize="12" FontWeight="SemiBold"/>
                     <TextBlock x:Name="AudioNormHint"
-                               Text="Подтягивает тихие каналы к общему уровню. Применяется к играющему каналу сразу."
+                               x:Uid="Podtyagivaet_Tikhie_Kanaly_K_Obshchemu_Urovnyu"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
@@ -84,11 +84,11 @@
         <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CancelButton"
-                    Content="Отмена"
+                    x:Uid="Otmena"
                     Width="100" Height="36"
                     Click="CancelButton_Click"/>
             <Button x:Name="SaveButton"
-                    Content="Сохранить"
+                    x:Uid="Sokhranit"
                     Width="100" Height="36"
                     Style="{ThemeResource AccentButtonStyle}"
                     Click="SaveButton_Click"/>

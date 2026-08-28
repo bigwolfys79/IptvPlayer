@@ -7,7 +7,7 @@ namespace IptvPlayer.Services;
 /// <summary>
 /// Обёртка распарсенного XMLTV-источника для дискового кэша (см. XmlTvService
 /// и EpgCacheStore). Раньше была приватным классом внутри XmlTvService и
-/// сериализовалась в JSON через CacheService — вынесена наружу и переведена
+/// сериализовалась в JSON — вынесена наружу и переведена
 /// на MemoryPack: чтение кэша из ~секунд (System.Text.Json на сотнях МБ)
 /// падает до долей секунды.
 /// </summary>

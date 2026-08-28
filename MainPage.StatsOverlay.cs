@@ -85,13 +85,11 @@ public sealed partial class MainPage
         var d = _streamService.CurrentDiagnostics;
         var sb = new StringBuilder();
 
-        sb.AppendLine(L.T($"Канал: {channel}", $"Channel: {channel}"));
+        sb.AppendLine(string.Format(L.T("Kanal_0"), channel, channel));
 
         if (d == null || d.SystemSourceFallback)
         {
-            sb.Append(L.T(
-                "Источник: системный (FFmpeg не открывал поток)",
-                "Source: system (FFmpeg did not open the stream)"));
+            sb.Append(L.T("Istochnik_Sistemnyy_FFmpeg_Ne_Otkryval_Potok"));
             StatsText.Text = sb.ToString();
             return;
         }
@@ -149,26 +147,22 @@ public sealed partial class MainPage
         var decoder = d.VideoDecoderEngine switch
         {
             FFmpegInteropX.DecoderEngine.FFmpegD3D11HardwareDecoder => "FFmpeg D3D11 (GPU)",
-            FFmpegInteropX.DecoderEngine.SystemDecoder => L.T("системный", "system"),
+            FFmpegInteropX.DecoderEngine.SystemDecoder => L.T("Sistemnyy"),
             FFmpegInteropX.DecoderEngine.FFmpegSoftwareDecoder => "FFmpeg (CPU)",
             _ => "—"
         };
         var hw = d.HardwareStatus switch
         {
-            FFmpegInteropX.HardwareDecoderStatus.Available => L.T("доступен", "available"),
-            FFmpegInteropX.HardwareDecoderStatus.NotAvailable => L.T("недоступен", "not available"),
+            FFmpegInteropX.HardwareDecoderStatus.Available => L.T("Dostupen"),
+            FFmpegInteropX.HardwareDecoderStatus.NotAvailable => L.T("Nedostupen"),
             _ => "n/a"
         };
 
-        sb.AppendLine(L.T(
-            $"Видео: {(video.Count > 0 ? string.Join(", ", video) : "—")}",
-            $"Video: {(video.Count > 0 ? string.Join(", ", video) : "—")}"));
-        sb.AppendLine(L.T(
-            $"Аудио: {(audio.Count > 0 ? string.Join(", ", audio) : "—")}",
-            $"Audio: {(audio.Count > 0 ? string.Join(", ", audio) : "—")}"));
-        sb.AppendLine(L.T(
-            $"Декодер: {decoder} · аппаратный: {hw}",
-            $"Decoder: {decoder} · HW: {hw}"));
+        var videoList = video.Count > 0 ? string.Join(", ", video) : "—";
+        var audioList = audio.Count > 0 ? string.Join(", ", audio) : "—";
+        sb.AppendLine(string.Format(L.T("Stat_VideoCodecs"), videoList));
+        sb.AppendLine(string.Format(L.T("Stat_AudioCodecs"), audioList));
+        sb.AppendLine(string.Format(L.T("Dekoder_0_Apparatnyy_1"), decoder, hw, decoder, hw));
         // BufferingProgress сессии у живых MediaStreamSource-потоков всегда 0
         // (реальный read-ahead буфер живёт внутри FFmpegInteropX и наружу не
         // отдаётся) — «заполнение 0%» только сбивало с толку, показываем
@@ -182,27 +176,19 @@ public sealed partial class MainPage
         string speedLine;
         if (measuredBps is > 0)
         {
-            speedLine = L.T(
-                $"Скорость потока: {FormatBitrate((long)measuredBps)} (изм.)",
-                $"Stream speed: {FormatBitrate((long)measuredBps)} (meas.)");
+            speedLine = string.Format(L.T("Skorost_Potoka_0_Izm"), FormatBitrate((long)measuredBps), FormatBitrate((long)measuredBps));
         }
         else
         {
-            speedLine = L.T(
-                $"Скорость потока: {FormatBitrate(d.DownloadBitrate)} (оценка)",
-                $"Stream speed: {FormatBitrate(d.DownloadBitrate)} (est.)");
+            speedLine = string.Format(L.T("Skorost_Potoka_0_Otsenka"), FormatBitrate(d.DownloadBitrate), FormatBitrate(d.DownloadBitrate));
         }
 
-        sb.AppendLine(L.T(
-            $"Буфер: {d.ReadAheadSeconds} c / {d.ReadAheadBytes / 1024 / 1024} МБ · простои: {_bufferingStallCount}",
-            $"Buffer: {d.ReadAheadSeconds}s / {d.ReadAheadBytes / 1024 / 1024} MB · stalls: {_bufferingStallCount}"));
+        sb.AppendLine(string.Format(L.T("Bufer_0_C_1_MB_Prostoi"), d.ReadAheadSeconds, d.ReadAheadBytes / 1024 / 1024, _bufferingStallCount, d.ReadAheadSeconds, d.ReadAheadBytes / 1024 / 1024, _bufferingStallCount));
         sb.AppendLine(speedLine);
 
         // Живая строка: тикает каждую секунду — видно, что оверлей обновляется.
         var session = DateTime.UtcNow - _channelSessionStartUtc;
-        sb.Append(L.T(
-            $"Сессия канала: {(int)session.TotalHours:00}:{session.Minutes:00}:{session.Seconds:00}",
-            $"Channel session: {(int)session.TotalHours:00}:{session.Minutes:00}:{session.Seconds:00}"));
+        sb.Append(string.Format(L.T("Sessiya_Kanala_0_1_2"), $"{(int)session.TotalHours:00}", $"{session.Minutes:00}", $"{session.Seconds:00}", $"{(int)session.TotalHours:00}", $"{session.Minutes:00}", $"{session.Seconds:00}"));
 
         StatsText.Text = sb.ToString();
     }

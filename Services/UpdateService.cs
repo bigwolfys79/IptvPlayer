@@ -158,9 +158,7 @@ public class UpdateService : IUpdateService
             if (!string.Equals(actual, expected.ToLowerInvariant(), StringComparison.Ordinal))
             {
                 System.IO.File.Delete(path);
-                throw new InvalidOperationException(L.T(
-                    "Контрольная сумма установщика не совпала — обновление отменено.",
-                    "Installer checksum mismatch — update cancelled."));
+                throw new InvalidOperationException(L.T("Kontrolnaya_Summa_Ustanovshchika_Ne_Sovpala_Obnovlenie"));
             }
         }
 
