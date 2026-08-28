@@ -71,15 +71,21 @@ public class SettingsService : ISettingsService
         }
     }
 
-    public Task SaveAsync(AppSettings settings)
+    public async Task SaveAsync(AppSettings settings)
     {
         try
         {
             Directory.CreateDirectory(SettingsDir);
             var toSave = ProtectSecrets(settings);
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(toSave, JsonOptions));
-            _cached = null; // Инвалидация кэша при сохранении
-            return Task.CompletedTask;
+            var json = JsonSerializer.Serialize(toSave, JsonOptions);
+            // Сериализация и запись — в пуле потоков: SaveAsync зовётся и из
+            // UI (дебаунс настроек, громкость), синхронный WriteAllText там
+            // подмораживал интерфейс на больших settings.json.
+            await Task.Run(() => File.WriteAllText(SettingsPath, json));
+            // Кэш остаётся тёплым: LoadAsync вернёт этот же экземпляр без
+            // повторного чтения/десериализации файла (его дергают хуки
+            // закрытия/сворачивания окна и каждая загрузка EPG).
+            _cached = settings;
         }
         catch (Exception ex)
         {
