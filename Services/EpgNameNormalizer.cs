@@ -117,9 +117,15 @@ public static class EpgNameNormalizer
         ["uhd"] = 4,
     };
 
+    // Имена каналов повторяются (плейлист vs XMLTV vs карта имён), а
+    // NormalizeCore прогоняет каждое через 4-6 Compiled regex. Загрузка
+    // EPG вызывает нормализацию десятки тысяч раз — кэшируем результат
+    // по (вариант, имя), вариант кодируется префиксом ключа.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Cache = new();
+
     /// <summary>Базовая нормализация: весь шум убран, включая таймшифт и скобки.</summary>
     internal static string Normalize(string? name)
-        => NormalizeCore(name, keepQualifiers: false, keepTimeshift: false);
+        => NormalizeCached('n', name, false, false);
 
     /// <summary>
     /// Как Normalize, но таймшифт-суффикс "+2"/"+4" в конце
@@ -129,7 +135,7 @@ public static class EpgNameNormalizer
     /// расписание, а не базовое со сдвигом.
     /// </summary>
     internal static string NormalizePreservingTimeshift(string? name)
-        => NormalizeCore(name, keepQualifiers: false, keepTimeshift: true);
+        => NormalizeCached('t', name, false, true);
 
     /// <summary>
     /// Как Normalize, но НЕ трогает содержимое скобок — только
@@ -139,7 +145,20 @@ public static class EpgNameNormalizer
     /// см. EpgSourceMerger.BuildNameIndex.
     /// </summary>
     internal static string NormalizeKeepQualifiers(string? name)
-        => NormalizeCore(name, keepQualifiers: true, keepTimeshift: false);
+        => NormalizeCached('q', name, true, false);
+
+    private static string NormalizeCached(char variant, string? name, bool keepQualifiers, bool keepTimeshift)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        return Cache.GetOrAdd(
+            string.Concat(variant, ':', name),
+            static (_, arg) => NormalizeCore(arg.Name, arg.KeepQualifiers, arg.KeepTimeshift),
+            (Variant: variant, Name: name, KeepQualifiers: keepQualifiers, KeepTimeshift: keepTimeshift));
+    }
 
     private static string NormalizeCore(string? name, bool keepQualifiers, bool keepTimeshift)
     {

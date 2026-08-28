@@ -19,6 +19,11 @@ public static class L
     private static ResourceManager? _manager;
     private static ResourceContext? _context;
 
+    // MRT-lookup относительно дорог, а T() зовётся и из тикающих таймеров
+    // (StatsOverlay ~15 вызовов/с) — язык фиксируется на старте, поэтому
+    // результат кэшируется навсегда.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Cache = new();
+
     public static string Lang { get; private set; } = "ru";
 
     public static bool IsRussian => Lang != "en";
@@ -49,17 +54,20 @@ public static class L
     /// <summary>Возвращает строку ключа на текущем языке (или сам ключ).</summary>
     public static string T(string key)
     {
-        try
+        return Cache.GetOrAdd(key, static k =>
         {
-            var manager = _manager ?? GetManager();
-            var context = _context ?? manager.CreateResourceContext();
-            var value = manager.MainResourceMap.GetValue("Resources/" + key, context)?.ValueAsString;
-            return string.IsNullOrEmpty(value) ? key : value;
-        }
-        catch
-        {
-            return key;
-        }
+            try
+            {
+                var manager = _manager ?? GetManager();
+                var context = _context ?? manager.CreateResourceContext();
+                var value = manager.MainResourceMap.GetValue("Resources/" + k, context)?.ValueAsString;
+                return string.IsNullOrEmpty(value) ? k : value;
+            }
+            catch
+            {
+                return k;
+            }
+        });
     }
 
     private static ResourceManager GetManager() => _manager ??= new ResourceManager();
