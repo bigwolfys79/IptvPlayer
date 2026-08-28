@@ -8,7 +8,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.12.1
+- **Version:** 1.12.2
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -25,6 +25,12 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ---
 
 ## Implemented
+
+### v1.12.2
+- **Localization moved to separate files** — all UI strings (421 entries, Russian + English) now live in `Strings/ru-RU/Resources.resw` and `Strings/en-US/Resources.resw`: texts can be edited in one place instead of hunting through the code. In code — `L.T("Key")`, in XAML — `x:Uid`; loaded via standard MRT Core (Windows App SDK). English translations added for all strings. Language changes apply after an app restart.
+- **Fixed EPG cache cleanup** — due to a key mismatch, every EPG load deleted all on-disk source caches and re-downloaded them from the network. The cache now correctly survives restarts within the configured refresh interval.
+- **Dead cache code removed** — CacheService/ICacheService (the old EPG JSON cache) and PlaylistCacheService (playlist JSON cache, long replaced by SQLite); orphaned `*.json` files in the cache folder are cleaned up on first launch.
+- **Fixed unit test runs** — the test host crashed on Windows App SDK auto-initialization; it is disabled for Debug builds, 64/64 tests green.
 
 ### v1.12.1 (follow-up)
 - **Fixed settings export/import buttons** — both failed silently (ArgumentException: WinRT pickers reject compound extensions like ".iptvplayer.json"); the export file format is now ".iptvplayer", and any failure before the file dialog opens is shown as a message instead of being swallowed.
