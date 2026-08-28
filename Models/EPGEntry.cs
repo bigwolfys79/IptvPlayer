@@ -159,11 +159,11 @@ public partial class EPGEntry : INotifyPropertyChanged
             }
             if (date == today.AddDays(-1))
             {
-                return L.T("Вчера", "Yesterday") + " " + StartTime.ToString("HH:mm");
+                return L.T("Vchera") + " " + StartTime.ToString("HH:mm");
             }
             if (date == today.AddDays(1))
             {
-                return L.T("Завтра", "Tomorrow") + " " + StartTime.ToString("HH:mm");
+                return L.T("Zavtra") + " " + StartTime.ToString("HH:mm");
             }
             return StartTime.ToString("dd.MM, HH:mm");
         }

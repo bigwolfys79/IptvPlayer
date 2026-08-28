@@ -18,10 +18,10 @@ namespace IptvPlayer.ViewModels;
 /// </summary>
 public partial class MainPageViewModel : ObservableObject
 {
-    private const string AllGroupsOption = "Все группы";
-    private const string AllGenresOption = "Все жанры";
-    private const string AllYearsOption = "Все годы";
-    private const string FavoritesOption = "★ Избранное";
+    private static string AllGroupsOption => L.T("Vse_Gruppy");
+    private static string AllGenresOption => L.T("Vse_Zhanry");
+    private static string AllYearsOption => L.T("Vse_Gody");
+    private static string FavoritesOption => L.T("Izbrannoe");
 
     private readonly ISettingsService _settingsService;
     private readonly IVideoPortalService _videoPortalService;
@@ -181,7 +181,7 @@ public partial class MainPageViewModel : ObservableObject
 
     public Visibility IsGenreFilterVisible => Genres.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
 
-    private string _selectedYear = "Все годы";
+    private string _selectedYear = "";
 
     public string SelectedYear
     {
@@ -207,7 +207,7 @@ public partial class MainPageViewModel : ObservableObject
 
     // ===================== Тип контента видео-портала =====================
 
-    private const string AllContentTypesOption = "Все типы";
+    private static string AllContentTypesOption => L.T("Vse_Tipy");
 
     private string _selectedContentType = AllContentTypesOption;
 
@@ -1090,9 +1090,7 @@ public partial class MainPageViewModel : ObservableObject
 
     public void UpdateChannelCountText()
     {
-        ChannelCountText = L.T(
-            $"Каналов: {Channels.Count}",
-            $"Channels: {Channels.Count}");
+        ChannelCountText = string.Format(L.T("Kanalov_0"), Channels.Count, Channels.Count);
     }
 
     // ===================== Избранные каналы =====================
@@ -1214,9 +1212,7 @@ public partial class MainPageViewModel : ObservableObject
         var channel = SelectedChannel;
         if (channel == null || string.IsNullOrWhiteSpace(channel.StreamUrl))
         {
-            ArchivePlayErrorRequested?.Invoke(this, L.T(
-                "У канала нет URL потока — архив недоступен.",
-                "Channel has no stream URL — archive unavailable."));
+            ArchivePlayErrorRequested?.Invoke(this, L.T("U_Kanala_Net_URL_Potoka_Arkhiv"));
             return;
         }
 
@@ -1227,9 +1223,7 @@ public partial class MainPageViewModel : ObservableObject
 
         if (entry.StartTime > DateTime.Now)
         {
-            ArchivePlayErrorRequested?.Invoke(this, L.T(
-                "Эта передача ещё не началась.",
-                "This programme has not started yet."));
+            ArchivePlayErrorRequested?.Invoke(this, L.T("Eta_Peredacha_Eshche_Ne_Nachalas"));
             return;
         }
 
@@ -1508,9 +1502,7 @@ public partial class MainPageViewModel : ObservableObject
                 durationSec: null, AppSettings.RecordingsFolder);
             if (started == null)
             {
-                RecordError = L.T(
-                    "Не удалось начать запись (ffmpeg недоступен или достигнут лимит одновременных записей) — см. лог.",
-                    "Could not start recording (ffmpeg missing or concurrent recording limit reached) — see log.");
+                RecordError = L.T("Ne_Udalos_Nachat_Zapis_Ffmpeg_Nedostupen");
             }
         }
 
@@ -1722,7 +1714,7 @@ public partial class MainPageViewModel : ObservableObject
             var playlist = AppSettings.Playlists.FirstOrDefault(p => p.Id == AppSettings.ActivePlaylistId);
             if (playlist == null)
             {
-                Player.StreamError = L.T("Источник портала не найден.", "Portal source not found.");
+                Player.StreamError = L.T("Istochnik_Portala_Ne_Nayden");
                 return false;
             }
 
@@ -1763,9 +1755,7 @@ public partial class MainPageViewModel : ObservableObject
                 }
 
                 _logger.LogError(ex, "Портал: не удалось получить поток для «{Item}».", channel.Name);
-                Player.StreamError = L.T(
-                    $"Портал не отдал поток: {ex.Message}",
-                    $"Portal did not return a stream: {ex.Message}");
+                Player.StreamError = string.Format(L.T("Portal_Ne_Otdal_Potok_0"), ex.Message, ex.Message);
                 return false;
             }
             finally

@@ -59,7 +59,7 @@ namespace IptvPlayer.Dialogs
             var dialog = new ContentDialog
             {
                 XamlRoot = xamlRoot,
-                Title = L.T("Настройки воспроизведения", "Playback settings"),
+                Title = L.T("Nastroyki_Vosproizvedeniya_Lbl"),
                 Content = this
             };
             _hostDialog = dialog;
@@ -70,53 +70,47 @@ namespace IptvPlayer.Dialogs
         {
             var settings = await _settingsService.LoadAsync();
 
-            TitleText.Text = L.T("Настройки воспроизведения", "Playback settings");
-            CancelButton.Content = L.T("Отмена", "Cancel");
-            SaveButton.Content = L.T("Сохранить", "Save");
+            TitleText.Text = L.T("Nastroyki_Vosproizvedeniya_Lbl");
+            CancelButton.Content = L.T("Otmena_Lbl");
+            SaveButton.Content = L.T("Sokhranit_Lbl");
 
             // Декодер: аппаратный (с откатом на процессор) или программный.
-            DecoderHeader.Text = L.T("Декодирование видео", "Video decoding");
-            DecoderHint.Text = L.T("Применится при следующем переключении канала.", "Applied on next channel switch.");
+            DecoderHeader.Text = L.T("Dekodirovanie_Video_Lbl");
+            DecoderHint.Text = L.T("Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala_Lbl");
             DecoderRadio.Items.Clear();
             var hwRadio = new RadioButton
             {
-                Content = L.T("Аппаратное (GPU, с откатом на процессор)", "Hardware (GPU, CPU fallback)"),
+                Content = L.T("Apparatnoe_GPU_S_Otkatom_Na_Protsessor"),
                 Tag = "Hardware"
             };
             var swRadio = new RadioButton
             {
-                Content = L.T("Программное (процессор)", "Software (CPU)"),
+                Content = L.T("Programmnoe_Protsessor"),
                 Tag = "Software"
             };
-            ToolTipService.SetToolTip(hwRadio, "Декодирование видеокартой; при проблемах с потоком автоматически переключается на процессор");
-            ToolTipService.SetToolTip(swRadio, "Гарантированно плавно при запасе CPU; занимает несколько процентов процессора");
+            ToolTipService.SetToolTip(hwRadio, L.T("Tip_HardwareDecoder"));
+            ToolTipService.SetToolTip(swRadio, L.T("Tip_SoftwareDecoder"));
             DecoderRadio.Items.Add(hwRadio);
             DecoderRadio.Items.Add(swRadio);
             DecoderRadio.SelectedIndex =
                 string.Equals(settings.DecoderMode, "Hardware", StringComparison.OrdinalIgnoreCase) ? 0 : 1;
 
             // Буфер видео.
-            BufferHeader.Text = L.T("Буфер ТВ-каналов (прямой эфир)", "Live TV buffer");
-            BufferHint.Text = L.T(
-                "Глубина буфера для ТВ-каналов прямого эфира. Больше — плавнее на нестабильной сети, но дальше от живого эфира. Применится при следующем переключении канала.",
-                "Buffer depth for live TV channels. Higher — smoother on unstable networks, but further behind the live edge. Applied on next channel switch.");
+            BufferHeader.Text = L.T("Bufer_TV_Kanalov_Pryamoy_Efir");
+            BufferHint.Text = L.T("Glubina_Bufera_Dlya_TV_Kanalov_Pryamogo");
             BufferSlider.Value = Math.Clamp(settings.ReadAheadSeconds, 5, 60);
-            VodBufferHeader.Text = L.T("Буфер видеотеки (фильмы портала)", "Video library buffer (portal movies)");
-            VodBufferHint.Text = L.T(
-                "Тот же буфер, но для фильмов и сериалов видеотеки. Меньше — быстрее начинается фильм, больше — меньше пауз при просмотре. Применится при следующем запуске фильма.",
-                "Same buffer, but for video library movies and series. Lower — movies start faster, higher — fewer pauses during playback. Applied on next movie start.");
+            VodBufferHeader.Text = L.T("Bufer_Videoteki_Filmy_Portala");
+            VodBufferHint.Text = L.T("Tot_Zhe_Bufer_No_Dlya_Filmov");
             VodBufferSlider.Value = Math.Clamp(settings.VodReadAheadSeconds, 2, 15);
             UpdateBufferLabel();
 
             // Качество видео.
-            QualityHeader.Text = L.T("Качество видео", "Video quality");
-            QualityHint.Text = L.T(
-                "Максимальное качество потока или ограничение разрешения. Применится при следующем переключении канала.",
-                "Maximum stream quality or resolution limit. Applies on next channel switch.");
+            QualityHeader.Text = L.T("Kachestvo_Video_Lbl");
+            QualityHint.Text = L.T("Maksimalnoe_Kachestvo_Potoka_Ili_Ogranichenie_Razresheniya_Lbl");
             QualityCombo.Items.Clear();
             foreach (var (label, height) in new[]
                      {
-                         (L.T("Авто (максимальное)", "Auto (maximum)"), 0),
+                         (L.T("Avto_Maksimalnoe"), 0),
                          ("480p", 480),
                          ("720p HD", 720),
                          ("1080p Full HD", 1080),
@@ -137,24 +131,22 @@ namespace IptvPlayer.Dialogs
             // Нормализация громкости: часть каналов кодируется в разы тише
             // остальных, а слайдер громкости ограничен 100% — тихие каналы
             // вытягиваются FFmpeg-фильтром до общей громкости.
-            AudioHeader.Text = L.T("Звук", "Audio");
-            AudioNormHeader.Text = L.T("Нормализация громкости", "Volume normalization");
-            AudioNormHint.Text = L.T(
-                "Подтягивает тихие каналы к общему уровню. Применяется к играющему каналу сразу.",
-                "Raises quiet channels to a common level. Applies to the playing channel immediately.");
-            var normOff = new RadioButton { Content = L.T("Выключена", "Off"), Tag = "Off" };
+            AudioHeader.Text = L.T("Zvuk_Lbl");
+            AudioNormHeader.Text = L.T("Normalizatsiya_Gromkosti_Lbl");
+            AudioNormHint.Text = L.T("Podtyagivaet_Tikhie_Kanaly_K_Obshchemu_Urovnyu_Lbl");
+            var normOff = new RadioButton { Content = L.T("Vyklyuchena"), Tag = "Off" };
             var normDynamic = new RadioButton
             {
-                Content = L.T("Динамическая (усиливает тихие каналы)", "Dynamic (boosts quiet channels)"),
+                Content = L.T("Dinamicheskaya_Usilivaet_Tikhie_Kanaly"),
                 Tag = "Dynamic"
             };
             var normLoudness = new RadioButton
             {
-                Content = L.T("Постоянная громкость (EBU R128)", "Uniform loudness (EBU R128)"),
+                Content = L.T("Postoyannaya_Gromkost_EBU_R128"),
                 Tag = "Loudness"
             };
-            ToolTipService.SetToolTip(normDynamic, "Фильтр dynaudnorm: плавно поднимает тихий звук без искажений; громкие каналы почти не меняются");
-            ToolTipService.SetToolTip(normLoudness, "Фильтр loudnorm: все каналы к единому уровню −16 LUFS (громкие станут тише); добавляет ~3 с задержки от эфира");
+            ToolTipService.SetToolTip(normDynamic, L.T("Tip_Dynaudnorm"));
+            ToolTipService.SetToolTip(normLoudness, L.T("Tip_Loudnorm"));
             AudioNormRadio.Items.Clear();
             AudioNormRadio.Items.Add(normOff);
             AudioNormRadio.Items.Add(normDynamic);
@@ -174,12 +166,8 @@ namespace IptvPlayer.Dialogs
 
         private void UpdateBufferLabel()
         {
-            BufferValueText.Text = L.T(
-                $"ТВ: буфер {BufferSlider.Value:F0} c (задержка от эфира ~{BufferSlider.Value:F0} c)",
-                $"Live TV: buffer {BufferSlider.Value:F0} s (live delay ~{BufferSlider.Value:F0} s)");
-            VodBufferValueText.Text = L.T(
-                $"Видеотека: буфер {VodBufferSlider.Value:F0} c",
-                $"Video library: buffer {VodBufferSlider.Value:F0} s");
+            BufferValueText.Text = string.Format(L.T("TV_Bufer_0_C_Zaderzhka_Ot"), $"{BufferSlider.Value:F0}", $"{BufferSlider.Value:F0}", $"{BufferSlider.Value:F0}", $"{BufferSlider.Value:F0}");
+            VodBufferValueText.Text = string.Format(L.T("Videoteka_Bufer_0_C"), $"{VodBufferSlider.Value:F0}", $"{VodBufferSlider.Value:F0}");
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)

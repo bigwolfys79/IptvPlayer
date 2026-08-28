@@ -160,8 +160,8 @@ public sealed class TrayIconService : IDisposable
     {
         // Нативное popup-меню в координатах курсора; commands 100/101.
         _hmenu = CreatePopupMenu();
-        AppendMenu(_hmenu, 0, 100, "Показать");
-        AppendMenu(_hmenu, 0, 101, "Выход");
+        AppendMenu(_hmenu, 0, 100, L.T("Pokazat"));
+        AppendMenu(_hmenu, 0, 101, L.T("Vykhod"));
 
         GetCursorPos(out var pt);
         SetForegroundWindow(_window);

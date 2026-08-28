@@ -28,7 +28,7 @@
         <!-- Сезон — соседние карточки каталога («Название. Сезон N»); серия —
              список выбранного сезона (подгружается flick'ом при смене). -->
         <StackPanel x:Name="SeasonPanel" Orientation="Horizontal" Spacing="8">
-            <TextBlock x:Name="SeasonLabel" Text="Сезон:" FontSize="13" VerticalAlignment="Center"/>
+            <TextBlock x:Name="SeasonLabel" x:Uid="Sezon" FontSize="13" VerticalAlignment="Center"/>
             <ComboBox x:Name="SeasonCombo" MinWidth="160" SelectionChanged="SeasonCombo_SelectionChanged"/>
             <ProgressRing x:Name="SeasonLoading" Width="20" Height="20" Visibility="Collapsed"/>
         </StackPanel>
@@ -53,8 +53,8 @@
         </ListView>
 
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
-            <Button x:Name="CancelButton" Content="Отмена" Width="110" Height="34" Click="CancelButton_Click"/>
-            <Button x:Name="PlayFirstButton" Content="Смотреть с первой"
+            <Button x:Name="CancelButton" x:Uid="Otmena" Width="110" Height="34" Click="CancelButton_Click"/>
+            <Button x:Name="PlayFirstButton" x:Uid="Smotret_S_Pervoy"
                     Width="170" Height="34" Style="{ThemeResource AccentButtonStyle}"
                     Click="PlayFirstButton_Click"/>
         </StackPanel>

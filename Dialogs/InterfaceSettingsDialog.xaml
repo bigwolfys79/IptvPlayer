@@ -10,16 +10,16 @@
          тема и действие таймера сна. Комбобоксы и радиогруппы наполняются
          в code-behind (LoadAsync) с Tag-значениями. -->
     <StackPanel Spacing="12" Width="480">
-        <TextBlock x:Name="TitleText" Text="Настройки интерфейса" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock x:Name="TitleText" x:Uid="Nastroyki_Interfeysa" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="16">
 
                 <!-- Язык -->
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="LanguageHeader" Text="Язык интерфейса" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="LanguageHeader" x:Uid="YAzyk_Interfeysa" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="LanguageHint"
-                               Text="Основные тексты интерфейса переводятся на лету."
+                               x:Uid="Osnovnye_Teksty_Interfeysa_Perevodyatsya_Na_Letu"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
@@ -28,9 +28,9 @@
 
                 <!-- Тема -->
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="ThemeHeader" Text="Тема интерфейса" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="ThemeHeader" x:Uid="Tema_Interfeysa" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="ThemeHint"
-                               Text="Применяется сразу после сохранения, без перезапуска."
+                               x:Uid="Primenyaetsya_Srazu_Posle_Sokhraneniya_Bez_Perezapuska"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
@@ -39,9 +39,9 @@
 
                 <!-- Таймер сна -->
                 <StackPanel Spacing="8">
-                    <TextBlock x:Name="SleepTimerHeader" Text="Таймер сна: по истечении" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="SleepTimerHeader" x:Uid="Taymer_Sna_Po_Istechenii" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="SleepTimerHint"
-                               Text="Применяется к уже взведённому таймеру, действие видно при его установке."
+                               x:Uid="Primenyaetsya_K_Uzhe_Vzvedennomu_Taymeru_Deystvie"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
@@ -78,11 +78,11 @@
         <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CancelButton"
-                    Content="Отмена"
+                    x:Uid="Otmena"
                     Width="100" Height="36"
                     Click="CancelButton_Click"/>
             <Button x:Name="SaveButton"
-                    Content="Сохранить"
+                    x:Uid="Sokhranit"
                     Width="100" Height="36"
                     Style="{ThemeResource AccentButtonStyle}"
                     Click="SaveButton_Click"/>

@@ -23,17 +23,17 @@ public partial class DateConverter : IValueConverter
 
         if (date.Date == DateTime.Today)
         {
-            return "Сегодня";
+            return Services.L.T("Segodnya");
         }
 
         if (date.Date == DateTime.Today.AddDays(1))
         {
-            return "Завтра";
+            return Services.L.T("Zavtra");
         }
 
         if (date.Date == DateTime.Today.AddDays(-1))
         {
-            return "Вчера";
+            return Services.L.T("Vchera");
         }
 
         return date.ToString("d MMMM, dddd", culture);

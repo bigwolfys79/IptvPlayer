@@ -9,9 +9,18 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
+public interface IPlaylistCacheService
+{
+    Task<PlaylistCache?> LoadAsync(int playlistId);
+    Task SaveAsync(int playlistId, PlaylistCache cache);
+
+    /// <summary>Удаляет кэш плейлиста — при удалении плейлиста из настроек.</summary>
+    Task DeleteAsync(int playlistId);
+}
+
 /// <summary>
 /// Хранит кэш разобранного плейлиста в SQLite (iptvplayer_cache.db).
-/// Заменяет JSON-хранилище (PlaylistCacheService) для производительности:
+/// Заменяет прежнее JSON-хранилище для производительности:
 /// пакетная вставка, SQL-фильтры, нет десериализации всего файла при запуске.
 /// </summary>
 public class PlaylistDatabaseService : IPlaylistCacheService

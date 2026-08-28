@@ -370,7 +370,7 @@ public partial class PlayerViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(channel.StreamUrl))
         {
-            StreamError = L.T("У канала не указан URL потока.", "Channel has no stream URL.");
+            StreamError = L.T("U_Kanala_Ne_Ukazan_URL_Potoka");
             return;
         }
 
@@ -501,7 +501,7 @@ public partial class PlayerViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "StartPlaybackAsync: канал {ChannelId}, url {Url}.", channel.Id, streamUrl);
-            StreamError = L.T($"Не удалось воспроизвести поток: {ex.Message}", $"Cannot play stream: {ex.Message}");
+            StreamError = string.Format(L.T("Ne_Udalos_Vosproizvesti_Potok_0"), ex.Message, ex.Message);
             channel.IsPlaying = false;
         }
         finally
@@ -808,7 +808,7 @@ public partial class PlayerViewModel : ObservableObject
             args.Error, args.ExtendedErrorCode,
             string.IsNullOrEmpty(args.ErrorMessage) ? string.Empty : $", {args.ErrorMessage}");
 
-        StreamError = L.T("Ошибка воспроизведения: ", "Playback error: ") + args.ErrorMessage;
+        StreamError = L.T("Oshibka_Vosproizvedeniya") + args.ErrorMessage;
         IsBuffering = false;
         ResetArchiveState();
     }

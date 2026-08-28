@@ -11,7 +11,7 @@ namespace IptvPlayer.Services;
 
 /// <summary>
 /// Простое JSON-хранилище настроек в %LocalAppData%\IptvPlayer — тот же
-/// каталог, где живут кэши (см. CacheService/PlaylistCacheService), поэтому
+/// каталог, где живут кэши (см. EpgCacheStore/PlaylistDatabaseService), поэтому
 /// в MSIX-режиме (Debug) путь так же виртуализуется, как у них.
 ///
 /// Раньше использовался Windows.Storage.ApplicationData.Current.LocalFolder,
@@ -35,6 +35,7 @@ public class SettingsService : ISettingsService
     };
 
     private readonly ILogger<SettingsService> _logger;
+    private AppSettings? _cached;
 
     public SettingsService(ILogger<SettingsService> logger)
     {
@@ -45,22 +46,28 @@ public class SettingsService : ISettingsService
     {
         try
         {
+            if (_cached != null)
+            {
+                return Task.FromResult(_cached);
+            }
+
             if (!File.Exists(SettingsPath))
             {
-                return Task.FromResult(new AppSettings());
+                _cached = new AppSettings();
+                return Task.FromResult(_cached);
             }
 
             var json = File.ReadAllText(SettingsPath);
             var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             UnprotectSecrets(settings);
+            _cached = settings;
             return Task.FromResult(settings);
         }
         catch (Exception ex)
         {
-            // Повреждённый или недоступный файл настроек не должен ронять
-            // приложение — откатываемся на настройки по умолчанию.
             _logger.LogWarning(ex, "Не удалось загрузить настройки — используются значения по умолчанию.");
-            return Task.FromResult(new AppSettings());
+            _cached = new AppSettings();
+            return Task.FromResult(_cached);
         }
     }
 
@@ -71,6 +78,7 @@ public class SettingsService : ISettingsService
             Directory.CreateDirectory(SettingsDir);
             var toSave = ProtectSecrets(settings);
             File.WriteAllText(SettingsPath, JsonSerializer.Serialize(toSave, JsonOptions));
+            _cached = null; // Инвалидация кэша при сохранении
             return Task.CompletedTask;
         }
         catch (Exception ex)

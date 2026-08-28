@@ -46,9 +46,9 @@ public sealed partial class ParentalControlDialog : UserControl
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
-            Title = L.T("Родительский контроль", "Parental control"),
+            Title = L.T("Roditelskiy_Kontrol_Lbl"),
             Content = this,
-            CloseButtonText = L.T("Закрыть", "Close")
+            CloseButtonText = L.T("Zakryt")
         };
         _hostDialog = dialog;
         await dialog.ShowAsync();
@@ -64,48 +64,37 @@ public sealed partial class ParentalControlDialog : UserControl
             var locked = ParentalControlService.IsLocked(Settings);
 
             var blockedCount = Settings.ParentalControlBlockedGroups.Count;
+            var pinNote = locked ? L.T("Parental_StatusLockedNote") : L.T("Parental_StatusUnlockedNote");
             StatusText.Text = Settings.ParentalControlEnabled
-                ? L.T(
-                    $"Включён. Групп под PIN: {blockedCount}. " + (locked ? "Запуск их каналов требует PIN." : "Сейчас разрешено без PIN."),
-                    $"Enabled. Groups behind PIN: {blockedCount}. " + (locked ? "Starting their channels requires the PIN." : "Currently allowed without PIN."))
-                : L.T("Выключен.", "Disabled.");
+                ? string.Format(L.T("Parental_StatusOn"), blockedCount) + " " + pinNote
+                : L.T("Vyklyuchen");
 
             // Заблокировано → только секция разблокировки с PIN.
             var needUnlock = Settings.ParentalControlEnabled && locked;
             UnlockPanel.Visibility = needUnlock ? Visibility.Visible : Visibility.Collapsed;
             EditPanel.Visibility = needUnlock ? Visibility.Collapsed : Visibility.Visible;
 
-            UnlockHint.Text = L.T(
-                "Введите PIN и выберите, на сколько отключить его запрос при запуске каналов.",
-                "Enter the PIN and choose how long to stop asking for it when starting channels.");
-            UnlockForeverButton.Content = L.T("До выключения", "Until off");
+            UnlockHint.Text = L.T("Vvedite_PIN_I_Vyberite_Na_Skolko");
+            UnlockForeverButton.Content = L.T("Do_Vyklyucheniya");
 
             EnabledToggle.IsOn = Settings.ParentalControlEnabled;
-            EnabledToggle.Header = L.T("Скрывать каналы выбранных групп", "Hide channels of selected groups");
-            EnabledToggle.OnContent = L.T("Вкл", "On");
-            EnabledToggle.OffContent = L.T("Выкл", "Off");
-            EnabledHint.Text = L.T(
-                "Каналы остаются в списке, но запуск каналов отмеченных групп требует PIN. Галочки «взрослых» групп (18+, xxx и т.п.) ставятся автоматически; список можно изменить вручную.",
-                "Channels stay in the list, but starting channels of the checked groups requires the PIN. \"Adult\" groups (18+, xxx, etc.) are checked automatically; the list can be edited manually.");
+            EnabledToggle.Header = L.T("Skryvat_Kanaly_Vybrannykh_Grupp");
+            EnabledToggle.OnContent = L.T("Vkl");
+            EnabledToggle.OffContent = L.T("Vykl");
+            EnabledHint.Text = L.T("Kanaly_Ostayutsya_V_Spiske_No_Zapusk");
 
-            GroupsHeader.Text = L.T("Скрываемые группы", "Groups to hide");
-            GroupsHint.Text = L.T(
-                "Запуск каналов отмеченных групп запрашивает PIN, пока контроль включён и не разблокирован временно.",
-                "Starting channels of the checked groups asks for the PIN while control is enabled and not temporarily unlocked.");
+            GroupsHeader.Text = L.T("Skryvaemye_Gruppy");
+            GroupsHint.Text = L.T("Zapusk_Kanalov_Otmechennykh_Grupp_Zaprashivaet_PIN");
             BuildGroupsList();
 
-            PinHeader.Text = L.T("PIN-код", "PIN code");
-            PinHint.Text = L.T(
-                string.IsNullOrEmpty(Settings.ParentalControlPinHash)
-                    ? "Без PIN отключить контроль и разблокировать группы сможет кто угодно в настройках."
-                    : "PIN требуется для разблокировки и отключения. Дети не смогут снять скрытие без него.",
-                string.IsNullOrEmpty(Settings.ParentalControlPinHash)
-                    ? "Without a PIN, anyone can disable the control in settings."
-                    : "The PIN is required to unlock or disable. Children cannot remove hiding without it.");
-            NewPinBox.PlaceholderText = L.T("Новый PIN (4+ цифры)", "New PIN (4+ digits)");
-            SetPinButton.Content = L.T("Установить", "Set");
-            RemovePinButton.Content = L.T("Убрать PIN", "Remove PIN");
-            LockNowButton.Content = L.T("Запрашивать PIN сейчас", "Ask for PIN now");
+            PinHeader.Text = L.T("PIN_Kod");
+            PinHint.Text = string.IsNullOrEmpty(Settings.ParentalControlPinHash)
+                ? L.T("Parental_PinHintNoPin")
+                : L.T("Parental_PinHintHasPin");
+            NewPinBox.PlaceholderText = L.T("Novyy_PIN_4_Tsifry");
+            SetPinButton.Content = L.T("Ustanovit");
+            RemovePinButton.Content = L.T("Ubrat_PIN");
+            LockNowButton.Content = L.T("Zaprashivat_PIN_Seychas");
         }
         finally
         {
@@ -151,7 +140,7 @@ public sealed partial class ParentalControlDialog : UserControl
         {
             GroupsList.Children.Add(new TextBlock
             {
-                Text = L.T("В плейлисте нет групп.", "The playlist has no groups."),
+                Text = L.T("V_Pleyliste_Net_Grupp"),
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
@@ -215,7 +204,7 @@ public sealed partial class ParentalControlDialog : UserControl
     {
         if (!ParentalControlService.VerifyPin(Settings, PinBox.Password))
         {
-            StatusText.Text = L.T("Неверный PIN.", "Wrong PIN.");
+            StatusText.Text = L.T("Nevernyy_PIN");
             return;
         }
 
@@ -237,7 +226,7 @@ public sealed partial class ParentalControlDialog : UserControl
         var pin = NewPinBox.Password;
         if (pin.Length < 4)
         {
-            StatusText.Text = L.T("PIN должен быть не короче 4 символов.", "The PIN must be at least 4 characters.");
+            StatusText.Text = L.T("PIN_Dolzhen_Byt_Ne_Koroche_4");
             return;
         }
 
@@ -246,7 +235,7 @@ public sealed partial class ParentalControlDialog : UserControl
         if (!string.IsNullOrEmpty(Settings.ParentalControlPinHash) &&
             !ParentalControlService.VerifyPin(Settings, PinBox.Password))
         {
-            StatusText.Text = L.T("Введите СТАРЫЙ PIN в верхнем поле перед сменой.", "Enter the OLD PIN in the field above before changing.");
+            StatusText.Text = L.T("Vvedite_STARYY_PIN_V_Verkhnem_Pole");
             return;
         }
 
@@ -254,7 +243,7 @@ public sealed partial class ParentalControlDialog : UserControl
         NewPinBox.Password = string.Empty;
         await _settingsService.SaveAsync(Settings);
         _logger.LogInformation("PIN родительского контроля изменён.");
-        StatusText.Text = L.T("PIN установлен.", "PIN set.");
+        StatusText.Text = L.T("PIN_Ustanovlen");
         LoadSection();
     }
 
@@ -263,14 +252,14 @@ public sealed partial class ParentalControlDialog : UserControl
         if (!string.IsNullOrEmpty(Settings.ParentalControlPinHash) &&
             !ParentalControlService.VerifyPin(Settings, PinBox.Password))
         {
-            StatusText.Text = L.T("Неверный PIN.", "Wrong PIN.");
+            StatusText.Text = L.T("Nevernyy_PIN");
             return;
         }
 
         Settings.ParentalControlPinHash = null;
         PinBox.Password = string.Empty;
         await _settingsService.SaveAsync(Settings);
-        StatusText.Text = L.T("PIN убран — отключить контроль можно будет без пароля.", "PIN removed — the control can now be disabled without a password.");
+        StatusText.Text = L.T("PIN_Ubran_Otklyuchit_Kontrol_Mozhno_Budet");
         LoadSection();
     }
 }

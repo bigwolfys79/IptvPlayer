@@ -269,7 +269,7 @@ public sealed partial class MainPage
         ChannelNumberName.Text =
             int.TryParse(_channelNumberInput, out var n) && n >= 1 && n <= channels.Count
                 ? channels[n - 1].Name
-                : L.T($"из {channels.Count}", $"of {channels.Count}");
+                : string.Format(L.T("Iz_0"), channels.Count, channels.Count);
 
         ChannelNumberOverlay.Visibility = Visibility.Visible;
     }

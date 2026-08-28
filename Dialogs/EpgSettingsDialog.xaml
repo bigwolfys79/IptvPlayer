@@ -10,14 +10,14 @@
          XMLTV, напоминания и периодичность обновления. Комбобоксы
          наполняются в code-behind (LoadAsync) — элементы с Tag-значениями. -->
     <StackPanel Spacing="12" Width="480">
-        <TextBlock x:Name="TitleText" Text="Настройки EPG" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock x:Name="TitleText" x:Uid="Nastroyki_EPG" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="12">
 
-                <TextBlock x:Name="EpgSourcesHeader" Text="Источники EPG" FontSize="14" FontWeight="SemiBold"/>
+                <TextBlock x:Name="EpgSourcesHeader" x:Uid="Istochniki_EPG" FontSize="14" FontWeight="SemiBold"/>
                 <TextBlock x:Name="EpgSourcesHint"
-                           Text="URL-адреса источников EPG (XMLTV). Изменённый список перекачивается сразу после сохранения."
+                           x:Uid="URL_Adresa_Istochnikov_EPG_XMLTV_Izmenennyy"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextWrapping="Wrap"/>
@@ -29,23 +29,23 @@
                              Width="290"
                              PlaceholderText="URL XMLTV"/>
                     <Button x:Name="AddEpgSourceButton"
-                            Content="Добавить"
+                            x:Uid="Dobavit"
                             Height="32"
                             Padding="12,0"
                             Click="AddEpgSourceButton_Click"/>
                 </StackPanel>
 
-                <TextBlock x:Name="RemindersHeader" Text="Напоминания EPG" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="RemindersHeader" x:Uid="Napominaniya_EPG" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
                 <TextBlock x:Name="RemindersHint"
-                           Text="За сколько минут до начала передачи показывать тост-напоминание."
+                           x:Uid="Za_Skolko_Minut_Do_Nachala_Peredachi"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextWrapping="Wrap"/>
                 <ComboBox x:Name="ReminderMinutesCombo" HorizontalAlignment="Stretch"/>
 
-                <TextBlock x:Name="EpgRefreshHeader" Text="EPG (программа передач)" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="EpgRefreshHeader" x:Uid="EPG_Programma_Peredach" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
                 <TextBlock x:Name="EpgRefreshHint"
-                           Text="Как часто при запуске перекачивать XMLTV-источники."
+                           x:Uid="Kak_Chasto_Pri_Zapuske_Perekachivat_XMLTV"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextWrapping="Wrap"/>
@@ -56,11 +56,11 @@
         <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CancelButton"
-                    Content="Отмена"
+                    x:Uid="Otmena"
                     Width="100" Height="36"
                     Click="CancelButton_Click"/>
             <Button x:Name="SaveButton"
-                    Content="Сохранить"
+                    x:Uid="Sokhranit"
                     Width="100" Height="36"
                     Style="{ThemeResource AccentButtonStyle}"
                     Click="SaveButton_Click"/>

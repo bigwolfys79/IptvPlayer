@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>IptvPlayer</RootNamespace>
-    <Version>1.12.1</Version>
+    <Version>1.12.2</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
@@ -29,6 +29,16 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <EnableMsixTooling>false</EnableMsixTooling>
+  </PropertyGroup>
+
+  <!-- Debug всегда запускается упакованным (MSIX): автоинициализация
+       WinAppSDK (bootstrap-деплой) там не нужна — она генерирует <Module>-
+       инициализатор сборки, который валит тестовый хост (IptvPlayer.Tests
+       грузит сборку без рантайма WinAppSDK: COMException REGDB_E_CLASSNOTREG
+       на DeploymentManager.AutoInitialize). Release (unpackaged) не трогаем —
+       там автоинициализация обязательна. -->
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
+    <WindowsAppSdkAutoInitialize>false</WindowsAppSdkAutoInitialize>
   </PropertyGroup>
 
   <ItemGroup>

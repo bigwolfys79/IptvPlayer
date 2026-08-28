@@ -36,9 +36,9 @@ public sealed partial class RecordingSettingsDialog : UserControl
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
-            Title = L.T("Записи", "Recordings"),
+            Title = L.T("Zapisi_Lbl"),
             Content = this,
-            CloseButtonText = L.T("Закрыть", "Close")
+            CloseButtonText = L.T("Zakryt")
         };
         _hostDialog = dialog;
         LoadSection();
@@ -59,7 +59,7 @@ public sealed partial class RecordingSettingsDialog : UserControl
 
     private void LoadSection()
     {
-        ActiveHeader.Text = L.T("Идут сейчас", "Recording now");
+        ActiveHeader.Text = L.T("Idut_Seychas");
         ActiveList.Children.Clear();
         foreach (var rec in _viewModel.Recording.Active)
         {
@@ -67,13 +67,11 @@ public sealed partial class RecordingSettingsDialog : UserControl
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             row.Children.Add(new TextBlock
             {
-                Text = L.T(
-                    $"● {rec.ChannelName} — с {rec.StartedAt:HH:mm}",
-                    $"● {rec.ChannelName} — since {rec.StartedAt:HH:mm}"),
+                Text = string.Format(L.T("0_S_1"), rec.ChannelName, $"{rec.StartedAt:HH:mm}", rec.ChannelName, $"{rec.StartedAt:HH:mm}"),
                 VerticalAlignment = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap
             });
-            var stop = new Button { Content = L.T("Стоп", "Stop"), Height = 32 };
+            var stop = new Button { Content = L.T("Stop"), Height = 32 };
             stop.Click += (s, e) => _viewModel.Recording.Stop(id);
             row.Children.Add(stop);
             ActiveList.Children.Add(row);
@@ -82,13 +80,13 @@ public sealed partial class RecordingSettingsDialog : UserControl
         {
             ActiveList.Children.Add(new TextBlock
             {
-                Text = L.T("Нет активных записей.", "No active recordings."),
+                Text = L.T("Net_Aktivnykh_Zapisey"),
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
         }
 
-        ScheduledHeader.Text = L.T("Запланированные", "Scheduled");
+        ScheduledHeader.Text = L.T("Zaplanirovannye");
         ScheduledList.Children.Clear();
         foreach (var rec in _viewModel.AppSettings.ScheduledRecordings.OrderBy(r => r.StartTime).Take(15))
         {
@@ -96,13 +94,11 @@ public sealed partial class RecordingSettingsDialog : UserControl
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             row.Children.Add(new TextBlock
             {
-                Text = L.T(
-                    $"{rec.ChannelName} — {rec.ProgramName}, {rec.StartTime:HH:mm}",
-                    $"{rec.ChannelName} — {rec.ProgramName}, {rec.StartTime:HH:mm}"),
+                Text = string.Format(L.T("0_1_2"), rec.ChannelName, rec.ProgramName, $"{rec.StartTime:HH:mm}", rec.ChannelName, rec.ProgramName, $"{rec.StartTime:HH:mm}"),
                 VerticalAlignment = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap
             });
-            var remove = new Button { Content = L.T("Убрать", "Remove"), Height = 32 };
+            var remove = new Button { Content = L.T("Ubrat"), Height = 32 };
             remove.Click += (s, e) =>
             {
                 _viewModel.RemoveScheduledRecordingCommand.Execute(scheduled);
@@ -115,20 +111,18 @@ public sealed partial class RecordingSettingsDialog : UserControl
         {
             ScheduledList.Children.Add(new TextBlock
             {
-                Text = L.T("Нет запланированных записей.", "No scheduled recordings."),
+                Text = L.T("Net_Zaplanirovannykh_Zapisey"),
                 FontSize = 12,
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
         }
 
-        FolderHeader.Text = L.T("Папка записей", "Recordings folder");
-        FolderHint.Text = L.T(
-            "Куда ffmpeg сохраняет записи (.ts). Пусто — «Видео\\IptvPlayer». Корень диска выбирается вводом пути вручную, например F:\\ — системный диалог выбора папки корень диска не отдаёт.",
-            "Where ffmpeg saves recordings (.ts). Empty = \"Videos\\IptvPlayer\". A drive root can be typed in manually, e.g. F:\\ — the system folder picker does not allow selecting a drive root.");
+        FolderHeader.Text = L.T("Papka_Zapisey");
+        FolderHint.Text = L.T("Kuda_Ffmpeg_Sokhranyaet_Zapisi_Ts_Pusto");
         FolderBox.PlaceholderText = RecordingService.DefaultFolder;
-        BrowseButton.Content = L.T("Обзор...", "Browse...");
-        OpenFolderButton.Content = L.T("Открыть папку", "Open folder");
-        SaveButton.Content = L.T("Сохранить", "Save");
+        BrowseButton.Content = L.T("Obzor");
+        OpenFolderButton.Content = L.T("Otkryt_Papku");
+        SaveButton.Content = L.T("Sokhranit_Lbl");
     }
 
     /// <summary>FolderPicker требует HWND-владельца (InitializeWithWindow).</summary>
@@ -180,9 +174,7 @@ public sealed partial class RecordingSettingsDialog : UserControl
             catch (Exception ex)
             {
                 Serilog.Log.Warning(ex, "Не удалось создать папку записей {Folder}.", folder);
-                FolderHint.Text = L.T(
-                    $"Не удалось создать папку «{folder}» — проверьте путь и права.",
-                    $"Could not create \"{folder}\" — check the path and permissions.");
+                FolderHint.Text = string.Format(L.T("Ne_Udalos_Sozdat_Papku_0_Proverte"), folder, folder);
                 return;
             }
         }

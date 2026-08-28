@@ -256,12 +256,11 @@ public partial class ChannelViewModel : ObservableObject
     public bool HasArchive => CatchupDays > 0;
 
     /// <summary>Подсказка точки-индикатора архива в списке каналов.</summary>
-    public string ArchiveToolTip => Services.L.IsRussian
-        ? $"Есть архив передач ({CatchupDays} дн.) — можно смотреть с начала"
-        : $"Archive available ({CatchupDays} d) — watch from the start";
+    public string ArchiveToolTip => string.Format(
+        Services.L.T("Tip_ArchiveAvailable"), CatchupDays);
 
     /// <summary>Подсказка звёздочки в списке каналов.</summary>
-    public string FavoriteToolTip => Services.L.IsRussian
-        ? (IsFavorite ? "Убрать из избранного" : "Добавить в избранное")
-        : (IsFavorite ? "Remove from favorites" : "Add to favorites");
+    public string FavoriteToolTip => IsFavorite
+        ? Services.L.T("Ubrat_Iz_Izbrannogo")
+        : Services.L.T("Dobavit_V_Izbrannoe");
 }

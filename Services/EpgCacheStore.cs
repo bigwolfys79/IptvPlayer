@@ -12,10 +12,10 @@ namespace IptvPlayer.Services;
 /// <summary>
 /// Быстрый дисковый кэш распарсенного XMLTV: MemoryPack (бинарная
 /// сериализация кодогенерацией, без рефлексии) + Brotli (встроен в .NET,
-/// отдельных нативных dll нет). Пришёл на смену JSON-кэшу CacheService:
+/// отдельных нативных dll нет). Пришёл на смену прежнему JSON-кэшу:
 /// 400k+ программ читаются за доли секунды вместо секунд, файл на диске
-/// в разы меньше. Файлы лежат в том же каталоге %LocalAppData%\IptvPlayer\cache,
-/// поэтому CacheService.Clear() (кнопка "Обновить EPG") удаляет и их тоже.
+/// в разы меньше. Файлы лежат в %LocalAppData%\IptvPlayer\cache,
+/// ClearAll() (кнопка "Обновить EPG") удаляет их все.
 /// Вся работа с диском — из пула потоков: UI-поток не блокируется.
 /// </summary>
 public static class EpgCacheStore
@@ -33,7 +33,7 @@ public static class EpgCacheStore
         catch (Exception ex)
         {
             // Нет прав/диска — останемся без дискового кэша, это не должно
-            // ронять приложение (см. такую же политику в CacheService).
+            // ронять приложение (та же политика, что и в других сервисах).
             Log.Warning(ex, "Не удалось создать папку кэша EPG {Dir}.", CacheDir);
         }
     }
@@ -41,8 +41,11 @@ public static class EpgCacheStore
     /// <summary>
     /// Удаляет кэш-файлы осиротевших источников: после правки списка EPG
     /// источников старые .mpck.br (десятки мегабайт каждый) иначе остаются
-    /// на диске навсегда. Вызывается раз при запуске после загрузки списка
-    /// источников; ключи — те же URL, что в ReadAsync/WriteAsync.
+    /// на диске навсегда. Вызывается при загрузке EPG; ключи — те же, что
+    /// в ReadAsync/WriteAsync (в XmlTvService это "xmltv:{url}").
+    /// Заодно подчищает легаси *.json — остатки старого JSON-кэша EPG
+    /// (CacheService), который больше не читается; других .json в этом
+    /// каталоге нет.
     /// </summary>
     public static void CleanupOrphans(IEnumerable<string> liveKeys)
     {
@@ -60,10 +63,44 @@ public static class EpgCacheStore
                     Log.Information("Удалён осиротевший кэш EPG {File}.", Path.GetFileName(file));
                 }
             }
+
+            foreach (var legacy in Directory.EnumerateFiles(CacheDir, "*.json"))
+            {
+                try
+                {
+                    File.Delete(legacy);
+                    Log.Information("Удалён устаревший JSON-кэш EPG {File}.", Path.GetFileName(legacy));
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "Не удалось удалить устаревший JSON-кэш {File}.", legacy);
+                }
+            }
         }
         catch (Exception ex)
         {
             Log.Debug(ex, "Очистка осиротевших кэшей EPG не удалась (не критично).");
+        }
+    }
+
+    /// <summary>
+    /// Удаляет все .mpck.br файлы — кнопка "Обновить EPG" должна заставить
+    /// источники перекачаться по сети, а не взять их с диска.
+    /// </summary>
+    public static void ClearAll()
+    {
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(CacheDir, "*.mpck.br"))
+            {
+                File.Delete(file);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Не критично: с "Обновить EPG" источники в любом случае
+            // перекачаются — TTL-проверка пройдёт мимо свежего файла.
+            Log.Debug(ex, "Очистка дискового кэша EPG не удалась (не критично).");
         }
     }
 
@@ -105,7 +142,7 @@ public static class EpgCacheStore
             catch (Exception ex)
             {
                 // Битый/обрезанный файл (сбой записи, несовместимая версия) —
-                // считаем промахом, как CacheService поступал с битым JSON.
+                // считаем промахом, как прежний JSON-кэш поступал с битым файлом.
                 Log.Debug(ex, "Промах чтения дискового кэша EPG.");
                 return null;
             }

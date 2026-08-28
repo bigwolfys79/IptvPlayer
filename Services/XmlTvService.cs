@@ -17,12 +17,8 @@ namespace IptvPlayer.Services;
 /// "yyyyMMddHHmmss zzz" (например "20260814120000 +0300"), опционально без
 /// пробела перед смещением или вовсе без смещения (тогда считаем локальным).
 ///
-/// Кэш — TTL поверх ICacheService (тот сейчас чисто in-memory, без TTL
-/// внутри себя, поэтому TTL проверяется здесь, в обёртке CachedXmlTv).
-/// Не переживает перезапуск приложения — если нужен дисковый кэш между
-/// запусками, ICacheService стоит расширить сохранением в LocalFolder,
-/// используя уже существующую модель CacheEntry (Url/ExpiresAt/LastAccessed)
-/// как ориентир.
+/// Кэш — дисковый (EpgCacheStore, MemoryPack+Brotli) с TTL внутри
+/// обёртки CachedXmlTv: TTL проверяется здесь, а не в самом хранилище.
 /// </summary>
 public class XmlTvService : IXmlTvService
 {
@@ -44,18 +40,15 @@ public class XmlTvService : IXmlTvService
     private const int DaysBack = 3;
     private const int DaysAhead = 3;
 
-    private readonly ICacheService _cacheService;
     private readonly ProcessSpeedMonitor _speedMonitor;
     private readonly HttpClient _httpClient;
     private readonly ILogger<XmlTvService> _logger;
 
     public XmlTvService(
-        ICacheService cacheService,
         ProcessSpeedMonitor speedMonitor,
         ILogger<XmlTvService> logger,
         HttpClient? httpClient = null)
     {
-        _cacheService = cacheService;
         _speedMonitor = speedMonitor;
         _logger = logger;
         _httpClient = httpClient ?? CreateDefaultHttpClient();
@@ -91,21 +84,8 @@ public class XmlTvService : IXmlTvService
         // всей загрузки замер скорости в ProcessSpeedMonitor заморожен.
         using var epgPause = _speedMonitor.PauseScope();
 
-        // Быстрый бинарный кэш (MemoryPack+Brotli). При первом запуске после
-        // обновления приложения его файла ещё нет — мигрируем со старого
-        // JSON-кэша CacheService без перекачки источника по сети.
+        // Быстрый бинарный кэш (MemoryPack+Brotli).
         var cached = await EpgCacheStore.ReadAsync(cacheKey);
-        if (cached == null)
-            {
-                cached = await _cacheService.GetAsync<CachedXmlTv>(cacheKey);
-                if (cached != null)
-                {
-                    _logger.LogInformation(
-                        "Источник {Url}: миграция кэша из старого JSON-формата в MemoryPack (без скачивания).",
-                        source.Url);
-                    await EpgCacheStore.WriteAsync(cacheKey, cached);
-                }
-            }
 
         if (cached != null && IsCacheFresh(cached, maxAge))
         {

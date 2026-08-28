@@ -108,7 +108,7 @@ namespace IptvPlayer.Dialogs
             var dialog = new ContentDialog
             {
                 XamlRoot = xamlRoot,
-                Title = L.T("Плейлист", "Playlist"),
+                Title = L.T("Pleylist_Lbl"),
                 Content = this
             };
             _hostDialog = dialog;
@@ -119,33 +119,29 @@ namespace IptvPlayer.Dialogs
         {
             var settings = await _settingsService.LoadAsync();
 
-            TitleText.Text = L.T("Плейлист", "Playlist");
-            PlaylistHeader.Text = L.T("Плейлисты", "Playlists");
-            PlaylistHint.Text = L.T(
-                "Каналы в списке — из активного плейлиста. Переключайте плейлист в меню настроек (Настройки → Сменить плейлист).",
-                "The channel list shows the active playlist. Switch playlists in the settings menu (Settings → Switch playlist).");
-            AddPlaylistHeader.Text = L.T("Добавить плейлист", "Add playlist");
-            PlaylistNameBox.PlaceholderText = L.T("Имя (необязательно)", "Name (optional)");
-            PlaylistUrlBox.PlaceholderText = L.T("URL плейлиста M3U/M3U8", "M3U/M3U8 playlist URL");
-            PortalKeyBox.PlaceholderText = L.T("Ключ портала (portal::[key:...])", "Portal key (portal::[key:...])");
-            PortalKeyBox.Header = L.T("Ключ портала", "Portal key");
-            AddPlaylistButton.Content = L.T("Добавить", "Add");
-            AddPlaylistFileButton.Content = L.T("Выбрать файл...", "Pick file...");
-            PlaylistRefreshHeader.Text = L.T("Частота обновления плейлистов", "Playlist refresh rate");
-            PlaylistRefreshHint.Text = L.T(
-                "Как часто при запуске перекачивать активный плейлист.",
-                "How often to re-download the active playlist on startup.");
-            CloseButton.Content = L.T("Готово", "Done");
-            TransferHeader.Text = L.T("Перенос настроек", "Settings transfer");
-            ExportSettingsButton.Content = L.T("Экспортировать...", "Export...");
-            ImportSettingsButton.Content = L.T("Импортировать...", "Import...");
+            TitleText.Text = L.T("Pleylist_Lbl");
+            PlaylistHeader.Text = L.T("Pleylisty_Lbl");
+            PlaylistHint.Text = L.T("Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista");
+            AddPlaylistHeader.Text = L.T("Dobavit_Pleylist_Lbl");
+            PlaylistNameBox.PlaceholderText = L.T("Imya_Neobyazatelno_Lbl");
+            PlaylistUrlBox.PlaceholderText = L.T("URL_Pleylista_M3U_M3U8_Lbl");
+            PortalKeyBox.PlaceholderText = L.T("Klyuch_Portala_Portal_Key");
+            PortalKeyBox.Header = L.T("Klyuch_Portala_Lbl");
+            AddPlaylistButton.Content = L.T("Dobavit_Lbl");
+            AddPlaylistFileButton.Content = L.T("Vybrat_Fayl_Lbl");
+            PlaylistRefreshHeader.Text = L.T("CHastota_Obnovleniya_Pleylistov_Lbl");
+            PlaylistRefreshHint.Text = L.T("Kak_Chasto_Pri_Zapuske_Perekachivat_Aktivnyy_Lbl");
+            CloseButton.Content = L.T("Gotovo_Lbl");
+            TransferHeader.Text = L.T("Perenos_Nastroek_Lbl");
+            ExportSettingsButton.Content = L.T("Eksportirovat_Lbl");
+            ImportSettingsButton.Content = L.T("Importirovat_Lbl");
 
             PlaylistUrlBox.Text = string.Empty;
             PlaylistNameBox.Text = string.Empty;
             PortalKeyBox.Text = string.Empty;
             PlaylistTypeCombo.Items.Clear();
-            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Плейлист M3U/M3U8", "M3U/M3U8 playlist"), Tag = "m3u" });
-            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Видео-портал", "Video portal"), Tag = "portal" });
+            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Pleylist_M3U_M3U8"), Tag = "m3u" });
+            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Video_Portal"), Tag = "portal" });
             PlaylistTypeCombo.SelectedIndex = 0;
             UpdatePlaylistTypeUi();
             PlaylistStatusText.Visibility = Visibility.Collapsed;
@@ -158,10 +154,10 @@ namespace IptvPlayer.Dialogs
             PlaylistRefreshCombo.Items.Clear();
             foreach (var (label, days) in new[]
                      {
-                         (L.T("Каждый день", "Daily"), 1),
-                         (L.T("Каждые 3 дня", "Every 3 days"), 3),
-                         (L.T("Каждую неделю", "Weekly"), 7),
-                         (L.T("Никогда (только при добавлении)", "Never (only when added)"), 0),
+                         (L.T("Kazhdyy_Den"), 1),
+                         (L.T("Kazhdye_3_Dnya"), 3),
+                         (L.T("Kazhduyu_Nedelyu"), 7),
+                         (L.T("Nikogda_Tolko_Pri_Dobavlenii"), 0),
                      })
             {
                 PlaylistRefreshCombo.Items.Add(new ComboBoxItem { Content = label, Tag = days });
@@ -263,7 +259,7 @@ namespace IptvPlayer.Dialogs
             var url = box?.Text?.Trim();
             if (string.IsNullOrEmpty(url))
             {
-                SetPlaylistStatus(L.T("Введите URL источника EPG.", "Enter an EPG source URL."));
+                SetPlaylistStatus(L.T("Vvedite_URL_Istochnika_EPG"));
                 return;
             }
 
@@ -375,9 +371,7 @@ namespace IptvPlayer.Dialogs
             {
                 item.Playlist.Name = newName;
                 await _settingsService.SaveAsync(_viewModel.AppSettings);
-                SetPlaylistStatus(L.T(
-                    $"Плейлист переименован в «{item.Playlist.Name}».",
-                    $"Playlist renamed to \"{item.Playlist.Name}\"."));
+                SetPlaylistStatus(string.Format(L.T("Pleylist_Pereimenovan_V_0"), item.Playlist.Name, item.Playlist.Name));
             }
 
             _renamingPlaylist = null;
@@ -389,7 +383,7 @@ namespace IptvPlayer.Dialogs
             var url = PlaylistUrlBox.Text.Trim();
             if (string.IsNullOrEmpty(url))
             {
-                SetPlaylistStatus(L.T("Введите URL плейлиста.", "Enter a playlist URL."));
+                SetPlaylistStatus(L.T("Vvedite_URL_Pleylista"));
                 return;
             }
 
@@ -412,7 +406,7 @@ namespace IptvPlayer.Dialogs
 
                 if (string.IsNullOrEmpty(portalKey))
                 {
-                    SetPlaylistStatus(L.T("Введите ключ портала.", "Enter the portal key."));
+                    SetPlaylistStatus(L.T("Vvedite_Klyuch_Portala"));
                     return;
                 }
             }
@@ -434,8 +428,8 @@ namespace IptvPlayer.Dialogs
             PortalKeyBox.Visibility = isPortal ? Visibility.Visible : Visibility.Collapsed;
             AddPlaylistFileButton.Visibility = isPortal ? Visibility.Collapsed : Visibility.Visible;
             PlaylistUrlBox.PlaceholderText = isPortal
-                ? L.T("Строка портала (portal::[key:...]URL) или базовый URL API", "Portal string (portal::[key:...]URL) or API base URL")
-                : L.T("URL плейлиста M3U/M3U8", "M3U/M3U8 playlist URL");
+                ? L.T("Stroka_Portala_Portal_Key_URL_Ili")
+                : L.T("URL_Pleylista_M3U_M3U8_Lbl");
         }
 
         private void PlaylistTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -480,8 +474,8 @@ namespace IptvPlayer.Dialogs
             AddPlaylistButton.IsEnabled = false;
             AddPlaylistFileButton.IsEnabled = false;
             SetPlaylistStatus(isPortal
-                ? L.T("Загрузка каталога портала...", "Loading portal catalog...")
-                : L.T("Загрузка и разбор плейлиста...", "Loading and parsing playlist..."));
+                ? L.T("Zagruzka_Kataloga_Portala")
+                : L.T("Zagruzka_I_Razbor_Pleylista"));
 
             try
             {
@@ -516,14 +510,12 @@ namespace IptvPlayer.Dialogs
                 RebuildPlaylistItems();
                 PlaylistUrlBox.Text = string.Empty;
                 PlaylistNameBox.Text = string.Empty;
-                SetPlaylistStatus(L.T(
-                    $"Плейлист «{playlist.Name}» добавлен.",
-                    $"Playlist \"{playlist.Name}\" added."));
+                SetPlaylistStatus(string.Format(L.T("Pleylist_0_Dobavlen"), playlist.Name, playlist.Name));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Не удалось добавить плейлист {Url}.", urlOrPath);
-                SetPlaylistStatus($"Не удалось загрузить плейлист: {ex.Message}");
+                SetPlaylistStatus(string.Format(L.T("Ne_Udalos_Zagruzit_Pleylist_0"), ex.Message));
             }
             finally
             {
@@ -536,14 +528,10 @@ namespace IptvPlayer.Dialogs
         {
             if (sender is FrameworkElement { DataContext: PlaylistListItem { IsActive: false } item })
             {
-                SetPlaylistStatus(L.T(
-                    $"Переключение на «{item.Playlist.Name}»...",
-                    $"Switching to \"{item.Playlist.Name}\"..."));
+                SetPlaylistStatus(string.Format(L.T("Pereklyuchenie_Na_0"), item.Playlist.Name, item.Playlist.Name));
                 await _switchPlaylist(item.Playlist);
                 RebuildPlaylistItems();
-                SetPlaylistStatus(L.T(
-                    $"Активен плейлист «{item.Playlist.Name}».",
-                    $"Playlist \"{item.Playlist.Name}\" is now active."));
+                SetPlaylistStatus(string.Format(L.T("Aktiven_Pleylist_0"), item.Playlist.Name, item.Playlist.Name));
             }
         }
 
@@ -564,11 +552,9 @@ namespace IptvPlayer.Dialogs
                 {
                     _removeArmedButton = button;
                     button.Content = "?";
-                    ToolTipService.SetToolTip(button, L.T("Точно удалить? Нажмите ещё раз", "Really remove? Click again"));
+                    ToolTipService.SetToolTip(button, L.T("Tochno_Udalit_Nazhmite_Eshche_Raz"));
                 }
-                SetPlaylistStatus(L.T(
-                    $"Повторное нажатие удалит плейлист «{item.Playlist.Name}» вместе с его локальным кэшем.",
-                    $"Clicking again will remove playlist \"{item.Playlist.Name}\" and its local cache."));
+                SetPlaylistStatus(string.Format(L.T("Povtornoe_Nazhatie_Udalit_Pleylist_0_Vmeste"), item.Playlist.Name, item.Playlist.Name));
                 return;
             }
 
@@ -605,9 +591,7 @@ namespace IptvPlayer.Dialogs
 
             await _settingsService.SaveAsync(_viewModel.AppSettings);
             RebuildPlaylistItems();
-            SetPlaylistStatus(L.T(
-                $"Плейлист «{playlist.Name}» удалён.",
-                $"Playlist \"{playlist.Name}\" removed."));
+            SetPlaylistStatus(string.Format(L.T("Pleylist_0_Udalen"), playlist.Name, playlist.Name));
         }
 
         /// <summary>Возвращает взведённую кнопку удаления в обычный вид.</summary>
@@ -616,7 +600,7 @@ namespace IptvPlayer.Dialogs
             if (_removeArmedButton != null)
             {
                 _removeArmedButton.Content = "✕";
-                ToolTipService.SetToolTip(_removeArmedButton, L.T("Удалить", "Remove"));
+                ToolTipService.SetToolTip(_removeArmedButton, L.T("Udalit_Lbl"));
                 _removeArmedButton = null;
             }
             _removeArmedPlaylist = null;
@@ -665,7 +649,7 @@ namespace IptvPlayer.Dialogs
             panel.Children.Add(box);
             if (confirm)
             {
-                repeat = new PasswordBox { Header = L.T("Повторите пароль", "Repeat password") };
+                repeat = new PasswordBox { Header = L.T("Povtorite_Parol") };
                 panel.Children.Add(repeat);
             }
 
@@ -676,8 +660,8 @@ namespace IptvPlayer.Dialogs
                     XamlRoot = root,
                     Title = title,
                     Content = panel,
-                    PrimaryButtonText = L.T("ОК", "OK"),
-                    CloseButtonText = L.T("Отмена", "Cancel"),
+                    PrimaryButtonText = L.T("OK"),
+                    CloseButtonText = L.T("Otmena_Lbl"),
                     DefaultButton = ContentDialogButton.Primary
                 };
                 if (await dialog.ShowAsync() != ContentDialogResult.Primary)
@@ -688,14 +672,13 @@ namespace IptvPlayer.Dialogs
 
                 if (box.Password.Length < 4)
                 {
-                    await ShowTransferErrorAsync(L.T(
-                        "Пароль — минимум 4 символа.", "Password must be at least 4 characters."));
+                    await ShowTransferErrorAsync(L.T("Parol_Minimum_4_Simvola"));
                     continue;
                 }
 
                 if (repeat != null && box.Password != repeat.Password)
                 {
-                    await ShowTransferErrorAsync(L.T("Пароли не совпадают.", "Passwords do not match."));
+                    await ShowTransferErrorAsync(L.T("Paroli_Ne_Sovpadayut"));
                     continue;
                 }
 
@@ -735,9 +718,9 @@ namespace IptvPlayer.Dialogs
             var dialog = new ContentDialog
             {
                 XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
-                Title = L.T("Перенос настроек", "Settings transfer"),
+                Title = L.T("Perenos_Nastroek_Lbl"),
                 Content = message,
-                CloseButtonText = L.T("Понятно", "OK")
+                CloseButtonText = L.T("Ponyatno")
             };
             await dialog.ShowAsync();
         }
@@ -753,9 +736,7 @@ namespace IptvPlayer.Dialogs
                 // До выбора файла исключения улетали в App.UnhandledException
                 // и выглядели для пользователя как «кнопка не работает».
                 _logger.LogError(ex, "Экспорт настроек: сбой до открытия пикера.");
-                await ShowTransferErrorAsync(L.T(
-                    $"Не удалось открыть диалог экспорта: {ex.Message}",
-                    $"Failed to open the export dialog: {ex.Message}"));
+                await ShowTransferErrorAsync(string.Format(L.T("Ne_Udalos_Otkryt_Dialog_Eksporta_0"), ex.Message, ex.Message));
             }
         }
 
@@ -784,10 +765,8 @@ namespace IptvPlayer.Dialogs
             }
 
             var password = await PromptPasswordAsync(
-                L.T("Пароль экспорта", "Export password"),
-                L.T(
-                    "Файл будет содержать ссылки и ключи в защищённом виде — без пароля его не открыть.",
-                    "The file will contain links and keys in encrypted form — it cannot be opened without the password."),
+                L.T("Parol_Eksporta"),
+                L.T("Fayl_Budet_Soderzhat_Ssylki_I_Klyuchi"),
                 confirm: true);
             if (password == null)
             {
@@ -797,16 +776,12 @@ namespace IptvPlayer.Dialogs
             try
             {
                 await _transferService.ExportAsync(_viewModel.AppSettings, file.Path, password);
-                SetPlaylistStatus(L.T(
-                    $"Настройки экспортированы: {file.Name}",
-                    $"Settings exported: {file.Name}"));
+                SetPlaylistStatus(string.Format(L.T("Nastroyki_Eksportirovany_0"), file.Name, file.Name));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Экспорт настроек в {Path}.", file.Path);
-                await ShowTransferErrorAsync(L.T(
-                    $"Не удалось экспортировать настройки: {ex.Message}",
-                    $"Failed to export settings: {ex.Message}"));
+                await ShowTransferErrorAsync(string.Format(L.T("Ne_Udalos_Eksportirovat_Nastroyki_0"), ex.Message, ex.Message));
             }
             finally
             {
@@ -823,9 +798,7 @@ namespace IptvPlayer.Dialogs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Импорт настроек: сбой до выбора файла.");
-                await ShowTransferErrorAsync(L.T(
-                    $"Не удалось открыть диалог импорта: {ex.Message}",
-                    $"Failed to open the import dialog: {ex.Message}"));
+                await ShowTransferErrorAsync(string.Format(L.T("Ne_Udalos_Otkryt_Dialog_Importa_0"), ex.Message, ex.Message));
             }
         }
 
@@ -849,8 +822,8 @@ namespace IptvPlayer.Dialogs
             }
 
             var password = await PromptPasswordAsync(
-                L.T("Пароль файла", "File password"),
-                L.T("Пароль, заданный при экспорте.", "The password set during export."),
+                L.T("Parol_Fayla"),
+                L.T("Parol_Zadannyy_Pri_Eksporte"),
                 confirm: false);
             if (password == null)
             {
@@ -865,17 +838,14 @@ namespace IptvPlayer.Dialogs
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Импорт настроек из {Path}.", file.Path);
-                await ShowTransferErrorAsync(L.T(
-                    $"Не удалось прочитать файл: {ex.Message}",
-                    $"Failed to read the file: {ex.Message}"));
+                await ShowTransferErrorAsync(string.Format(L.T("Ne_Udalos_Prochitat_Fayl_0"), ex.Message, ex.Message));
                 _ = ReshowHostAsync();
                 return;
             }
 
             if (imported.Playlists.Count == 0)
             {
-                await ShowTransferErrorAsync(L.T(
-                    "В файле экспорта нет плейлистов.", "The export file has no playlists."));
+                await ShowTransferErrorAsync(L.T("V_Fayle_Eksporta_Net_Pleylistov"));
                 _ = ReshowHostAsync();
                 return;
             }
@@ -884,13 +854,11 @@ namespace IptvPlayer.Dialogs
             var modeDialog = new ContentDialog
             {
                 XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
-                Title = L.T("Импорт настроек", "Import settings"),
-                Content = L.T(
-                    "Заменить все настройки или добавить только плейлисты из файла?",
-                    "Replace all settings or add only the playlists from the file?"),
-                PrimaryButtonText = L.T("Заменить всё", "Replace all"),
-                SecondaryButtonText = L.T("Добавить плейлисты", "Add playlists"),
-                CloseButtonText = L.T("Отмена", "Cancel")
+                Title = L.T("Import_Nastroek"),
+                Content = L.T("Zamenit_Vse_Nastroyki_Ili_Dobavit_Tolko"),
+                PrimaryButtonText = L.T("Zamenit_Vse"),
+                SecondaryButtonText = L.T("Dobavit_Pleylisty"),
+                CloseButtonText = L.T("Otmena_Lbl")
             };
             var result = await modeDialog.ShowAsync();
             if (result == ContentDialogResult.None)
@@ -923,10 +891,8 @@ namespace IptvPlayer.Dialogs
 
             RebuildPlaylistItems();
             SetPlaylistStatus(mode == Services.SettingsTransferService.ImportMode.ReplaceAll
-                ? L.T($"Настройки заменены, плейлистов: {count}.",
-                    $"Settings replaced, playlists: {count}.")
-                : L.T($"Добавлено плейлистов: {count}.",
-                    $"Playlists added: {count}."));
+                ? string.Format(L.T("Nastroyki_Zameneny_Pleylistov_0"), count, count)
+                : string.Format(L.T("Dobavleno_Pleylistov_0"), count, count));
             _ = ReshowHostAsync();
         }
     }
