@@ -1,1280 +1,1283 @@
-<?xml version="1.0" encoding="utf-8"?>
-<root>
-  <xsd:schema id="1" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" />
-  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
-  <resheader name="version"><value>2.0</value></resheader>
-  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="0_1_2" xml:space="preserve">
-    <value>{0} — {1}, {2}</value>
-  </data>
-  <data name="0_Min" xml:space="preserve">
-    <value>{0} min</value>
-  </data>
-  <data name="0_S_1" xml:space="preserve">
-    <value>● {0} — since {1}</value>
-  </data>
-  <data name="0_Vy_Ostanovilis_Na_1_Prodolzhit" xml:space="preserve">
-    <value>“{0}”: you stopped at {1}. Resume from there?</value>
-  </data>
-  <data name="15_Min.Content" xml:space="preserve">
-    <value>15 min</value>
-  </data>
-  <data name="15_Min_Lbl" xml:space="preserve">
-    <value>15 min</value>
-  </data>
-  <data name="1_Chas.Content" xml:space="preserve">
-    <value>1 hour</value>
-  </data>
-  <data name="1_Chas_Lbl" xml:space="preserve">
-    <value>1 hour</value>
-  </data>
-  <data name="30_Min.Content" xml:space="preserve">
-    <value>30 min</value>
-  </data>
-  <data name="30_Min_Lbl" xml:space="preserve">
-    <value>30 min</value>
-  </data>
-  <data name="45_Min.Content" xml:space="preserve">
-    <value>45 min</value>
-  </data>
-  <data name="45_Min_Lbl" xml:space="preserve">
-    <value>45 min</value>
-  </data>
-  <data name="About_ComponentsList" xml:space="preserve">
-    <value>FFmpeg / FFmpegInteropX (demuxing and decoding HEVC, AC-3, etc.)
-Windows App SDK (WinUI 3), .NET 8, CommunityToolkit
-Serilog (logging), Inno Setup (installer)</value>
-  </data>
-  <data name="About_FeaturesList" xml:space="preserve">
-    <value>• Live streams and catch-up archives with seeking
-• Video library (portal): films, series, quality selection
-• XMLTV programme guide, programme reminders
-• Channel/programme recording (ffmpeg, up to 3 parallel)
-• Favorites, history, previous channel (Backspace)
-• Mini player (Ctrl+M), stream stats (Ctrl+J)
-• Semi-automatic updates (GitHub Releases)
-• Parental control, dark theme, Russian/English</value>
-  </data>
-  <data name="Aktiven_Pleylist_0" xml:space="preserve">
-    <value>Playlist \\"{0}\\" is now active.</value>
-  </data>
-  <data name="Aktivirovat.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Активировать</value>
-  </data>
-  <data name="Aktivirovat_Lbl" xml:space="preserve">
-    <value>Activate</value>
-  </data>
-  <data name="Apparatnoe_GPU_S_Otkatom_Na_Protsessor" xml:space="preserve">
-    <value>Hardware (GPU, CPU fallback)</value>
-  </data>
-  <data name="Arkhiv_0" xml:space="preserve">
-    <value>Archive: {0}</value>
-  </data>
-  <data name="Arkhiv_0_1" xml:space="preserve">
-    <value>Archive: {0} ({1})</value>
-  </data>
-  <data name="Avto.Content" xml:space="preserve">
-    <value>Auto</value>
-  </data>
-  <data name="Avto_Lbl" xml:space="preserve">
-    <value>Auto</value>
-  </data>
-  <data name="Avto_Maksimalnoe" xml:space="preserve">
-    <value>Auto (maximum)</value>
-  </data>
-  <data name="Bez_Gruppy" xml:space="preserve">
-    <value>No group</value>
-  </data>
-  <data name="Bez_Kategorii" xml:space="preserve">
-    <value>Uncategorized</value>
-  </data>
-  <data name="Bez_Zvuka_M.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Mute (M)</value>
-  </data>
-  <data name="Bez_Zvuka_M_Lbl" xml:space="preserve">
-    <value>Mute (M)</value>
-  </data>
-  <data name="Bufer_0_C_1_MB_Prostoi" xml:space="preserve">
-    <value>Buffer: {0}s / {1} MB · stalls: {2}</value>
-  </data>
-  <data name="Bufer_TV_Kanalov_Pryamoy_Efir" xml:space="preserve">
-    <value>Live TV buffer</value>
-  </data>
-  <data name="Bufer_Videoteki.Text" xml:space="preserve">
-    <value>Video library buffer</value>
-  </data>
-  <data name="Bufer_Videoteki_Filmy_Portala" xml:space="preserve">
-    <value>Video library buffer (portal movies)</value>
-  </data>
-  <data name="Bufer_Videoteki_Lbl" xml:space="preserve">
-    <value>Video library buffer</value>
-  </data>
-  <data name="Buferizatsiya.Text" xml:space="preserve">
-    <value>Buffering</value>
-  </data>
-  <data name="Buferizatsiya_Lbl" xml:space="preserve">
-    <value>Buffering</value>
-  </data>
-  <data name="CHastota_Obnovleniya_Pleylistov.Text" xml:space="preserve">
-    <value>Playlist refresh rate</value>
-  </data>
-  <data name="CHastota_Obnovleniya_Pleylistov_Lbl" xml:space="preserve">
-    <value>Playlist refresh rate</value>
-  </data>
-  <data name="Dekoder_0_Apparatnyy_1" xml:space="preserve">
-    <value>Decoder: {0} · HW: {1}</value>
-  </data>
-  <data name="Dekodirovanie_Video.Text" xml:space="preserve">
-    <value>Video decoding</value>
-  </data>
-  <data name="Dekodirovanie_Video_Lbl" xml:space="preserve">
-    <value>Video decoding</value>
-  </data>
-  <data name="Diagnostika" xml:space="preserve">
-    <value>Diagnostics</value>
-  </data>
-  <data name="Dinamicheskaya_Usilivaet_Tikhie_Kanaly" xml:space="preserve">
-    <value>Dynamic (boosts quiet channels)</value>
-  </data>
-  <data name="Do_Vremeni_0" xml:space="preserve">
-    <value> (until {0})</value>
-  </data>
-  <data name="Do_Vyklyucheniya" xml:space="preserve">
-    <value>Until off</value>
-  </data>
-  <data name="Dobavit.Content" xml:space="preserve">
-    <value>Add</value>
-  </data>
-  <data name="Dobavit_Istochnik_EPG.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Добавить источник EPG</value>
-  </data>
-  <data name="Dobavit_Istochnik_EPG_Lbl" xml:space="preserve">
-    <value>Add EPG source</value>
-  </data>
-  <data name="Dobavit_Kanal" xml:space="preserve">
-    <value>Add channel</value>
-  </data>
-  <data name="Dobavit_Kanal_Vruchnuyu.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Добавить канал вручную</value>
-  </data>
-  <data name="Dobavit_Kanal_Vruchnuyu_Lbl" xml:space="preserve">
-    <value>Add channel manually</value>
-  </data>
-  <data name="Dobavit_Lbl" xml:space="preserve">
-    <value>Add</value>
-  </data>
-  <data name="Dobavit_Pleylist.Text" xml:space="preserve">
-    <value>Add playlist</value>
-  </data>
-  <data name="Dobavit_Pleylist_Lbl" xml:space="preserve">
-    <value>Add playlist</value>
-  </data>
-  <data name="Dobavit_Pleylisty" xml:space="preserve">
-    <value>Add playlists</value>
-  </data>
-  <data name="Dobavit_V_Izbrannoe" xml:space="preserve">
-    <value>Add to favorites</value>
-  </data>
-  <data name="Dobavleno_Pleylistov_0" xml:space="preserve">
-    <value>Playlists added: {0}.</value>
-  </data>
-  <data name="Dostupen" xml:space="preserve">
-    <value>available</value>
-  </data>
-  <data name="Dostupna_Versiya_0_U_Vas_1" xml:space="preserve">
-    <value>Version {0} is available (you have {1}).</value>
-  </data>
-  <data name="Dostupno_Obnovlenie" xml:space="preserve">
-    <value>Update available</value>
-  </data>
-  <data name="EPG_Dannye_Nedostupny.Text" xml:space="preserve">
-    <value>EPG data unavailable</value>
-  </data>
-  <data name="EPG_Dannye_Nedostupny_Lbl" xml:space="preserve">
-    <value>EPG data unavailable</value>
-  </data>
-  <data name="EPG_Programma_Peredach.Text" xml:space="preserve">
-    <value>EPG (TV guide)</value>
-  </data>
-  <data name="EPG_Programma_Peredach_Lbl" xml:space="preserve">
-    <value>EPG (TV guide)</value>
-  </data>
-  <data name="EPG_XMLTV_Epg_One_Sopostavlenie_Kanalov" xml:space="preserve">
-    <value>EPG: XMLTV (epg.one), channel matching via the epg.one/setup-playlist table</value>
-  </data>
-  <data name="Eksportirovat.Content" xml:space="preserve">
-    <value>Export...</value>
-  </data>
-  <data name="Eksportirovat_Lbl" xml:space="preserve">
-    <value>Export...</value>
-  </data>
-  <data name="Epizod" xml:space="preserve">
-    <value>Episode</value>
-  </data>
-  <data name="Eta_Peredacha_Eshche_Ne_Nachalas" xml:space="preserve">
-    <value>This programme has not started yet.</value>
-  </data>
-  <data name="Fayl_Budet_Soderzhat_Ssylki_I_Klyuchi" xml:space="preserve">
-    <value>The file will contain links and keys in encrypted form — it cannot be opened without the password.</value>
-  </data>
-  <data name="Faylovyy_Log" xml:space="preserve">
-    <value>File log</value>
-  </data>
-  <data name="Glubina_Bufera_Dlya_TV_Kanalov_Pryamogo" xml:space="preserve">
-    <value>Buffer depth for live TV channels. Higher — smoother on unstable networks, but further behind the live edge. Applied on next channel switch.</value>
-  </data>
-  <data name="Gotovo.Content" xml:space="preserve">
-    <value>Done</value>
-  </data>
-  <data name="Gotovo_Lbl" xml:space="preserve">
-    <value>Done</value>
-  </data>
-  <data name="Gromkost_Ili_Koleso_Myshi_Nad_Video.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Громкость (или колесо мыши над видео)</value>
-  </data>
-  <data name="Gromkost_Ili_Koleso_Myshi_Nad_Video_Lbl" xml:space="preserve">
-    <value>Volume (or mouse wheel over video)</value>
-  </data>
-  <data name="IPTV_Pleer_Dlya_Pleylistov_M3U_M3U8" xml:space="preserve">
-    <value>IPTV player for M3U/M3U8 playlists with EPG, catch-up archive, video library, recording and parental control.</value>
-  </data>
-  <data name="Idet_Zapis_Peredach_Obnovlenie_Ustanovitsya_Avtomaticheski" xml:space="preserve">
-    <value>A recording is in progress — the update will install automatically when it finishes.</value>
-  </data>
-  <data name="Idut_Seychas" xml:space="preserve">
-    <value>Recording now</value>
-  </data>
-  <data name="Import_Nastroek" xml:space="preserve">
-    <value>Import settings</value>
-  </data>
-  <data name="Importirovat.Content" xml:space="preserve">
-    <value>Import...</value>
-  </data>
-  <data name="Importirovat_Lbl" xml:space="preserve">
-    <value>Import...</value>
-  </data>
-  <data name="Imya_Neobyazatelno.PlaceholderText" xml:space="preserve">
-    <value>Name (optional)</value>
-  </data>
-  <data name="Imya_Neobyazatelno_Lbl" xml:space="preserve">
-    <value>Name (optional)</value>
-  </data>
-  <data name="Interfeys.Text" xml:space="preserve">
-    <value>Interface</value>
-  </data>
-  <data name="Interfeys_Lbl" xml:space="preserve">
-    <value>Interface</value>
-  </data>
-  <data name="Ispolzovat_Istochnik.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Use this source</value>
-  </data>
-  <data name="Ispolzovat_Istochnik_Lbl" xml:space="preserve">
-    <value>Use this source</value>
-  </data>
-  <data name="Istochnik_Portala_Ne_Nayden" xml:space="preserve">
-    <value>Portal source not found.</value>
-  </data>
-  <data name="Istochnik_Sistemnyy_FFmpeg_Ne_Otkryval_Potok" xml:space="preserve">
-    <value>Source: system (FFmpeg did not open the stream)</value>
-  </data>
-  <data name="Istochniki_EPG.Text" xml:space="preserve">
-    <value>EPG sources</value>
-  </data>
-  <data name="Istochniki_EPG_Etogo_Pleylista.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Источники EPG этого плейлиста</value>
-  </data>
-  <data name="Istochniki_EPG_Etogo_Pleylista_Lbl" xml:space="preserve">
-    <value>EPG sources of this playlist</value>
-  </data>
-  <data name="Istochniki_EPG_Lbl" xml:space="preserve">
-    <value>EPG sources</value>
-  </data>
-  <data name="Iz_0" xml:space="preserve">
-    <value>of {0}</value>
-  </data>
-  <data name="Izbrannoe" xml:space="preserve">
-    <value>★ Favorites</value>
-  </data>
-  <data name="Kachestvo_Video.Text" xml:space="preserve">
-    <value>Video quality</value>
-  </data>
-  <data name="Kachestvo_Video.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Video quality</value>
-  </data>
-  <data name="Kachestvo_Video_Lbl" xml:space="preserve">
-    <value>Video quality</value>
-  </data>
-  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_Aktivnyy.Text" xml:space="preserve">
-    <value>How often to re-download the active playlist on startup.</value>
-  </data>
-  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_Aktivnyy_Lbl" xml:space="preserve">
-    <value>How often to re-download the active playlist on startup.</value>
-  </data>
-  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_XMLTV.Text" xml:space="preserve">
-    <value>How often to re-download XMLTV sources on startup.</value>
-  </data>
-  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_XMLTV_Lbl" xml:space="preserve">
-    <value>How often to re-download XMLTV sources on startup.</value>
-  </data>
-  <data name="Kanal_0" xml:space="preserve">
-    <value>Channel: {0}</value>
-  </data>
-  <data name="Kanal_0_Zakryt_Roditelskim_Kontrolem_Vvedite" xml:space="preserve">
-    <value>Channel \\"{0}\\" is locked by parental control. Enter the PIN and choose how long to allow viewing.</value>
-  </data>
-  <data name="Kanalov_0" xml:space="preserve">
-    <value>Channels: {0}</value>
-  </data>
-  <data name="Kanaly.Text" xml:space="preserve">
-    <value>Channels</value>
-  </data>
-  <data name="Kanaly_Lbl" xml:space="preserve">
-    <value>Channels</value>
-  </data>
-  <data name="Kanaly_Ostayutsya_V_Spiske_No_Zapusk" xml:space="preserve">
-    <value>Channels stay in the list, but starting channels of the checked groups requires the PIN. "Adult" groups (18+, xxx, etc.) are checked automatically; the list can be edited manually.</value>
-  </data>
-  <data name="Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista" xml:space="preserve">
-    <value>The channel list shows the active playlist. Switch playlists in the settings menu (Settings → Switch playlist).</value>
-  </data>
-  <data name="Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista_2.Text" xml:space="preserve">
-    <value>Channels in the list come from the active playlist. Switch with the combo box above the channel list.</value>
-  </data>
-  <data name="Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista_2_Lbl" xml:space="preserve">
-    <value>Channels in the list come from the active playlist. Switch with the combo box above the channel list.</value>
-  </data>
-  <data name="Kazhduyu_Nedelyu" xml:space="preserve">
-    <value>Weekly</value>
-  </data>
-  <data name="Kazhdye_3_Dnya" xml:space="preserve">
-    <value>Every 3 days</value>
-  </data>
-  <data name="Kazhdyy_Den" xml:space="preserve">
-    <value>Daily</value>
-  </data>
-  <data name="Klik_Po_Peredache_Smotret_S_Nachala.Text" xml:space="preserve">
-    <value>click a programme to watch from the start</value>
-  </data>
-  <data name="Klik_Po_Peredache_Smotret_S_Nachala_Lbl" xml:space="preserve">
-    <value>click a programme to watch from the start</value>
-  </data>
-  <data name="Klyuch_Portala.Header" xml:space="preserve">
-    <value>Portal key</value>
-  </data>
-  <data name="Klyuch_Portala.PlaceholderText" xml:space="preserve">
-    <value>Portal key</value>
-  </data>
-  <data name="Klyuch_Portala_Lbl" xml:space="preserve">
-    <value>Portal key</value>
-  </data>
-  <data name="Klyuch_Portala_Portal_Key" xml:space="preserve">
-    <value>Portal key (portal::[key:...])</value>
-  </data>
-  <data name="Knopka_Svernut_Pryachet_Okno_V_Trey" xml:space="preserve">
-    <value>The minimize button hides the window to the tray instead of the taskbar.</value>
-  </data>
-  <data name="Komponente" xml:space="preserve">
-    <value>Components</value>
-  </data>
-  <data name="Kontrolnaya_Summa_Ustanovshchika_Ne_Sovpala_Obnovlenie" xml:space="preserve">
-    <value>Installer checksum mismatch — update cancelled.</value>
-  </data>
-  <data name="Krestik_Okna_Pryachet_Ego_V_Trey" xml:space="preserve">
-    <value>The close button hides the window to the tray — playback continues. To quit fully, right-click the tray icon → "Exit".</value>
-  </data>
-  <data name="Kuda_Ffmpeg_Sokhranyaet_Zapisi_Ts_Pusto" xml:space="preserve">
-    <value>Where ffmpeg saves recordings (.ts). Empty = "Videos\IptvPlayer". A drive root can be typed in manually, e.g. F:\ — the system folder picker does not allow selecting a drive root.</value>
-  </data>
-  <data name="Log_0" xml:space="preserve">
-    <value>Log: {0}</value>
-  </data>
-  <data name="Maksimalnoe_Kachestvo_Potoka_Ili_Ogranichenie_Razresheniya.Text" xml:space="preserve">
-    <value>Maximum stream quality or resolution limit. Applies on next channel switch.</value>
-  </data>
-  <data name="Maksimalnoe_Kachestvo_Potoka_Ili_Ogranichenie_Razresheniya_Lbl" xml:space="preserve">
-    <value>Maximum stream quality or resolution limit. Applies on next channel switch.</value>
-  </data>
-  <data name="Nachalo_V_0" xml:space="preserve">
-    <value>{0} • starts at {1}</value>
-  </data>
-  <data name="Napominaniya_EPG.Text" xml:space="preserve">
-    <value>EPG reminders</value>
-  </data>
-  <data name="Napominaniya_EPG_Lbl" xml:space="preserve">
-    <value>EPG reminders</value>
-  </data>
-  <data name="Napomnit_O_Peredache.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Напомнить о передаче</value>
-  </data>
-  <data name="Napomnit_O_Peredache_Lbl" xml:space="preserve">
-    <value>Remind me</value>
-  </data>
-  <data name="Nastroyki.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Settings</value>
-  </data>
-  <data name="Nastroyki_EPG.Text" xml:space="preserve">
-    <value>EPG settings</value>
-  </data>
-  <data name="Nastroyki_EPG_Lbl" xml:space="preserve">
-    <value>EPG settings</value>
-  </data>
-  <data name="Nastroyki_Eksportirovany_0" xml:space="preserve">
-    <value>Settings exported: {0}</value>
-  </data>
-  <data name="Nastroyki_I_Dannee" xml:space="preserve">
-    <value>Settings and data</value>
-  </data>
-  <data name="Nastroyki_I_Kesh_0_IptvPlayer" xml:space="preserve">
-    <value>Settings and cache: {0}\\IptvPlayer</value>
-  </data>
-  <data name="Nastroyki_Interfeysa.Text" xml:space="preserve">
-    <value>Interface settings</value>
-  </data>
-  <data name="Nastroyki_Interfeysa_Lbl" xml:space="preserve">
-    <value>Interface settings</value>
-  </data>
-  <data name="Nastroyki_Lbl" xml:space="preserve">
-    <value>Settings</value>
-  </data>
-  <data name="Nastroyki_Vosproizvedeniya.Text" xml:space="preserve">
-    <value>Playback settings</value>
-  </data>
-  <data name="Nastroyki_Vosproizvedeniya_Lbl" xml:space="preserve">
-    <value>Playback settings</value>
-  </data>
-  <data name="Nastroyki_Zameneny_Pleylistov_0" xml:space="preserve">
-    <value>Settings replaced, playlists: {0}.</value>
-  </data>
-  <data name="Nazvanie" xml:space="preserve">
-    <value>Name</value>
-  </data>
-  <data name="Ne_Udalos_Eksportirovat_Nastroyki_0" xml:space="preserve">
-    <value>Failed to export settings: {0}</value>
-  </data>
-  <data name="Ne_Udalos_Nachat_Zapis_Ffmpeg_Nedostupen" xml:space="preserve">
-    <value>Could not start recording (ffmpeg missing or concurrent recording limit reached) — see log.</value>
-  </data>
-  <data name="Ne_Udalos_Otkryt_Dialog_Eksporta_0" xml:space="preserve">
-    <value>Failed to open the export dialog: {0}</value>
-  </data>
-  <data name="Ne_Udalos_Otkryt_Dialog_Importa_0" xml:space="preserve">
-    <value>Failed to open the import dialog: {0}</value>
-  </data>
-  <data name="Ne_Udalos_Prochitat_Fayl_0" xml:space="preserve">
-    <value>Failed to read the file: {0}</value>
-  </data>
-  <data name="Ne_Udalos_Proverit_Obnovleniya_0" xml:space="preserve">
-    <value>Update check failed: {0}</value>
-  </data>
-  <data name="Ne_Udalos_Skachat_Obnovlenie_0" xml:space="preserve">
-    <value>Failed to download the update: {0}</value>
-  </data>
-  <data name="Ne_Udalos_Sozdat_Papku_0_Proverte" xml:space="preserve">
-    <value>Could not create \\"{0}\\" — check the path and permissions.</value>
-  </data>
-  <data name="Ne_Udalos_Vosproizvesti_Potok_0" xml:space="preserve">
-    <value>Cannot play stream: {0}</value>
-  </data>
-  <data name="Ne_Udalos_Zagruzit_Pleylist_0" xml:space="preserve">
-    <value>Failed to load the playlist: {0}</value>
-  </data>
-  <data name="Nedostupen" xml:space="preserve">
-    <value>not available</value>
-  </data>
-  <data name="Net" xml:space="preserve">
-    <value>No</value>
-  </data>
-  <data name="Net_Aktivnykh_Zapisey" xml:space="preserve">
-    <value>No active recordings.</value>
-  </data>
-  <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo.Text" xml:space="preserve">
-    <value>No programme data for this channel</value>
-  </data>
-  <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo_Lbl" xml:space="preserve">
-    <value>No programme data for this channel</value>
-  </data>
-  <data name="Net_Zaplanirovannykh_Zapisey" xml:space="preserve">
-    <value>No scheduled recordings.</value>
-  </data>
-  <data name="Nevernyy_PIN" xml:space="preserve">
-    <value>Wrong PIN.</value>
-  </data>
-  <data name="Nikogda_Tolko_Pri_Dobavlenii" xml:space="preserve">
-    <value>Never (only when added)</value>
-  </data>
-  <data name="Normalizatsiya_Gromkosti.Text" xml:space="preserve">
-    <value>Volume normalization</value>
-  </data>
-  <data name="Normalizatsiya_Gromkosti_Lbl" xml:space="preserve">
-    <value>Volume normalization</value>
-  </data>
-  <data name="Novyy_PIN_4_Tsifry" xml:space="preserve">
-    <value>New PIN (4+ digits)</value>
-  </data>
-  <data name="OK" xml:space="preserve">
-    <value>OK</value>
-  </data>
-  <data name="O_Programme.Text" xml:space="preserve">
-    <value>About</value>
-  </data>
-  <data name="O_Programme_Lbl" xml:space="preserve">
-    <value>About</value>
-  </data>
-  <data name="Obnovit_EPG.Content" xml:space="preserve">
-    <value>Refresh EPG</value>
-  </data>
-  <data name="Obnovit_EPG_Lbl" xml:space="preserve">
-    <value>Refresh EPG</value>
-  </data>
-  <data name="Obnovlenie_Otlozheno" xml:space="preserve">
-    <value>Update postponed</value>
-  </data>
-  <data name="Obshchie_Istochniki_EPG_XMLTV_Deystvuyut_Dlya" xml:space="preserve">
-    <value>Shared EPG (XMLTV) sources: used by playlists that have no sources of their own. Per-playlist sources are configured in the Playlist dialog.</value>
-  </data>
-  <data name="Obzor" xml:space="preserve">
-    <value>Browse...</value>
-  </data>
-  <data name="Oshibka_Vosproizvedeniya" xml:space="preserve">
-    <value>Playback error: </value>
-  </data>
-  <data name="Osnovnye_Teksty_Interfeysa_Perevodyatsya_Na_Letu.Text" xml:space="preserve">
-    <value>Main interface texts are translated on the fly.</value>
-  </data>
-  <data name="Osnovnye_Teksty_Interfeysa_Perevodyatsya_Na_Letu_Lbl" xml:space="preserve">
-    <value>Main interface texts are translated on the fly.</value>
-  </data>
-  <data name="Ostanovit_Vosproizvedenie" xml:space="preserve">
-    <value>Stop playback</value>
-  </data>
-  <data name="Ostanovit_Zapis" xml:space="preserve">
-    <value>Stop recording</value>
-  </data>
-  <data name="Ostanovit_Zapis_0" xml:space="preserve">
-    <value>Stop recording ({0})</value>
-  </data>
-  <data name="Otklyuchit_Taymer" xml:space="preserve">
-    <value>Turn off timer</value>
-  </data>
-  <data name="Otkryt_Papku" xml:space="preserve">
-    <value>Open folder</value>
-  </data>
-  <data name="Otkryt_Papku_Logov" xml:space="preserve">
-    <value>Open logs folder</value>
-  </data>
-  <data name="Otmena.Content" xml:space="preserve">
-    <value>Cancel</value>
-  </data>
-  <data name="Otmena_Lbl" xml:space="preserve">
-    <value>Cancel</value>
-  </data>
-  <data name="Otmenit_Taymer.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Отменить таймер</value>
-  </data>
-  <data name="Otmenit_Taymer_Lbl" xml:space="preserve">
-    <value>Cancel timer</value>
-  </data>
-  <data name="PIN_Dolzhen_Byt_Ne_Koroche_4" xml:space="preserve">
-    <value>The PIN must be at least 4 characters.</value>
-  </data>
-  <data name="PIN_Kod" xml:space="preserve">
-    <value>PIN code</value>
-  </data>
-  <data name="PIN_Ubran_Otklyuchit_Kontrol_Mozhno_Budet" xml:space="preserve">
-    <value>PIN removed — the control can now be disabled without a password.</value>
-  </data>
-  <data name="PIN_Ustanovlen" xml:space="preserve">
-    <value>PIN set.</value>
-  </data>
-  <data name="Papka_Zapisey" xml:space="preserve">
-    <value>Recordings folder</value>
-  </data>
-  <data name="Parental_PinHintHasPin" xml:space="preserve">
-    <value>The PIN is required to unlock or disable. Children cannot remove hiding without it.</value>
-  </data>
-  <data name="Parental_PinHintNoPin" xml:space="preserve">
-    <value>Without a PIN, anyone can disable the control in settings.</value>
-  </data>
-  <data name="Parental_StatusLockedNote" xml:space="preserve">
-    <value>Starting their channels requires the PIN.</value>
-  </data>
-  <data name="Parental_StatusOn" xml:space="preserve">
-    <value>Enabled. Groups behind PIN: {0}.</value>
-  </data>
-  <data name="Parental_StatusUnlockedNote" xml:space="preserve">
-    <value>Currently allowed without PIN.</value>
-  </data>
-  <data name="Parol_Eksporta" xml:space="preserve">
-    <value>Export password</value>
-  </data>
-  <data name="Parol_Fayla" xml:space="preserve">
-    <value>File password</value>
-  </data>
-  <data name="Parol_Minimum_4_Simvola" xml:space="preserve">
-    <value>Password must be at least 4 characters.</value>
-  </data>
-  <data name="Parol_Zadannyy_Pri_Eksporte" xml:space="preserve">
-    <value>The password set during export.</value>
-  </data>
-  <data name="Paroli_Ne_Sovpadayut" xml:space="preserve">
-    <value>Passwords do not match.</value>
-  </data>
-  <data name="Pauza_Arkhiv.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Пауза (архив)</value>
-  </data>
-  <data name="Pauza_Arkhiv_Lbl" xml:space="preserve">
-    <value>Pause (archive)</value>
-  </data>
-  <data name="Pauza_Arkhiv_Probel" xml:space="preserve">
-    <value>Pause (archive, Space)</value>
-  </data>
-  <data name="Pereimenovat.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Переименовать</value>
-  </data>
-  <data name="Pereimenovat_Lbl" xml:space="preserve">
-    <value>Rename</value>
-  </data>
-  <data name="Pereklyuchenie_Na_0" xml:space="preserve">
-    <value>Switching to \\"{0}\\"...</value>
-  </data>
-  <data name="Peremotka_Arkhiva_Otpustite_Polzunok_Dlya_Perekhoda.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Перемотка архива (отпустите ползунок для перехода)</value>
-  </data>
-  <data name="Peremotka_Arkhiva_Otpustite_Polzunok_Dlya_Perekhoda_Lbl" xml:space="preserve">
-    <value>Archive seeking (release the slider to jump)</value>
-  </data>
-  <data name="Peremotka_Video_Otpustite_Polzunok.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Перемотка видео (отпустите ползунок)</value>
-  </data>
-  <data name="Peremotka_Video_Otpustite_Polzunok_Lbl" xml:space="preserve">
-    <value>Video seeking (release the slider to jump)</value>
-  </data>
-  <data name="Perenos_Nastroek.Text" xml:space="preserve">
-    <value>Settings transfer</value>
-  </data>
-  <data name="Perenos_Nastroek_Lbl" xml:space="preserve">
-    <value>Settings transfer</value>
-  </data>
-  <data name="Pleylist.Text" xml:space="preserve">
-    <value>Playlist</value>
-  </data>
-  <data name="Pleylist_0_Dobavlen" xml:space="preserve">
-    <value>Playlist \\"{0}\\" added.</value>
-  </data>
-  <data name="Pleylist_0_Udalen" xml:space="preserve">
-    <value>Playlist \\"{0}\\" removed.</value>
-  </data>
-  <data name="Pleylist_Lbl" xml:space="preserve">
-    <value>Playlist</value>
-  </data>
-  <data name="Pleylist_M3U_M3U8" xml:space="preserve">
-    <value>M3U/M3U8 playlist</value>
-  </data>
-  <data name="Pleylist_Pereimenovan_V_0" xml:space="preserve">
-    <value>Playlist renamed to \\"{0}\\".</value>
-  </data>
-  <data name="Pleylisty.Text" xml:space="preserve">
-    <value>Playlists</value>
-  </data>
-  <data name="Pleylisty_Lbl" xml:space="preserve">
-    <value>Playlists</value>
-  </data>
-  <data name="Po_Istechenii_Taymera_0" xml:space="preserve">
-    <value>When the timer ends: {1}.</value>
-  </data>
-  <data name="Podtyagivaet_Tikhie_Kanaly_K_Obshchemu_Urovnyu.Text" xml:space="preserve">
-    <value>Raises quiet channels to a common level. Applies to the playing channel immediately.</value>
-  </data>
-  <data name="Podtyagivaet_Tikhie_Kanaly_K_Obshchemu_Urovnyu_Lbl" xml:space="preserve">
-    <value>Raises quiet channels to a common level. Applies to the playing channel immediately.</value>
-  </data>
-  <data name="Poisk.PlaceholderText" xml:space="preserve">
-    <value>Search...</value>
-  </data>
-  <data name="Poisk_Lbl" xml:space="preserve">
-    <value>Search...</value>
-  </data>
-  <data name="Pokazat" xml:space="preserve">
-    <value>Show</value>
-  </data>
-  <data name="Pokazat_EPG.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Show guide</value>
-  </data>
-  <data name="Pokazat_EPG_Lbl" xml:space="preserve">
-    <value>Show guide</value>
-  </data>
-  <data name="Pokazat_Skryt_EPG.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Show/hide TV guide</value>
-  </data>
-  <data name="Pokazat_Skryt_EPG_Lbl" xml:space="preserve">
-    <value>Show/hide TV guide</value>
-  </data>
-  <data name="Ponyatno" xml:space="preserve">
-    <value>OK</value>
-  </data>
-  <data name="Portal_Ne_Otdal_Potok_0" xml:space="preserve">
-    <value>Portal did not return a stream: {0}</value>
-  </data>
-  <data name="Portal_Ne_Vernul_Ssylku_Na_Potok" xml:space="preserve">
-    <value>Portal returned no stream URL (see log).</value>
-  </data>
-  <data name="Posle_Zapuska_Ne_Chashche_Raza_V" xml:space="preserve">
-    <value>After startup (at most once a day) the app checks GitHub Releases by itself, downloads the installer and offers to install. Installation never starts while recordings are running.</value>
-  </data>
-  <data name="Postoyannaya_Gromkost_EBU_R128" xml:space="preserve">
-    <value>Uniform loudness (EBU R128)</value>
-  </data>
-  <data name="Povtorite_Parol" xml:space="preserve">
-    <value>Repeat password</value>
-  </data>
-  <data name="Povtornoe_Nazhatie_Udalit_Pleylist_0_Vmeste" xml:space="preserve">
-    <value>Clicking again will remove playlist \\"{0}\\" and its local cache.</value>
-  </data>
-  <data name="Pozzhe" xml:space="preserve">
-    <value>Later</value>
-  </data>
-  <data name="Predydushchiy_Kanal_Backspace.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Предыдущий канал (Backspace)</value>
-  </data>
-  <data name="Predydushchiy_Kanal_Backspace_Lbl" xml:space="preserve">
-    <value>Previous channel (Backspace)</value>
-  </data>
-  <data name="Prervannaya_Zapis" xml:space="preserve">
-    <value>Interrupted recording</value>
-  </data>
-  <data name="Pri_Proshlom_Zakrytii_Prilozheniya_Prervalas_Zapis" xml:space="preserve">
-    <value>A recording was interrupted when the app closed:{0}{1}{0}{0}Resume recording the remaining part?</value>
-  </data>
-  <data name="Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala.Text" xml:space="preserve">
-    <value>Applied on next channel switch.</value>
-  </data>
-  <data name="Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala_Lbl" xml:space="preserve">
-    <value>Applied on next channel switch.</value>
-  </data>
-  <data name="Primenyaetsya_K_Uzhe_Vzvedennomu_Taymeru_Deystvie.Text" xml:space="preserve">
-    <value>Applies to an armed timer immediately; the action is shown when setting it.</value>
-  </data>
-  <data name="Primenyaetsya_K_Uzhe_Vzvedennomu_Taymeru_Deystvie_Lbl" xml:space="preserve">
-    <value>Applies to an armed timer immediately; the action is shown when setting it.</value>
-  </data>
-  <data name="Primenyaetsya_Srazu_Posle_Sokhraneniya_Bez_Perezapuska.Text" xml:space="preserve">
-    <value>Applied right after saving, no restart needed.</value>
-  </data>
-  <data name="Primenyaetsya_Srazu_Posle_Sokhraneniya_Bez_Perezapuska_Lbl" xml:space="preserve">
-    <value>Applied right after saving, no restart needed.</value>
-  </data>
-  <data name="Prodolzhenie" xml:space="preserve">
-    <value>{0} (resumed)</value>
-  </data>
-  <data name="Prodolzhit" xml:space="preserve">
-    <value>Resume</value>
-  </data>
-  <data name="Prodolzhit_Arkhiv_Probel" xml:space="preserve">
-    <value>Resume (archive, Space)</value>
-  </data>
-  <data name="Prodolzhit_Prosmotr" xml:space="preserve">
-    <value>Resume playback</value>
-  </data>
-  <data name="Programma_Peredach.Text" xml:space="preserve">
-    <value>— TV Guide</value>
-  </data>
-  <data name="Programma_Peredach_Lbl" xml:space="preserve">
-    <value>— TV Guide</value>
-  </data>
-  <data name="Programmnoe_Protsessor" xml:space="preserve">
-    <value>Software (CPU)</value>
-  </data>
-  <data name="Proverit_Obnovleniya" xml:space="preserve">
-    <value>Check for updates</value>
-  </data>
-  <data name="Proveryat_Obnovleniya_Avtomaticheski" xml:space="preserve">
-    <value>Check for updates automatically</value>
-  </data>
-  <data name="Proveryayu_Obnovleniya" xml:space="preserve">
-    <value>Checking for updates...</value>
-  </data>
-  <data name="Razvernut_Pleer_Na_Ves_Ekran.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Развернуть плеер на весь экран</value>
-  </data>
-  <data name="Razvernut_Pleer_Na_Ves_Ekran_F" xml:space="preserve">
-    <value>Full screen (F or double-click)</value>
-  </data>
-  <data name="Razvernut_Pleer_Na_Ves_Ekran_Lbl" xml:space="preserve">
-    <value>Maximize player</value>
-  </data>
-  <data name="Rezhim_Otobrazheniya_0_V" xml:space="preserve">
-    <value>Video mode: {1} (V)</value>
-  </data>
-  <data name="Rezhim_Otobrazheniya_V.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Режим отображения (V)</value>
-  </data>
-  <data name="Rezhim_Otobrazheniya_V_Lbl" xml:space="preserve">
-    <value>Display mode (V)</value>
-  </data>
-  <data name="Roditelskiy_Kontrol.Text" xml:space="preserve">
-    <value>Parental control</value>
-  </data>
-  <data name="Roditelskiy_Kontrol_Lbl" xml:space="preserve">
-    <value>Parental control</value>
-  </data>
-  <data name="Sbrosit_Filtry.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Сбросить фильтры</value>
-  </data>
-  <data name="Sbrosit_Filtry_Lbl" xml:space="preserve">
-    <value>Reset filters</value>
-  </data>
-  <data name="Segodnya" xml:space="preserve">
-    <value>Today</value>
-  </data>
-  <data name="Seriy_0" xml:space="preserve">
-    <value>{0} episodes</value>
-  </data>
-  <data name="Seriya.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Серия</value>
-  </data>
-  <data name="Seriya_Lbl" xml:space="preserve">
-    <value>Episode</value>
-  </data>
-  <data name="Sessiya_Kanala_0_1_2" xml:space="preserve">
-    <value>Channel session: {0}:{1}:{2}</value>
-  </data>
-  <data name="Sezon.Text" xml:space="preserve">
-    <value>Season:</value>
-  </data>
-  <data name="Sezon_0" xml:space="preserve">
-    <value>Season {0}</value>
-  </data>
-  <data name="Sezon_0_1" xml:space="preserve">
-    <value>Seasons {0}–{1}</value>
-  </data>
-  <data name="Sezon_2.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Сезон</value>
-  </data>
-  <data name="Sezon_2_Lbl" xml:space="preserve">
-    <value>Season</value>
-  </data>
-  <data name="Sezon_Lbl" xml:space="preserve">
-    <value>Season:</value>
-  </data>
-  <data name="Sistemnaya" xml:space="preserve">
-    <value>System</value>
-  </data>
-  <data name="Sistemnyy" xml:space="preserve">
-    <value>system</value>
-  </data>
-  <data name="Skachat_I_Ustanovit" xml:space="preserve">
-    <value>Download and install</value>
-  </data>
-  <data name="Skachivayu_Ustanovshchik_0" xml:space="preserve">
-    <value>Downloading installer... 0%</value>
-  </data>
-  <data name="Skachivayu_Ustanovshchik_0_2" xml:space="preserve">
-    <value>Downloading installer... {0}%</value>
-  </data>
-  <data name="Skoro_V_Efire_0" xml:space="preserve">
-    <value>Starting soon: {0}</value>
-  </data>
-  <data name="Skorost_Potoka_0_Izm" xml:space="preserve">
-    <value>Stream speed: {0} (meas.)</value>
-  </data>
-  <data name="Skorost_Potoka_0_Otsenka" xml:space="preserve">
-    <value>Stream speed: {0} (est.)</value>
-  </data>
-  <data name="Skryt_EPG" xml:space="preserve">
-    <value>Hide guide</value>
-  </data>
-  <data name="Skryvaemye_Gruppy" xml:space="preserve">
-    <value>Groups to hide</value>
-  </data>
-  <data name="Skryvat_Kanaly_Vybrannykh_Grupp" xml:space="preserve">
-    <value>Hide channels of selected groups</value>
-  </data>
-  <data name="SleepTimer_Exit" xml:space="preserve">
-    <value>will close the app</value>
-  </data>
-  <data name="SleepTimer_Shutdown" xml:space="preserve">
-    <value>will shut down the PC</value>
-  </data>
-  <data name="SleepTimer_Stop" xml:space="preserve">
-    <value>will stop playback</value>
-  </data>
-  <data name="Smenit_Pleylist.Text" xml:space="preserve">
-    <value>Switch playlist</value>
-  </data>
-  <data name="Smenit_Pleylist_Lbl" xml:space="preserve">
-    <value>Switch playlist</value>
-  </data>
-  <data name="Smotret_S_Nachala_Arkhiv.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Смотреть с начала (архив)</value>
-  </data>
-  <data name="Smotret_S_Nachala_Arkhiv_Lbl" xml:space="preserve">
-    <value>Watch from the start (archive)</value>
-  </data>
-  <data name="Smotret_S_Pervoy.Content" xml:space="preserve">
-    <value>Play first episode</value>
-  </data>
-  <data name="Smotret_S_Pervoy_Lbl" xml:space="preserve">
-    <value>Play first episode</value>
-  </data>
-  <data name="Smotret_Snachala" xml:space="preserve">
-    <value>Start over</value>
-  </data>
-  <data name="Sokhranit.Content" xml:space="preserve">
-    <value>Save</value>
-  </data>
-  <data name="Sokhranit_Imya.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Сохранить имя</value>
-  </data>
-  <data name="Sokhranit_Imya_Lbl" xml:space="preserve">
-    <value>Save name</value>
-  </data>
-  <data name="Sokhranit_Lbl" xml:space="preserve">
-    <value>Save</value>
-  </data>
-  <data name="Stat_AudioCodecs" xml:space="preserve">
-    <value>Audio: {0}</value>
-  </data>
-  <data name="Stat_VideoCodecs" xml:space="preserve">
-    <value>Video: {0}</value>
-  </data>
-  <data name="Stop" xml:space="preserve">
-    <value>Stop</value>
-  </data>
-  <data name="Stretch_Oberezat" xml:space="preserve">
-    <value>crop</value>
-  </data>
-  <data name="Stretch_Rastyanut" xml:space="preserve">
-    <value>stretch</value>
-  </data>
-  <data name="Stretch_Vpisat" xml:space="preserve">
-    <value>fit</value>
-  </data>
-  <data name="Stroka_Portala_Portal_Key_URL_Ili" xml:space="preserve">
-    <value>Portal string (portal::[key:...]URL) or API base URL</value>
-  </data>
-  <data name="Svetlaya" xml:space="preserve">
-    <value>Light</value>
-  </data>
-  <data name="Svoe_Znachenie_Minuty" xml:space="preserve">
-    <value>Custom (minutes)</value>
-  </data>
-  <data name="Svorachivat_V_Trey_Pri_Svorachivanii" xml:space="preserve">
-    <value>Minimize to tray on minimize</value>
-  </data>
-  <data name="Svorachivat_V_Trey_Pri_Zakrytii" xml:space="preserve">
-    <value>Minimize to tray on close</value>
-  </data>
-  <data name="TV_Bufer_0_C_Zaderzhka_Ot" xml:space="preserve">
-    <value>Live TV: buffer {0} s (live delay ~{0} s)</value>
-  </data>
-  <data name="Taymer_Sna.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Sleep Timer</value>
-  </data>
-  <data name="Taymer_Sna_Lbl" xml:space="preserve">
-    <value>Sleep Timer</value>
-  </data>
-  <data name="Taymer_Sna_Po_Istechenii.Text" xml:space="preserve">
-    <value>Sleep timer: when it ends</value>
-  </data>
-  <data name="Taymer_Sna_Po_Istechenii_Lbl" xml:space="preserve">
-    <value>Sleep timer: when it ends</value>
-  </data>
-  <data name="Tema_Interfeysa.Text" xml:space="preserve">
-    <value>Interface theme</value>
-  </data>
-  <data name="Tema_Interfeysa_Lbl" xml:space="preserve">
-    <value>Interface theme</value>
-  </data>
-  <data name="Temnaya" xml:space="preserve">
-    <value>Dark</value>
-  </data>
-  <data name="Tip_ArchiveAvailable" xml:space="preserve">
-    <value>Programme archive available ({0} days) — watch from the start</value>
-  </data>
-  <data name="Tip_Dynaudnorm" xml:space="preserve">
-    <value>dynaudnorm filter: gently boosts quiet sound without distortion; loud channels barely change</value>
-  </data>
-  <data name="Tip_HardwareDecoder" xml:space="preserve">
-    <value>GPU decoding; switches to the CPU automatically on stream problems</value>
-  </data>
-  <data name="Tip_Loudnorm" xml:space="preserve">
-    <value>loudnorm filter: all channels to a uniform −16 LUFS (loud ones get quieter); adds ~3 s delay from live</value>
-  </data>
-  <data name="Tip_SoftwareDecoder" xml:space="preserve">
-    <value>Guaranteed smooth with CPU headroom; uses a few percent of the CPU</value>
-  </data>
-  <data name="Tochno_Udalit_Nazhmite_Eshche_Raz" xml:space="preserve">
-    <value>Really remove? Click again</value>
-  </data>
-  <data name="Tolko_Vruchnuyu" xml:space="preserve">
-    <value>Manual only</value>
-  </data>
-  <data name="Tot_Zhe_Bufer_No_Dlya_Filmov" xml:space="preserve">
-    <value>Same buffer, but for video library movies and series. Lower — movies start faster, higher — fewer pauses during playback. Applied on next movie start.</value>
-  </data>
-  <data name="URL_Adresa_Istochnikov_EPG_XMLTV_Izmenennyy.Text" xml:space="preserve">
-    <value>EPG source URLs (XMLTV). A changed list is re-downloaded right after saving.</value>
-  </data>
-  <data name="URL_Adresa_Istochnikov_EPG_XMLTV_Izmenennyy_Lbl" xml:space="preserve">
-    <value>EPG source URLs (XMLTV). A changed list is re-downloaded right after saving.</value>
-  </data>
-  <data name="URL_Pleylista_M3U_M3U8.PlaceholderText" xml:space="preserve">
-    <value>M3U/M3U8 playlist URL</value>
-  </data>
-  <data name="URL_Pleylista_M3U_M3U8_Lbl" xml:space="preserve">
-    <value>M3U/M3U8 playlist URL</value>
-  </data>
-  <data name="URL_Potoka" xml:space="preserve">
-    <value>Stream URL</value>
-  </data>
-  <data name="URL_XMLTV" xml:space="preserve">
-    <value>XMLTV URL</value>
-  </data>
-  <data name="U_Istochnika_Portala_Ne_Zadan_Klyuch" xml:space="preserve">
-    <value>Portal source has no access key.</value>
-  </data>
-  <data name="U_Kanala_Ne_Ukazan_URL_Potoka" xml:space="preserve">
-    <value>Channel has no stream URL.</value>
-  </data>
-  <data name="U_Kanala_Net_URL_Potoka_Arkhiv" xml:space="preserve">
-    <value>Channel has no stream URL — archive unavailable.</value>
-  </data>
-  <data name="U_Vas_Poslednyaya_Versiya_0" xml:space="preserve">
-    <value>You are up to date ({0}).</value>
-  </data>
-  <data name="Ubrat" xml:space="preserve">
-    <value>Remove</value>
-  </data>
-  <data name="Ubrat_Iz_Izbrannogo" xml:space="preserve">
-    <value>Remove from favorites</value>
-  </data>
-  <data name="Ubrat_PIN" xml:space="preserve">
-    <value>Remove PIN</value>
-  </data>
-  <data name="Udalit.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Remove</value>
-  </data>
-  <data name="Udalit_Istochnik.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Remove source</value>
-  </data>
-  <data name="Udalit_Istochnik_Lbl" xml:space="preserve">
-    <value>Remove source</value>
-  </data>
-  <data name="Udalit_Lbl" xml:space="preserve">
-    <value>Remove</value>
-  </data>
-  <data name="Ustanovit" xml:space="preserve">
-    <value>Set</value>
-  </data>
-  <data name="Ustanovit_Seychas" xml:space="preserve">
-    <value>Install now</value>
-  </data>
-  <data name="Ustanovshchik_Versii_0_Skachan" xml:space="preserve">
-    <value>Installer for version {0} downloaded.</value>
-  </data>
-  <data name="V_Efir.Content" xml:space="preserve">
-    <value>Live</value>
-  </data>
-  <data name="V_Efir_Lbl" xml:space="preserve">
-    <value>Live</value>
-  </data>
-  <data name="V_Fayle_Eksporta_Net_Pleylistov" xml:space="preserve">
-    <value>The export file has no playlists.</value>
-  </data>
-  <data name="V_Pleyliste_Net_Grupp" xml:space="preserve">
-    <value>The playlist has no groups.</value>
-  </data>
-  <data name="Vchera" xml:space="preserve">
-    <value>Yesterday</value>
-  </data>
-  <data name="Vernutsya_K_Pryamomu_Efiru.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Вернуться к прямому эфиру</value>
-  </data>
-  <data name="Vernutsya_K_Pryamomu_Efiru_Lbl" xml:space="preserve">
-    <value>Back to live</value>
-  </data>
-  <data name="Versiya_0" xml:space="preserve">
-    <value>Version {0}</value>
-  </data>
-  <data name="Versiya_0_Skachana_Ustanovit_Seychas_Prilozhenie" xml:space="preserve">
-    <value>Version {0} is downloaded. Install now? The app will close during installation and restart after.</value>
-  </data>
-  <data name="Vid_Spisok_Postery.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Вид: список / постеры</value>
-  </data>
-  <data name="Vid_Spisok_Postery_Lbl" xml:space="preserve">
-    <value>View: list / posters</value>
-  </data>
-  <data name="Video_Portal" xml:space="preserve">
-    <value>Video portal</value>
-  </data>
-  <data name="Videoteka_Bufer_0_C" xml:space="preserve">
-    <value>Video library: buffer {0} s</value>
-  </data>
-  <data name="Vkl" xml:space="preserve">
-    <value>On</value>
-  </data>
-  <data name="Vklyuchit_Zvuk_M" xml:space="preserve">
-    <value>Unmute (M)</value>
-  </data>
-  <data name="Vosproizvedenie.Text" xml:space="preserve">
-    <value>Playback</value>
-  </data>
-  <data name="Vosproizvedenie_Lbl" xml:space="preserve">
-    <value>Playback</value>
-  </data>
-  <data name="Vosproizvesti" xml:space="preserve">
-    <value>Play</value>
-  </data>
-  <data name="Vozmozhnosti" xml:space="preserve">
-    <value>Features</value>
-  </data>
-  <data name="Vse_Gody" xml:space="preserve">
-    <value>All years</value>
-  </data>
-  <data name="Vse_Gruppy" xml:space="preserve">
-    <value>All groups</value>
-  </data>
-  <data name="Vse_Tipy" xml:space="preserve">
-    <value>All types</value>
-  </data>
-  <data name="Vse_Zhanry" xml:space="preserve">
-    <value>All genres</value>
-  </data>
-  <data name="Vvedite_Klyuch_Portala" xml:space="preserve">
-    <value>Enter the portal key.</value>
-  </data>
-  <data name="Vvedite_Nazvanie_Kanala" xml:space="preserve">
-    <value>Enter channel name</value>
-  </data>
-  <data name="Vvedite_PIN_I_Vyberite_Na_Skolko" xml:space="preserve">
-    <value>Enter the PIN and choose how long to stop asking for it when starting channels.</value>
-  </data>
-  <data name="Vvedite_STARYY_PIN_V_Verkhnem_Pole" xml:space="preserve">
-    <value>Enter the OLD PIN in the field above before changing.</value>
-  </data>
-  <data name="Vvedite_URL_Istochnika_EPG" xml:space="preserve">
-    <value>Enter an EPG source URL.</value>
-  </data>
-  <data name="Vvedite_URL_Pleylista" xml:space="preserve">
-    <value>Enter a playlist URL.</value>
-  </data>
-  <data name="Vvedite_URL_Potoka" xml:space="preserve">
-    <value>Enter the stream URL (m3u8)</value>
-  </data>
-  <data name="Vyberite_Istochnik_EPG_Ili_Obnovite_Dannye.Text" xml:space="preserve">
-    <value>Choose an EPG source or refresh the data</value>
-  </data>
-  <data name="Vyberite_Istochnik_EPG_Ili_Obnovite_Dannye_Lbl" xml:space="preserve">
-    <value>Choose an EPG source or refresh the data</value>
-  </data>
-  <data name="Vybor_Serii" xml:space="preserve">
-    <value>Pick episode</value>
-  </data>
-  <data name="Vybrat_Fayl.Content" xml:space="preserve">
-    <value>Pick file...</value>
-  </data>
-  <data name="Vybrat_Fayl_Lbl" xml:space="preserve">
-    <value>Pick file...</value>
-  </data>
-  <data name="Vykhod" xml:space="preserve">
-    <value>Exit</value>
-  </data>
-  <data name="Vykl" xml:space="preserve">
-    <value>Off</value>
-  </data>
-  <data name="Vyklyuchen" xml:space="preserve">
-    <value>Disabled</value>
-  </data>
-  <data name="Vyklyuchen_2" xml:space="preserve">
-    <value>Disabled.</value>
-  </data>
-  <data name="Vyklyuchena" xml:space="preserve">
-    <value>Off</value>
-  </data>
-  <data name="Vyklyuchit_Kompyuter" xml:space="preserve">
-    <value>Shut down the PC</value>
-  </data>
-  <data name="Vyyti_Iz_Polnoekrannogo_Rezhima.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Выйти из полноэкранного режима</value>
-  </data>
-  <data name="Vyyti_Iz_Polnoekrannogo_Rezhima_Esc" xml:space="preserve">
-    <value>Exit full screen (Esc)</value>
-  </data>
-  <data name="Vyyti_Iz_Polnoekrannogo_Rezhima_Lbl" xml:space="preserve">
-    <value>Exit full screen</value>
-  </data>
-  <data name="YAzyk_Interfeysa.Text" xml:space="preserve">
-    <value>Interface language</value>
-  </data>
-  <data name="YAzyk_Interfeysa_Lbl" xml:space="preserve">
-    <value>Interface language</value>
-  </data>
-  <data name="Za_0_Min_Do_Nachala" xml:space="preserve">
-    <value>{0} min before start</value>
-  </data>
-  <data name="Za_Skolko_Minut_Do_Nachala_Peredachi.Text" xml:space="preserve">
-    <value>How many minutes before a programme starts to show a toast reminder.</value>
-  </data>
-  <data name="Za_Skolko_Minut_Do_Nachala_Peredachi_Lbl" xml:space="preserve">
-    <value>How many minutes before a programme starts to show a toast reminder.</value>
-  </data>
-  <data name="Zagruzka_I_Razbor_Pleylista" xml:space="preserve">
-    <value>Loading and parsing playlist...</value>
-  </data>
-  <data name="Zagruzka_Kataloga_Portala" xml:space="preserve">
-    <value>Loading portal catalog...</value>
-  </data>
-  <data name="Zakryt" xml:space="preserve">
-    <value>Close</value>
-  </data>
-  <data name="Zakryt_Programmu" xml:space="preserve">
-    <value>Close the app</value>
-  </data>
-  <data name="Zamenit_Vse" xml:space="preserve">
-    <value>Replace all</value>
-  </data>
-  <data name="Zamenit_Vse_Nastroyki_Ili_Dobavit_Tolko" xml:space="preserve">
-    <value>Replace all settings or add only the playlists from the file?</value>
-  </data>
-  <data name="Zapis_Sobytiy_V_0_Vyklyuchenie_Deystvuet" xml:space="preserve">
-    <value>Writes events to {0}. Turning it off takes effect immediately, no restart required.</value>
-  </data>
-  <data name="Zapisat_Kanal.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Record channel</value>
-  </data>
-  <data name="Zapisat_Kanal_Lbl" xml:space="preserve">
-    <value>Record channel</value>
-  </data>
-  <data name="Zapisat_Peredachu.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Записать передачу</value>
-  </data>
-  <data name="Zapisat_Peredachu_Lbl" xml:space="preserve">
-    <value>Record programme</value>
-  </data>
-  <data name="Zapisi.Text" xml:space="preserve">
-    <value>Recordings</value>
-  </data>
-  <data name="Zapisi_Lbl" xml:space="preserve">
-    <value>Recordings</value>
-  </data>
-  <data name="Zaplanirovannye" xml:space="preserve">
-    <value>Scheduled</value>
-  </data>
-  <data name="Zaprashivat_PIN_Seychas" xml:space="preserve">
-    <value>Ask for PIN now</value>
-  </data>
-  <data name="Zapusk_Kanalov_Otmechennykh_Grupp_Zaprashivaet_PIN" xml:space="preserve">
-    <value>Starting channels of the checked groups asks for the PIN while control is enabled and not temporarily unlocked.</value>
-  </data>
-  <data name="Zavtra" xml:space="preserve">
-    <value>Tomorrow</value>
-  </data>
-  <data name="Zvuk.Text" xml:space="preserve">
-    <value>Audio</value>
-  </data>
-  <data name="Zvuk_Lbl" xml:space="preserve">
-    <value>Audio</value>
-  </data>
-</root>
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="1" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" />
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="0_1_2" xml:space="preserve">
+    <value>{0} — {1}, {2}</value>
+  </data>
+  <data name="0_Min" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="0_S_1" xml:space="preserve">
+    <value>● {0} — since {1}</value>
+  </data>
+  <data name="0_Vy_Ostanovilis_Na_1_Prodolzhit" xml:space="preserve">
+    <value>“{0}”: you stopped at {1}. Resume from there?</value>
+  </data>
+  <data name="15_Min.Content" xml:space="preserve">
+    <value>15 min</value>
+  </data>
+  <data name="15_Min_Lbl" xml:space="preserve">
+    <value>15 min</value>
+  </data>
+  <data name="1_Chas.Content" xml:space="preserve">
+    <value>1 hour</value>
+  </data>
+  <data name="1_Chas_Lbl" xml:space="preserve">
+    <value>1 hour</value>
+  </data>
+  <data name="30_Min.Content" xml:space="preserve">
+    <value>30 min</value>
+  </data>
+  <data name="30_Min_Lbl" xml:space="preserve">
+    <value>30 min</value>
+  </data>
+  <data name="45_Min.Content" xml:space="preserve">
+    <value>45 min</value>
+  </data>
+  <data name="45_Min_Lbl" xml:space="preserve">
+    <value>45 min</value>
+  </data>
+  <data name="About_ComponentsList" xml:space="preserve">
+    <value>FFmpeg / FFmpegInteropX (demuxing and decoding HEVC, AC-3, etc.)
+Windows App SDK (WinUI 3), .NET 8, CommunityToolkit
+Serilog (logging), Inno Setup (installer)</value>
+  </data>
+  <data name="About_FeaturesList" xml:space="preserve">
+    <value>• Live streams and catch-up archives with seeking
+• Video library (portal): films, series, quality selection
+• XMLTV programme guide, programme reminders
+• Channel/programme recording (ffmpeg, up to 3 parallel)
+• Favorites, history, previous channel (Backspace)
+• Mini player (Ctrl+M), stream stats (Ctrl+J)
+• Semi-automatic updates (GitHub Releases)
+• Parental control, dark theme, Russian/English</value>
+  </data>
+  <data name="Aktiven_Pleylist_0" xml:space="preserve">
+    <value>Playlist \\"{0}\\" is now active.</value>
+  </data>
+  <data name="Aktivirovat.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Активировать</value>
+  </data>
+  <data name="Aktivirovat_Lbl" xml:space="preserve">
+    <value>Activate</value>
+  </data>
+  <data name="Apparatnoe_GPU_S_Otkatom_Na_Protsessor" xml:space="preserve">
+    <value>Hardware (GPU, CPU fallback)</value>
+  </data>
+  <data name="Arkhiv_0" xml:space="preserve">
+    <value>Archive: {0}</value>
+  </data>
+  <data name="Arkhiv_0_1" xml:space="preserve">
+    <value>Archive: {0} ({1})</value>
+  </data>
+  <data name="Avto.Content" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="Avto_Lbl" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="Avto_Maksimalnoe" xml:space="preserve">
+    <value>Auto (maximum)</value>
+  </data>
+  <data name="Bez_Gruppy" xml:space="preserve">
+    <value>No group</value>
+  </data>
+  <data name="Bez_Kategorii" xml:space="preserve">
+    <value>Uncategorized</value>
+  </data>
+  <data name="Bez_Zvuka_M.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Mute (M)</value>
+  </data>
+  <data name="Bez_Zvuka_M_Lbl" xml:space="preserve">
+    <value>Mute (M)</value>
+  </data>
+  <data name="Bufer_0_C_1_MB_Prostoi" xml:space="preserve">
+    <value>Buffer: {0}s / {1} MB · stalls: {2}</value>
+  </data>
+  <data name="Bufer_TV_Kanalov_Pryamoy_Efir" xml:space="preserve">
+    <value>Live TV buffer</value>
+  </data>
+  <data name="Bufer_Videoteki.Text" xml:space="preserve">
+    <value>Video library buffer</value>
+  </data>
+  <data name="Bufer_Videoteki_Filmy_Portala" xml:space="preserve">
+    <value>Video library buffer (portal movies)</value>
+  </data>
+  <data name="Bufer_Videoteki_Lbl" xml:space="preserve">
+    <value>Video library buffer</value>
+  </data>
+  <data name="Buferizatsiya.Text" xml:space="preserve">
+    <value>Buffering</value>
+  </data>
+  <data name="Buferizatsiya_Lbl" xml:space="preserve">
+    <value>Buffering</value>
+  </data>
+  <data name="CHastota_Obnovleniya_Pleylistov.Text" xml:space="preserve">
+    <value>Playlist refresh rate</value>
+  </data>
+  <data name="CHastota_Obnovleniya_Pleylistov_Lbl" xml:space="preserve">
+    <value>Playlist refresh rate</value>
+  </data>
+  <data name="Dekoder_0_Apparatnyy_1" xml:space="preserve">
+    <value>Decoder: {0} · HW: {1}</value>
+  </data>
+  <data name="Dekodirovanie_Video.Text" xml:space="preserve">
+    <value>Video decoding</value>
+  </data>
+  <data name="Dekodirovanie_Video_Lbl" xml:space="preserve">
+    <value>Video decoding</value>
+  </data>
+  <data name="Diagnostika" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Dinamicheskaya_Usilivaet_Tikhie_Kanaly" xml:space="preserve">
+    <value>Dynamic (boosts quiet channels)</value>
+  </data>
+  <data name="Do_Vremeni_0" xml:space="preserve">
+    <value> (until {0})</value>
+  </data>
+  <data name="Do_Vyklyucheniya" xml:space="preserve">
+    <value>Until off</value>
+  </data>
+  <data name="Dobavit.Content" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Dobavit_Istochnik_EPG.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Добавить источник EPG</value>
+  </data>
+  <data name="Dobavit_Istochnik_EPG_Lbl" xml:space="preserve">
+    <value>Add EPG source</value>
+  </data>
+  <data name="Dobavit_Kanal" xml:space="preserve">
+    <value>Add channel</value>
+  </data>
+  <data name="Dobavit_Kanal_Vruchnuyu.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Добавить канал вручную</value>
+  </data>
+  <data name="Dobavit_Kanal_Vruchnuyu_Lbl" xml:space="preserve">
+    <value>Add channel manually</value>
+  </data>
+  <data name="Dobavit_Lbl" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Dobavit_Pleylist.Text" xml:space="preserve">
+    <value>Add playlist</value>
+  </data>
+  <data name="Dobavit_Pleylist_Lbl" xml:space="preserve">
+    <value>Add playlist</value>
+  </data>
+  <data name="Dobavit_Pleylisty" xml:space="preserve">
+    <value>Add playlists</value>
+  </data>
+  <data name="Dobavit_V_Izbrannoe" xml:space="preserve">
+    <value>Add to favorites</value>
+  </data>
+  <data name="Dobavleno_Pleylistov_0" xml:space="preserve">
+    <value>Playlists added: {0}.</value>
+  </data>
+  <data name="Dostupen" xml:space="preserve">
+    <value>available</value>
+  </data>
+  <data name="Dostupna_Versiya_0_U_Vas_1" xml:space="preserve">
+    <value>Version {0} is available (you have {1}).</value>
+  </data>
+  <data name="Dostupno_Obnovlenie" xml:space="preserve">
+    <value>Update available</value>
+  </data>
+  <data name="EPG_Dannye_Nedostupny.Text" xml:space="preserve">
+    <value>EPG data unavailable</value>
+  </data>
+  <data name="EPG_Dannye_Nedostupny_Lbl" xml:space="preserve">
+    <value>EPG data unavailable</value>
+  </data>
+  <data name="EPG_Programma_Peredach.Text" xml:space="preserve">
+    <value>EPG (TV guide)</value>
+  </data>
+  <data name="EPG_Programma_Peredach_Lbl" xml:space="preserve">
+    <value>EPG (TV guide)</value>
+  </data>
+  <data name="EPG_XMLTV_Epg_One_Sopostavlenie_Kanalov" xml:space="preserve">
+    <value>EPG: XMLTV (epg.one), channel matching via the epg.one/setup-playlist table</value>
+  </data>
+  <data name="Eksportirovat.Content" xml:space="preserve">
+    <value>Export...</value>
+  </data>
+  <data name="Eksportirovat_Lbl" xml:space="preserve">
+    <value>Export...</value>
+  </data>
+  <data name="Epizod" xml:space="preserve">
+    <value>Episode</value>
+  </data>
+  <data name="Eta_Peredacha_Eshche_Ne_Nachalas" xml:space="preserve">
+    <value>This programme has not started yet.</value>
+  </data>
+  <data name="Fayl_Budet_Soderzhat_Ssylki_I_Klyuchi" xml:space="preserve">
+    <value>The file will contain links and keys in encrypted form — it cannot be opened without the password.</value>
+  </data>
+  <data name="Faylovyy_Log" xml:space="preserve">
+    <value>File log</value>
+  </data>
+  <data name="Glubina_Bufera_Dlya_TV_Kanalov_Pryamogo" xml:space="preserve">
+    <value>Buffer depth for live TV channels. Higher — smoother on unstable networks, but further behind the live edge. Applied on next channel switch.</value>
+  </data>
+  <data name="Gotovo.Content" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Gotovo_Lbl" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Gromkost_Ili_Koleso_Myshi_Nad_Video.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Громкость (или колесо мыши над видео)</value>
+  </data>
+  <data name="Gromkost_Ili_Koleso_Myshi_Nad_Video_Lbl" xml:space="preserve">
+    <value>Volume (or mouse wheel over video)</value>
+  </data>
+  <data name="IPTV_Pleer_Dlya_Pleylistov_M3U_M3U8" xml:space="preserve">
+    <value>IPTV player for M3U/M3U8 playlists with EPG, catch-up archive, video library, recording and parental control.</value>
+  </data>
+  <data name="Idet_Zapis_Peredach_Obnovlenie_Ustanovitsya_Avtomaticheski" xml:space="preserve">
+    <value>A recording is in progress — the update will install automatically when it finishes.</value>
+  </data>
+  <data name="Idut_Seychas" xml:space="preserve">
+    <value>Recording now</value>
+  </data>
+  <data name="Import_Nastroek" xml:space="preserve">
+    <value>Import settings</value>
+  </data>
+  <data name="Importirovat.Content" xml:space="preserve">
+    <value>Import...</value>
+  </data>
+  <data name="Importirovat_Lbl" xml:space="preserve">
+    <value>Import...</value>
+  </data>
+  <data name="Imya_Neobyazatelno.PlaceholderText" xml:space="preserve">
+    <value>Name (optional)</value>
+  </data>
+  <data name="Imya_Neobyazatelno_Lbl" xml:space="preserve">
+    <value>Name (optional)</value>
+  </data>
+  <data name="Interfeys.Text" xml:space="preserve">
+    <value>Interface</value>
+  </data>
+  <data name="Interfeys_Lbl" xml:space="preserve">
+    <value>Interface</value>
+  </data>
+  <data name="Ispolzovat_Istochnik.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Use this source</value>
+  </data>
+  <data name="Ispolzovat_Istochnik_Lbl" xml:space="preserve">
+    <value>Use this source</value>
+  </data>
+  <data name="Istochnik_Portala_Ne_Nayden" xml:space="preserve">
+    <value>Portal source not found.</value>
+  </data>
+  <data name="Istochnik_Sistemnyy_FFmpeg_Ne_Otkryval_Potok" xml:space="preserve">
+    <value>Source: system (FFmpeg did not open the stream)</value>
+  </data>
+  <data name="Istochniki_EPG.Text" xml:space="preserve">
+    <value>EPG sources</value>
+  </data>
+  <data name="Istochniki_EPG_Etogo_Pleylista.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Источники EPG этого плейлиста</value>
+  </data>
+  <data name="Istochniki_EPG_Etogo_Pleylista_Lbl" xml:space="preserve">
+    <value>EPG sources of this playlist</value>
+  </data>
+  <data name="Istochniki_EPG_Lbl" xml:space="preserve">
+    <value>EPG sources</value>
+  </data>
+  <data name="Iz_0" xml:space="preserve">
+    <value>of {0}</value>
+  </data>
+  <data name="Izbrannoe" xml:space="preserve">
+    <value>★ Favorites</value>
+  </data>
+  <data name="Kachestvo_Video.Text" xml:space="preserve">
+    <value>Video quality</value>
+  </data>
+  <data name="Kachestvo_Video.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Video quality</value>
+  </data>
+  <data name="Kachestvo_Video_Lbl" xml:space="preserve">
+    <value>Video quality</value>
+  </data>
+  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_Aktivnyy.Text" xml:space="preserve">
+    <value>How often to re-download the active playlist on startup.</value>
+  </data>
+  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_Aktivnyy_Lbl" xml:space="preserve">
+    <value>How often to re-download the active playlist on startup.</value>
+  </data>
+  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_XMLTV.Text" xml:space="preserve">
+    <value>How often to re-download XMLTV sources on startup.</value>
+  </data>
+  <data name="Kak_Chasto_Pri_Zapuske_Perekachivat_XMLTV_Lbl" xml:space="preserve">
+    <value>How often to re-download XMLTV sources on startup.</value>
+  </data>
+  <data name="Kanal_0" xml:space="preserve">
+    <value>Channel: {0}</value>
+  </data>
+  <data name="Kanal_0_Zakryt_Roditelskim_Kontrolem_Vvedite" xml:space="preserve">
+    <value>Channel \\"{0}\\" is locked by parental control. Enter the PIN and choose how long to allow viewing.</value>
+  </data>
+  <data name="Kanalov_0" xml:space="preserve">
+    <value>Channels: {0}</value>
+  </data>
+  <data name="Kanaly.Text" xml:space="preserve">
+    <value>Channels</value>
+  </data>
+  <data name="Kanaly_Lbl" xml:space="preserve">
+    <value>Channels</value>
+  </data>
+  <data name="Kanaly_Ostayutsya_V_Spiske_No_Zapusk" xml:space="preserve">
+    <value>Channels stay in the list, but starting channels of the checked groups requires the PIN. "Adult" groups (18+, xxx, etc.) are checked automatically; the list can be edited manually.</value>
+  </data>
+  <data name="Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista" xml:space="preserve">
+    <value>The channel list shows the active playlist. Switch playlists in the settings menu (Settings → Switch playlist).</value>
+  </data>
+  <data name="Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista_2.Text" xml:space="preserve">
+    <value>Channels in the list come from the active playlist. Switch with the combo box above the channel list.</value>
+  </data>
+  <data name="Kanaly_V_Spiske_Iz_Aktivnogo_Pleylista_2_Lbl" xml:space="preserve">
+    <value>Channels in the list come from the active playlist. Switch with the combo box above the channel list.</value>
+  </data>
+  <data name="Kazhduyu_Nedelyu" xml:space="preserve">
+    <value>Weekly</value>
+  </data>
+  <data name="Kazhdye_3_Dnya" xml:space="preserve">
+    <value>Every 3 days</value>
+  </data>
+  <data name="Kazhdyy_Den" xml:space="preserve">
+    <value>Daily</value>
+  </data>
+  <data name="Klik_Po_Peredache_Smotret_S_Nachala.Text" xml:space="preserve">
+    <value>click a programme to watch from the start</value>
+  </data>
+  <data name="Klik_Po_Peredache_Smotret_S_Nachala_Lbl" xml:space="preserve">
+    <value>click a programme to watch from the start</value>
+  </data>
+  <data name="Klyuch_Portala.Header" xml:space="preserve">
+    <value>Portal key</value>
+  </data>
+  <data name="Klyuch_Portala.PlaceholderText" xml:space="preserve">
+    <value>Portal key</value>
+  </data>
+  <data name="Klyuch_Portala_Lbl" xml:space="preserve">
+    <value>Portal key</value>
+  </data>
+  <data name="Klyuch_Portala_Portal_Key" xml:space="preserve">
+    <value>Portal key (portal::[key:...])</value>
+  </data>
+  <data name="Knopka_Svernut_Pryachet_Okno_V_Trey" xml:space="preserve">
+    <value>The minimize button hides the window to the tray instead of the taskbar.</value>
+  </data>
+  <data name="Komponente" xml:space="preserve">
+    <value>Components</value>
+  </data>
+  <data name="Kontrolnaya_Summa_Ustanovshchika_Ne_Sovpala_Obnovlenie" xml:space="preserve">
+    <value>Installer checksum mismatch — update cancelled.</value>
+  </data>
+  <data name="Krestik_Okna_Pryachet_Ego_V_Trey" xml:space="preserve">
+    <value>The close button hides the window to the tray — playback continues. To quit fully, right-click the tray icon → "Exit".</value>
+  </data>
+  <data name="Kuda_Ffmpeg_Sokhranyaet_Zapisi_Ts_Pusto" xml:space="preserve">
+    <value>Where ffmpeg saves recordings (.ts). Empty = "Videos\IptvPlayer". A drive root can be typed in manually, e.g. F:\ — the system folder picker does not allow selecting a drive root.</value>
+  </data>
+  <data name="Log_0" xml:space="preserve">
+    <value>Log: {0}</value>
+  </data>
+  <data name="Maksimalnoe_Kachestvo_Potoka_Ili_Ogranichenie_Razresheniya.Text" xml:space="preserve">
+    <value>Maximum stream quality or resolution limit. Applies on next channel switch.</value>
+  </data>
+  <data name="Maksimalnoe_Kachestvo_Potoka_Ili_Ogranichenie_Razresheniya_Lbl" xml:space="preserve">
+    <value>Maximum stream quality or resolution limit. Applies on next channel switch.</value>
+  </data>
+  <data name="Nachalo_V_0" xml:space="preserve">
+    <value>{0} • starts at {1}</value>
+  </data>
+  <data name="Napominaniya_EPG.Text" xml:space="preserve">
+    <value>EPG reminders</value>
+  </data>
+  <data name="Napominaniya_EPG_Lbl" xml:space="preserve">
+    <value>EPG reminders</value>
+  </data>
+  <data name="Napomnit_O_Peredache.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Напомнить о передаче</value>
+  </data>
+  <data name="Napomnit_O_Peredache_Lbl" xml:space="preserve">
+    <value>Remind me</value>
+  </data>
+  <data name="Nastroyki.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Nastroyki_EPG.Text" xml:space="preserve">
+    <value>EPG settings</value>
+  </data>
+  <data name="Nastroyki_EPG_Lbl" xml:space="preserve">
+    <value>EPG settings</value>
+  </data>
+  <data name="Nastroyki_Eksportirovany_0" xml:space="preserve">
+    <value>Settings exported: {0}</value>
+  </data>
+  <data name="Nastroyki_I_Dannee" xml:space="preserve">
+    <value>Settings and data</value>
+  </data>
+  <data name="Nastroyki_I_Kesh_0_IptvPlayer" xml:space="preserve">
+    <value>Settings and cache: {0}\\IptvPlayer</value>
+  </data>
+  <data name="Nastroyki_Interfeysa.Text" xml:space="preserve">
+    <value>Interface settings</value>
+  </data>
+  <data name="Nastroyki_Interfeysa_Lbl" xml:space="preserve">
+    <value>Interface settings</value>
+  </data>
+  <data name="Nastroyki_Lbl" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Nastroyki_Vosproizvedeniya.Text" xml:space="preserve">
+    <value>Playback settings</value>
+  </data>
+  <data name="Nastroyki_Vosproizvedeniya_Lbl" xml:space="preserve">
+    <value>Playback settings</value>
+  </data>
+  <data name="Nastroyki_Zameneny_Pleylistov_0" xml:space="preserve">
+    <value>Settings replaced, playlists: {0}.</value>
+  </data>
+  <data name="Nazvanie" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Ne_Udalos_Eksportirovat_Nastroyki_0" xml:space="preserve">
+    <value>Failed to export settings: {0}</value>
+  </data>
+  <data name="Ne_Udalos_Nachat_Zapis_Ffmpeg_Nedostupen" xml:space="preserve">
+    <value>Could not start recording (ffmpeg missing or concurrent recording limit reached) — see log.</value>
+  </data>
+  <data name="Ne_Udalos_Otkryt_Dialog_Eksporta_0" xml:space="preserve">
+    <value>Failed to open the export dialog: {0}</value>
+  </data>
+  <data name="Ne_Udalos_Otkryt_Dialog_Importa_0" xml:space="preserve">
+    <value>Failed to open the import dialog: {0}</value>
+  </data>
+  <data name="Ne_Udalos_Prochitat_Fayl_0" xml:space="preserve">
+    <value>Failed to read the file: {0}</value>
+  </data>
+  <data name="Ne_Udalos_Proverit_Obnovleniya_0" xml:space="preserve">
+    <value>Update check failed: {0}</value>
+  </data>
+  <data name="Ne_Udalos_Skachat_Obnovlenie_0" xml:space="preserve">
+    <value>Failed to download the update: {0}</value>
+  </data>
+  <data name="Ne_Udalos_Sozdat_Papku_0_Proverte" xml:space="preserve">
+    <value>Could not create \\"{0}\\" — check the path and permissions.</value>
+  </data>
+  <data name="Ne_Udalos_Vosproizvesti_Potok_0" xml:space="preserve">
+    <value>Cannot play stream: {0}</value>
+  </data>
+  <data name="Ne_Udalos_Zagruzit_Pleylist_0" xml:space="preserve">
+    <value>Failed to load the playlist: {0}</value>
+  </data>
+  <data name="Nedostupen" xml:space="preserve">
+    <value>not available</value>
+  </data>
+  <data name="Net" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Net_Aktivnykh_Zapisey" xml:space="preserve">
+    <value>No active recordings.</value>
+  </data>
+  <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo.Text" xml:space="preserve">
+    <value>No programme data for this channel</value>
+  </data>
+  <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo_Lbl" xml:space="preserve">
+    <value>No programme data for this channel</value>
+  </data>
+  <data name="Net_Zaplanirovannykh_Zapisey" xml:space="preserve">
+    <value>No scheduled recordings.</value>
+  </data>
+  <data name="Nevernyy_PIN" xml:space="preserve">
+    <value>Wrong PIN.</value>
+  </data>
+  <data name="Nikogda_Tolko_Pri_Dobavlenii" xml:space="preserve">
+    <value>Never (only when added)</value>
+  </data>
+  <data name="Normalizatsiya_Gromkosti.Text" xml:space="preserve">
+    <value>Volume normalization</value>
+  </data>
+  <data name="Normalizatsiya_Gromkosti_Lbl" xml:space="preserve">
+    <value>Volume normalization</value>
+  </data>
+  <data name="Novyy_PIN_4_Tsifry" xml:space="preserve">
+    <value>New PIN (4+ digits)</value>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="O_Programme.Text" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="O_Programme_Lbl" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Obnovit_EPG.Content" xml:space="preserve">
+    <value>Refresh EPG</value>
+  </data>
+  <data name="Obnovit_EPG_Lbl" xml:space="preserve">
+    <value>Refresh EPG</value>
+  </data>
+  <data name="Obnovlenie_Otlozheno" xml:space="preserve">
+    <value>Update postponed</value>
+  </data>
+  <data name="Obshchie_Istochniki_EPG_XMLTV_Deystvuyut_Dlya" xml:space="preserve">
+    <value>Shared EPG (XMLTV) sources: used by playlists that have no sources of their own. Per-playlist sources are configured in the Playlist dialog.</value>
+  </data>
+  <data name="Obzor" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="Oshibka_Vosproizvedeniya" xml:space="preserve">
+    <value>Playback error: </value>
+  </data>
+  <data name="Osnovnye_Teksty_Interfeysa_Perevodyatsya_Na_Letu.Text" xml:space="preserve">
+    <value>Main interface texts are translated on the fly.</value>
+  </data>
+  <data name="Osnovnye_Teksty_Interfeysa_Perevodyatsya_Na_Letu_Lbl" xml:space="preserve">
+    <value>Main interface texts are translated on the fly.</value>
+  </data>
+  <data name="Ostanovit_Vosproizvedenie" xml:space="preserve">
+    <value>Stop playback</value>
+  </data>
+  <data name="Ostanovit_Zapis" xml:space="preserve">
+    <value>Stop recording</value>
+  </data>
+  <data name="Ostanovit_Zapis_0" xml:space="preserve">
+    <value>Stop recording ({0})</value>
+  </data>
+  <data name="Otklyuchit_Taymer" xml:space="preserve">
+    <value>Turn off timer</value>
+  </data>
+  <data name="Otkryt_Papku" xml:space="preserve">
+    <value>Open folder</value>
+  </data>
+  <data name="Otkryt_Papku_Logov" xml:space="preserve">
+    <value>Open logs folder</value>
+  </data>
+  <data name="Otmena.Content" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Otmena_Lbl" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Otmenit_Taymer.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Отменить таймер</value>
+  </data>
+  <data name="Otmenit_Taymer_Lbl" xml:space="preserve">
+    <value>Cancel timer</value>
+  </data>
+  <data name="PIN_Dolzhen_Byt_Ne_Koroche_4" xml:space="preserve">
+    <value>The PIN must be at least 4 characters.</value>
+  </data>
+  <data name="PIN_Kod" xml:space="preserve">
+    <value>PIN code</value>
+  </data>
+  <data name="PIN_Ubran_Otklyuchit_Kontrol_Mozhno_Budet" xml:space="preserve">
+    <value>PIN removed — the control can now be disabled without a password.</value>
+  </data>
+  <data name="PIN_Ustanovlen" xml:space="preserve">
+    <value>PIN set.</value>
+  </data>
+  <data name="Papka_Zapisey" xml:space="preserve">
+    <value>Recordings folder</value>
+  </data>
+  <data name="Parental_PinHintHasPin" xml:space="preserve">
+    <value>The PIN is required to unlock or disable. Children cannot remove hiding without it.</value>
+  </data>
+  <data name="Parental_PinHintNoPin" xml:space="preserve">
+    <value>Without a PIN, anyone can disable the control in settings.</value>
+  </data>
+  <data name="Parental_StatusLockedNote" xml:space="preserve">
+    <value>Starting their channels requires the PIN.</value>
+  </data>
+  <data name="Parental_StatusOn" xml:space="preserve">
+    <value>Enabled. Groups behind PIN: {0}.</value>
+  </data>
+  <data name="Parental_StatusUnlockedNote" xml:space="preserve">
+    <value>Currently allowed without PIN.</value>
+  </data>
+  <data name="Parol_Eksporta" xml:space="preserve">
+    <value>Export password</value>
+  </data>
+  <data name="Parol_Fayla" xml:space="preserve">
+    <value>File password</value>
+  </data>
+  <data name="Parol_Minimum_4_Simvola" xml:space="preserve">
+    <value>Password must be at least 4 characters.</value>
+  </data>
+  <data name="Parol_Zadannyy_Pri_Eksporte" xml:space="preserve">
+    <value>The password set during export.</value>
+  </data>
+  <data name="Paroli_Ne_Sovpadayut" xml:space="preserve">
+    <value>Passwords do not match.</value>
+  </data>
+  <data name="Pauza_Arkhiv.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Пауза (архив)</value>
+  </data>
+  <data name="Pauza_Arkhiv_Lbl" xml:space="preserve">
+    <value>Pause (archive)</value>
+  </data>
+  <data name="Pauza_Arkhiv_Probel" xml:space="preserve">
+    <value>Pause (archive, Space)</value>
+  </data>
+  <data name="Pereimenovat.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Переименовать</value>
+  </data>
+  <data name="Pereimenovat_Lbl" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="Pereklyuchenie_Na_0" xml:space="preserve">
+    <value>Switching to \\"{0}\\"...</value>
+  </data>
+  <data name="Peremotka_Arkhiva_Otpustite_Polzunok_Dlya_Perekhoda.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Перемотка архива (отпустите ползунок для перехода)</value>
+  </data>
+  <data name="Peremotka_Arkhiva_Otpustite_Polzunok_Dlya_Perekhoda_Lbl" xml:space="preserve">
+    <value>Archive seeking (release the slider to jump)</value>
+  </data>
+  <data name="Peremotka_Video_Otpustite_Polzunok.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Перемотка видео (отпустите ползунок)</value>
+  </data>
+  <data name="Peremotka_Video_Otpustite_Polzunok_Lbl" xml:space="preserve">
+    <value>Video seeking (release the slider to jump)</value>
+  </data>
+  <data name="Perenos_Nastroek.Text" xml:space="preserve">
+    <value>Settings transfer</value>
+  </data>
+  <data name="Perenos_Nastroek_Lbl" xml:space="preserve">
+    <value>Settings transfer</value>
+  </data>
+  <data name="Pleylist.Text" xml:space="preserve">
+    <value>Playlist</value>
+  </data>
+  <data name="Pleylist_0_Dobavlen" xml:space="preserve">
+    <value>Playlist \\"{0}\\" added.</value>
+  </data>
+  <data name="Pleylist_0_Udalen" xml:space="preserve">
+    <value>Playlist \\"{0}\\" removed.</value>
+  </data>
+  <data name="Pleylist_Lbl" xml:space="preserve">
+    <value>Playlist</value>
+  </data>
+  <data name="Pleylist_M3U_M3U8" xml:space="preserve">
+    <value>M3U/M3U8 playlist</value>
+  </data>
+  <data name="Pleylist_Pereimenovan_V_0" xml:space="preserve">
+    <value>Playlist renamed to \\"{0}\\".</value>
+  </data>
+  <data name="Pleylisty.Text" xml:space="preserve">
+    <value>Playlists</value>
+  </data>
+  <data name="Pleylisty_Lbl" xml:space="preserve">
+    <value>Playlists</value>
+  </data>
+  <data name="Po_Istechenii_Taymera_0" xml:space="preserve">
+    <value>When the timer ends: {1}.</value>
+  </data>
+  <data name="Podtyagivaet_Tikhie_Kanaly_K_Obshchemu_Urovnyu.Text" xml:space="preserve">
+    <value>Raises quiet channels to a common level. Applies to the playing channel immediately.</value>
+  </data>
+  <data name="Podtyagivaet_Tikhie_Kanaly_K_Obshchemu_Urovnyu_Lbl" xml:space="preserve">
+    <value>Raises quiet channels to a common level. Applies to the playing channel immediately.</value>
+  </data>
+  <data name="Poisk.PlaceholderText" xml:space="preserve">
+    <value>Search...</value>
+  </data>
+  <data name="Poisk_Lbl" xml:space="preserve">
+    <value>Search...</value>
+  </data>
+  <data name="Pokazat" xml:space="preserve">
+    <value>Show</value>
+  </data>
+  <data name="Pokazat_EPG.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show guide</value>
+  </data>
+  <data name="Pokazat_EPG_Lbl" xml:space="preserve">
+    <value>Show guide</value>
+  </data>
+  <data name="Pokazat_Skryt_EPG.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show/hide TV guide</value>
+  </data>
+  <data name="Pokazat_Skryt_EPG_Lbl" xml:space="preserve">
+    <value>Show/hide TV guide</value>
+  </data>
+  <data name="Ponyatno" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Portal_Ne_Otdal_Potok_0" xml:space="preserve">
+    <value>Portal did not return a stream: {0}</value>
+  </data>
+  <data name="Portal_Ne_Vernul_Ssylku_Na_Potok" xml:space="preserve">
+    <value>Portal returned no stream URL (see log).</value>
+  </data>
+  <data name="Posle_Zapuska_Ne_Chashche_Raza_V" xml:space="preserve">
+    <value>After startup (at most once a day) the app checks GitHub Releases by itself, downloads the installer and offers to install. Installation never starts while recordings are running.</value>
+  </data>
+  <data name="Postoyannaya_Gromkost_EBU_R128" xml:space="preserve">
+    <value>Uniform loudness (EBU R128)</value>
+  </data>
+  <data name="Povtorite_Parol" xml:space="preserve">
+    <value>Repeat password</value>
+  </data>
+  <data name="Povtornoe_Nazhatie_Udalit_Pleylist_0_Vmeste" xml:space="preserve">
+    <value>Clicking again will remove playlist \\"{0}\\" and its local cache.</value>
+  </data>
+  <data name="Pozzhe" xml:space="preserve">
+    <value>Later</value>
+  </data>
+  <data name="Predydushchiy_Kanal_Backspace.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Предыдущий канал (Backspace)</value>
+  </data>
+  <data name="Predydushchiy_Kanal_Backspace_Lbl" xml:space="preserve">
+    <value>Previous channel (Backspace)</value>
+  </data>
+  <data name="Prervannaya_Zapis" xml:space="preserve">
+    <value>Interrupted recording</value>
+  </data>
+  <data name="Pri_Proshlom_Zakrytii_Prilozheniya_Prervalas_Zapis" xml:space="preserve">
+    <value>A recording was interrupted when the app closed:{0}{1}{0}{0}Resume recording the remaining part?</value>
+  </data>
+  <data name="Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala.Text" xml:space="preserve">
+    <value>Applied on next channel switch.</value>
+  </data>
+  <data name="Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala_Lbl" xml:space="preserve">
+    <value>Applied on next channel switch.</value>
+  </data>
+  <data name="Primenyaetsya_K_Uzhe_Vzvedennomu_Taymeru_Deystvie.Text" xml:space="preserve">
+    <value>Applies to an armed timer immediately; the action is shown when setting it.</value>
+  </data>
+  <data name="Primenyaetsya_K_Uzhe_Vzvedennomu_Taymeru_Deystvie_Lbl" xml:space="preserve">
+    <value>Applies to an armed timer immediately; the action is shown when setting it.</value>
+  </data>
+  <data name="Primenyaetsya_Srazu_Posle_Sokhraneniya_Bez_Perezapuska.Text" xml:space="preserve">
+    <value>Applied right after saving, no restart needed.</value>
+  </data>
+  <data name="Primenyaetsya_Srazu_Posle_Sokhraneniya_Bez_Perezapuska_Lbl" xml:space="preserve">
+    <value>Applied right after saving, no restart needed.</value>
+  </data>
+  <data name="Prodolzhenie" xml:space="preserve">
+    <value>{0} (resumed)</value>
+  </data>
+  <data name="Prodolzhit" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="Prodolzhit_Arkhiv_Probel" xml:space="preserve">
+    <value>Resume (archive, Space)</value>
+  </data>
+  <data name="Prodolzhit_Prosmotr" xml:space="preserve">
+    <value>Resume playback</value>
+  </data>
+  <data name="Programma_Peredach.Text" xml:space="preserve">
+    <value>— TV Guide</value>
+  </data>
+  <data name="Programma_Peredach_Lbl" xml:space="preserve">
+    <value>— TV Guide</value>
+  </data>
+  <data name="Programmnoe_Protsessor" xml:space="preserve">
+    <value>Software (CPU)</value>
+  </data>
+  <data name="Proverit_Obnovleniya" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="Proveryat_Obnovleniya_Avtomaticheski" xml:space="preserve">
+    <value>Check for updates automatically</value>
+  </data>
+  <data name="Proveryayu_Obnovleniya" xml:space="preserve">
+    <value>Checking for updates...</value>
+  </data>
+  <data name="Razvernut_Pleer_Na_Ves_Ekran.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Развернуть плеер на весь экран</value>
+  </data>
+  <data name="Razvernut_Pleer_Na_Ves_Ekran_F" xml:space="preserve">
+    <value>Full screen (F or double-click)</value>
+  </data>
+  <data name="Razvernut_Pleer_Na_Ves_Ekran_Lbl" xml:space="preserve">
+    <value>Maximize player</value>
+  </data>
+  <data name="Rezhim_Otobrazheniya_0_V" xml:space="preserve">
+    <value>Video mode: {1} (V)</value>
+  </data>
+  <data name="Rezhim_Otobrazheniya_V.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Режим отображения (V)</value>
+  </data>
+  <data name="Rezhim_Otobrazheniya_V_Lbl" xml:space="preserve">
+    <value>Display mode (V)</value>
+  </data>
+  <data name="Roditelskiy_Kontrol.Text" xml:space="preserve">
+    <value>Parental control</value>
+  </data>
+  <data name="Roditelskiy_Kontrol_Lbl" xml:space="preserve">
+    <value>Parental control</value>
+  </data>
+  <data name="Sbrosit_Filtry.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Сбросить фильтры</value>
+  </data>
+  <data name="Sbrosit_Filtry_Lbl" xml:space="preserve">
+    <value>Reset filters</value>
+  </data>
+  <data name="Segodnya" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="Seriy_0" xml:space="preserve">
+    <value>{0} episodes</value>
+  </data>
+  <data name="Seriya.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Серия</value>
+  </data>
+  <data name="Seriya_Lbl" xml:space="preserve">
+    <value>Episode</value>
+  </data>
+  <data name="Sessiya_Kanala_0_1_2" xml:space="preserve">
+    <value>Channel session: {0}:{1}:{2}</value>
+  </data>
+  <data name="Sezon.Text" xml:space="preserve">
+    <value>Season:</value>
+  </data>
+  <data name="Sezon_0" xml:space="preserve">
+    <value>Season {0}</value>
+  </data>
+  <data name="Sezon_0_1" xml:space="preserve">
+    <value>Seasons {0}–{1}</value>
+  </data>
+  <data name="Sezon_2.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Сезон</value>
+  </data>
+  <data name="Sezon_2_Lbl" xml:space="preserve">
+    <value>Season</value>
+  </data>
+  <data name="Sezon_Lbl" xml:space="preserve">
+    <value>Season:</value>
+  </data>
+  <data name="Sistemnaya" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Sistemnyy" xml:space="preserve">
+    <value>system</value>
+  </data>
+  <data name="Skachat_I_Ustanovit" xml:space="preserve">
+    <value>Download and install</value>
+  </data>
+  <data name="Skachivayu_Ustanovshchik_0" xml:space="preserve">
+    <value>Downloading installer... 0%</value>
+  </data>
+  <data name="Skachivayu_Ustanovshchik_0_2" xml:space="preserve">
+    <value>Downloading installer... {0}%</value>
+  </data>
+  <data name="Skoro_V_Efire_0" xml:space="preserve">
+    <value>Starting soon: {0}</value>
+  </data>
+  <data name="Skorost_Potoka_0_Izm" xml:space="preserve">
+    <value>Stream speed: {0} (meas.)</value>
+  </data>
+  <data name="Skorost_Potoka_0_Otsenka" xml:space="preserve">
+    <value>Stream speed: {0} (est.)</value>
+  </data>
+  <data name="Skryt_EPG" xml:space="preserve">
+    <value>Hide guide</value>
+  </data>
+  <data name="Skryvaemye_Gruppy" xml:space="preserve">
+    <value>Groups to hide</value>
+  </data>
+  <data name="Skryvat_Kanaly_Vybrannykh_Grupp" xml:space="preserve">
+    <value>Hide channels of selected groups</value>
+  </data>
+  <data name="SleepTimer_Exit" xml:space="preserve">
+    <value>will close the app</value>
+  </data>
+  <data name="SleepTimer_Shutdown" xml:space="preserve">
+    <value>will shut down the PC</value>
+  </data>
+  <data name="SleepTimer_Stop" xml:space="preserve">
+    <value>will stop playback</value>
+  </data>
+  <data name="Smenit_Pleylist.Text" xml:space="preserve">
+    <value>Switch playlist</value>
+  </data>
+  <data name="Smenit_Pleylist_Lbl" xml:space="preserve">
+    <value>Switch playlist</value>
+  </data>
+  <data name="Smotret_S_Nachala_Arkhiv.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Смотреть с начала (архив)</value>
+  </data>
+  <data name="Smotret_S_Nachala_Arkhiv_Lbl" xml:space="preserve">
+    <value>Watch from the start (archive)</value>
+  </data>
+  <data name="Smotret_S_Pervoy.Content" xml:space="preserve">
+    <value>Play first episode</value>
+  </data>
+  <data name="Smotret_S_Pervoy_Lbl" xml:space="preserve">
+    <value>Play first episode</value>
+  </data>
+  <data name="Smotret_Snachala" xml:space="preserve">
+    <value>Start over</value>
+  </data>
+  <data name="Sokhranit.Content" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Sokhranit_Imya.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Сохранить имя</value>
+  </data>
+  <data name="Sokhranit_Imya_Lbl" xml:space="preserve">
+    <value>Save name</value>
+  </data>
+  <data name="Sokhranit_Lbl" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Stat_AudioCodecs" xml:space="preserve">
+    <value>Audio: {0}</value>
+  </data>
+  <data name="Stat_VideoCodecs" xml:space="preserve">
+    <value>Video: {0}</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Stretch_Oberezat" xml:space="preserve">
+    <value>crop</value>
+  </data>
+  <data name="Stretch_Rastyanut" xml:space="preserve">
+    <value>stretch</value>
+  </data>
+  <data name="Stretch_Vpisat" xml:space="preserve">
+    <value>fit</value>
+  </data>
+  <data name="Stroka_Portala_Portal_Key_URL_Ili" xml:space="preserve">
+    <value>Portal string (portal::[key:...]URL) or API base URL</value>
+  </data>
+  <data name="Svetlaya" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Svoe_Znachenie_Minuty" xml:space="preserve">
+    <value>Custom (minutes)</value>
+  </data>
+  <data name="Svorachivat_V_Trey_Pri_Svorachivanii" xml:space="preserve">
+    <value>Minimize to tray on minimize</value>
+  </data>
+  <data name="Svorachivat_V_Trey_Pri_Zakrytii" xml:space="preserve">
+    <value>Minimize to tray on close</value>
+  </data>
+  <data name="TV_Bufer_0_C_Zaderzhka_Ot" xml:space="preserve">
+    <value>Live TV: buffer {0} s (live delay ~{0} s)</value>
+  </data>
+  <data name="Taymer_Sna.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Sleep Timer</value>
+  </data>
+  <data name="Taymer_Sna_Lbl" xml:space="preserve">
+    <value>Sleep Timer</value>
+  </data>
+  <data name="Taymer_Sna_Po_Istechenii.Text" xml:space="preserve">
+    <value>Sleep timer: when it ends</value>
+  </data>
+  <data name="Taymer_Sna_Po_Istechenii_Lbl" xml:space="preserve">
+    <value>Sleep timer: when it ends</value>
+  </data>
+  <data name="Tema_Interfeysa.Text" xml:space="preserve">
+    <value>Interface theme</value>
+  </data>
+  <data name="Tema_Interfeysa_Lbl" xml:space="preserve">
+    <value>Interface theme</value>
+  </data>
+  <data name="Temnaya" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Tip_ArchiveAvailable" xml:space="preserve">
+    <value>Programme archive available ({0} days) — watch from the start</value>
+  </data>
+  <data name="Tip_Dynaudnorm" xml:space="preserve">
+    <value>dynaudnorm filter: gently boosts quiet sound without distortion; loud channels barely change</value>
+  </data>
+  <data name="Tip_HardwareDecoder" xml:space="preserve">
+    <value>GPU decoding; switches to the CPU automatically on stream problems</value>
+  </data>
+  <data name="Tip_Loudnorm" xml:space="preserve">
+    <value>loudnorm filter: all channels to a uniform −16 LUFS (loud ones get quieter); adds ~3 s delay from live</value>
+  </data>
+  <data name="Tip_SoftwareDecoder" xml:space="preserve">
+    <value>Guaranteed smooth with CPU headroom; uses a few percent of the CPU</value>
+  </data>
+  <data name="Tochno_Udalit_Nazhmite_Eshche_Raz" xml:space="preserve">
+    <value>Really remove? Click again</value>
+  </data>
+  <data name="Tolko_Vruchnuyu" xml:space="preserve">
+    <value>Manual only</value>
+  </data>
+  <data name="Tot_Zhe_Bufer_No_Dlya_Filmov" xml:space="preserve">
+    <value>Same buffer, but for video library movies and series. Lower — movies start faster, higher — fewer pauses during playback. Applied on next movie start.</value>
+  </data>
+  <data name="URL_Adresa_Istochnikov_EPG_XMLTV_Izmenennyy.Text" xml:space="preserve">
+    <value>EPG source URLs (XMLTV). A changed list is re-downloaded right after saving.</value>
+  </data>
+  <data name="URL_Adresa_Istochnikov_EPG_XMLTV_Izmenennyy_Lbl" xml:space="preserve">
+    <value>EPG source URLs (XMLTV). A changed list is re-downloaded right after saving.</value>
+  </data>
+  <data name="URL_Pleylista_M3U_M3U8.PlaceholderText" xml:space="preserve">
+    <value>M3U/M3U8 playlist URL</value>
+  </data>
+  <data name="URL_Pleylista_M3U_M3U8_Lbl" xml:space="preserve">
+    <value>M3U/M3U8 playlist URL</value>
+  </data>
+  <data name="URL_Potoka" xml:space="preserve">
+    <value>Stream URL</value>
+  </data>
+  <data name="URL_XMLTV" xml:space="preserve">
+    <value>XMLTV URL</value>
+  </data>
+  <data name="U_Istochnika_Portala_Ne_Zadan_Klyuch" xml:space="preserve">
+    <value>Portal source has no access key.</value>
+  </data>
+  <data name="U_Kanala_Ne_Ukazan_URL_Potoka" xml:space="preserve">
+    <value>Channel has no stream URL.</value>
+  </data>
+  <data name="U_Kanala_Net_URL_Potoka_Arkhiv" xml:space="preserve">
+    <value>Channel has no stream URL — archive unavailable.</value>
+  </data>
+  <data name="U_Vas_Poslednyaya_Versiya_0" xml:space="preserve">
+    <value>You are up to date ({0}).</value>
+  </data>
+  <data name="Ubrat" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Ubrat_Iz_Izbrannogo" xml:space="preserve">
+    <value>Remove from favorites</value>
+  </data>
+  <data name="Ubrat_PIN" xml:space="preserve">
+    <value>Remove PIN</value>
+  </data>
+  <data name="Udalit.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Udalit_Istochnik.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Remove source</value>
+  </data>
+  <data name="Udalit_Istochnik_Lbl" xml:space="preserve">
+    <value>Remove source</value>
+  </data>
+  <data name="Udalit_Lbl" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Ustanovit" xml:space="preserve">
+    <value>Set</value>
+  </data>
+  <data name="Ustanovit_Seychas" xml:space="preserve">
+    <value>Install now</value>
+  </data>
+  <data name="Ustanovshchik_Versii_0_Skachan" xml:space="preserve">
+    <value>Installer for version {0} downloaded.</value>
+  </data>
+  <data name="V_Efir.Content" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="V_Efir_Lbl" xml:space="preserve">
+    <value>Live</value>
+  </data>
+  <data name="V_Fayle_Eksporta_Net_Pleylistov" xml:space="preserve">
+    <value>The export file has no playlists.</value>
+  </data>
+  <data name="V_Pleyliste_Net_Grupp" xml:space="preserve">
+    <value>The playlist has no groups.</value>
+  </data>
+  <data name="Vchera" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="Vernutsya_K_Pryamomu_Efiru.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Вернуться к прямому эфиру</value>
+  </data>
+  <data name="Vernutsya_K_Pryamomu_Efiru_Lbl" xml:space="preserve">
+    <value>Back to live</value>
+  </data>
+  <data name="Versiya_0" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="Versiya_0_Skachana_Ustanovit_Seychas_Prilozhenie" xml:space="preserve">
+    <value>Version {0} is downloaded. Install now? The app will close during installation and restart after.</value>
+  </data>
+  <data name="Vid_Spisok_Postery.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Вид: список / постеры</value>
+  </data>
+  <data name="Vid_Spisok_Postery_Lbl" xml:space="preserve">
+    <value>View: list / posters</value>
+  </data>
+  <data name="Video_Portal" xml:space="preserve">
+    <value>Video portal</value>
+  </data>
+  <data name="Videoteka_Bufer_0_C" xml:space="preserve">
+    <value>Video library: buffer {0} s</value>
+  </data>
+  <data name="Vkl" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="Vklyuchit_Zvuk_M" xml:space="preserve">
+    <value>Unmute (M)</value>
+  </data>
+  <data name="Vosproizvedenie.Text" xml:space="preserve">
+    <value>Playback</value>
+  </data>
+  <data name="Vosproizvedenie_Lbl" xml:space="preserve">
+    <value>Playback</value>
+  </data>
+  <data name="Vosproizvesti" xml:space="preserve">
+    <value>Play</value>
+  </data>
+  <data name="Vozmozhnosti" xml:space="preserve">
+    <value>Features</value>
+  </data>
+  <data name="Vse_Gody" xml:space="preserve">
+    <value>All years</value>
+  </data>
+  <data name="Vse_Gruppy" xml:space="preserve">
+    <value>All groups</value>
+  </data>
+  <data name="Vse_Tipy" xml:space="preserve">
+    <value>All types</value>
+  </data>
+  <data name="Vse_Zhanry" xml:space="preserve">
+    <value>All genres</value>
+  </data>
+  <data name="Vvedite_Klyuch_Portala" xml:space="preserve">
+    <value>Enter the portal key.</value>
+  </data>
+  <data name="Vvedite_Nazvanie_Kanala" xml:space="preserve">
+    <value>Enter channel name</value>
+  </data>
+  <data name="Vvedite_PIN_I_Vyberite_Na_Skolko" xml:space="preserve">
+    <value>Enter the PIN and choose how long to stop asking for it when starting channels.</value>
+  </data>
+  <data name="Vvedite_STARYY_PIN_V_Verkhnem_Pole" xml:space="preserve">
+    <value>Enter the OLD PIN in the field above before changing.</value>
+  </data>
+  <data name="Vvedite_URL_Istochnika_EPG" xml:space="preserve">
+    <value>Enter an EPG source URL.</value>
+  </data>
+  <data name="Vvedite_URL_Pleylista" xml:space="preserve">
+    <value>Enter a playlist URL.</value>
+  </data>
+  <data name="Vvedite_URL_Potoka" xml:space="preserve">
+    <value>Enter the stream URL (m3u8)</value>
+  </data>
+  <data name="Vyberite_Istochnik_EPG_Ili_Obnovite_Dannye.Text" xml:space="preserve">
+    <value>Choose an EPG source or refresh the data</value>
+  </data>
+  <data name="Vyberite_Istochnik_EPG_Ili_Obnovite_Dannye_Lbl" xml:space="preserve">
+    <value>Choose an EPG source or refresh the data</value>
+  </data>
+  <data name="Vybor_Serii" xml:space="preserve">
+    <value>Pick episode</value>
+  </data>
+  <data name="Vybrat_Fayl.Content" xml:space="preserve">
+    <value>Pick file...</value>
+  </data>
+  <data name="Vybrat_Fayl_Lbl" xml:space="preserve">
+    <value>Pick file...</value>
+  </data>
+  <data name="Vykhod" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="Vykl" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Vyklyuchen" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Vyklyuchen_2" xml:space="preserve">
+    <value>Disabled.</value>
+  </data>
+  <data name="Vyklyuchena" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Vyklyuchit_Kompyuter" xml:space="preserve">
+    <value>Shut down the PC</value>
+  </data>
+  <data name="Vyyti_Iz_Polnoekrannogo_Rezhima.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Выйти из полноэкранного режима</value>
+  </data>
+  <data name="Vyyti_Iz_Polnoekrannogo_Rezhima_Esc" xml:space="preserve">
+    <value>Exit full screen (Esc)</value>
+  </data>
+  <data name="Vyyti_Iz_Polnoekrannogo_Rezhima_Lbl" xml:space="preserve">
+    <value>Exit full screen</value>
+  </data>
+  <data name="YAzyk_Interfeysa.Text" xml:space="preserve">
+    <value>Interface language</value>
+  </data>
+  <data name="YAzyk_Interfeysa_Lbl" xml:space="preserve">
+    <value>Interface language</value>
+  </data>
+  <data name="Za_0_Min_Do_Nachala" xml:space="preserve">
+    <value>{0} min before start</value>
+  </data>
+  <data name="Za_Skolko_Minut_Do_Nachala_Peredachi.Text" xml:space="preserve">
+    <value>How many minutes before a programme starts to show a toast reminder.</value>
+  </data>
+  <data name="Za_Skolko_Minut_Do_Nachala_Peredachi_Lbl" xml:space="preserve">
+    <value>How many minutes before a programme starts to show a toast reminder.</value>
+  </data>
+  <data name="Zagruzka_I_Razbor_Pleylista" xml:space="preserve">
+    <value>Loading and parsing playlist...</value>
+  </data>
+  <data name="Zagruzka_Kataloga_Portala" xml:space="preserve">
+    <value>Loading portal catalog...</value>
+  </data>
+  <data name="Zakryt" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Zakryt_Programmu" xml:space="preserve">
+    <value>Close the app</value>
+  </data>
+  <data name="Zamenit_Vse" xml:space="preserve">
+    <value>Replace all</value>
+  </data>
+  <data name="Zamenit_Vse_Nastroyki_Ili_Dobavit_Tolko" xml:space="preserve">
+    <value>Replace all settings or add only the playlists from the file?</value>
+  </data>
+  <data name="Zapis_Sobytiy_V_0_Vyklyuchenie_Deystvuet" xml:space="preserve">
+    <value>Writes events to {0}. Turning it off takes effect immediately, no restart required.</value>
+  </data>
+  <data name="Zapisat_Kanal.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Record channel</value>
+  </data>
+  <data name="Zapisat_Kanal_Lbl" xml:space="preserve">
+    <value>Record channel</value>
+  </data>
+  <data name="Zapisat_Peredachu.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Записать передачу</value>
+  </data>
+  <data name="Zapisat_Peredachu_Lbl" xml:space="preserve">
+    <value>Record programme</value>
+  </data>
+  <data name="Zapisi.Text" xml:space="preserve">
+    <value>Recordings</value>
+  </data>
+  <data name="Zapisi_Lbl" xml:space="preserve">
+    <value>Recordings</value>
+  </data>
+  <data name="Zaplanirovannye" xml:space="preserve">
+    <value>Scheduled</value>
+  </data>
+  <data name="Zaprashivat_PIN_Seychas" xml:space="preserve">
+    <value>Ask for PIN now</value>
+  </data>
+  <data name="Zapusk_Kanalov_Otmechennykh_Grupp_Zaprashivaet_PIN" xml:space="preserve">
+    <value>Starting channels of the checked groups asks for the PIN while control is enabled and not temporarily unlocked.</value>
+  </data>
+  <data name="Zavtra" xml:space="preserve">
+    <value>Tomorrow</value>
+  </data>
+  <data name="Zvuk.Text" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Zvuk_Lbl" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Stat_AudioFilter" xml:space="preserve">
+    <value>Volume filter: {0}</value>
+  </data>
+</root>

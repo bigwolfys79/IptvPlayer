@@ -42,6 +42,10 @@ public sealed partial class MainPage
     // и буфер сами по себе меняются редко).
     private DateTime _channelSessionStartUtc = DateTime.UtcNow;
 
+    // Момент последнего BufferingStarted (для длительности буферизации
+    // в лог; null — сейчас не буферизуется).
+    private DateTime? _bufferingStartedAtUtc;
+
     private void ToggleStatsOverlay() =>
         SetStatsOverlayVisible(StatsOverlay.Visibility != Visibility.Visible);
 
@@ -185,6 +189,12 @@ public sealed partial class MainPage
 
         sb.AppendLine(string.Format(L.T("Bufer_0_C_1_MB_Prostoi"), d.ReadAheadSeconds, d.ReadAheadBytes / 1024 / 1024, _bufferingStallCount, d.ReadAheadSeconds, d.ReadAheadBytes / 1024 / 1024, _bufferingStallCount));
         sb.AppendLine(speedLine);
+        if (!string.IsNullOrEmpty(d.AudioFilter))
+        {
+            // Тяжёлые аудиофильтры (loudnorm/EBU R128) заметно грузят CPU —
+            // показываем их присутствие для корреляции с подтормаживаниями.
+            sb.AppendLine(string.Format(L.T("Stat_AudioFilter"), d.AudioFilter));
+        }
 
         // Живая строка: тикает каждую секунду — видно, что оверлей обновляется.
         var session = DateTime.UtcNow - _channelSessionStartUtc;

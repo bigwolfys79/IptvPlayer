@@ -30,6 +30,13 @@ public sealed class PlaybackDiagnostics
     public long ReadAheadBytes { get; init; }
 
     /// <summary>
+    /// Активная цепочка нормализации громкости (dynaudnorm/loudnorm) или
+    /// null — тяжёлые аудиофильтры заметно грузят CPU, для корреляции
+    /// с лагами показываем в оверлее и логе.
+    /// </summary>
+    public string? AudioFilter { get; init; }
+
+    /// <summary>
     /// Скорость загрузки потока в битах в секунду (bps).
     /// Вычисляется по DownloadProgress FFmpegMediaSource.
     /// </summary>
