@@ -212,6 +212,55 @@ public partial class App : Application
     {
         Log.Error(e.Exception, "Необработанное исключение UI-потока (App.UnhandledException)");
 
+        // LayoutCycleException не называет виновника — снимаем слепок
+        // визуального дерева (имена + фактические размеры первых N узлов):
+        // по нему видно, какие панели были на экране и с какими размерами
+        // в момент цикла компоновки.
+        if (e.Exception is Microsoft.UI.Xaml.LayoutCycleException && _window?.Content is FrameworkElement root)
+        {
+            try
+            {
+                var snapshot = new System.Text.StringBuilder();
+                var queue = new Queue<(DependencyObject Node, string Path)>();
+                queue.Enqueue((root, root.Name));
+                var visited = new HashSet<DependencyObject>();
+                int dumped = 0;
+                while (queue.Count > 0 && dumped < 300)
+                {
+                    var (node, path) = queue.Dequeue();
+                    if (!visited.Add(node))
+                    {
+                        continue;
+                    }
+
+                    if (node is FrameworkElement fe)
+                    {
+                        dumped++;
+                        snapshot.AppendLine(string.Format(
+                            "  {0} [{1}] {2:F0}x{3:F0} vis={4}",
+                            string.IsNullOrEmpty(path) ? "<anon>" : path,
+                            fe.GetType().Name,
+                            fe.ActualWidth, fe.ActualHeight, fe.Visibility));
+                    }
+
+                    var count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(node);
+                    for (var i = 0; i < count; i++)
+                    {
+                        var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(node, i);
+                        var childPath = node is FrameworkElement parent && !string.IsNullOrEmpty(parent.Name)
+                            ? parent.Name
+                            : path;
+                        queue.Enqueue((child, childPath));
+                    }
+                }
+                Log.Error("Слепок визуального дерева при LayoutCycle ({Count} узлов):\n{Snapshot}", dumped, snapshot);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Не удалось снять слепок дерева при LayoutCycle.");
+            }
+        }
+
         // Помечаем как обработанное, чтобы приложение не падало/не зависало
         // молча — это временно, только для диагностики. После того как
         // найдём и починим причину, этот флаг можно убрать.

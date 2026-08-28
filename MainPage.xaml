@@ -394,15 +394,18 @@
                                  Height="3" CornerRadius="1.5,1.5,0,0" Padding="0"
                                  Foreground="{ThemeResource LiveGreenBrush}" />
                     <!-- Описание фильма/сериала портала — под полосой, целиком
-                         (высота оверлея растёт по тексту, как в fullscreen). -->
+                         (высота оверлея растёт по тексту, как в fullscreen).
+                         MaxLines ограничивает высоту текста: wrap-текст с
+                         неограниченной авто-высотой в этой панели — источник
+                         LayoutCycleException (зависание UI при смене канала). -->
                     <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
                                Foreground="#99FFFFFF" FontSize="12"
-                               TextWrapping="Wrap"
+                               TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
                                Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                     <!-- Описание текущей передачи EPG (ТВ-каналы) — там же. -->
                     <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
                                Foreground="#99FFFFFF" FontSize="12"
-                               TextWrapping="Wrap"
+                               TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
                                Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                 </StackPanel>
             </Border>
@@ -944,15 +947,16 @@
                                      Height="3" CornerRadius="1.5" Padding="0" Margin="0,3,0,0"
                                      Foreground="{ThemeResource LiveGreenBrush}" />
                         <!-- Описание фильма/сериала портала — под полосой, целиком
-                             (высота шапки растёт по тексту). -->
+                             (высота шапки растёт по тексту). MaxLines — против
+                             LayoutCycleException, как в оконном оверлее. -->
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
                                    Foreground="#99FFFFFF" FontSize="12"
-                                   TextWrapping="Wrap" Margin="0,4,24,0"
+                                   TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis" Margin="0,4,24,0"
                                    Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                         <!-- Описание текущей передачи EPG (ТВ-каналы) — там же. -->
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
                                    Foreground="#99FFFFFF" FontSize="12"
-                                   TextWrapping="Wrap" Margin="0,4,24,0"
+                                   TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis" Margin="0,4,24,0"
                                    Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                         <!-- Показывается вместо/рядом с текущей программой, когда в
                              fullscreen идёт архивная передача (UpdateArchiveBanner). -->
