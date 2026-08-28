@@ -208,6 +208,62 @@ public partial class App : Application
         services.AddSingleton<VodResumeStore>();
     }
 
+    // ===================== Страж зависания UI =====================
+
+    // Сердцебиение UI-потока: DispatcherTimer тикает только пока поток
+    // жив. Фоновый System.Threading.Timerwatchdog сравнивает счётчик:
+    // не менялся дольше 10 с — UI-поток заблокирован чем-то синхронным
+    // (было дважды: Windows закрывала приложение как «не отвечающее»,
+    // в логе при этом ни одной строчки — теперь вис будет виден).
+    private long _uiHeartbeat;
+    private System.Threading.Timer? _uiHangTimer;
+    private DateTime _lastHeartbeatUtc = DateTime.UtcNow;
+    private bool _hangAnnounced;
+
+    private void StartUiHangWatchdog()
+    {
+        var heartbeatTimer = new Microsoft.UI.Xaml.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        heartbeatTimer.Tick += (_, _) => _uiHeartbeat++;
+        heartbeatTimer.Start();
+
+        var lastSeen = 0L;
+        _uiHangTimer = new System.Threading.Timer(_ =>
+        {
+            var beat = Interlocked.Read(ref _uiHeartbeat);
+            if (beat != lastSeen)
+            {
+                lastSeen = beat;
+                var now = DateTime.UtcNow;
+                if (_hangAnnounced)
+                {
+                    _hangAnnounced = false;
+                    Log.Information("UI-поток отвечал снова (простой {Seconds:F0} с).",
+                        (now - _lastHeartbeatUtc).TotalSeconds);
+                }
+                _lastHeartbeatUtc = now;
+                return;
+            }
+
+            var staleSeconds = (DateTime.UtcNow - _lastHeartbeatUtc).TotalSeconds;
+            if (staleSeconds >= 10)
+            {
+                // Не спамим: одно объявление на эпизод + напоминание раз в 30 с.
+                if (!_hangAnnounced || staleSeconds % 30 < 3)
+                {
+                    Log.Fatal("UI-поток НЕ ОТВЕЧАЕТ {Seconds:F0} с — зависание. " +
+                        "Пул потоков: {WorkerBusy}/{WorkerTotal} занято, очередь ThreadPool: {QueueLength}.",
+                        staleSeconds,
+                        System.Threading.ThreadPool.PendingWorkItemCount,
+                        System.Threading.ThreadPool.ThreadCount);
+                }
+                _hangAnnounced = true;
+            }
+        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
         Log.Error(e.Exception, "Необработанное исключение UI-потока (App.UnhandledException)");
@@ -308,6 +364,7 @@ public partial class App : Application
         _window = new MainWindow();
         (_window as MainWindow)?.RestorePlacement();
         _window.Activate();
+        StartUiHangWatchdog();
 
         // Синхронная выгрузка буферов Serilog при закрытии главного окна —
         // чтобы последние события гарантированно попали в файл.
