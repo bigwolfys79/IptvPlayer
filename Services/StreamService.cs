@@ -182,7 +182,13 @@ namespace IptvPlayer.Services
                 var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(streamUrl, ffmpegConfig);
                 player.Source = ffmpegSource.CreateMediaPlaybackItem();
                 LiveSources.Add(player, ffmpegSource);
-                CurrentDiagnostics = BuildDiagnostics(ffmpegSource, ffmpegConfig);
+                if (!string.IsNullOrEmpty(normFilter))
+                {
+                    _logger.LogInformation(
+                        "Поток открыт с аудиофильтром громкости: {Filter} (режим {Mode}) — тяжёлые фильтры могут влиять на плавность.",
+                        normFilter, streamConfig.AudioNormalization);
+                }
+                CurrentDiagnostics = BuildDiagnostics(ffmpegSource, ffmpegConfig, normFilter);
             }
             catch (Exception ex)
             {
@@ -280,7 +286,7 @@ namespace IptvPlayer.Services
         /// быть ещё не выбран — тогда берётся первая дорожка.
         /// </summary>
         private static PlaybackDiagnostics BuildDiagnostics(
-            FFmpegMediaSource source, MediaSourceConfig config)
+            FFmpegMediaSource source, MediaSourceConfig config, string? audioFilter = null)
         {
             try
             {
@@ -303,7 +309,8 @@ namespace IptvPlayer.Services
                     AudioSampleRate = audio?.SampleRate ?? 0,
                     AudioBitrate = audio?.Bitrate ?? 0,
                     ReadAheadSeconds = (int)config.General.ReadAheadBufferDuration.TotalSeconds,
-                    ReadAheadBytes = config.General.ReadAheadBufferSize
+                    ReadAheadBytes = config.General.ReadAheadBufferSize,
+                    AudioFilter = audioFilter
                 };
             }
             catch (Exception ex)

@@ -16,6 +16,7 @@ using System.Text;
 using System.Threading.Tasks;
 using IptvPlayer.Models;
 using IptvPlayer.Services;
+using Serilog;
 using IptvPlayer.Controls;
 using IptvPlayer.ViewModels;
 using Windows.System;
@@ -287,10 +288,25 @@ public sealed partial class MainPage : Page
             if (Player.Player != null)
             {
                 _channelSessionStartUtc = DateTime.UtcNow;
+                _bufferingStartedAtUtc = null;
                 Player.Player.BufferingStarted += (ps, pe) =>
                     DispatcherQueue.TryEnqueue(() =>
                     {
                         _bufferingStallCount++;
+                        _bufferingStartedAtUtc = DateTime.UtcNow;
+                        // Простой буфера в лог: корреляция «фризов» с
+                        // истощением read-ahead по моментам времени.
+                        Log.Information("Буферизация начата (простой #{Count}).", _bufferingStallCount);
+                        UpdateStatsOverlay();
+                    });
+                Player.Player.BufferingEnded += (ps, pe) =>
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        var duration = _bufferingStartedAtUtc is { } at
+                            ? (DateTime.UtcNow - at).TotalSeconds
+                            : -1;
+                        _bufferingStartedAtUtc = null;
+                        Log.Information("Буферизация окончена: длилась {Duration:N1} с.", duration);
                         UpdateStatsOverlay();
                     });
             }

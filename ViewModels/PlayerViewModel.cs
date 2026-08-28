@@ -384,7 +384,13 @@ public partial class PlayerViewModel : ObservableObject
     /// </summary>
     public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1)
     {
+        // Поколение запуска: при быстром зиппинге каналов несколько
+        // StartPlaybackAsync конкурируют — каждый Stop() инкрементирует
+        // счётчик, и запуск, чьё поколение устарело (пользователь уже
+        // ушёл на другой канал), молча выбывает: не перезаписывает Player
+        // и не оставляет второй поток качаться в фоне.
         Stop();
+        var generation = _playbackGeneration;
 
         StreamError = null;
         IsBuffering = true;
@@ -399,6 +405,24 @@ public partial class PlayerViewModel : ObservableObject
             try
             {
                 var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod);
+            if (generation != _playbackGeneration)
+            {
+                // Пока качался этот канал, пользователь выбрал другой:
+                // этот плеер уже никому не нужен — освобождаем молча.
+                _logger.LogInformation(
+                    "ЗАПУСК-ТАЙМИНГ: запуск «{Channel}» устарел (поколение {Generation}/{Current}) — освобождаем без воспроизведения.",
+                    channel.Name, generation, _playbackGeneration);
+                try
+                {
+                    player.Source = null;
+                    player.Dispose();
+                }
+                catch
+                {
+                    // Освобождение проигравшего гонку не должно ломать победителя.
+                }
+                return;
+            }
             _logger.LogInformation(
                 "ЗАПУСК-ТАЙМИНГ: CreatePlayerAsync «{Channel}» занял {Ms:F0} мс.",
                 channel.Name, startWait.Elapsed.TotalMilliseconds);
@@ -518,6 +542,10 @@ public partial class PlayerViewModel : ObservableObject
     private bool _displayRequested;
     private readonly Windows.System.Display.DisplayRequest _displayRequest = new();
 
+    // Поколение запуска воспроизведения: инкремент на каждый Stop() —
+    // см. StartPlaybackAsync (гонка быстрого переключения каналов).
+    private int _playbackGeneration;
+
     private void EnsureDisplayRequest()
     {
         if (_displayRequested)
@@ -556,6 +584,7 @@ public partial class PlayerViewModel : ObservableObject
     /// <summary>Полная остановка текущего плеера (смена канала, закрытие).</summary>
     public void Stop()
     {
+        _playbackGeneration++;
         ReleaseDisplayRequest();
         if (Player == null)
         {
@@ -591,10 +620,24 @@ public partial class PlayerViewModel : ObservableObject
 
         try
         {
+            var teardown = System.Diagnostics.Stopwatch.StartNew();
             player.Pause();
             player.MediaFailed -= OnMediaFailed;
             player.Source = null;
             player.Dispose();
+            // Нативный teardown медиа-конвейера идёт синхронно на UI-потоке:
+            // если он начинает стоить заметно — это кандидату на вынос в пул.
+            teardown.Stop();
+            if (teardown.Elapsed.TotalMilliseconds > 100)
+            {
+                _logger.LogWarning(
+                    "Stop: освобождение плеера заняло {Ms:F0} мс (нативный teardown на UI-потоке).",
+                    teardown.Elapsed.TotalMilliseconds);
+            }
+            else
+            {
+                _logger.LogInformation("Stop: освобождение плеера заняло {Ms:F0} мс.", teardown.Elapsed.TotalMilliseconds);
+            }
         }
         catch (Exception ex)
         {
