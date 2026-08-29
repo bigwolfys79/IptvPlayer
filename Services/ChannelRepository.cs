@@ -28,27 +28,6 @@ namespace IptvPlayer.Services
             return Task.CompletedTask;
         }
 
-        public Task UpdateChannelAsync(ChannelViewModel channel)
-        {
-            var existing = _channels.FirstOrDefault(c => c.Id == channel.Id);
-            if (existing != null)
-            {
-                existing.Name = channel.Name;
-                existing.IsLive = channel.IsLive;
-            }
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteChannelAsync(int id)
-        {
-            var channel = _channels.FirstOrDefault(c => c.Id == id);
-            if (channel != null)
-            {
-                _channels.Remove(channel);
-            }
-            return Task.CompletedTask;
-        }
-
         public Task Clear()
         {
             _channels.Clear();

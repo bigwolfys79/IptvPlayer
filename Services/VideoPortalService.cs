@@ -126,29 +126,6 @@ public interface IVideoPortalService
     Task<(List<PortalGenreFilter> Genres, List<PortalYearFilter> Years, List<PortalCategoryInfo> Categories)> LoadManifestInfoAsync(PlaylistSource source, CancellationToken ct = default);
 
     /// <summary>
-    /// Загружает одну категорию с фильтром по жанру (по запросу пользователя).
-    /// Вызывается при выборе жанра в ComboBox.
-    /// </summary>
-    Task<List<PortalCatalogItem>> LoadCategoryByGenreAsync(
-        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Загружает одну категорию с фильтром по году (по запросу пользователя).
-    /// yearOrRange: "2025" или "2021-2026".
-    /// </summary>
-    Task<List<PortalCatalogItem>> LoadCategoryByYearAsync(
-        PlaylistSource source, string categoryRequestJson, string yearOrRange,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Загружает одну категорию с комбинированным фильтром по жанру и году.
-    /// </summary>
-    Task<List<PortalCatalogItem>> LoadCategoryByGenreAndYearAsync(
-        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
-        string yearOrRange, CancellationToken ct = default);
-
-    /// <summary>
     /// Прямой запрос фильтра (без categoryRequestJson): строит запрос из
     /// fid категории и параметров фильтра. Используется при смене фильтра
     /// жанра/года в UI — вместо загрузки всего каталога.
@@ -189,7 +166,6 @@ public class VideoPortalService : IVideoPortalService
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = false };
 
-    private readonly ProcessSpeedMonitor _speedMonitor;
     private readonly HttpClient _httpClient;
     private readonly ILogger<VideoPortalService> _logger;
 
@@ -201,11 +177,9 @@ public class VideoPortalService : IVideoPortalService
     private static readonly TimeSpan ManifestCacheTtl = TimeSpan.FromMinutes(5);
 
     public VideoPortalService(
-        ProcessSpeedMonitor speedMonitor,
         ILogger<VideoPortalService> logger,
         HttpClient? httpClient = null)
     {
-        _speedMonitor = speedMonitor;
         _logger = logger;
         _httpClient = httpClient ?? CreateDefaultHttpClient();
     }
@@ -333,62 +307,6 @@ public class VideoPortalService : IVideoPortalService
         }
 
         return (genres, years, categories);
-    }
-
-    /// <summary>Загружает одну категорию с фильтром по жанру (по запросу пользователя).</summary>
-    public async Task<List<PortalCatalogItem>> LoadCategoryByGenreAsync(
-        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
-        CancellationToken ct = default)
-    {
-        var key = NormalizeKey(source);
-        var result = new List<PortalCatalogItem>();
-
-        var genreRequest = MergeFields(categoryRequestJson, new Dictionary<string, JsonElement>
-        {
-            ["filter"] = JsonSerializer.SerializeToElement("on"),
-            ["genre"] = JsonSerializer.SerializeToElement(genreId)
-        });
-
-        await LoadCategoryAsync(source, key, genreRequest, genreTitle, genreTitle, result, ct);
-        return result;
-    }
-
-    /// <summary>Загружает одну категорию с фильтром по году (по запросу пользователя).</summary>
-    public async Task<List<PortalCatalogItem>> LoadCategoryByYearAsync(
-        PlaylistSource source, string categoryRequestJson, string yearOrRange,
-        CancellationToken ct = default)
-    {
-        var key = NormalizeKey(source);
-        var result = new List<PortalCatalogItem>();
-
-        var yearRequest = MergeFields(categoryRequestJson, new Dictionary<string, JsonElement>
-        {
-            ["filter"] = JsonSerializer.SerializeToElement("on"),
-            ["years"] = JsonSerializer.SerializeToElement(yearOrRange)
-        });
-
-        await LoadCategoryAsync(source, key, yearRequest, yearOrRange, null, result, ct);
-        return result;
-    }
-
-    /// <summary>Загружает одну категорию с комбинированным фильтром по жанру и году.</summary>
-    public async Task<List<PortalCatalogItem>> LoadCategoryByGenreAndYearAsync(
-        PlaylistSource source, string categoryRequestJson, int genreId, string genreTitle,
-        string yearOrRange, CancellationToken ct = default)
-    {
-        var key = NormalizeKey(source);
-        var result = new List<PortalCatalogItem>();
-
-        var combinedRequest = MergeFields(categoryRequestJson, new Dictionary<string, JsonElement>
-        {
-            ["filter"] = JsonSerializer.SerializeToElement("on"),
-            ["genre"] = JsonSerializer.SerializeToElement(genreId),
-            ["years"] = JsonSerializer.SerializeToElement(yearOrRange)
-        });
-
-        var label = $"{genreTitle} ({yearOrRange})";
-        await LoadCategoryAsync(source, key, combinedRequest, label, genreTitle, result, ct);
-        return result;
     }
 
     /// <summary>
@@ -954,10 +872,6 @@ public class VideoPortalService : IVideoPortalService
     private async Task<JsonDocument> PostAsync(
         PlaylistSource source, string endpoint, string bodyJson, CancellationToken ct)
     {
-        // Трафик портала — не видео: замер скорости чтения процесса на время
-        // запроса замораживается, как у XmlTvService.
-        using var pause = _speedMonitor.PauseScope();
-
         var url = BuildUrl(source.Url, endpoint);
         _logger.LogInformation("Портал → POST {Url} тело: {Body}", SecretProtector.Mask(url),
             Truncate(SecretProtector.Mask(bodyJson)));

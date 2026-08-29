@@ -23,13 +23,6 @@ namespace IptvPlayer.Services
     {
         private static readonly HttpClient _httpClient = CreateHttpClient();
 
-        private readonly ProcessSpeedMonitor _speedMonitor;
-
-        public M3UParserService(ProcessSpeedMonitor speedMonitor)
-        {
-            _speedMonitor = speedMonitor;
-        }
-
         // Достаточно, чтобы строка НАЧИНАЛАСЬ с "#EXTINF:<число>" — не требуем,
         // чтобы вся строка целиком соответствовала жёсткому шаблону с запятой.
         private static readonly Regex ExtinfStartRegex =
@@ -86,9 +79,6 @@ namespace IptvPlayer.Services
             }
 
             HttpResponseMessage response;
-            // Плейлист качается тем же процессом — его байты не должны
-            // попадать в замер скорости потока (ProcessSpeedMonitor).
-            using var playlistPause = _speedMonitor.PauseScope();
             try
             {
                 response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);

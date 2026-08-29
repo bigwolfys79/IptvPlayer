@@ -9,8 +9,6 @@ namespace IptvPlayer.Services
         Task<List<ChannelViewModel>> GetAllChannelsAsync();
         Task<ChannelViewModel?> GetChannelByIdAsync(int id);
         Task AddChannelAsync(ChannelViewModel channel);
-        Task UpdateChannelAsync(ChannelViewModel channel);
-        Task DeleteChannelAsync(int id);
 
         /// <summary>
         /// Полностью очищает репозиторий — при переключении активного плейлиста:

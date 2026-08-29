@@ -102,6 +102,15 @@ public partial class ChannelViewModel : ObservableObject
         set => SetProperty(ref _portalRequest, value);
     }
 
+    /// <summary>
+    /// Элемент каталога портала (фильм/сериал), а не ТВ-канал: у таких
+    /// нет и не может быть EPG — все проходы EPG (пересчёт текущих
+    /// передач, сопоставление с XMLTV, добор логотипов) их пропускают.
+    /// В VOD-плейлистах таких элементов основная масса (например,
+    /// 22 009 из 22 009 в «Ilock video»).
+    /// </summary>
+    public bool IsPortalItem => !string.IsNullOrEmpty(_portalRequest);
+
     private string? _description;
 
     /// <summary>

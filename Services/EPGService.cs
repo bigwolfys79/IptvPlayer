@@ -29,14 +29,12 @@ namespace IptvPlayer.Services
     /// </summary>
     public class EPGService : IEPGService
     {
-        // ВРЕМЕННО для проверки гипотезы про тормоз из-за логирования на
-        // каждый канал в GetEPGEntriesAsync (файловый sink пишет на каждый
-        // вызов). LogMatchSummaryAsync уже даёт агрегированную сводку по
-        // всем каналам сразу после загрузки EPG, так что при выключенном
-        // флаге диагностическая информация не теряется полностью — просто
-        // нет дублирующего лога на каждый отдельный вызов
-        // GetEPGEntriesAsync. Вернуть true после проверки.
-        private static readonly bool LogPerChannelDiagnostics = false;
+        // Включается переключателем «Временная диагностика» (меню
+        // шестерёнки → Диагностика): лог на каждый канал в
+        // GetEPGEntriesAsync. По умолчанию выключено — файловый sink
+        // писал на каждый вызов и тормозил загрузку; LogMatchSummaryAsync
+        // даёт агрегированную сводку по всем каналам сразу после загрузки.
+        private static bool LogPerChannelDiagnostics => App.TempDiagnosticsEnabled;
 
         private readonly IChannelRepository _channelRepository;
         private readonly ISettingsService _settingsService;
@@ -192,6 +190,13 @@ namespace IptvPlayer.Services
                         "Канал с id={ChannelId} не найден в ChannelRepository — EPG для него не может быть найден.",
                         channelId);
                 }
+                return new List<EPGEntry>();
+            }
+
+            // Фильмы/сериалы портала EPG не имеют: без этой проверки каждый
+            // клик по элементу VOD-плейлиста гонял три поиска по словарям.
+            if (channel.IsPortalItem)
+            {
                 return new List<EPGEntry>();
             }
 
@@ -641,6 +646,14 @@ namespace IptvPlayer.Services
                     continue;
                 }
 
+                // Элементы портала пропускают и нормализацию имён: у фильмов
+                // «Её личный ад (2026)» и т.п. совпадений с TV-каналами нет,
+                // а регулярки по 22k названий — заметная лишняя работа.
+                if (channel.IsPortalItem)
+                {
+                    continue;
+                }
+
                 // Кандидаты tvg-id: собственный из плейлиста, затем строгий и
                 // мягкий ключи таблицы (плейлист tvg-id не содержит, поэтому
                 // раньше этот метод не срабатывал ни для одного канала).
@@ -743,6 +756,15 @@ namespace IptvPlayer.Services
 
             foreach (var channel in channels)
             {
+                // Элементы портала (фильмы/сериалы) с XMLTV не сопоставляются
+                // в принципе: в VOD-плейлисте 22k таких — раньше все гонялись
+                // через 3 поиска по словарям на каждый (в логе это были
+                // «не сопоставлено вообще 21963»).
+                if (channel.IsPortalItem)
+                {
+                    continue;
+                }
+
                 var (_, method) = MatchChannel(channel);
                 switch (method)
                 {

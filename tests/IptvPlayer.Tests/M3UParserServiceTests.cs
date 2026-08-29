@@ -4,7 +4,7 @@ namespace IptvPlayer.Tests;
 
 public class M3UParserServiceTests
 {
-    private static M3UParserService CreateParser() => new(new ProcessSpeedMonitor());
+    private static M3UParserService CreateParser() => new();
 
     [Fact]
     public void ParseContent_Empty_ReturnsNoChannels()

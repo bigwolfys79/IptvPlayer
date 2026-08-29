@@ -98,9 +98,6 @@ public sealed partial class MainPage
             return;
         }
 
-        // Обновляем скорость загрузки каждую секунду
-        _streamService.UpdateDownloadSpeed(Player.Player);
-
         var video = new List<string>();
         if (!string.IsNullOrEmpty(d.VideoCodec))
         {
@@ -172,20 +169,13 @@ public sealed partial class MainPage
         // отдаётся) — «заполнение 0%» только сбивало с толку, показываем
         // честное: глубину из настроек + счётчик простоев.
 
-        // Скорость потока: измеренная (счётчик байт чтения процесса — FFmpeg
-        // качает поток сокетами этого же процесса, см. ProcessSpeedMonitor)
-        // или оценка по метаданным/разрешению, пока измерения нет (старт
-        // канала, чужая загрузка вроде EPG — на её время замер заморожен).
-        var measuredBps = _speedMonitor.Sample();
-        string speedLine;
-        if (measuredBps is > 0)
-        {
-            speedLine = string.Format(L.T("Skorost_Potoka_0_Izm"), FormatBitrate((long)measuredBps), FormatBitrate((long)measuredBps));
-        }
-        else
-        {
-            speedLine = string.Format(L.T("Skorost_Potoka_0_Otsenka"), FormatBitrate(d.DownloadBitrate), FormatBitrate(d.DownloadBitrate));
-        }
+        // Скорость потока: единственный честный источник — счётчик байт
+        // диагностического прокси (LocalStreamProxy, галка в настройках).
+        // Без прокси показываем подсказку вместо лживой оценки.
+        var proxyBps = _streamService.ProxyMeasuredBitrate;
+        var speedLine = proxyBps is > 0
+            ? string.Format(L.T("Skorost_Potoka_0_Izm"), FormatBitrate((long)proxyBps), FormatBitrate((long)proxyBps))
+            : L.T("Skorost_Vklyuchite_Proksi");
 
         sb.AppendLine(string.Format(L.T("Bufer_0_C_1_MB_Prostoi"), d.ReadAheadSeconds, d.ReadAheadBytes / 1024 / 1024, _bufferingStallCount, d.ReadAheadSeconds, d.ReadAheadBytes / 1024 / 1024, _bufferingStallCount));
         sb.AppendLine(speedLine);

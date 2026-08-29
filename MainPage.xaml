@@ -648,6 +648,9 @@
                                 <MenuFlyoutItem x:Uid="Pleylist" Click="PlaylistSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Zapisi" Click="RecordingSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Roditelskiy_Kontrol" Click="ParentalSettingsButton_Click"/>
+                                <!-- Диагностика: отдельный диалог со всеми
+                                     диагностическими переключателями одной формы. -->
+                                <MenuFlyoutItem x:Uid="Diagnostika" Click="DiagnosticsMenu_Click"/>
                                 <!-- Подменю смены активного плейлиста: раскрывается при
                                      наведении (стрелка справа), наполняется в code-behind
                                      (UpdatePlaylistMenu), прячется, когда плейлист один. -->

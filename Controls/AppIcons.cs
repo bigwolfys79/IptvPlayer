@@ -201,42 +201,4 @@ public static class AppIcons
         });
         return figure;
     }
-
-    /// <summary>
-    /// Луна — иконка таймера сна. Полумесяц: большой круг с вырезанным меньшим.
-    /// </summary>
-    public static Microsoft.UI.Xaml.Shapes.Path Moon(double size = 16)
-    {
-        // Луна: внешний круг и внутренний вырез (полумесяц)
-        // M12,3 A9,9 0 1 0 12,21 A7,7 0 1 1 12,3
-        var geometry = new PathGeometry();
-        var figure = new PathFigure { StartPoint = new Windows.Foundation.Point(12, 3) };
-        figure.Segments.Add(new ArcSegment
-        {
-            Point = new Windows.Foundation.Point(12, 21),
-            Size = new Windows.Foundation.Size(9, 9),
-            IsLargeArc = true,
-            SweepDirection = SweepDirection.Counterclockwise
-        });
-        figure.Segments.Add(new ArcSegment
-        {
-            Point = new Windows.Foundation.Point(12, 3),
-            Size = new Windows.Foundation.Size(7, 7),
-            IsLargeArc = false,
-            SweepDirection = SweepDirection.Clockwise
-        });
-        figure.IsClosed = true;
-        geometry.Figures.Add(figure);
-
-        return new Microsoft.UI.Xaml.Shapes.Path
-        {
-            Data = geometry,
-            Fill = White,
-            Width = size,
-            Height = size,
-            Stretch = Stretch.Uniform,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-    }
 }

@@ -12,12 +12,18 @@ namespace IptvPlayer.Services
         string? DecoderMode,
         string? AudioNormalization,
         int ReadAheadSeconds,
-        int VodReadAheadSeconds);
+        int VodReadAheadSeconds,
+        bool DiagnosticProxy = false);
 
     public interface IStreamService
     {
         Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig config, bool isVod = false);
-        Task<StreamInfo> GetStreamInfoAsync(string streamUrl);
+
+        /// <summary>
+        /// Реальная скорость потока в бит/с, измеренная диагностическим
+        /// прокси (LocalStreamProxy), или null — прокси выключен/нет данных.
+        /// </summary>
+        double? ProxyMeasuredBitrate { get; }
 
         /// <summary>
         /// Применяет нормализацию громкости к уже играющему плееру
@@ -31,9 +37,5 @@ namespace IptvPlayer.Services
         /// </summary>
         PlaybackDiagnostics? CurrentDiagnostics { get; }
 
-        /// <summary>
-        /// Обновляет скорость загрузки потока. Вызывается каждую секунду.
-        /// </summary>
-        void UpdateDownloadSpeed(MediaPlayer? player);
     }
 }

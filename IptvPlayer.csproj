@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>IptvPlayer</RootNamespace>
-    <Version>1.12.2</Version>
+    <Version>1.12.4</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
@@ -28,6 +28,10 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- Self-contained: .NET-рантайм в publish — иначе сборка выходит
+         framework-dependent и на чистой машине просит установить .NET 8
+         (инсталятор при этом выходит ~101 МБ вместо ~125). -->
+    <SelfContained>true</SelfContained>
     <EnableMsixTooling>false</EnableMsixTooling>
   </PropertyGroup>
 
