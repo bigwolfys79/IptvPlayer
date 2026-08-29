@@ -1,0 +1,67 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.DiagnosticsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <StackPanel Spacing="14" Width="500">
+
+        <TextBlock x:Name="TitleText" x:Uid="Diagnostika" FontSize="20" FontWeight="SemiBold"/>
+
+        <!-- Подсказка сбоку от переключателя: [toggle] [hint] -->
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ToggleSwitch Grid.Column="0" x:Name="StatsToggle" MinWidth="0"
+                          OffContent="" OnContent="" Margin="0,0,0,0"
+                          Toggled="StatsToggle_Toggled" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" x:Name="StatsHint"
+                       FontSize="11"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextWrapping="Wrap" VerticalAlignment="Top" Margin="0,24,0,0"/>
+        </Grid>
+
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ToggleSwitch Grid.Column="0" x:Name="ProxyToggle" MinWidth="0"
+                          OffContent="" OnContent="" Margin="0,0,0,0"
+                          Toggled="ProxyToggle_Toggled" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" x:Name="ProxyHint"
+                       FontSize="11"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextWrapping="Wrap" VerticalAlignment="Top" Margin="0,24,0,0"/>
+        </Grid>
+
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ToggleSwitch Grid.Column="0" x:Name="FileLogToggle" MinWidth="0"
+                          OffContent="" OnContent="" Margin="0,0,0,0"
+                          Toggled="FileLogToggle_Toggled" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" x:Name="FileLogHint"
+                       FontSize="11"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextWrapping="Wrap" VerticalAlignment="Top" Margin="0,24,0,0"/>
+        </Grid>
+
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ToggleSwitch Grid.Column="0" x:Name="TempDiagToggle" MinWidth="0"
+                          OffContent="" OnContent="" Margin="0,0,0,0"
+                          Toggled="TempDiagToggle_Toggled" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" x:Name="TempDiagHint"
+                       FontSize="11"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       TextWrapping="Wrap" VerticalAlignment="Top" Margin="0,24,0,0"/>
+        </Grid>
+    </StackPanel>
+</UserControl>

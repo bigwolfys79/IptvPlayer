@@ -126,11 +126,6 @@ namespace IptvPlayer.Dialogs
             CloseToTrayToggle.Toggled += CloseToTrayToggle_Toggled;
             CloseToTrayHint.Text = L.T("Krestik_Okna_Pryachet_Ego_V_Trey");
 
-            // Файловый лог (Serilog): применяется сразу через
-            // LoggingLevelSwitch, без перезапуска. Вывод в Debug (окно
-            // Output студии) остаётся всегда.
-            DiagnosticsHeader.Text = L.T("Diagnostika");
-
             // Полуавтоматическое обновление: фоновая проверка при запуске,
             // скачивание и диалог установки (без установки при записях).
             AutoUpdateToggle.Toggled -= AutoUpdateToggle_Toggled;
@@ -141,13 +136,6 @@ namespace IptvPlayer.Dialogs
             AutoUpdateToggle.Toggled += AutoUpdateToggle_Toggled;
             AutoUpdateHint.Text = L.T("Posle_Zapuska_Ne_Chashche_Raza_V");
 
-            FileLoggingToggle.Toggled -= FileLoggingToggle_Toggled;
-            FileLoggingToggle.IsOn = settings.FileLoggingEnabled;
-            FileLoggingToggle.Header = L.T("Faylovyy_Log");
-            FileLoggingToggle.OnContent = L.T("Vkl");
-            FileLoggingToggle.OffContent = L.T("Vykl");
-            FileLoggingToggle.Toggled += FileLoggingToggle_Toggled;
-            FileLoggingHint.Text = string.Format(L.T("Zapis_Sobytiy_V_0_Vyklyuchenie_Deystvuet"), App.LogDirectory, App.LogDirectory);
         }
 
         /// <summary>Автообновление — применяется сразу, персистится в настройках.</summary>
@@ -155,14 +143,6 @@ namespace IptvPlayer.Dialogs
         {
             _viewModel.AppSettings.AutoUpdateEnabled = AutoUpdateToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
-        }
-
-        /// <summary>Включение/выключение файлового лога — действует сразу.</summary>
-        private void FileLoggingToggle_Toggled(object sender, RoutedEventArgs e)
-        {
-            var enabled = FileLoggingToggle.IsOn;
-            _viewModel.AppSettings.FileLoggingEnabled = enabled;
-            App.SetFileLoggingEnabled(enabled);
         }
 
         /// <summary>Сворачивание в трей — применяется сразу, персистится в настройках.</summary>

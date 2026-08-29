@@ -75,10 +75,6 @@ public sealed partial class MainPage : Page
     // содержимое (Channels/FilteredChannels и т.п.) обновляется по месту.
     private readonly EPGService _epgService;
 
-    // Измеренная скорость загрузки (байты чтения процесса) для оверлея
-    // статистики — см. ProcessSpeedMonitor.
-    private readonly ProcessSpeedMonitor _speedMonitor;
-
     // Плеер/запись/состояние EPG живут в ViewModel (этап 2 MVVM); короткий
     // алиас для читаемости в оставшемся коде представления.
     private PlayerViewModel Player => ViewModel.Player;
@@ -161,7 +157,6 @@ public sealed partial class MainPage : Page
         _streamService = services.GetRequiredService<IStreamService>();
         _channelRepository = services.GetRequiredService<ChannelRepository>();
         _epgService = services.GetRequiredService<EPGService>();
-        _speedMonitor = services.GetRequiredService<ProcessSpeedMonitor>();
         _logger = services.GetRequiredService<ILogger<MainPage>>();
         ViewModel = services.GetRequiredService<MainPageViewModel>();
 
@@ -2840,6 +2835,25 @@ public sealed partial class MainPage : Page
             _settingsService,
             _streamService);
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
+    }
+
+    private async void DiagnosticsMenu_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Dialogs.DiagnosticsDialog(
+            show => SetStatsOverlayVisible(show),
+            () =>
+            {
+                _settingsSaveDebounceTimer.Stop();
+                _settingsSaveDebounceTimer.Start();
+            });
+        var settings = ViewModel.AppSettings;
+        await dialog.ShowAsync(
+            ((MenuFlyoutItem)sender).XamlRoot,
+            statsVisible: StatsOverlay.Visibility == Visibility.Visible,
+            new Dialogs.DiagnosticsDialog.AppSettingsSnapshot(
+                settings.DiagnosticStreamProxy,
+                settings.FileLoggingEnabled,
+                settings.TempDiagnosticsEnabled));
     }
 
     private async void InterfaceSettingsButton_Click(object sender, RoutedEventArgs e)

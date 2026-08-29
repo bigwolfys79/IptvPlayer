@@ -37,12 +37,6 @@ public sealed class PlaybackDiagnostics
     public string? AudioFilter { get; init; }
 
     /// <summary>
-    /// Скорость загрузки потока в битах в секунду (bps).
-    /// Вычисляется по DownloadProgress FFmpegMediaSource.
-    /// </summary>
-    public long DownloadBitrate { get; set; }
-
-    /// <summary>
     /// Поток открыт системным источником (откат, когда FFmpeg не смог) —
     /// статистика FFmpeg недоступна, оверлей показывает только это.
     /// </summary>

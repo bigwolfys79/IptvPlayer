@@ -12,7 +12,7 @@ ChannelRepository ──► MainPage / ViewModels ──► StreamService ──
         │                    │                                                        ▲
         │                    ├── EpgViewModel ◄── EPGService ◄── XmlTvService            │
         │                    │        (EPG, напоминания)          (XMLTV + кэш)          │
-        └── PlaylistCacheService (кэш каналов/каталога)                                   │
+        └── PlaylistDatabaseService (SQLite-кэш каналов/каталога)                                   │
                                                                                           │
 MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timeshift) / VOD портала ┘
 ```
@@ -30,7 +30,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timesh
 `MainWindow` → `MainPage` → `InitializeAsync()` (страница показывается сразу, ничего не блокирует):
 
 1. Загружаются настройки (`SettingsService`, `%LocalAppData%\IptvPlayer\settings.json`); из них восстанавливается громкость.
-2. Каналы активного плейлиста (`PlaylistSource.Type`: `m3u` — парсер, `portal` — каталог портала, оба — через кэш `PlaylistCacheService`) кладутся в `ChannelRepository`, получают последовательные `Id`, заполняют `ViewModel.Channels`.
+2. Каналы активного плейлиста (`PlaylistSource.Type`: `m3u` — парсер, `portal` — каталог портала, оба — через кэш `PlaylistDatabaseService` (SQLite)) кладутся в `ChannelRepository`, получают последовательные `Id`, заполняют `ViewModel.Channels`.
 3. `SelectedChannel` назначается сразу, `Task.Yield()` даёт UI отрисовать список; дальше фоном грузится EPG и срабатывает автопродолжение последнего канала.
 
 ## 2. Отрисовка и ввод
@@ -54,7 +54,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timesh
 **Портал** (`Services/VideoPortalService`, источники `Type == "portal"`):
 - Протокол — POST-запросы `{базовыйURL}/{команда}.json` с JSON-телом; авторизация — поле `"key"` в теле каждого запроса; команда `flicks` отдаёт страницы элементов (лимит сервера — 300, маркер следующей страницы `{type:"next"}`), `flick` — поток и варианты качества (480/720/1080/auto отдельными ссылками).
 - Клиент «прозрачный»: request-объекты из ответов передаются серверу как есть, все поля optional, неизвестные игнорируются — новые команды протокола не требуют правок клиента. Каждый запрос/ответ логируется (обрезка 8 КБ) — протокол докручивается по логу.
-- Каталог кэшируется как плейлист (`PlaylistCacheService`), категория = группа, у элементов хранится request-объект (`PortalRequest`) вместо ссылки — ссылки короткоживущие.
+- Каталог кэшируется как плейлист (`PlaylistDatabaseService`), категория = группа, у элементов хранится request-объект (`PortalRequest`) вместо ссылки — ссылки короткоживущие.
 - Сезоны — отдельные карточки каталога: `ParsePortalSeasonName` выделяет базовое имя и номер(ы) сезона из названия, группы строятся лениво и инвалидируются при смене каналов (`GetPortalSeasonSiblings`). Эпизоды сериала — плоский список из flick («Серия N»), живёт в `PlayerViewModel.VodEpisodes` и переживает переключения качества; смена серии — `PlayVodEpisodeAsync` без запроса к порталу, смена сезона — полный `PlayChannelAsync(interactive:false)` соседней карточки.
 - Воспроизведение (`MainPageViewModel.PlayChannelAsync`): по клику выполняется `flick` (лениво, без кэширования), старт в режиме VOD (`PlayerViewModel.IsVodPlaying`) — пауза без рестарта потока, перемотка на лету через `PlaybackSession.Position`, выбор качества — рестарт с новой ссылкой и переносом позиции.
 

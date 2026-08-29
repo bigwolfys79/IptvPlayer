@@ -43,9 +43,8 @@ public static class EpgCacheStore
     /// источников старые .mpck.br (десятки мегабайт каждый) иначе остаются
     /// на диске навсегда. Вызывается при загрузке EPG; ключи — те же, что
     /// в ReadAsync/WriteAsync (в XmlTvService это "xmltv:{url}").
-    /// Заодно подчищает легаси *.json — остатки старого JSON-кэша EPG
-    /// (CacheService), который больше не читается; других .json в этом
-    /// каталоге нет.
+    /// Заодно подчищает легаси *.json от давно удалённого JSON-кэша EPG;
+    /// других .json в этом каталоге нет.
     /// </summary>
     public static void CleanupOrphans(IEnumerable<string> liveKeys)
     {

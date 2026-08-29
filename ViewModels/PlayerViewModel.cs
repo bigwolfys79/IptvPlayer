@@ -401,7 +401,8 @@ public partial class PlayerViewModel : ObservableObject
                 streamSettings.DecoderMode,
                 streamSettings.AudioNormalization,
                 streamSettings.ReadAheadSeconds,
-                streamSettings.VodReadAheadSeconds);
+                streamSettings.VodReadAheadSeconds,
+                streamSettings.DiagnosticStreamProxy);
             try
             {
                 var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod);
@@ -766,16 +767,6 @@ public partial class PlayerViewModel : ObservableObject
             .ToList();
 
         return auto.Concat(numeric).Concat(other).ToList();
-    }
-
-    /// <summary>Применяет громкость к текущему плееру (слайдер/колесо мыши).</summary>
-    public void SetVolume(double value)
-    {
-        LastUserVolume = value;
-        if (Player != null)
-        {
-            Player.Volume = value;
-        }
     }
 
     // ===================== Беззвучный режим =====================

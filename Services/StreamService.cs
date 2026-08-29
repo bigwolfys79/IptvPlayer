@@ -32,9 +32,13 @@ namespace IptvPlayer.Services
         private static readonly ConditionalWeakTable<MediaPlayer, FFmpegMediaSource> LiveSources = new();
 
         private readonly ILogger<StreamService> _logger;
+        private readonly LocalStreamProxy _proxy;
 
-        // Для измерения скорости загрузки
-        private long _lastBitrateEstimate;
+        /// <summary>
+        /// Скорость последнего открытого потока по счётчику байт прокси
+        /// (бит/с) — null, если диагностический прокси выключен.
+        /// </summary>
+        public double? ProxyMeasuredBitrate => _proxy.Sample();
 
         /// <summary>
         /// Снимок параметров последнего открытого потока для оверлея
@@ -43,9 +47,10 @@ namespace IptvPlayer.Services
         /// </summary>
         public PlaybackDiagnostics? CurrentDiagnostics { get; private set; }
 
-        public StreamService(ILogger<StreamService> logger)
+        public StreamService(ILogger<StreamService> logger, LocalStreamProxy proxy)
         {
             _logger = logger;
+            _proxy = proxy;
         }
 
         // Цепочки нормализации громкости. Часть каналов в плейлисте
@@ -179,7 +184,23 @@ namespace IptvPlayer.Services
                 ffmpegConfig.FFmpegOptions["reconnect_streamed"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_delay_max"] = "7";
 
-                var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(streamUrl, ffmpegConfig);
+                // Диагностический прокси (галка в настройках, по умолчанию
+                // выкл.): FFmpeg качает через 127.0.0.1-посредника, который
+                // считает байты — в Ctrl+J появляется реальная скорость.
+                // Не-http(s) схемы (udp/rtmp) прокси не поддерживает.
+                var actualUrl = streamUrl;
+                if (streamConfig.DiagnosticProxy
+                    && (streamUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                        || streamUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _proxy.ResetForNewStream();
+                    actualUrl = _proxy.WrapUrl(streamUrl);
+                    _logger.LogInformation(
+                        "Диагностический прокси включён: поток идёт через {Local}.",
+                        actualUrl);
+                }
+
+                var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig);
                 player.Source = ffmpegSource.CreateMediaPlaybackItem();
                 LiveSources.Add(player, ffmpegSource);
                 if (!string.IsNullOrEmpty(normFilter))
@@ -202,81 +223,6 @@ namespace IptvPlayer.Services
 
             player.Play();
             return player;
-        }
-
-        public Task<StreamInfo> GetStreamInfoAsync(string streamUrl)
-        {
-            var info = new StreamInfo
-            {
-                ChannelId = "1",
-                Url = streamUrl,
-                IsAvailable = true,
-                Bitrate = 5000,
-                LastChecked = DateTime.Now
-            };
-
-            return Task.FromResult(info);
-        }
-
-        /// <summary>
-        /// Обновляет оценку скорости загрузки потока.
-        /// Для live-потоков битрейт часто не указан в метаданных, поэтому
-        /// оцениваем скорость по разрешению и FPS (эмпирические формулы).
-        /// </summary>
-        public void UpdateDownloadSpeed(MediaPlayer? player)
-        {
-            if (CurrentDiagnostics == null)
-            {
-                return;
-            }
-
-            try
-            {
-                // Если битрейт известен из метаданных — используем его
-                var totalBitrate = CurrentDiagnostics.VideoBitrate + CurrentDiagnostics.AudioBitrate;
-                if (totalBitrate > 0)
-                {
-                    CurrentDiagnostics.DownloadBitrate = (long)(totalBitrate * 1.1); // +10% overhead
-                    return;
-                }
-
-                // Иначе оцениваем по разрешению и FPS (эмпирическая формула)
-                // FHD 60fps ≈ 8-12 Mbps, HD 30fps ≈ 3-5 Mbps и т.д.
-                var width = CurrentDiagnostics.VideoWidth;
-                var height = CurrentDiagnostics.VideoHeight;
-                var fps = CurrentDiagnostics.FramesPerSecond;
-
-                if (width > 0 && height > 0)
-                {
-                    // Базовый битрейт по разрешению (пиксели в секунду)
-                    var pixelsPerSecond = width * height * Math.Max(fps, 30);
-
-                    // Эмпирический коэффициент: ~0.1-0.15 бит на пиксель для H.264/H.265
-                    // Зависит от эффективности кодека (H.265 ~30% эффективнее H.264)
-                    var codec = CurrentDiagnostics.VideoCodec?.ToLowerInvariant() ?? "";
-                    var bitsPerPixel = codec.Contains("265") || codec.Contains("hevc") ? 0.10 : 0.12;
-
-                    var estimatedVideoBitrate = (long)(pixelsPerSecond * bitsPerPixel);
-
-                    // Добавляем аудио битрейт (если известен) или типичное значение
-                    var audioBitrate = CurrentDiagnostics.AudioBitrate > 0
-                        ? CurrentDiagnostics.AudioBitrate
-                        : 192_000; // 192 kbps типичный для AAC
-
-                    // Сглаживание оценок
-                    var newEstimate = (long)((estimatedVideoBitrate + audioBitrate) * 1.15); // +15% overhead TS
-                    _lastBitrateEstimate = _lastBitrateEstimate == 0
-                        ? newEstimate
-                        : (_lastBitrateEstimate * 7 + newEstimate * 3) / 10; // EMA
-
-                    CurrentDiagnostics.DownloadBitrate = _lastBitrateEstimate;
-                }
-            }
-            catch (Exception ex)
-            {
-                // Игнорируем ошибки при измерении скорости
-                Serilog.Log.Debug(ex, "Измерение скорости скачивания прервано ошибкой.");
-            }
         }
 
         /// <summary>

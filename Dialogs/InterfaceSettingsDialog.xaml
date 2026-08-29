@@ -65,13 +65,7 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
 
-                <!-- Диагностика -->
-                <StackPanel Spacing="8">
-                    <TextBlock x:Name="DiagnosticsHeader" FontSize="14" FontWeight="SemiBold"/>
-                    <ToggleSwitch x:Name="FileLoggingToggle" HorizontalAlignment="Left" Toggled="FileLoggingToggle_Toggled"/>
-                    <TextBlock x:Name="FileLoggingHint" FontSize="11" TextWrapping="Wrap"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
 

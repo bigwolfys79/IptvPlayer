@@ -434,6 +434,14 @@ public partial class EpgViewModel : ObservableObject
 
         foreach (var channel in Channels)
         {
+            // Элементы портала (фильмы/сериалы) EPG не имеют: их списки
+            // остаются пустыми, а проход по 22k элементов VOD-плейлиста
+            // занимал секунды плотной работы.
+            if (channel.IsPortalItem)
+            {
+                continue;
+            }
+
             var entries = await _epgService.GetEPGEntriesAsync(channel.Id);
 
             channel.EPGEntries.Clear();
@@ -488,6 +496,13 @@ public partial class EpgViewModel : ObservableObject
 
         foreach (var channel in Channels)
         {
+            // Элементы портала (фильмы/сериалы) EPG не имеют — в VOD-
+            // плейлистах их десятки тысяч, пропуск экономит проход таймера.
+            if (channel.IsPortalItem)
+            {
+                continue;
+            }
+
             var entries = await _epgService.GetEPGEntriesAsync(channel.Id);
             var current = entries.FirstOrDefault(e => e.StartTime <= now && now < e.EndTime);
 

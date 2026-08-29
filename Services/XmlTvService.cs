@@ -40,16 +40,13 @@ public class XmlTvService : IXmlTvService
     private const int DaysBack = 3;
     private const int DaysAhead = 3;
 
-    private readonly ProcessSpeedMonitor _speedMonitor;
     private readonly HttpClient _httpClient;
     private readonly ILogger<XmlTvService> _logger;
 
     public XmlTvService(
-        ProcessSpeedMonitor speedMonitor,
         ILogger<XmlTvService> logger,
         HttpClient? httpClient = null)
     {
-        _speedMonitor = speedMonitor;
         _logger = logger;
         _httpClient = httpClient ?? CreateDefaultHttpClient();
     }
@@ -79,10 +76,6 @@ public class XmlTvService : IXmlTvService
     public async Task<XmlTvLoadResult> LoadAsync(EPGSource source, TimeSpan? maxAge = null, CancellationToken ct = default)
     {
         var cacheKey = $"xmltv:{source.Url}";
-
-        // Байты EPG-фида (и его дискового кэша) — не поток видео: на время
-        // всей загрузки замер скорости в ProcessSpeedMonitor заморожен.
-        using var epgPause = _speedMonitor.PauseScope();
 
         // Быстрый бинарный кэш (MemoryPack+Brotli).
         var cached = await EpgCacheStore.ReadAsync(cacheKey);

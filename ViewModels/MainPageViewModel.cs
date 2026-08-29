@@ -1856,7 +1856,9 @@ public partial class MainPageViewModel : ObservableObject
     {
         try
         {
-            await _settingsService.SaveAsync(AppSettings);
+            // ConfigureAwait(false): Closed-хук окна вызывает SaveSettingsAsync
+            // через GetResult на UI-потоке — продолжение на Dispatcher дедлочит.
+            await _settingsService.SaveAsync(AppSettings).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

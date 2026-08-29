@@ -12,7 +12,7 @@ ChannelRepository ──► MainPage / ViewModels ──► StreamService ──
         │                    │                                                        ▲
         │                    ├── EpgViewModel ◄── EPGService ◄── XmlTvService            │
         │                    │        (EPG, reminders)             (XMLTV + cache)        │
-        └── PlaylistCacheService (channel/catalog cache)                                 │
+        └── PlaylistDatabaseService (SQLite channel/catalog cache)                                 │
                                                                                          │
 MediaPlayer.StartPlaybackAsync(channel, url, ...): live / archive (timeshift) / portal VOD ┘
 ```
@@ -30,7 +30,7 @@ Key classes:
 `MainWindow` → `MainPage` → `InitializeAsync()` (the page is shown immediately, nothing is blocked):
 
 1. Settings are loaded (`SettingsService`, `%LocalAppData%\IptvPlayer\settings.json`); volume is restored from them.
-2. Channels of the active playlist (`PlaylistSource.Type`: `m3u` — parser, `portal` — portal catalog, both use `PlaylistCacheService` cache) are placed into `ChannelRepository`, assigned sequential `Id` values, and populate `ViewModel.Channels`.
+2. Channels of the active playlist (`PlaylistSource.Type`: `m3u` — parser, `portal` — portal catalog, both use the `PlaylistDatabaseService` cache (SQLite)) are placed into `ChannelRepository`, assigned sequential `Id` values, and populate `ViewModel.Channels`.
 3. `SelectedChannel` is assigned immediately, `Task.Yield()` lets the UI render the list; then EPG is loaded in the background and auto-resume of the last channel is triggered.
 
 ## 2. Rendering and Input
@@ -54,7 +54,7 @@ Layers of the right area are set by `Canvas.ZIndex`: video (1) → header/contro
 **Portal** (`Services/VideoPortalService`, sources with `Type == "portal"`):
 - Protocol — POST requests `{baseURL}/{command}.json` with JSON body; authentication — `"key"` field in the body of each request; the `flicks` command returns paginated items (server limit — 300, next page marker `{type:"next"}`), `flick` — stream and quality options (480/720/1080/auto as separate links).
 - The client is "transparent": request objects from responses are passed to the server as-is, all fields are optional, unknown ones are ignored — new protocol commands do not require client changes. Each request/response is logged (truncated at 8 KB) — the protocol is refined based on logs.
-- The catalog is cached as a playlist (`PlaylistCacheService`), category = group, and items store the request object (`PortalRequest`) instead of a link — links are short-lived.
+- The catalog is cached as a playlist (`PlaylistDatabaseService`), category = group, and items store the request object (`PortalRequest`) instead of a link — links are short-lived.
 - Seasons are separate catalog cards: `ParsePortalSeasonName` extracts the base name and season number(s) from the title, groups are built lazily and invalidated when channels change (`GetPortalSeasonSiblings`). Series episodes — a flat list from flick ("Episode N"), stored in `PlayerViewModel.VodEpisodes` and survives quality switches; switching episodes — `PlayVodEpisodeAsync` without a portal request, switching seasons — a full `PlayChannelAsync(interactive:false)` of the adjacent card.
 - Playback (`MainPageViewModel.PlayChannelAsync`): on click, `flick` is executed (lazily, without caching), starts in VOD mode (`PlayerViewModel.IsVodPlaying`) — pause without restarting the stream, seeking on the fly via `PlaybackSession.Position`, quality selection — restart with a new link and position transfer.
 

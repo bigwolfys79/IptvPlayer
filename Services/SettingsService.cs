@@ -81,7 +81,10 @@ public class SettingsService : ISettingsService
             // Сериализация и запись — в пуле потоков: SaveAsync зовётся и из
             // UI (дебаунс настроек, громкость), синхронный WriteAllText там
             // подмораживал интерфейс на больших settings.json.
-            await Task.Run(() => File.WriteAllText(SettingsPath, json));
+            // ConfigureAwait(false) обязателен: Closed/сворачивание окна дергают
+            // SaveAsync через GetResult на UI-потоке — продолжение на Dispatcher
+            // там дедлочит навсегда.
+            await Task.Run(() => File.WriteAllText(SettingsPath, json)).ConfigureAwait(false);
             // Кэш остаётся тёплым: LoadAsync вернёт этот же экземпляр без
             // повторного чтения/десериализации файла (его дергают хуки
             // закрытия/сворачивания окна и каждая загрузка EPG).

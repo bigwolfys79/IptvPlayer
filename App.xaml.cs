@@ -92,6 +92,7 @@ public partial class App : Application
         // тексты фиксируются при разборе XAML, поэтому локализация целиком
         // выбирается на старте (смена в настройках — после перезапуска).
         L.SetLanguage(initialSettings.Language);
+        TempDiagnosticsEnabled = initialSettings.TempDiagnosticsEnabled;
         FileLogSwitch.MinimumLevel = initialSettings.FileLoggingEnabled
             ? LogEventLevel.Information
             : FileLoggingDisabledLevel;
@@ -153,6 +154,14 @@ public partial class App : Application
     /// Работает через LoggingLevelSwitch файлового sink'а — без пересоздания
     /// логгера и потери событий на переключении.
     /// </summary>
+    /// <summary>
+    /// Включена ли «Временная диагностика» (см. AppSettings.TempDiagnosticsEnabled):
+    /// глушение необработанных исключений + подробный лог EPG по каналам.
+    /// Статическое: App.OnUnhandledException и статические ветки EPGService
+    /// не имеют доступа к DI-контейнеру в момент срабатывания.
+    /// </summary>
+    public static bool TempDiagnosticsEnabled { get; set; }
+
     public static void SetFileLoggingEnabled(bool enabled)
     {
         if (!enabled)
@@ -183,12 +192,9 @@ public partial class App : Application
         // дальше). Конкретные типы регистрируются отдельно от интерфейсов,
         // потому что MainPage работает с ChannelRepository/EPGService как с
         // конкретными типами.
-        // Счётчик скорости загрузки (байты чтения процесса): сервисы ниже
-        // берут его для PauseScope на время своих больших загрузок, а
-        // MainPage — для строки «Скорость потока (изм.)» в оверлее.
-        services.AddSingleton<ProcessSpeedMonitor>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IXmlTvService, XmlTvService>();
+        services.AddSingleton<LocalStreamProxy>();
         services.AddSingleton<IStreamService, StreamService>();
         services.AddSingleton<IPlaylistCacheService, PlaylistDatabaseService>();
         services.AddSingleton<IM3UParserService, M3UParserService>();
@@ -318,9 +324,10 @@ public partial class App : Application
         }
 
         // Помечаем как обработанное, чтобы приложение не падало/не зависало
-        // молча — это временно, только для диагностики. После того как
-        // найдём и починим причину, этот флаг можно убрать.
-        e.Handled = true;
+        // молча — только пока включена «Временная диагностика» (меню
+        // шестерёнки → Диагностика). После подтверждения, что зависания
+        // починены, переключатель и этот код можно удалить.
+        e.Handled = TempDiagnosticsEnabled;
     }
 
     private void OnAppDomainUnhandledException(object sender, System.UnhandledExceptionEventArgs e)
