@@ -143,20 +143,26 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 ## 11. Разбиение на partial-файлы
 
-**MainPage** (3133 → 1321 строк):
+**MainPage** (3133 → 1329 строк):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `MainPage.xaml.cs` | 1321 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.xaml.cs` | 1329 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
 | `MainPage.Portal.cs` | 264 | Portal API методы |
 | `MainPage.Settings.cs` | 98 | Диалоги настроек |
 | `MainPage.Navigation.cs` | 375 | Переключение плейлистов, навигация |
 | `MainPage.VideoControls.cs` | 442 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
 | `MainPage.Seek.cs` | 584 | VOD seek/quality/season/episode, Archive seek, EPG, Fullscreen, PIN |
 | `MainPage.FullScreen.cs` | 277 | Полноэкранный режим |
-| `MainPage.Hotkeys.cs` | 386 | Горячие клавиши |
+| `MainPage.Hotkeys.cs` | 388 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
 | `MainPage.Overlays.cs` | 450 | Оверлеи |
 | `MainPage.StatsOverlay.cs` | 213 | Статистика |
+
+**HubPage** (843 строки):
+
+| Файл | Строк | Содержимое |
+|---|---|---|
+| `HubPage.xaml.cs` | 843 | Экран запуска: приветствие, карточки, кастомные flyout-меню, справка горячих клавиш (F1) |
 
 **MainPageViewModel** (1870 → 941 строк):
 

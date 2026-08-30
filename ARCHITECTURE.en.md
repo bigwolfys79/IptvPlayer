@@ -143,20 +143,26 @@ Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAs
 
 ## 11. Partial File Split
 
-**MainPage** (3133 → 1321 lines):
+**MainPage** (3133 → 1329 lines):
 
 | File | Lines | Content |
 |---|---|---|
-| `MainPage.xaml.cs` | 1321 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.xaml.cs` | 1329 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
 | `MainPage.Portal.cs` | 264 | Portal API methods |
 | `MainPage.Settings.cs` | 98 | Settings dialogs |
 | `MainPage.Navigation.cs` | 375 | Playlist switching, navigation |
 | `MainPage.VideoControls.cs` | 442 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
 | `MainPage.Seek.cs` | 584 | VOD seek/quality/season/episode, Archive seek, EPG, Fullscreen, PIN |
 | `MainPage.FullScreen.cs` | 277 | Fullscreen mode |
-| `MainPage.Hotkeys.cs` | 386 | Hotkeys |
+| `MainPage.Hotkeys.cs` | 388 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
 | `MainPage.Overlays.cs` | 450 | Overlays |
 | `MainPage.StatsOverlay.cs` | 213 | Statistics |
+
+**HubPage** (843 lines):
+
+| File | Lines | Content |
+|---|---|---|
+| `HubPage.xaml.cs` | 843 | Launch screen: greeting, cards, custom flyout menus, hotkey help (F1) |
 
 **MainPageViewModel** (1870 → 941 lines):
 
