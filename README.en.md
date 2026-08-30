@@ -34,7 +34,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Audio normalization: Dynamic (boost quiet channels) / Loudness (EBU R128)
 - Real stream speed measurement via the diagnostics proxy (playback settings)
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
-- Hotkeys: space, arrows, M (mute), F (fullscreen), number keys (channel)
+- Hotkeys: digits (channel number), Enter (confirm), Backspace (previous channel), arrows/PgUp/PgDn (adjacent channel), Space (pause for archive and VOD), M (mute), V (display mode), F/F11 (fullscreen), Esc (back/exit), Ctrl+F (search), Ctrl+J (stream stats), Ctrl+M (mini-player); full help — F1
 - Archive (timeshift) with seeking and program progress
 - Stream diagnostics on playback error
 
