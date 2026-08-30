@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>IptvPlayer</RootNamespace>
-    <Version>1.12.4</Version>
+    <Version>1.14.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
@@ -61,6 +61,7 @@
          AppContext.BaseDirectory\Assets), AppIcon.ico — для иконки окна. -->
     <Content Include="Assets\epg-name-map.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Icons\*.svg" CopyToOutputDirectory="PreserveNewest" />
     <!-- ffmpeg.exe для записи передач/каналов (RecordingService). Shared-сборка
          использует те же DLL, что FFmpegInteropX кладёт в корень вывода.
          TargetPath обязателен: без него Content копируется в вывод как
@@ -84,6 +85,12 @@
   <ItemGroup>
     <Compile Remove="tests\**" />
     <None Remove="tests\**" />
+    <!-- Офлайн-генератор лицензий (Tools/LicenseGenerator) — отдельный
+         проект разработчика: без исключения его Program.cs и obj\** из
+         глоба исходников ломают сборку приложения (дубли атрибутов
+         сборки, конфликт двух точек входа). -->
+    <Compile Remove="Tools\**" />
+    <None Remove="Tools\**" />
   </ItemGroup>
 
   <!-- dotnet publish в unpackaged-режиме (Release для Inno Setup) не
@@ -132,6 +139,8 @@
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.11" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
   </ItemGroup>

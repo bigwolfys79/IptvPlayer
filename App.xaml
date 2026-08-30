@@ -8,7 +8,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
+                <ResourceDictionary Source="Styles/HubPageStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <!-- Единая палитра приложения: акцентные цвета, которые раньше
                  дублировались hex-значениями по всему XAML/коду (REC, эфир,

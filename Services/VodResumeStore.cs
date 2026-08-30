@@ -47,9 +47,22 @@ public class VodResumeStore
                     position_seconds REAL NOT NULL,
                     duration_seconds REAL NOT NULL,
                     episode_index INTEGER NOT NULL,
-                    updated_at TEXT NOT NULL
+                    updated_at TEXT NOT NULL,
+                    portal_playlist_id INTEGER
                 );";
             cmd.ExecuteNonQuery();
+
+            // Миграция: добавляем portal_playlist_id если таблица уже существует без него.
+            try
+            {
+                using var alter = connection.CreateCommand();
+                alter.CommandText = "ALTER TABLE vod_resume ADD COLUMN portal_playlist_id INTEGER";
+                alter.ExecuteNonQuery();
+            }
+            catch (SqliteException)
+            {
+                // Колонка уже существует — нормально.
+            }
         }
         catch (Exception ex)
         {
@@ -68,7 +81,7 @@ public class VodResumeStore
 
             var cmd = connection.CreateCommand();
             cmd.CommandText = @"
-                SELECT key, position_seconds, duration_seconds, episode_index, updated_at
+                SELECT key, position_seconds, duration_seconds, episode_index, updated_at, portal_playlist_id
                 FROM vod_resume";
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -78,7 +91,8 @@ public class VodResumeStore
                     PositionSeconds = reader.GetDouble(1),
                     DurationSeconds = reader.GetDouble(2),
                     EpisodeIndex = reader.GetInt32(3),
-                    UpdatedAt = DateTime.TryParse(reader.GetString(4), out var at) ? at : DateTime.Now
+                    UpdatedAt = DateTime.TryParse(reader.GetString(4), out var at) ? at : DateTime.Now,
+                    PortalPlaylistId = reader.IsDBNull(5) ? null : reader.GetInt32(5)
                 };
                 result[reader.GetString(0)] = position;
             }
@@ -104,16 +118,17 @@ public class VodResumeStore
             {
                 cmd.Transaction = (SqliteTransaction)transaction;
                 cmd.CommandText = @"
-                    INSERT INTO vod_resume (key, position_seconds, duration_seconds, episode_index, updated_at)
-                    VALUES ($key, $pos, $dur, $ep, $at)
+                    INSERT INTO vod_resume (key, position_seconds, duration_seconds, episode_index, updated_at, portal_playlist_id)
+                    VALUES ($key, $pos, $dur, $ep, $at, $pid)
                     ON CONFLICT(key) DO UPDATE SET
                         position_seconds = $pos, duration_seconds = $dur,
-                        episode_index = $ep, updated_at = $at";
+                        episode_index = $ep, updated_at = $at, portal_playlist_id = $pid";
                 var key = cmd.Parameters.Add("$key", SqliteType.Text);
                 var pos = cmd.Parameters.Add("$pos", SqliteType.Real);
                 var dur = cmd.Parameters.Add("$dur", SqliteType.Real);
                 var ep = cmd.Parameters.Add("$ep", SqliteType.Integer);
                 var at = cmd.Parameters.Add("$at", SqliteType.Text);
+                var pid = cmd.Parameters.Add("$pid", SqliteType.Integer);
 
                 foreach (var (k, p) in positions)
                 {
@@ -122,6 +137,7 @@ public class VodResumeStore
                     dur.Value = p.DurationSeconds;
                     ep.Value = p.EpisodeIndex;
                     at.Value = p.UpdatedAt.ToString("O");
+                    pid.Value = (object?)p.PortalPlaylistId ?? DBNull.Value;
                     await cmd.ExecuteNonQueryAsync();
                 }
             }

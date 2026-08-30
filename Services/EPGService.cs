@@ -244,6 +244,26 @@ namespace IptvPlayer.Services
             }
         }
 
+        public async Task<EPGEntry?> GetCurrentProgramAsync(int channelId)
+        {
+            await EnsureEpgLoadedAsync();
+
+            var channel = await _channelRepository.GetChannelByIdAsync(channelId);
+            if (channel == null || channel.IsPortalItem)
+            {
+                return null;
+            }
+
+            var (entries, _) = MatchChannel(channel);
+            if (entries.Count == 0)
+            {
+                return null;
+            }
+
+            var now = DateTime.Now;
+            return entries.FirstOrDefault(e => e.StartTime <= now && now < e.EndTime);
+        }
+
         public async Task RefreshEPGAsync()
         {
             EpgCacheStore.ClearAll();

@@ -6,9 +6,11 @@ This project is licensed under the **Prosperity Public License 3.0.0**.
 
 It is free for noncommercial and personal use, but commercial use is limited to a 30-day trial period. For more details, please see the [LICENSE](LICENSE) file.
 
+**A purchased license is activated offline, with no server:** in the expired-trial dialog, copy your Hardware ID (HWID) and send it to the developer; paste the received key into the same window (or import a `.lic` file). The key is RSA-2048 signed and bound to the HWID — it cannot be forged without the developer's private key.
+
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.12.2
+- **Version:** 1.14.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -32,31 +34,38 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
 - Hotkeys: space, arrows, M (mute), F (fullscreen), number keys (channel)
 - Archive (timeshift) with seeking and program progress
+- Stream diagnostics on playback error
 
 ### Video library (video portal)
+- Hub Page with greeting, animations, and custom flyout menus
 - Portal source with category catalog, movies and series
 - VOD playback with pause and seeking
 - Seasons and episodes with instant switching
-- Poster grid with search and filtering
+- Poster grid with search and filtering (genre, year, content type)
 - Quality selection (480p/720p/1080p/Auto)
-- Fast movie start
+- Fast movie start (instant from catalog link)
+- VOD resume (position saving)
+- Portal key cache invalidation (SHA-256)
 
 ### Interface
+- Hub Page — launch screen with "Playlists", "Portal", "Settings" cards
 - Borderless fullscreen mode
 - System tray (minimize without stopping playback)
 - Dark theme (Light/Dark/System)
-- Interface language (Russian/English)
+- Interface language (Russian/English), localized via resw
 - Live panel splitter (240–640 px)
 - Window state memory (position and size restored)
 - Mini-player (Ctrl+M)
 - Auto-resume last channel
+- View toggle "List/Posters" (portal only)
 
 ### EPG and extras
-- EPG (XMLTV) with channel matching
+- EPG (XMLTV) with lazy loading (current program at startup, full list on click)
 - Program reminders
 - Favorite channels
 - Parental control (PIN)
 - Program recording (up to 3 parallel)
+- Scheduled recordings
 - Settings export/import (with encryption)
 
 ### Infrastructure
@@ -64,7 +73,8 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Inno Setup installer with language selection and Dolby decoders
 - Serilog + Dependency Injection
 - MVVM refactoring (ViewModels, partial files)
-- Unit tests (xunit, 64 tests)
+- Unit tests (xunit)
+- Memory optimization (nullable EPG descriptions, lazy loading)
 
 ---
 

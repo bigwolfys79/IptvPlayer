@@ -18,4 +18,11 @@ public class VodResumePosition
     public int EpisodeIndex { get; set; } = -1;
 
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+    /// <summary>
+    /// Id плейлиста портала, которому принадлежит этот VOD.
+    /// Нужен Hub Page для навигации к правильному порталу при resume.
+    /// null = неизвестно (fallback на первый portal-плейлист).
+    /// </summary>
+    public int? PortalPlaylistId { get; set; }
 }

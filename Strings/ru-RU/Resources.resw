@@ -2627,5 +2627,218 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Diagnostika.Text" xml:space="preserve">
     <value>Диагностика</value>
   </data>
+  <data name="License_TrialExpired_Title" xml:space="preserve">
+    <value>Истёк пробный период коммерческого использования</value>
+  </data>
+  <data name="License_TrialExpired_Message" xml:space="preserve">
+    <value>Коммерческое использование IptvPlayer ограничено 30 днями. Чтобы купить лицензию, свяжитесь с разработчиком:</value>
+  </data>
+  <data name="License_TrialExpired_FullMessage" xml:space="preserve">
+    <value>Пробный период истёк. Пожалуйста, приобретите лицензию.</value>
+  </data>
+  <data name="License_DaysRemaining_0" xml:space="preserve">
+    <value>Осталось дней: {0}</value>
+  </data>
+  <data name="License_ContactDeveloper" xml:space="preserve">
+    <value>Свяжитесь с разработчиком:</value>
+  </data>
+  <data name="License_HardwareId" xml:space="preserve">
+    <value>Код железа (HWID):</value>
+  </data>
+  <data name="License_HwidCopied" xml:space="preserve">
+    <value>Код железа скопирован в буфер обмена</value>
+  </data>
+  <data name="License_Activate_Button" xml:space="preserve">
+    <value>Активировать</value>
+  </data>
+  <data name="License_ImportFile" xml:space="preserve">
+    <value>Импортировать файл лицензии…</value>
+  </data>
+  <data name="License_EmptyKey" xml:space="preserve">
+    <value>Вставьте лицензионный ключ или импортируйте .lic-файл.</value>
+  </data>
+  <data name="License_ActivationSuccess" xml:space="preserve">
+    <value>Лицензия активирована. Спасибо!</value>
+  </data>
+  <data name="License_Error_Invalid" xml:space="preserve">
+    <value>Неверный лицензионный ключ. Проверьте текст и попробуйте снова.</value>
+  </data>
+  <data name="License_Error_WrongMachine" xml:space="preserve">
+    <value>Лицензия выпущена для другого компьютера.</value>
+  </data>
+  <data name="License_Error_Expired" xml:space="preserve">
+    <value>Срок действия этой лицензии истёк.</value>
+  </data>
+  <data name="License_FileReadFailed" xml:space="preserve">
+    <value>Не удалось прочитать файл лицензии.</value>
+  </data>
+  <data name="Dobroe_Utro" xml:space="preserve">
+    <value>Доброе утро</value>
+  </data>
+  <data name="Dobryy_Den" xml:space="preserve">
+    <value>Добрый день</value>
+  </data>
+  <data name="Dobryy_Vecher" xml:space="preserve">
+    <value>Добрый вечер</value>
+  </data>
+  <data name="Dobroy_Nochi" xml:space="preserve">
+    <value>Доброй ночи</value>
+  </data>
+  <data name="IptvPlayer_Vyberite_Chto" xml:space="preserve">
+    <value>IptvPlayer — выберите, что хотите посмотреть</value>
+  </data>
+  <data name="Seriya_Nomer_0" xml:space="preserve">
+    <value>{0} — серия {1}</value>
+  </data>
+  <data name="Zagruzit_Pleylist" xml:space="preserve">
+    <value>Загрузить плейлист</value>
+  </data>
+  <data name="Posledniy_Kanal_0" xml:space="preserve">
+    <value>Последний: {0}</value>
+  </data>
+  <data name="Net_Pleylistov_Dobavte" xml:space="preserve">
+    <value>Нет плейлистов. Добавьте в настройках.</value>
+  </data>
+  <data name="Zagruzit_Portal" xml:space="preserve">
+    <value>Загрузить портал</value>
+  </data>
+  <data name="Nedosmotrennye_0" xml:space="preserve">
+    <value>Недосмотренные ({0})</value>
+  </data>
+  <data name="Net_Portala_Dobavte" xml:space="preserve">
+    <value>Нет портала. Добавьте в настройках.</value>
+  </data>
+  <data name="Diagnostika_Prefiks_0" xml:space="preserve">
+    <value>Диагностика: {0}</value>
+  </data>
+  <data name="Url_Potoka_Pust" xml:space="preserve">
+    <value>URL потока пуст.</value>
+  </data>
+  <data name="Diag_200_OK_No_Decode" xml:space="preserve">
+    <value>Сервер доступен (200 OK), но декодер не может воспроизвести поток. Возможно, не поддерживается формат.</value>
+  </data>
+  <data name="Diag_403_Zapreshchen" xml:space="preserve">
+    <value>Доступ запрещён (403). Проверьте логин/пароль или подписку.</value>
+  </data>
+  <data name="Diag_404_Nayden" xml:space="preserve">
+    <value>Поток не найден (404). Проверьте URL.</value>
+  </data>
+  <data name="Diag_502_503_Nedostupen" xml:space="preserve">
+    <value>Сервер видео недоступен ({0}). Попробуйте позже.</value>
+  </data>
+  <data name="Diag_500_Oshibka" xml:space="preserve">
+    <value>Ошибка сервера ({0}).</value>
+  </data>
+  <data name="Diag_Status_Kod_0" xml:space="preserve">
+    <value>Сервер ответил кодом {0}.</value>
+  </data>
+  <data name="Diag_Taymaut_10s" xml:space="preserve">
+    <value>Сервер не отвечает (таймаут 10с). Проверьте подключение к интернету.</value>
+  </data>
+  <data name="Diag_Ne_Podklyuchitsya_0" xml:space="preserve">
+    <value>Не удалось подключиться к серверу: {0}</value>
+  </data>
+  <data name="Diag_Oshibka_0" xml:space="preserve">
+    <value>Ошибка диагностики: {0}</value>
+  </data>
+  <data name="Upravlyayte_Pleylistami.Text" xml:space="preserve">
+    <value>Управляйте плейлистами</value>
+  </data>
+  <data name="Portal.Text" xml:space="preserve">
+    <value>Портал</value>
+  </data>
+  <data name="Portal_Card_Subtitle.Text" xml:space="preserve">
+    <value>Каталог фильмов и сериалов</value>
+  </data>
+  <data name="Nastroyki_Card.Text" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
+  <data name="Yazyk_Interfeys_Vosproizv.Text" xml:space="preserve">
+    <value>Язык, интерфейс, воспроизведение</value>
+  </data>
+  <data name="BackToHub_ToolTip" xml:space="preserve">
+    <value>Назад</value>
+  </data>
+  <data name="Welcome_Title" xml:space="preserve">
+    <value>Добро пожаловать в IptvPlayer</value>
+  </data>
+  <data name="Welcome_Text" xml:space="preserve">
+    <value>Добавьте плейлист IPTV или портал видеотеки, чтобы начать просмотр.</value>
+  </data>
+  <data name="Welcome_AddPlaylist" xml:space="preserve">
+    <value>Добавить плейлист</value>
+  </data>
+  <data name="Welcome_AddPortal" xml:space="preserve">
+    <value>Добавить портал</value>
+  </data>
+  <data name="Welcome_Later" xml:space="preserve">
+    <value>Позже</value>
+  </data>
+  <data name="Hotkeys_Title" xml:space="preserve">
+    <value>Горячие клавиши</value>
+  </data>
+  <data name="Hub_Pleylisty_ToolTip" xml:space="preserve">
+    <value>Плейлисты</value>
+  </data>
+  <data name="Nastroyki_Card_Lbl" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
+  <data name="Prodolzhit_0" xml:space="preserve">
+    <value>Продолжить: {0}</value>
+  </data>
+  <data name="Vklyuchit_0" xml:space="preserve">
+    <value>Включить: {0}</value>
+  </data>
+  <data name="Ostalos_Min_0" xml:space="preserve">
+    <value>Осталось: {0} мин</value>
+  </data>
+  <data name="S_vozvrashcheniem" xml:space="preserve">
+    <value>С возвращением!</value>
+  </data>
+  <data name="Portal_Lbl" xml:space="preserve">
+    <value>Портал</value>
+  </data>
+  <data name="HK_Digits" xml:space="preserve">
+    <value>Ввод номера канала — переключение по Enter (или автоматически)</value>
+  </data>
+  <data name="HK_Enter" xml:space="preserve">
+    <value>Подтвердить введённый номер канала</value>
+  </data>
+  <data name="HK_Zap" xml:space="preserve">
+    <value>Соседний канал вперёд/назад (в списках и на слайдере — прокрутка)</value>
+  </data>
+  <data name="HK_Back" xml:space="preserve">
+    <value>Предыдущий канал; при вводе номера — стереть цифру</value>
+  </data>
+  <data name="HK_Space" xml:space="preserve">
+    <value>Пауза/продолжение архива и VOD (в живом эфире пауза не поддерживается)</value>
+  </data>
+  <data name="HK_M" xml:space="preserve">
+    <value>Звук вкл/выкл</value>
+  </data>
+  <data name="HK_V" xml:space="preserve">
+    <value>Режим отображения видео: вписать → растянуть → обрезать</value>
+  </data>
+  <data name="HK_F" xml:space="preserve">
+    <value>Полноэкранный режим</value>
+  </data>
+  <data name="HK_Esc" xml:space="preserve">
+    <value>Назад в хаб; закрыть окно EPG; выйти из полноэкранного режима</value>
+  </data>
+  <data name="HK_CtrlF" xml:space="preserve">
+    <value>Фокус в поиск каналов</value>
+  </data>
+  <data name="HK_CtrlJ" xml:space="preserve">
+    <value>Оверлей статистики потока (скорость, буфер, декодер)</value>
+  </data>
+  <data name="HK_CtrlM" xml:space="preserve">
+    <value>Мини-плеер поверх всех окон</value>
+  </data>
+  <data name="HK_Hub123" xml:space="preserve">
+    <value>Хаб: плейлисты / портал / настройки</value>
+  </data>
+  <data name="HK_F1" xml:space="preserve">
+    <value>Эта справка</value>
+  </data>
 </root>
 

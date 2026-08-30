@@ -53,7 +53,8 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                 CREATE TABLE IF NOT EXISTS playlists (
                     id INTEGER PRIMARY KEY,
                     format_version INTEGER NOT NULL DEFAULT 4,
-                    saved_at_utc TEXT NOT NULL
+                    saved_at_utc TEXT NOT NULL,
+                    portal_key TEXT
                 );
                 CREATE TABLE IF NOT EXISTS channels (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +72,15 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                 );
                 CREATE INDEX IF NOT EXISTS idx_channels_playlist ON channels(playlist_id);";
             cmd.ExecuteNonQuery();
+
+            // Миграция: добавить portal_key если нет
+            try
+            {
+                var altCmd = connection.CreateCommand();
+                altCmd.CommandText = "ALTER TABLE playlists ADD COLUMN portal_key TEXT";
+                altCmd.ExecuteNonQuery();
+            }
+            catch { /* колонка уже есть */ }
         }
         catch (Exception ex)
         {
@@ -87,7 +97,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
 
             var metaCmd = connection.CreateCommand();
             metaCmd.CommandText =
-                "SELECT format_version, saved_at_utc FROM playlists WHERE id = $id";
+                "SELECT format_version, saved_at_utc, portal_key FROM playlists WHERE id = $id";
             metaCmd.Parameters.AddWithValue("$id", playlistId);
 
             await using var reader = await metaCmd.ExecuteReaderAsync();
@@ -101,12 +111,14 @@ public class PlaylistDatabaseService : IPlaylistCacheService
 
             var formatVersion = reader.GetInt32(0);
             var savedAtUtc = DateTime.Parse(reader.GetString(1));
+            var portalKeyHash = reader.IsDBNull(2) ? null : reader.GetString(2);
             await reader.CloseAsync();
 
             var cache = new PlaylistCache
             {
                 FormatVersion = formatVersion,
                 SavedAtUtc = savedAtUtc,
+                PortalKeyHash = portalKeyHash,
                 Channels = new()
             };
 
@@ -158,11 +170,12 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             // Upsert playlist metadata.
             var metaCmd = connection.CreateCommand();
             metaCmd.CommandText =
-                "INSERT INTO playlists (id, format_version, saved_at_utc) VALUES ($id, $ver, $date) " +
-                "ON CONFLICT(id) DO UPDATE SET format_version = $ver, saved_at_utc = $date";
+                "INSERT INTO playlists (id, format_version, saved_at_utc, portal_key) VALUES ($id, $ver, $date, $key) " +
+                "ON CONFLICT(id) DO UPDATE SET format_version = $ver, saved_at_utc = $date, portal_key = $key";
             metaCmd.Parameters.AddWithValue("$id", playlistId);
             metaCmd.Parameters.AddWithValue("$ver", cache.FormatVersion);
             metaCmd.Parameters.AddWithValue("$date", cache.SavedAtUtc.ToString("O"));
+            metaCmd.Parameters.AddWithValue("$key", (object?)cache.PortalKeyHash ?? DBNull.Value);
             await metaCmd.ExecuteNonQueryAsync();
 
             // Delete old channels.

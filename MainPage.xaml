@@ -107,14 +107,25 @@
                 <!-- Channel List Header -->
                 <Grid Grid.Row="0" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="ChannelsHeaderText" x:Uid="Kanaly" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <TextBlock x:Name="ChannelsHeaderText" x:Uid="Kanaly" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Button x:Name="BackToHubButton"
+                            Width="36" Height="36"
+                            Padding="0"
+                            Visibility="Collapsed"
+                            Click="BackToHubButton_Click"
+                            x:Uid="BackToHub_ToolTip">
+                        <Path Data="M12,3.5 L5,8.5 L12,13.5"
+                              Fill="{ThemeResource TextFillColorPrimaryBrush}"
+                              Stretch="Uniform" Width="14" Height="14"/>
+                    </Button>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
                         <AutoSuggestBox x:Name="ChannelSearchBox"
                                         x:Uid="Poisk" 
-                                        Width="180"
+                                        MinWidth="180"
+                                        MaxWidth="300"
                                         QueryIcon="Find"
                                         Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay}" />
                         <Button x:Name="AddChannelButton" 
@@ -132,53 +143,39 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <!-- Row 0, Col 0: Group filter (M3U) ИЛИ Content type filter (портал).
-                         Взаимно исключают друг друга через Visibility — одновременно
-                         в ячейке только один видимый элемент, перекрытия нет. -->
+                    <!-- Row 0: Group filter (M3U) ИЛИ Content type filter (портал). -->
                     <ComboBox x:Name="GroupFilterComboBox"
                               Grid.Row="0" Grid.Column="0"
                               HorizontalAlignment="Stretch"
                               ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
                               SelectedItem="{x:Bind ViewModel.SelectedGroup, Mode=TwoWay}"
                               Visibility="{x:Bind ViewModel.IsGroupFilterVisible, Mode=OneWay}" />
-                    <!-- Тип контента видео-портала (Фильмы, Сериалы и т.д.):
-                         виден только для портальных источников, заменяет фильтр групп. -->
                     <ComboBox x:Name="ContentTypeFilterComboBox"
                               Grid.Row="0" Grid.Column="0"
                               HorizontalAlignment="Stretch"
                               ItemsSource="{x:Bind ViewModel.ContentTypes, Mode=OneWay}"
                               SelectedItem="{x:Bind ViewModel.SelectedContentType, Mode=TwoWay}"
                               Visibility="{x:Bind ViewModel.IsContentTypeFilterVisible, Mode=OneWay}" />
-                    <!-- Row 1, Col 0: Жанр + Год рядом в горизонтальном стеке,
-                         чтобы каждый ComboBox занимал свою позицию и не перекрывал
-                         соседей. Width="*" у столбца растягивает стек на всю ширину. -->
+                    <!-- Row 1: Жанр + Год + Сброс + Вид — компактно в одну строку. -->
                     <StackPanel Grid.Row="1" Grid.Column="0"
-                                Orientation="Horizontal" Spacing="8">
+                                Orientation="Horizontal" Spacing="6">
                         <ComboBox x:Name="GenreFilterComboBox"
-                                  HorizontalAlignment="Stretch"
-                                  MinWidth="180"
+                                  MinWidth="120" MaxWidth="200"
                                   ItemsSource="{x:Bind ViewModel.Genres, Mode=OneWay}"
                                   SelectedItem="{x:Bind ViewModel.SelectedGenre, Mode=TwoWay}"
                                   Visibility="{x:Bind ViewModel.IsGenreFilterVisible, Mode=OneWay}" />
                         <ComboBox x:Name="YearFilterComboBox"
-                                  HorizontalAlignment="Stretch"
-                                  MinWidth="140"
+                                  MinWidth="100" MaxWidth="160"
                                   ItemsSource="{x:Bind ViewModel.Years, Mode=OneWay}"
                                   SelectedItem="{x:Bind ViewModel.SelectedYear, Mode=TwoWay}"
                                   Visibility="{x:Bind ViewModel.IsYearFilterVisible, Mode=OneWay}" />
-                        <!-- Кнопка сброса всех фильтров портала к дефолтам.
-                             Видна только для портальных источников (IsContentTypeFilterVisible).
-                             Иконка — круглая стрелка (Refresh), 36×32 как у соседних кнопок. -->
                         <Button x:Name="ResetFiltersButton"
-                                VerticalAlignment="Stretch"
-                                Width="36" Padding="0"
+                                Width="36" Height="32" Padding="0"
                                 Click="ResetFiltersButton_Click"
                                 Visibility="{x:Bind ViewModel.IsContentTypeFilterVisible, Mode=OneWay}"
                                 x:Uid="Sbrosit_Filtry">
@@ -187,30 +184,30 @@
                                   Fill="{ThemeResource TextFillColorPrimaryBrush}"
                                   Data="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M16.24,7.76A1,1 0 0,1 18.18,7.76A1,1 0 0,1 18.18,9.18L15.89,11.46L18.18,13.75A1,1 0 0,1 18.18,15.18A1,1 0 0,1 16.24,15.18L13.95,12.89L11.66,15.18A1,1 0 0,1 10.22,15.18A1,1 0 0,1 10.22,13.75L12.51,11.46L10.22,9.18A1,1 0 0,1 10.22,7.76A1,1 0 0,1 11.66,7.76L13.95,10.05Z" />
                         </Button>
+                        <Button x:Name="PosterViewToggleButton"
+                                Width="36" Height="32" Padding="0"
+                                Click="PosterViewToggleButton_Click"
+                                Visibility="{x:Bind ViewModel.IsContentTypeFilterVisible, Mode=OneWay}"
+                                x:Uid="Vid_Spisok_Postery">
+                            <Grid Width="16" Height="16">
+                                <Rectangle x:Name="PosterViewIconList" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Top" Margin="1,1.5,1,0" />
+                                <Rectangle x:Name="PosterViewIconList2" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="1,0,1,0" />
+                                <Rectangle x:Name="PosterViewIconList3" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Bottom" Margin="1,0,1,1.5" />
+                                <Grid x:Name="PosterViewIconGrid" Visibility="Collapsed">
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                                </Grid>
+                            </Grid>
+                        </Button>
                     </StackPanel>
                     <!-- Индикатор загрузки серверного фильтра. -->
                     <ProgressRing x:Name="FilterLoadingRing"
-                                  Grid.Column="2" Grid.RowSpan="2"
+                                  Grid.Column="1" Grid.RowSpan="2"
                                   Width="20" Height="20"
                                   IsActive="{x:Bind ViewModel.IsFilterLoading, Mode=OneWay}"
                                   Visibility="{x:Bind ViewModel.IsFilterLoading, Mode=OneWay}" />
-                    <!-- Переключатель вида: строки ↔ сетка постеров. -->
-                    <Button x:Name="PosterViewToggleButton"
-                            Grid.Column="3" Grid.RowSpan="2" Width="36" Height="32" Padding="0"
-                            Click="PosterViewToggleButton_Click"
-                            x:Uid="Vid_Spisok_Postery">
-                        <Grid Width="16" Height="16">
-                            <Rectangle x:Name="PosterViewIconList" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Top" Margin="1,1.5,1,0" />
-                            <Rectangle x:Name="PosterViewIconList2" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="1,0,1,0" />
-                            <Rectangle x:Name="PosterViewIconList3" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Bottom" Margin="1,0,1,1.5" />
-                            <Grid x:Name="PosterViewIconGrid" Visibility="Collapsed">
-                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" />
-                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
-                                <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
-                            </Grid>
-                        </Grid>
-                    </Button>
                 </Grid>
 
                 <!-- Channel List -->

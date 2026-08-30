@@ -266,5 +266,55 @@ namespace IptvPlayer.Services
                 return new PlaybackDiagnostics();
             }
         }
+
+        /// <summary>
+        /// Диагностика URL потока: проверяет доступность и возвращает
+        /// человекочитаемое описание проблемы.
+        /// </summary>
+        public async Task<string> DiagnoseStreamUrl(string? streamUrl)
+        {
+            if (string.IsNullOrWhiteSpace(streamUrl))
+                return L.T("Url_Potoka_Pust");
+
+            try
+            {
+                using var http = new System.Net.Http.HttpClient();
+                http.Timeout = TimeSpan.FromSeconds(10);
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("IptvPlayer/1.0");
+
+                using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, streamUrl);
+                using var response = await http.SendAsync(request, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+
+                var status = (int)response.StatusCode;
+                if (status == 200)
+                    return L.T("Diag_200_OK_No_Decode");
+
+                if (status == 403)
+                    return L.T("Diag_403_Zapreshchen");
+
+                if (status == 404)
+                    return L.T("Diag_404_Nayden");
+
+                if (status == 502 || status == 503)
+                    return string.Format(L.T("Diag_502_503_Nedostupen"), status);
+
+                if (status >= 500)
+                    return string.Format(L.T("Diag_500_Oshibka"), status);
+
+                return string.Format(L.T("Diag_Status_Kod_0"), status);
+            }
+            catch (TaskCanceledException)
+            {
+                return L.T("Diag_Taymaut_10s");
+            }
+            catch (System.Net.Http.HttpRequestException ex)
+            {
+                return string.Format(L.T("Diag_Ne_Podklyuchitsya_0"), ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return string.Format(L.T("Diag_Oshibka_0"), ex.Message);
+            }
+        }
     }
 }

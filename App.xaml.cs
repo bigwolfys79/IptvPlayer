@@ -273,6 +273,7 @@ public partial class App : Application
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
         Log.Error(e.Exception, "Необработанное исключение UI-потока (App.UnhandledException)");
+        Serilog.Log.CloseAndFlush();
 
         // LayoutCycleException не называет виновника — снимаем слепок
         // визуального дерева (имена + фактические размеры первых N узлов):
@@ -330,6 +331,23 @@ public partial class App : Application
         e.Handled = TempDiagnosticsEnabled;
     }
 
+    /// <summary>
+    /// Второй запуск переадресовал сюда активацию: показываем окно
+    /// (в том числе когда оно свернуто в трей) и выводим на передний план.
+    /// Событие приходит в контексте WinAppSDK — marshaling в UI-поток.
+    /// </summary>
+    private void OnInstanceActivated(object? sender, Microsoft.Windows.AppLifecycle.AppActivationArguments e)
+    {
+        _window?.DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_window is MainWindow mainWindow)
+            {
+                mainWindow.ShowFromTray();
+                Log.Information("Активация переадресована: окно восстановлено из трея.");
+            }
+        });
+    }
+
     private void OnAppDomainUnhandledException(object sender, System.UnhandledExceptionEventArgs e)
     {
         var ex = e.ExceptionObject as Exception;
@@ -354,8 +372,36 @@ public partial class App : Application
     /// Invoked when the application is launched.
     /// </summary>
     /// <param name="args">Details about the launch request and process.</param>
-    protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
+        // === ЕДИНСТВЕННЫЙ ЭКЗЕМПЛЯР ===
+        // Повторный запуск (окно в трее — процесс жив) не создаёт второй
+        // экземпляр: активация переадресуется работающему, и он поднимает
+        // окно. Раньше параллельные экземпляры дрались за settings.json
+        // (IOException при сохранении, затем затирание настроек дефолтами).
+        // Проверка до всего остального: второй процесс завершается молча.
+        var instance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("IptvPlayer.Main");
+        if (!instance.IsCurrent)
+        {
+            Log.Information("Уже запущен другой экземпляр — переадресация активации и выход.");
+            try
+            {
+                var activationArgs = instance.GetActivatedEventArgs();
+                if (activationArgs != null)
+                {
+                    await instance.RedirectActivationToAsync(activationArgs);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Переадресация активации не удалась.");
+            }
+            Log.CloseAndFlush();
+            Environment.Exit(0);
+            return;
+        }
+        instance.Activated += OnInstanceActivated;
+
         // Отладочные дампы запросов/ответов портала (portal_dump) писались
         // прежними версиями и содержали прямые ссылки с токенами доступа —
         // удаляем накопленное, дамп больше не ведётся.
@@ -368,6 +414,33 @@ public partial class App : Application
             // Нет папки или файл занят — не препятствие для запуска.
         }
 
+        // === ПРОВЕРКА ЛИЦЕНЗИИ ДО СОЗДАНИЯ ОКНА ===
+        var license = LicenseService.CheckLicense();
+        Log.Information("OnLaunched: UsageType={Type}, DaysRemaining={Days}, IsExpired={Expired}",
+            license.UsageType, license.DaysRemaining, license.IsExpired);
+
+        if (license.IsExpired)
+        {
+            // Минимальное окно только для показа диалога
+            _window = new MainWindow();
+            _window.Activate();
+
+            var dialog = new Dialogs.LicenseExpiredDialog();
+            // Диалог содержит офлайн-активацию: пользователь может ввести
+            // подписанную лицензию прямо здесь, тогда запускаем приложение.
+            var activated = await dialog.ShowAsync(_window.Content.XamlRoot, license.DaysRemaining);
+
+            if (!activated)
+            {
+                Log.Information("Пробный период истёк — приложение завершено.");
+                Log.CloseAndFlush();
+                Environment.Exit(0);
+                return;
+            }
+
+            Log.Information("Лицензия активирована из диалога — продолжаем запуск.");
+        }
+
         _window = new MainWindow();
         (_window as MainWindow)?.RestorePlacement();
         _window.Activate();
@@ -376,5 +449,27 @@ public partial class App : Application
         // Синхронная выгрузка буферов Serilog при закрытии главного окна —
         // чтобы последние события гарантированно попали в файл.
         _window.Closed += (_, _) => Log.CloseAndFlush();
+
+        // Навигация: Hub или MainPage (auto-resume)
+        if (_window is MainWindow mainWindow)
+        {
+            var settingsService = App.Services.GetRequiredService<ISettingsService>();
+            var settings = settingsService.LoadAsync().GetAwaiter().GetResult();
+            Log.Information("OnLaunched: ShowHubOnStartup={Hub}", settings.ShowHubOnStartup);
+
+            var target = settings.ShowHubOnStartup ? typeof(HubPage) : typeof(MainPage);
+            Log.Information("OnLaunched: навигация → {Target}", target.Name);
+            try
+            {
+                mainWindow.AppFrame.Navigate(target);
+                Log.Information("OnLaunched: навигация завершена OK");
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "OnLaunched: навигация упала");
+                Serilog.Log.CloseAndFlush();
+                throw;
+            }
+        }
     }
 }

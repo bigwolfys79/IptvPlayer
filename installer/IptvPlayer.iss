@@ -9,7 +9,7 @@
 ; Готовый файл: installer\output\IptvPlayer-Setup-<версия>-x64.exe
 
 #define MyAppName "IptvPlayer"
-#define MyAppVersion "1.12.4"
+#define MyAppVersion "1.14.0"
 #define MyAppExeName "IptvPlayer.exe"
 #define MyAppPublisher "IptvPlayer"
 ; Папка публикации из win-x64.pubxml
@@ -56,6 +56,16 @@ ru.DolbyPlusStatus=Установка декодера Dolby Digital Plus (AC-3 
 en.DolbyPlusStatus=Installing Dolby Digital Plus decoder (AC-3 / E-AC-3)...
 ru.DolbyAC4Status=Установка декодера Dolby AC-4...
 en.DolbyAC4Status=Installing Dolby AC-4 decoder...
+ru.UsageTypeTitle=Тип использования
+en.UsageTypeTitle=Usage Type
+ru.UsageTypeSubtitle=Выберите, как вы будете использовать IptvPlayer
+en.UsageTypeSubtitle=Select how you will use IptvPlayer
+ru.UsageTypeDesc=Личное использование — бесплатно без ограничений.%nКоммерческое использование — пробный период 30 дней.
+en.UsageTypeDesc=Personal use — free without limitations.%nCommercial use — 30-day trial period.
+ru.UsageTypePersonal=Личное использование (Personal)
+en.UsageTypePersonal=Personal use (Personal)
+ru.UsageTypeCommercial=Коммерческое использование (Commercial)
+en.UsageTypeCommercial=Commercial use (Commercial)
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -77,6 +87,36 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Code]
+var
+  UsageTypePage: TInputOptionWizardPage;
+
+procedure InitializeWizard;
+begin
+  UsageTypePage := CreateInputOptionPage(wpSelectDir,
+    ExpandConstant('{cm:UsageTypeTitle}'),
+    ExpandConstant('{cm:UsageTypeSubtitle}'),
+    ExpandConstant('{cm:UsageTypeDesc}'),
+    True, False);
+  UsageTypePage.Add(ExpandConstant('{cm:UsageTypePersonal}'));
+  UsageTypePage.Add(ExpandConstant('{cm:UsageTypeCommercial}'));
+  UsageTypePage.Values[0] := True;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  UsageType: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    if UsageTypePage.Values[1] then
+      UsageType := 'Commercial'
+    else
+      UsageType := 'Personal';
+
+    RegWriteStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\IptvPlayer', 'UsageType', UsageType);
+  end;
+end;
+
 // True, если декодер Dolby Digital Plus ещё не установлен у пользователя.
 // Вызывается из Check у [Run]-записей ниже. 0 = установлен, 1 = нет,
 // ошибка запуска PowerShell = считаем "не установлен" (лучше попытаться).

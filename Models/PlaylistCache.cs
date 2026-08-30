@@ -13,20 +13,18 @@ namespace IptvPlayer.Models;
 /// </summary>
 public class PlaylistCache
 {
-    /// <summary>
-    /// Версия формата кэша. При добавлении новых полей (CatchupDays,
-    /// PortalRequest) или смене их смысла — увеличивается: кэш старой версии
-    /// считается устаревшим и плейлист перекачивается один раз при первом
-    /// запуске обновлённого приложения (см. InitializeAsync).
-    /// v2 — элементы портала получили год в названии.
-    /// v3 — элементы портала получили Description и Year отдельными полями.
-    /// </summary>
     public const int CurrentFormatVersion = 5;
 
     public int FormatVersion { get; set; }
 
     /// <summary>Момент последнего успешного скачивания плейлиста (UTC).</summary>
     public DateTime SavedAtUtc { get; set; }
+
+    /// <summary>
+    /// Хэш ключа портала на момент кэширования. Если изменился — кэш невалиден,
+    /// каталог нужно перекачать. Хранится SHA-256, не сам ключ.
+    /// </summary>
+    public string? PortalKeyHash { get; set; }
 
     public List<CachedChannel> Channels { get; set; } = new();
 }
