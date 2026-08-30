@@ -90,6 +90,26 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 var
   UsageTypePage: TInputOptionWizardPage;
 
+function UsageTypeExists(): Boolean;
+var
+  Existing: String;
+begin
+  Result := RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\IptvPlayer',
+    'UsageType', Existing);
+end;
+
+function UsageTypeIndex(): Integer;
+var
+  Existing: String;
+begin
+  if RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\IptvPlayer',
+      'UsageType', Existing) and
+     (CompareText(Existing, 'Commercial') = 0) then
+    Result := 1
+  else
+    Result := 0;
+end;
+
 procedure InitializeWizard;
 begin
   UsageTypePage := CreateInputOptionPage(wpSelectDir,
@@ -99,7 +119,23 @@ begin
     True, False);
   UsageTypePage.Add(ExpandConstant('{cm:UsageTypePersonal}'));
   UsageTypePage.Add(ExpandConstant('{cm:UsageTypeCommercial}'));
-  UsageTypePage.Values[0] := True;
+  // Если пользователь ранее уже выбрал тип использования (HKLM:UsageType),
+  // выбор не спрашиваем повторно — при обновлении/переустановке
+  // восстанавливаем сохранённое значение.
+  if UsageTypeExists() then
+    UsageTypePage.Values[UsageTypeIndex()] := True
+  else
+    UsageTypePage.Values[0] := True; // Personal — по умолчанию
+end;
+
+// Страница выбора типа показывается только если значение ещё не задано:
+// обновление (в т.ч. тихое /VERYSILENT) не должно переспрашивать и
+// случайно «сбрасывать» выбор пользователя на Personal.
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if (PageID = UsageTypePage.ID) and UsageTypeExists() then
+    Result := True;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -108,6 +144,10 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
+    // Уже выбирал ранее — сохраняем его выбор, что бы там ни стояло.
+    if UsageTypeExists() then
+      Exit;
+
     if UsageTypePage.Values[1] then
       UsageType := 'Commercial'
     else
