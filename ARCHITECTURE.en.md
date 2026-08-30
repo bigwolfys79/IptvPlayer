@@ -19,7 +19,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): live / archive (timeshift) / 
 
 Key classes:
 - `HubPage` — launch screen with "Playlists", "Portal", "Settings" cards.
-- `MainPage` (+ partial files `MainPage.FullScreen/Hotkeys/Navigation/Overlays/Portal/PortalFilters/Recording/Seek/Settings/StatsOverlay/VideoControls.cs`) — all UI and overlays.
+- `MainPage` (+ partial files `MainPage.FullScreen/Hotkeys/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — all UI and overlays.
 - `MainPageViewModel` (+ partial files `MainPageViewModel.PortalFilters/Recording/VodResume.cs`) — channel list logic, filtering, recording, VOD resume.
 - `EpgViewModel` — EPG: loading, lazy per-channel loading, current program.
 - `PlayerViewModel` — player management (FFmpegInteropX), archive, VOD.
@@ -99,7 +99,8 @@ HLS-timeshift is not searched on the fly, so seeking is a stream restart with a 
 1. **FFmpegInteropX + FFmpeg** — demuxing and decoding (the built-in Windows HLS stack does not decode HEVC in MPEG-TS, and AC-3 was removed from the system starting with 24H2). Configuration: decoder mode from settings (`VideoDecoderMode.Automatic` = GPU with fallback / `ForceFFmpegSoftwareDecoder` by default), `DownmixAudioStreamsToStereo = false` (multichannel sound is downmixed by the Windows audio engine — FFmpeg downmix is quieter), lookahead buffering 15s / 32 MB.
 2. **Source lifetime**: `FFmpegMediaSource` is tied to the player via `ConditionalWeakTable` — without this, GC would collect the source mid-playback (stutters → audio loss → crash 0xC00D36B6).
 3. **Fallback**: if FFmpeg couldn't open the URL — system `MediaSource.CreateFromUri`.
-4. **Diagnostics**: a snapshot of stream parameters is placed into `CurrentDiagnostics`, the stats overlay (Ctrl+J) adds live metrics on a one-second tick. `StreamService.DiagnoseStreamUrl` checks the URL on error (HTTP status, timeout, availability).
+4. **Diagnostics**: a snapshot of stream parameters is placed into `CurrentDiagnostics`, the stats overlay (Ctrl+J) adds live metrics on a one-second tick. `StreamService.DiagnoseStreamUrl` checks the URL on error (HTTP status, timeout, availability). To measure the real stream speed, `LocalStreamProxy` routes FFmpeg through a local TCP proxy on 127.0.0.1 (HLS playlists are rewritten to proxy routes) and counts bytes; enabled by a toggle in playback settings, off by default.
+5. **Audio normalization** — an FFmpeg audio filter per setting: `Dynamic` (dynaudnorm, boosts quiet channels, default) or `Loudness` (loudnorm, EBU R128 target); heavy filters may affect smoothness — the mode is logged on stream start.
 5. Player errors are logged with codes (`MediaPlayer.MediaFailed`); `OnMediaFailed` is async with diagnostics.
 
 **Pause** — only archive and portal VOD (spacebar, `ToggleArchivePause`): live broadcast cannot be paused, this is a deliberate limitation. For VOD, the same toggle works without archive clocks.
@@ -111,7 +112,7 @@ HLS-timeshift is not searched on the fly, so seeking is a stream restart with a 
 | What | Where |
 |---|---|
 | Settings (sources, portals, frequencies, volume, decoder, favorites) | `%LocalAppData%\IptvPlayer\settings.json` (atomic writes via `.tmp`; previous version in `settings.json.prev`, corrupted ones as `*.corrupt-*`) |
-| Channel/catalog cache — one file per playlist (`playlist_cache_{id}.json`) | `%LocalAppData%\IptvPlayer\` |
+| Channel/catalog cache (SQLite, single DB for all playlists; legacy `playlist_cache_{id}.json` files are migrated into it once) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
 | Parsed XMLTV source cache (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
 | Recordings (ffmpeg, MPEG-TS without transcoding) | "Videos\IptvPlayer" or configured folder |
 | Log (Serilog, daily rolling, 14 days) | `%LocalAppData%\IptvPlayer\logs\` |
