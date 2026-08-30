@@ -19,7 +19,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timesh
 
 Ключевые классы:
 - `HubPage` — экран запуска с карточками «Плейлисты», «Портал», «Настройки».
-- `MainPage` (+ partial-файлы `MainPage.FullScreen/Hotkeys/Navigation/Overlays/Portal/PortalFilters/Recording/Seek/Settings/StatsOverlay/VideoControls.cs`) — весь UI и оверлеи.
+- `MainPage` (+ partial-файлы `MainPage.FullScreen/Hotkeys/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — весь UI и оверлеи.
 - `MainPageViewModel` (+ partial-файлы `MainPageViewModel.PortalFilters/Recording/VodResume.cs`) — логика списка каналов, фильтрация, запись, VOD resume.
 - `EpgViewModel` — EPG: загрузка, ленивая загрузка по каналу, текущая передача.
 - `PlayerViewModel` — управление плеером (FFmpegInteropX), архив, VOD.
@@ -99,8 +99,9 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 1. **FFmpegInteropX + FFmpeg** — демуксинг и декодирование (системный HLS-стек Windows не декодирует HEVC в MPEG-TS, а AC-3 с 24H2 удалён из системы). Конфигурация: режим декодера из настроек (`VideoDecoderMode.Automatic` = GPU с откатом / `ForceFFmpegSoftwareDecoder` по умолчанию), `DownmixAudioStreamsToStereo = false` (многоканальный звук сводит аудиодвижок Windows — downmix FFmpeg тише), упреждающая буферизация 15 с / 32 МБ.
 2. **Время жизни источника**: `FFmpegMediaSource` привязан к плееру через `ConditionalWeakTable` — без этого GC собирал источник посреди воспроизведения (рывки → пропажа звука → крах 0xC00D36B6).
 3. **Откат**: если FFmpeg не смог открыть URL — системный `MediaSource.CreateFromUri`.
-4. **Диагностика**: снимок параметров потока кладётся в `CurrentDiagnostics`, оверлей статистики (Ctrl+J) добавляет живые метрики секундным тиком. `StreamService.DiagnoseStreamUrl` проверяет URL при ошибке (HTTP-статус, таймаут, доступность).
-5. Ошибки плеера логируются с кодами (`MediaPlayer.MediaFailed`); `OnMediaFailed` — async с диагностикой.
+4. **Диагностика**: снимок параметров потока кладётся в `CurrentDiagnostics`, оверлей статистики (Ctrl+J) добавляет живые метрики секундным тиком. `StreamService.DiagnoseStreamUrl` проверяет URL при ошибке (HTTP-статус, таймаут, доступность). Для измерения реальной скорости потока — `LocalStreamProxy`: FFmpeg качает через локальный TCP-прокси на 127.0.0.1 (HLS-плейлисты перезаписываются на прокси-маршруты), прокси считает байты; включается галкой в настройках воспроизведения, по умолчанию выключен.
+5. **Нормализация громкости** — аудиофильтр FFmpeg по настройке: `Dynamic` (dynaudnorm, усиливает тихие каналы, по умолчанию) или `Loudness` (loudnorm, единая громкость EBU R128); тяжёлые фильтры могут влиять на плавность — режим пишется в лог при старте потока.
+6. Ошибки плеера логируются с кодами (`MediaPlayer.MediaFailed`); `OnMediaFailed` — async с диагностикой.
 
 **Пауза** — только архив и VOD портала (пробел, `ToggleArchivePause`): живой эфир паузить нельзя, это осознанное ограничение. Для VOD тот же переключатель работает без архивных часов.
 
@@ -111,7 +112,7 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 | Что | Где |
 |---|---|
 | Настройки (источники, порталы, периодичности, громкость, декодер, избранное) | `%LocalAppData%\IptvPlayer\settings.json` (запись атомарная, через `.tmp`; прошлые версии — `settings.json.prev`, битые — `*.corrupt-*`) |
-| Кэш каналов/каталога — по файлу на плейлист (`playlist_cache_{id}.json`) | `%LocalAppData%\IptvPlayer\` |
+| Кэш каналов/каталога (SQLite, общий файл на все плейлисты; старые JSON-кэши `playlist_cache_{id}.json` мигрируются в него разово) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
 | Кэш разобранных XMLTV-источников (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
 | Записи (ffmpeg, MPEG-TS без перекодирования) | «Видео\IptvPlayer» или настроенная папка |
 | Лог (Serilog, ежедневный роллинг, 14 дней) | `%LocalAppData%\IptvPlayer\logs\` |

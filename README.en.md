@@ -31,6 +31,8 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Hardware (GPU) and software (CPU) decoding modes
 - Predictive buffering (15 s / 32 MB)
 - Video display modes: fit / stretch / crop
+- Audio normalization: Dynamic (boost quiet channels) / Loudness (EBU R128)
+- Real stream speed measurement via the diagnostics proxy (playback settings)
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
 - Hotkeys: space, arrows, M (mute), F (fullscreen), number keys (channel)
 - Archive (timeshift) with seeking and program progress
