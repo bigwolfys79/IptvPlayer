@@ -1,0 +1,70 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.LicenseExpiredDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <StackPanel Spacing="16" Width="460" Padding="20">
+        <TextBlock Text="&#xE783;" FontFamily="Segoe MDL2 Assets" FontSize="48"
+                   HorizontalAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+        <TextBlock x:Name="TitleText" FontSize="20" FontWeight="SemiBold"
+                   HorizontalAlignment="Center" TextAlignment="Center"/>
+
+        <TextBlock x:Name="MessageText" FontSize="14" TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+
+        <TextBlock x:Name="DaysText" FontSize="14" FontWeight="SemiBold"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   Foreground="{ThemeResource SystemAccentColor}"/>
+
+        <!-- Активация без сервера: пользователь присылает HWID, получает
+             подписанную лицензию (текстом или .lic-файлом). -->
+        <StackPanel x:Name="KeyPanel" Spacing="8" Margin="0,8,0,0">
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="HwidLabel" Grid.Column="0" VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock x:Name="HwidText" Grid.Column="1" VerticalAlignment="Center"
+                           FontFamily="Consolas" FontSize="14" FontWeight="SemiBold"/>
+                <Button x:Name="CopyHwidButton" Grid.Column="2" Style="{ThemeResource SubtleButtonStyle}">
+                    <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8C8;" FontSize="14"/>
+                </Button>
+            </Grid>
+
+            <TextBox x:Name="KeyInput" x:FieldModifier="private"
+                     TextWrapping="Wrap" AcceptsReturn="False" Height="72"
+                     PlaceholderText="IPL1...."/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+                <Button x:Name="ActivateButton" x:FieldModifier="private"
+                        Style="{ThemeResource AccentButtonStyle}"/>
+                <Button x:Name="ImportFileButton" x:FieldModifier="private"/>
+            </StackPanel>
+
+            <TextBlock x:Name="KeyStatusText" FontSize="12" TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Visibility="Collapsed"/>
+        </StackPanel>
+
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="8" Padding="16" Margin="0,8,0,0">
+            <StackPanel Spacing="8">
+                <TextBlock x:Name="ContactLabel" FontSize="13"
+                           HorizontalAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <HyperlinkButton x:Name="EmailLink" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

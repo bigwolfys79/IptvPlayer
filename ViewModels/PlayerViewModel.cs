@@ -29,6 +29,7 @@ public partial class PlayerViewModel : ObservableObject
     // (маршализация через ABI) это предупреждение MVVMTK0045. Ручное
     // свойство поверх поля даёт ту же семантику INotifyPropertyChanged.
     private string _streamId = string.Empty;
+    private string? _lastStreamUrl;
 
     public string StreamId
     {
@@ -394,6 +395,7 @@ public partial class PlayerViewModel : ObservableObject
 
         StreamError = null;
         IsBuffering = true;
+        _lastStreamUrl = streamUrl;
 
             var startWait = System.Diagnostics.Stopwatch.StartNew();
             var streamSettings = await _settingsService.LoadAsync();
@@ -835,14 +837,17 @@ public partial class PlayerViewModel : ObservableObject
         OnPropertyChanged(nameof(IsMuted));
     }
 
-    private void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
+    private async void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
     {
         _logger.LogError(
             "MediaPlayer.MediaFailed: Status={Status}, Code=0x{Code:x}{Message}",
             args.Error, args.ExtendedErrorCode,
             string.IsNullOrEmpty(args.ErrorMessage) ? string.Empty : $", {args.ErrorMessage}");
 
-        StreamError = L.T("Oshibka_Vosproizvedeniya") + args.ErrorMessage;
+        var errorMsg = args.ErrorMessage ?? args.Error.ToString();
+        var diagnostic = await _streamService.DiagnoseStreamUrl(_lastStreamUrl);
+
+        StreamError = $"{L.T("Oshibka_Vosproizvedeniya")}{errorMsg}\n\n{string.Format(L.T("Diagnostika_Prefiks_0"), diagnostic)}";
         IsBuffering = false;
         ResetArchiveState();
     }

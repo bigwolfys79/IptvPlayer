@@ -1,0 +1,309 @@
+<Page
+    x:Class="IptvPlayer.HubPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <LinearGradientBrush x:Key="HubBackground" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF0D1117" Offset="0"/>
+            <GradientStop Color="#FF161B22" Offset="0.5"/>
+            <GradientStop Color="#FF0D1117" Offset="1"/>
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="HubCardGradient" StartPoint="0,1" EndPoint="0,0">
+            <GradientStop Color="#30FFFFFF" Offset="0"/>
+            <GradientStop Color="#10FFFFFF" Offset="0.5"/>
+            <GradientStop Color="#00FFFFFF" Offset="1"/>
+        </LinearGradientBrush>
+
+        <Style x:Key="HubCard" TargetType="Button">
+            <Setter Property="Width" Value="280"/>
+            <Setter Property="Height" Value="220"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#20FFFFFF"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="RootBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="16"
+                                Padding="24"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <CompositeTransform x:Name="Transform" ScaleX="1.0" ScaleY="1.0"/>
+                            </Border.RenderTransform>
+                            <Grid>
+                                <Border x:Name="HoverOverlay"
+                                        CornerRadius="16"
+                                        Opacity="0"
+                                        Background="{StaticResource HubCardGradient}"/>
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Grid>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal"/>
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="Transform.ScaleX" Value="1.05"/>
+                                            <Setter Target="Transform.ScaleY" Value="1.05"/>
+                                            <Setter Target="RootBorder.BorderBrush" Value="#50FFFFFF"/>
+                                            <Setter Target="HoverOverlay.Opacity" Value="1"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Круглая иконка-кнопка (кнопка «Справка»): подсветка при наведении -->
+        <Style x:Key="HubRoundButton" TargetType="Button">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="CornerRadius" Value="22"/>
+            <Setter Property="Background" Value="#20FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#40FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="B"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="22"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <CompositeTransform x:Name="T"/>
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal"/>
+                                    <VisualState x:Name="PointerOver">
+                                        <VisualState.Setters>
+                                            <Setter Target="B.Background" Value="#35FFFFFF"/>
+                                            <Setter Target="B.BorderBrush" Value="#80FFFFFF"/>
+                                            <Setter Target="T.ScaleX" Value="1.08"/>
+                                            <Setter Target="T.ScaleY" Value="1.08"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <VisualState.Setters>
+                                            <Setter Target="B.Background" Value="#45FFFFFF"/>
+                                            <Setter Target="T.ScaleX" Value="0.95"/>
+                                            <Setter Target="T.ScaleY" Value="0.95"/>
+                                        </VisualState.Setters>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
+    <Grid Background="{StaticResource HubBackground}" x:Name="RootGrid">
+
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                    x:Name="MainPanel" Opacity="0">
+            <StackPanel HorizontalAlignment="Center" Margin="0,0,0,40"
+                        x:Name="HeaderPanel">
+                <TextBlock x:Name="GreetingText"
+                           FontSize="48" FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"/>
+                <Border x:Name="AccentLine"
+                        HorizontalAlignment="Center"
+                        Height="2" Width="200"
+                        CornerRadius="1"
+                        Background="#FF6CA0"
+                        Margin="0,10,0,0"
+                        RenderTransformOrigin="0.5,0.5">
+                    <Border.RenderTransform>
+                        <CompositeTransform x:Name="AccentLineTransform" ScaleX="0"/>
+                    </Border.RenderTransform>
+                </Border>
+                <TextBlock x:Name="SubText"
+                           FontSize="18"
+                           Foreground="#B3FFFFFF"
+                           HorizontalAlignment="Center"
+                           Margin="0,6,0,0"/>
+            </StackPanel>
+
+            <Grid HorizontalAlignment="Center" x:Name="CardsPanel">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="24"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="24"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+            <!-- Плейлисты: клавиша 1 -->
+            <Button x:Name="PlaylistsButton" Grid.Column="0"
+                    Click="PlaylistsButton_Click"
+                    Style="{StaticResource HubCard}"
+                    Background="#303A47"
+                    RenderTransformOrigin="0.5,0.5"
+                    AutomationProperties.AutomationId="HubPlaylistsCard">
+                <Button.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="Number1" Invoked="PlaylistsAccelerator_Invoked"/>
+                </Button.KeyboardAccelerators>
+                <Button.RenderTransform>
+                    <CompositeTransform x:Name="PlaylistsTransform" Rotation="-180" ScaleX="0.3" ScaleY="0.3"/>
+                </Button.RenderTransform>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image Width="56" Height="56" Margin="0,0,0,16">
+                        <Image.Source>
+                            <SvgImageSource UriSource="ms-appx:///Assets/Icons/playlists.svg"/>
+                        </Image.Source>
+                    </Image>
+                    <TextBlock x:Uid="Pleylisty" FontSize="18" FontWeight="SemiBold"
+                               Foreground="White" HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                    <TextBlock x:Uid="Upravlyayte_Pleylistami" FontSize="12"
+                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Margin="0,4,0,0"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Портал: клавиша 2 -->
+            <Button x:Name="PortalButton" Grid.Column="2"
+                    Click="PortalButton_Click"
+                    Style="{StaticResource HubCard}"
+                    Background="#1A3A2A"
+                    RenderTransformOrigin="0.5,0.5"
+                    AutomationProperties.AutomationId="HubPortalCard">
+                <Button.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="Number2" Invoked="PortalAccelerator_Invoked"/>
+                </Button.KeyboardAccelerators>
+                <Button.RenderTransform>
+                    <CompositeTransform x:Name="PortalTransform" Rotation="180" ScaleX="0.3" ScaleY="0.3"/>
+                </Button.RenderTransform>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image Width="56" Height="56" Margin="0,0,0,16">
+                        <Image.Source>
+                            <SvgImageSource UriSource="ms-appx:///Assets/Icons/portal.svg"/>
+                        </Image.Source>
+                    </Image>
+                    <TextBlock x:Uid="Portal" FontSize="18" FontWeight="SemiBold"
+                               Foreground="White" HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                    <TextBlock x:Uid="Portal_Card_Subtitle" FontSize="12"
+                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Margin="0,4,0,0"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Настройки: клавиша 3 -->
+            <Button x:Name="SettingsButton" Grid.Column="4"
+                    Click="SettingsButton_Click"
+                    Style="{StaticResource HubCard}"
+                    Background="#2A2030"
+                    RenderTransformOrigin="0.5,0.5"
+                    AutomationProperties.AutomationId="HubSettingsCard">
+                <Button.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="Number3" Invoked="SettingsAccelerator_Invoked"/>
+                </Button.KeyboardAccelerators>
+                <Button.RenderTransform>
+                    <CompositeTransform x:Name="SettingsTransform" Rotation="-180" ScaleX="0.3" ScaleY="0.3"/>
+                </Button.RenderTransform>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image Width="56" Height="56" Margin="0,0,0,16">
+                        <Image.Source>
+                            <SvgImageSource UriSource="ms-appx:///Assets/Icons/settings.svg"/>
+                        </Image.Source>
+                    </Image>
+                    <TextBlock x:Uid="Nastroyki_Card" FontSize="18" FontWeight="SemiBold"
+                               Foreground="White" HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                    <TextBlock x:Uid="Yazyk_Interfeys_Vosproizv" FontSize="12"
+                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Margin="0,4,0,0"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                </StackPanel>
+            </Button>
+            </Grid>
+
+            <!-- Плашка «Продолжить просмотр» — последний недосмотренный VOD -->
+            <Button x:Name="ContinueButton"
+                    Visibility="Collapsed"
+                    Click="ContinueButton_Click"
+                    HorizontalAlignment="Center"
+                    Margin="0,36,0,0"
+                    Padding="20,12,20,12"
+                    CornerRadius="12"
+                    Background="#25FF6CA0"
+                    BorderBrush="#60FF6CA0"
+                    BorderThickness="1"
+                    Opacity="0">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                               Foreground="#FF6CA0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ContinueText" FontSize="14" FontWeight="SemiBold"
+                               Foreground="#E6FFFFFF" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="440"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <!-- Overlay для закрытия flyout: ловит нажатие любой кнопки мыши -->
+        <Border x:Name="FlyoutOverlay" Background="Transparent"
+                Visibility="Collapsed" HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" MinHeight="0" MinWidth="0"
+                PointerPressed="FlyoutOverlay_PointerPressed"/>
+
+        <!-- Кнопка «Справка» в правом нижнем углу: горячие клавиши приложения -->
+        <Button x:Name="InfoButton"
+                Click="InfoButton_Click"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,24,24"
+                Style="{StaticResource HubRoundButton}"
+                AutomationProperties.AutomationId="HubInfoButton">
+            <Button.KeyboardAccelerators>
+                <KeyboardAccelerator Key="F1" Invoked="InfoAccelerator_Invoked"/>
+            </Button.KeyboardAccelerators>
+            <TextBlock Text="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="20"
+                       Foreground="#CCFFFFFF"/>
+        </Button>
+
+        <!-- Кастомный flyout -->
+        <Border x:Name="FlyoutBorder"
+                Background="#FF1C2128"
+                BorderBrush="#30FFFFFF"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="4"
+                MinWidth="280"
+                Visibility="Collapsed"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                RenderTransformOrigin="0.5,0">
+            <Border.RenderTransform>
+                <CompositeTransform x:Name="FlyoutTransform" ScaleX="1" ScaleY="1"/>
+            </Border.RenderTransform>
+            <Border.Shadow>
+                <ThemeShadow x:Name="FlyoutShadow"/>
+            </Border.Shadow>
+            <ScrollViewer x:Name="FlyoutScroll" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="FlyoutContent" Spacing="2"/>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Page>

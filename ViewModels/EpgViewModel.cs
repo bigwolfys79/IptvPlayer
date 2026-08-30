@@ -442,16 +442,10 @@ public partial class EpgViewModel : ObservableObject
                 continue;
             }
 
-            var entries = await _epgService.GetEPGEntriesAsync(channel.Id);
+            // Ленивая загрузка: берём только текущую передачу, не копируем
+            // все EPGEntries — экономия ~20 MB при 2000+ каналах.
+            var current = await _epgService.GetCurrentProgramAsync(channel.Id);
 
-            channel.EPGEntries.Clear();
-            foreach (var entry in entries)
-            {
-                entry.IsCurrent = false;
-                channel.EPGEntries.Add(entry);
-            }
-
-            var current = entries.FirstOrDefault(e => e.StartTime <= now && now < e.EndTime);
             channel.CurrentProgramTitle = current?.ProgramName ?? string.Empty;
             channel.CurrentProgramDescription = current?.Description ?? string.Empty;
             channel.CurrentEPGEntry = current;
@@ -503,8 +497,7 @@ public partial class EpgViewModel : ObservableObject
                 continue;
             }
 
-            var entries = await _epgService.GetEPGEntriesAsync(channel.Id);
-            var current = entries.FirstOrDefault(e => e.StartTime <= now && now < e.EndTime);
+            var current = await _epgService.GetCurrentProgramAsync(channel.Id);
 
             if (!string.Equals(channel.CurrentProgramTitle, current?.ProgramName ?? string.Empty, StringComparison.Ordinal))
             {

@@ -199,15 +199,18 @@ public class AppSettings
     /// <summary>
     /// Сворачивать окно в трей вместо выхода при закрытии (крестик).
     /// Полный выход — через меню иконки в трее.
+    /// По умолчанию выключено: скрытое окно выглядит как «программа
+    /// закрылась», а настройки/запись при этом продолжают жить в фоне —
+    /// неожиданно для пользователя.
     /// </summary>
-    public bool CloseToTray { get; set; } = true;
+    public bool CloseToTray { get; set; }
 
     /// <summary>
     /// Сворачивать окно в трей при нажатии «Свернуть» (вместо панели задач).
     /// Иконка в трее показывается только пока окно скрыто — и при закрытии
     /// в трей, и при сворачивании в трей.
     /// </summary>
-    public bool MinimizeToTray { get; set; } = true;
+    public bool MinimizeToTray { get; set; }
 
     /// <summary>
     /// Записи, прерванные закрытием приложения: при следующем запуске
@@ -260,6 +263,12 @@ public class AppSettings
     /// всегда. По умолчанию включён.
     /// </summary>
     public bool FileLoggingEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Показывать Hub Page (главное меню с иконками) при запуске.
+    /// false = сразу открывать последний канал (auto-resume).
+    /// </summary>
+    public bool ShowHubOnStartup { get; set; } = true;
 
     /// <summary>
     /// Таймер сна: количество минут до автоматической остановки воспроизведения.

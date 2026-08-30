@@ -44,21 +44,21 @@ public partial class ChannelViewModel : ObservableObject
         set => SetProperty(ref _isLive, value);
     }
 
-    private string _currentProgramTitle = string.Empty;
+    private string? _currentProgramTitle;
 
-    public string CurrentProgramTitle
+    public string? CurrentProgramTitle
     {
         get => _currentProgramTitle;
         set => SetProperty(ref _currentProgramTitle, value);
     }
 
-    private string _currentProgramDescription = string.Empty;
+    private string? _currentProgramDescription;
 
     /// <summary>
     /// Описание текущей передачи из EPG — показывается в верхних оверлеях
     /// под названием передачи (аналог описания фильма портала).
     /// </summary>
-    public string CurrentProgramDescription
+    public string? CurrentProgramDescription
     {
         get => _currentProgramDescription;
         set => SetProperty(ref _currentProgramDescription, value);

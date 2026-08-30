@@ -29,6 +29,8 @@ namespace IptvPlayer;
 /// <summary>
 /// Горячие клавиши и ввод номера канала цифрами.
 /// Вынесено из MainPage.xaml.cs (MVVM-этап 3: разбиение code-behind по зонам).
+/// HOTKEYS-SYNC: при изменении набора клавиш обновляй справку в
+/// HubPage.ShowHotkeysDialog (и строки HK_* в Resources.resw).
 /// </summary>
 public sealed partial class MainPage
 {
@@ -173,6 +175,13 @@ public sealed partial class MainPage
                 break;
 
             case VirtualKey.Escape:
+                // Сначала: возврат в Hub (если пришли из Hub)
+                if (_cameFromHub && Frame.CanGoBack)
+                {
+                    Frame.GoBack();
+                    e.Handled = true;
+                    break;
+                }
                 // Esc в fullscreen сначала закрывает открытое EPG-окно
                 // (пока курсор над ним, оверлей с кнопками не показывается),
                 // повторное нажатие — выход из полноэкранного режима.

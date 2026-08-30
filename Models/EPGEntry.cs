@@ -23,9 +23,9 @@ public partial class EPGEntry : INotifyPropertyChanged
 
     public string EventId { get; set; } = string.Empty;
     public string ChannelId { get; set; } = string.Empty;
-    public string ChannelName { get; set; } = string.Empty;
+    public string? ChannelName { get; set; }
     public string ProgramName { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public string? Category { get; set; }
     public string? ProgramNumber { get; set; }
     public DateTime StartTime { get; set; }

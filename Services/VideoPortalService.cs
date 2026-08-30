@@ -172,7 +172,7 @@ public class VideoPortalService : IVideoPortalService
     // Кэш манифеста для избежания повторного запроса в LoadManifestInfoAsync.
     // Ключ — URL источника, значение — (JsonDocument, timestamp).
     // TTL 5 минут: манифест меняется редко, а двойной запрос — лишний сетевой I/O.
-    private static readonly Dictionary<string, (JsonDocument Doc, DateTime LoadedAt)> _manifestCache = new();
+    private static readonly Dictionary<string, (string Json, DateTime LoadedAt)> _manifestCache = new();
     private static readonly object _manifestCacheLock = new();
     private static readonly TimeSpan ManifestCacheTtl = TimeSpan.FromMinutes(5);
 
@@ -852,10 +852,7 @@ public class VideoPortalService : IVideoPortalService
             if (_manifestCache.TryGetValue(cacheKey, out var cached) &&
                 (DateTime.UtcNow - cached.LoadedAt) < ManifestCacheTtl)
             {
-                // Возвращаем копию JsonDocument (он IDisposable, и вызывающий
-                // код оборачивает его в using — нам нужно вернуть новый инстанс).
-                var cachedJson = cached.Doc.RootElement.GetRawText();
-                return JsonDocument.Parse(cachedJson);
+                return JsonDocument.Parse(cached.Json);
             }
         }
 
@@ -863,7 +860,7 @@ public class VideoPortalService : IVideoPortalService
 
         lock (_manifestCacheLock)
         {
-            _manifestCache[cacheKey] = (manifest, DateTime.UtcNow);
+            _manifestCache[cacheKey] = (manifest.RootElement.GetRawText(), DateTime.UtcNow);
         }
 
         return manifest;

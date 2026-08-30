@@ -37,5 +37,11 @@ namespace IptvPlayer.Services
         /// </summary>
         PlaybackDiagnostics? CurrentDiagnostics { get; }
 
+        /// <summary>
+        /// Диагностика URL потока: проверяет доступность и возвращает
+        /// человекочитаемое описание проблемы.
+        /// </summary>
+        Task<string> DiagnoseStreamUrl(string? streamUrl);
+
     }
 }

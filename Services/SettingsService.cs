@@ -36,72 +36,143 @@ public class SettingsService : ISettingsService
 
     private readonly ILogger<SettingsService> _logger;
     private AppSettings? _cached;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
 
     public SettingsService(ILogger<SettingsService> logger)
     {
         _logger = logger;
     }
 
-    public Task<AppSettings> LoadAsync()
-    {
-        try
+        public Task<AppSettings> LoadAsync()
         {
-            if (_cached != null)
+            try
             {
-                return Task.FromResult(_cached);
-            }
+                if (_cached != null)
+                {
+                    return Task.FromResult(_cached);
+                }
 
-            if (!File.Exists(SettingsPath))
+                if (!File.Exists(SettingsPath))
+                {
+                    _cached = new AppSettings();
+                    return Task.FromResult(_cached);
+                }
+
+                var json = File.ReadAllText(SettingsPath);
+                var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                UnprotectSecrets(settings);
+                _cached = settings;
+                return Task.FromResult(settings);
+            }
+            catch (Exception ex)
             {
+                // Битый/залоченный файл нельзя молча заменять дефолтами: так
+                // терялись все плейлисты и источники (затирание было замечено
+                // дважды за день). Сохраняем виновника с меткой — его можно
+                // разобрать вручную — и пробуем предыдущую сохранённую копию.
+                _logger.LogWarning(ex, "Не удалось загрузить настройки из {Path} — файл сохранён как *.corrupt, пробуем резервную копию.", SettingsPath);
+                TrySnapshotCorruptFile();
+                var restored = TryLoadBackup();
+                if (restored != null)
+                {
+                    _logger.LogWarning("Настройки восстановлены из {Backup}.", restored.Value.path);
+                    _cached = restored.Value.settings;
+                    return Task.FromResult(_cached);
+                }
+
+                _logger.LogWarning("Резервной копии нет — используются значения по умолчанию (файл на диске не перезаписывается до первой успешной загрузки).");
                 _cached = new AppSettings();
                 return Task.FromResult(_cached);
             }
+        }
 
-            var json = File.ReadAllText(SettingsPath);
-            var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-            UnprotectSecrets(settings);
-            _cached = settings;
-            return Task.FromResult(settings);
-        }
-        catch (Exception ex)
+        /// <summary>Битый файл переименовывается, а не удаляется — данные можно вытащить.</summary>
+        private void TrySnapshotCorruptFile()
         {
-            _logger.LogWarning(ex, "Не удалось загрузить настройки — используются значения по умолчанию.");
-            _cached = new AppSettings();
-            return Task.FromResult(_cached);
+            try
+            {
+                if (File.Exists(SettingsPath))
+                {
+                    var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    File.Move(SettingsPath, SettingsPath + $".corrupt-{stamp}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось переименовать битый settings.json.");
+            }
         }
-    }
 
-    public async Task SaveAsync(AppSettings settings)
-    {
-        try
+        /// <summary>Пытается прочитать settings.json.prev (прошлую успешную запись).</summary>
+        private (string path, AppSettings settings)? TryLoadBackup()
         {
-            Directory.CreateDirectory(SettingsDir);
-            var toSave = ProtectSecrets(settings);
-            var json = JsonSerializer.Serialize(toSave, JsonOptions);
-            // Сериализация и запись — в пуле потоков: SaveAsync зовётся и из
-            // UI (дебаунс настроек, громкость), синхронный WriteAllText там
-            // подмораживал интерфейс на больших settings.json.
-            // ConfigureAwait(false) обязателен: Closed/сворачивание окна дергают
-            // SaveAsync через GetResult на UI-потоке — продолжение на Dispatcher
-            // там дедлочит навсегда.
-            await Task.Run(() => File.WriteAllText(SettingsPath, json)).ConfigureAwait(false);
-            // Кэш остаётся тёплым: LoadAsync вернёт этот же экземпляр без
-            // повторного чтения/десериализации файла (его дергают хуки
-            // закрытия/сворачивания окна и каждая загрузка EPG).
-            _cached = settings;
+            try
+            {
+                var backupPath = SettingsPath + ".prev";
+                if (!File.Exists(backupPath)) return null;
+                var json = File.ReadAllText(backupPath);
+                var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                if (settings == null) return null;
+                UnprotectSecrets(settings);
+                return (backupPath, settings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Резервная копия настроек не читается.");
+                return null;
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Не удалось сохранить настройки.");
-            throw;
-        }
-    }
 
-    /// <summary>
-    /// Шифрует секретные поля для записи на диск: ключ портала и URL
-    /// плейлистов/EPG-источников (в m3u/EPG URL обычно зашиты username,
-    /// password или токены). Работает с копией, переданный объект не меняется.
-    /// </summary>
+        public async Task SaveAsync(AppSettings settings)
+        {
+            await _saveLock.WaitAsync();
+            try
+            {
+                Directory.CreateDirectory(SettingsDir);
+                var toSave = ProtectSecrets(settings);
+                var json = JsonSerializer.Serialize(toSave, JsonOptions);
+
+                // Атомарная запись: сначала во временный файл, затем замена.
+                // Прямая запись в settings.json при сбое процесса/блокировке
+                // другим экземпляром (приложение живёт в трее) оставляла
+                // битый JSON, который при следующем старте заменялся
+                // дефолтами — с потерей всех плейлистов.
+                var tempPath = SettingsPath + ".tmp";
+                await File.WriteAllTextAsync(tempPath, json).ConfigureAwait(false);
+
+                // Повторы: параллельный экземпляр (сворачивание в трей)
+                // может удерживать файл во время замены — даём ему время.
+                for (var attempt = 1; ; attempt++)
+                {
+                    try
+                    {
+                        if (File.Exists(SettingsPath))
+                        {
+                            // Прошлая успешная запись — страховка от порчи нового.
+                            File.Copy(SettingsPath, SettingsPath + ".prev", overwrite: true);
+                        }
+                        File.Move(tempPath, SettingsPath, overwrite: true);
+                        break;
+                    }
+                    catch (IOException) when (attempt < 5)
+                    {
+                        await Task.Delay(200 * attempt).ConfigureAwait(false);
+                    }
+                }
+
+                _cached = settings;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Не удалось сохранить настройки.");
+                throw;
+            }
+            finally
+            {
+                _saveLock.Release();
+            }
+        }
+
     private static AppSettings ProtectSecrets(AppSettings settings)
     {
         var clone = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
@@ -147,12 +218,6 @@ public class SettingsService : ISettingsService
         }
     }
 
-    /// <summary>
-    /// Терпимый читатель Nullable-дат: пустая строка (остаётся после ручной
-    /// правки settings.json — как "" в LastUpdateCheckUtc) или дата в другом
-    /// формате не должна ронять загрузку ВСЕХ настроек — превращаем в null.
-    /// Пишется всегда ISO 8601, как ожидает System.Text.Json.
-    /// </summary>
     private sealed class NullableDateTimeConverter : JsonConverter<DateTime?>
     {
         private static readonly string[] FallbackFormats =
@@ -193,7 +258,6 @@ public class SettingsService : ISettingsService
                     }
                 }
 
-                // Нераспознанная дата — теряем одну метку, не весь файл.
                 return null;
             }
 

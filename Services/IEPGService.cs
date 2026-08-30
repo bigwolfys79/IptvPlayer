@@ -9,6 +9,13 @@ namespace IptvPlayer.Services
     {
         Task<List<ChannelViewModel>> GetChannelsAsync();
         Task<List<EPGEntry>> GetEPGEntriesAsync(int channelId);
+
+        /// <summary>
+        /// Возвращает только текущую передачу для канала (без загрузки всех
+        /// EPGEntries). Экономит память при большом числе каналов.
+        /// </summary>
+        Task<EPGEntry?> GetCurrentProgramAsync(int channelId);
+
         Task RefreshEPGAsync();
 
         /// <summary>

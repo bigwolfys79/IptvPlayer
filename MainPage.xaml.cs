@@ -84,6 +84,13 @@ public sealed partial class MainPage : Page
     // тоже вызывает ValueChanged, но не должна трогать Player.LastUserVolume.
     private bool _isVolumeSliderSyncing;
 
+    // Навигация из Hub Page: переданный плейлист и флаг "пришли из хаба"
+    private PlaylistSource? _navigatedPlaylist;
+    private bool _cameFromHub;
+    private bool _skipResume;
+    private string? _vodResumeChannelTitle;
+    private int _vodResumeEpisodeIndex = -1;
+
     // EPG-панель теперь перекрывающий оверлей поверх видео и по умолчанию
     // СКРЫТА — открывается кнопкой EPG в панели управления видео.
     private bool _isFullScreen = false;
@@ -185,53 +192,10 @@ public sealed partial class MainPage : Page
         Player.VodStateChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateVodQualityButtons);
         // Выбор серии сериала портала: VM просит — показываем диалог.
-        ViewModel.PortalEpisodePickRequested += (channel, flick) =>
-        {
-            var completion = new TaskCompletionSource<(ChannelViewModel Channel, PortalEpisode Episode, System.Collections.Generic.List<PortalEpisode> Episodes)?>();
-            DispatcherQueue.TryEnqueue(async () =>
-            {
-                try
-                {
-                    completion.SetResult(await Dialogs.EpisodePickerDialog.PickAsync(Content.XamlRoot, channel, flick));
-                }
-                catch (Exception ex)
-                {
-                    completion.SetException(ex);
-                }
-            });
-            return completion.Task;
-        };
+        ViewModel.PortalEpisodePickRequested += OnPortalEpisodePickRequested;
         // Возобновление VOD: VM нашла сохранённую позицию — спрашиваем,
         // продолжать ли с места остановки (Primary = продолжить).
-        ViewModel.VodResumePromptRequested += (title, position) =>
-        {
-            var resumeCompletion = new TaskCompletionSource<bool>();
-            DispatcherQueue.TryEnqueue(async () =>
-            {
-                try
-                {
-                    var dialog = new ContentDialog
-                    {
-                        XamlRoot = Content.XamlRoot,
-                        Title = L.T("Prodolzhit_Prosmotr"),
-                        Content = new TextBlock
-                        {
-                            Text = string.Format(L.T("0_Vy_Ostanovilis_Na_1_Prodolzhit"), title, PlayerViewModel.FormatArchiveTime(position.TotalSeconds), title, PlayerViewModel.FormatArchiveTime(position.TotalSeconds)),
-                            TextWrapping = TextWrapping.Wrap
-                        },
-                        PrimaryButtonText = L.T("Prodolzhit"),
-                        CloseButtonText = L.T("Smotret_Snachala")
-                    };
-                    resumeCompletion.SetResult(await dialog.ShowAsync() == ContentDialogResult.Primary);
-                }
-                catch (Exception ex)
-                {
-                    Serilog.Log.Warning(ex, "Диалог возобновления VOD не показался.");
-                    resumeCompletion.SetResult(false);
-                }
-            });
-            return resumeCompletion.Task;
-        };
+        ViewModel.VodResumePromptRequested += OnVodResumePromptRequested;
         ViewModel.RecordingChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateRecordButtons);
         // Родительский контроль: VM просит PIN при запуске канала
@@ -417,6 +381,8 @@ public sealed partial class MainPage : Page
         };
         Unloaded += (s, e) =>
         {
+            ViewModel.PortalEpisodePickRequested -= OnPortalEpisodePickRequested;
+            ViewModel.VodResumePromptRequested -= OnVodResumePromptRequested;
             _overlayHideTimer.Stop();
             _currentProgramRefreshTimer.Stop();
             _archivePositionTimer.Stop();
@@ -592,6 +558,44 @@ public sealed partial class MainPage : Page
     }
 
     /// <summary>
+    /// Вызывается при навигации на эту страницу. Принимает плейлист из Hub Page
+    /// или данные для VOD resume (плейлист + название канала + индекс серии).
+    /// </summary>
+    protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+
+        if (e.Parameter is PlaylistSource playlist)
+        {
+            _navigatedPlaylist = playlist;
+            _cameFromHub = true;
+            Serilog.Log.Information("OnNavigatedTo: получен плейлист Id={Id} Name={Name} IsPortal={IsPortal}",
+                playlist.Id, playlist.Name, playlist.IsPortal);
+        }
+        else if (e.Parameter is ValueTuple<PlaylistSource, string, int> tuple)
+        {
+            _navigatedPlaylist = tuple.Item1;
+            _vodResumeChannelTitle = tuple.Item2;
+            _vodResumeEpisodeIndex = tuple.Item3;
+            _cameFromHub = true;
+            Serilog.Log.Information("OnNavigatedTo: VOD resume, плейлист Id={Id} Name={Name} IsPortal={IsPortal} Title={Title} Ep={Ep}",
+                tuple.Item1.Id, tuple.Item1.Name, tuple.Item1.IsPortal, tuple.Item2, tuple.Item3);
+        }
+        else if (e.Parameter is ValueTuple<PlaylistSource, bool> loadTuple)
+        {
+            _navigatedPlaylist = loadTuple.Item1;
+            _skipResume = loadTuple.Item2;
+            _cameFromHub = true;
+            Serilog.Log.Information("OnNavigatedTo: загрузка из Hub, skipResume={Skip}, плейлист Id={Id} Name={Name}",
+                loadTuple.Item2, loadTuple.Item1.Id, loadTuple.Item1.Name);
+        }
+        else
+        {
+            Serilog.Log.Information("OnNavigatedTo: параметр = {Param}", e.Parameter?.ToString() ?? "NULL");
+        }
+    }
+
+    /// <summary>
     /// Продолжение записей, прерванных закрытием приложения: для каждой
     /// незаконченной (EndTime в будущем) и находимой в текущем плейлисте —
     /// один диалог «Продолжить запись?». Продолжение пишет ffmpeg в НОВЫЙ
@@ -701,6 +705,8 @@ public sealed partial class MainPage : Page
         // список, а не пустой.
         var savedSettings = await _settingsService.LoadAsync();
         ViewModel.AppSettings = savedSettings;
+        Serilog.Log.Information("InitializeAsync: ActivePlaylistId из настроек = {Id}, плейлистов = {Count}",
+            savedSettings.ActivePlaylistId, savedSettings.Playlists.Count);
 
         // Позиции досмотра VOD — из кэш-БД (с миграцией старых из settings.json).
         await ViewModel.LoadVodResumePositionsAsync();
@@ -761,10 +767,13 @@ public sealed partial class MainPage : Page
             await _settingsService.SaveAsync(ViewModel.AppSettings);
         }
 
-        // Активный плейлист: каналы в список грузятся только из него.
-        _activePlaylist = ViewModel.AppSettings.Playlists
-            .FirstOrDefault(p => p.Id == ViewModel.AppSettings.ActivePlaylistId)
+        // Активный плейлист: приоритет у переданного из Hub Page.
+        _activePlaylist = _navigatedPlaylist
+            ?? ViewModel.AppSettings.Playlists
+                .FirstOrDefault(p => p.Id == ViewModel.AppSettings.ActivePlaylistId)
             ?? ViewModel.AppSettings.Playlists.FirstOrDefault();
+        Serilog.Log.Information("InitializeAsync: _activePlaylist Id={Id} Name={Name} IsPortal={IsPortal}",
+            _activePlaylist?.Id ?? -1, _activePlaylist?.Name ?? "NULL", _activePlaylist?.IsPortal ?? false);
         if (_activePlaylist != null)
         {
             ViewModel.AppSettings.ActivePlaylistId = _activePlaylist.Id;
@@ -773,6 +782,9 @@ public sealed partial class MainPage : Page
 
         // Id назначаются один раз для обоих путей появления каналов (скачанный
         // плейлист или кэш) — до этого ChannelViewModel.Id может быть default.
+        // Очищаем singleton-репозиторий: при навигации Hub→MainPage→Hub→MainPage
+        // старые каналы из предыдущего плейлиста остались бы в репозитории.
+        await _channelRepository.Clear();
         var channelId = 1;
         foreach (var channel in initialChannels)
         {
@@ -808,6 +820,14 @@ public sealed partial class MainPage : Page
         // обновит GroupFilterComboBox и оверлей через событие FilterChanged).
         ViewModel.RefreshGroups();
         ViewModel.FilterChannels();
+
+        // Показываем кнопку "Назад" если пришли из Hub Page
+        if (_cameFromHub)
+        {
+            BackToHubButton.Visibility = Visibility.Visible;
+            ChannelsHeaderText.Visibility = Visibility.Collapsed;
+        }
+
         UpdatePlaylistMenu();
 
         // Полуавтоматическое обновление: фоновая проверка через пару минут
@@ -823,10 +843,15 @@ public sealed partial class MainPage : Page
         // нужен для x:Bind EPG-панели, и раньше он назначался только после
         // полной загрузки EPG (при первом скачивании 45 МБ фида это десятки
         // секунд) — всё это время панель программ оставалась пустой.
-        // Если в настройках есть последний смотренный канал — выбираем его
+        // Если в настроек есть последний смотренный канал — выбираем его
         // и автопродолжаем воспроизведение (fire-and-forget: старт и так
         // происходит в фоне, EPG грузится дальше независимо).
-        if (ViewModel.Channels.Count > 0)
+        //
+        // При загрузке из Hub через "Загрузить плейлист" или "Загрузить портал"
+        // (_cameFromHub + нет VOD-резюма) — НЕ применяем последний канал,
+        // чтобы пользователь начинал с чистого списка.
+        var autoResume = !_skipResume && _vodResumeChannelTitle == null;
+        if (ViewModel.Channels.Count > 0 && autoResume)
         {
             // Последний смотренный канал хранится на каждый плейлист свой
             // (PlaylistSource.LastWatchedChannel); глобальный — запасной
@@ -868,6 +893,16 @@ public sealed partial class MainPage : Page
                 _ = ContinueWatchingAsync(lastWatched);
             }
         }
+        else if (ViewModel.Channels.Count > 0)
+        {
+            ViewModel.SelectedChannel = ViewModel.Channels[0];
+        }
+
+        // VOD resume из Hub Page: если пришли с конкретным фильмом/серией
+        if (_vodResumeChannelTitle != null)
+        {
+            _ = ResumeVodFromHubAsync(_vodResumeChannelTitle, _vodResumeEpisodeIndex);
+        }
 
         // Даем UI отрисовать список каналов до старта загрузки EPG. Без
         // этого ListView мог получить коллекцию, но не успеть отрисоваться
@@ -880,163 +915,17 @@ public sealed partial class MainPage : Page
         // программы догружаются в панели по мере готовности.
         await ViewModel.EpgViewModel.LoadEPGAsync();
 
+        // Загружаем полный EPG (список передач) для выбранного канала,
+        // чтобы панель EPG не была пустой при старте.
+        if (ViewModel.SelectedChannel is { } selected)
+        {
+            await ViewModel.EpgViewModel.LoadEPGForChannelAsync(selected.Id);
+        }
+
         // После (пере)загрузки EPG коллекции передач пересобраны — возвращаем
         // колокольчики активных напоминаний.
         ViewModel.ApplyReminderFlags();
     }
-
-    /// <summary>
-    /// Имя плейлиста по умолчанию — хост URL (без www), чтобы список плейлистов
-    /// был узнаваемым без обязательного ввода имени при добавлении.
-    /// </summary>
-    internal static string DefaultPlaylistName(string url)
-    {
-        // Локальный файл плейлиста — имя по файлу без расширения.
-        if (System.IO.File.Exists(url))
-        {
-            return System.IO.Path.GetFileNameWithoutExtension(url);
-        }
-
-        try
-        {
-            var host = new Uri(url).Host;
-            return host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
-                ? host[4..]
-                : host;
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Information(ex, "Не удалось извлечь хост из URL плейлиста — показываем исходный URL.");
-            return url;
-        }
-    }
-
-    /// <summary>
-    /// Загружает каналы плейлиста при старте и при переключении: если кэш
-    /// этого плейлиста свеж (PlaylistRefreshDays не истёк и формат актуален) —
-    /// каналы берутся из кэша без скачивания; иначе M3U перекачивается и кэш
-    /// обновляется. При сбое скачивания отдаётся пусть и просроченный кэш —
-    /// переключение/запуск не должно оставлять пользователя без каналов.
-    /// </summary>
-    private async Task<List<ChannelViewModel>> LoadPlaylistChannelsAsync(
-        PlaylistSource playlist, System.Threading.CancellationToken ct = default)
-    {
-        var result = new List<ChannelViewModel>();
-        var playlistCache = await _playlistCacheService.LoadAsync(playlist.Id);
-        var refreshDue = playlistCache == null ||
-                         playlistCache.Channels.Count == 0 ||
-                         playlistCache.FormatVersion < PlaylistCache.CurrentFormatVersion ||
-                         IsCacheDue(playlistCache.SavedAtUtc, ViewModel.AppSettings.PlaylistRefreshDays);
-
-        if (!refreshDue && playlistCache != null)
-        {
-            foreach (var cached in playlistCache.Channels)
-            {
-                result.Add(CachedToChannel(cached));
-            }
-
-            _logger.LogInformation(
-                "Плейлист {Playlist} взят из локального кэша (возраст {Age:F1} ч) — скачивание пропущено.",
-                playlist.Name, (DateTime.UtcNow - playlistCache.SavedAtUtc).TotalHours);
-
-            // Для портала: загружаем жанры/категории из manifest даже при
-            // использовании кэша — иначе комбобоксы фильтров пустые.
-            if (playlist.IsPortal)
-            {
-                try
-                {
-                    var (genres, years, categories) = await _videoPortalService.LoadManifestInfoAsync(playlist, ct);
-                    ViewModel.SetPortalInfo(playlist, genres, years, categories);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Не удалось загрузить manifest info из кэша.");
-                    ViewModel.ClearPortalInfo();
-                }
-            }
-
-            return result;
-        }
-
-        try
-        {
-            // Портал-источник: вместо M3U — каталог видео-портала (manifest →
-            // категории → элементы). Локальный файл — только для M3U.
-            List<ChannelViewModel> playlistChannels;
-            if (playlist.IsPortal)
-            {
-                var items = await _videoPortalService.LoadCatalogAsync(playlist, ct);
-                playlistChannels = items.Select(PortalItemToChannel).ToList();
-
-                // Загружаем жанры и категории из manifest для серверных фильтров.
-                try
-                {
-                    var (genres, years, categories) = await _videoPortalService.LoadManifestInfoAsync(playlist, ct);
-                    ViewModel.SetPortalInfo(playlist, genres, years, categories);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Не удалось загрузить manifest info для серверных фильтров.");
-                    ViewModel.ClearPortalInfo();
-                }
-            }
-            else
-            {
-                playlistChannels = System.IO.File.Exists(playlist.Url)
-                    ? await _m3uParserService.ParseFromFileAsync(playlist.Url)
-                    : await _m3uParserService.ParseFromUrlAsync(playlist.Url, ct);
-                ViewModel.ClearPortalInfo();
-            }
-
-            result.AddRange(playlistChannels);
-            await SavePlaylistCacheAsync(playlist.Id, playlistChannels);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Не удалось загрузить плейлист {Playlist} ({Url}).", playlist.Name, playlist.Url);
-
-            if (playlistCache != null)
-            {
-                foreach (var cached in playlistCache.Channels)
-                {
-                    result.Add(CachedToChannel(cached));
-                }
-            }
-        }
-
-        return result;
-    }
-
-    private static ChannelViewModel CachedToChannel(Models.CachedChannel cached) => new()
-    {
-        Name = cached.Name,
-        StreamUrl = cached.StreamUrl,
-        LogoUrl = cached.LogoUrl,
-        Group = cached.Group,
-        TvgId = cached.TvgId,
-        CatchupDays = cached.CatchupDays,
-        PortalRequest = cached.PortalRequest,
-        Description = cached.Description,
-        Year = cached.Year,
-        Genre = cached.Genre
-    };
-
-    /// <summary>
-    /// Элемент каталога портала → канал: категория становится группой
-    /// (фильтр групп работает без изменений), StreamUrl остаётся null до
-    /// клика — поток у портала одноразовый и запрашивается по клику.
-    /// </summary>
-    private static ChannelViewModel PortalItemToChannel(PortalCatalogItem item) => new()
-    {
-        Name = item.Name,
-        Group = item.Group,
-        LogoUrl = item.LogoUrl,
-        StreamUrl = item.StreamUrl,
-        PortalRequest = item.RequestJson,
-        Description = item.Description,
-        Year = item.Year,
-        Genre = item.Genre
-    };
 
     // ===================== Полуавтоматическое обновление =====================
 
@@ -1169,7 +1058,8 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void ApplyChannelViewMode()
     {
-        var posters = ViewModel.AppSettings.ChannelListPosterView;
+        // Постер-вид доступен только для портала; на M3U — всегда список.
+        var posters = ViewModel.IsContentTypeFilterVisible == Visibility.Visible && ViewModel.AppSettings.ChannelListPosterView;
         PosterGridView.Visibility = posters ? Visibility.Visible : Visibility.Collapsed;
         ChannelsListView.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
         PosterViewIconList.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
@@ -1189,269 +1079,6 @@ public sealed partial class MainPage : Page
         {
             PosterGridView.ItemsSource = null;
             ChannelsListView.ItemsSource = ViewModel.DisplayedChannels;
-        }
-    }
-
-    /// <summary>
-    /// Кнопка сброса фильтров портала: возвращает «Все типы / Все жанры / Все годы»
-    /// и запускает одну серверную перезагрузку каталога с итоговым состоянием.
-    /// </summary>
-    private void ResetFiltersButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.ResetPortalFilters();
-    }
-
-    private async void PosterViewToggleButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.AppSettings.ChannelListPosterView = !ViewModel.AppSettings.ChannelListPosterView;
-        await _settingsService.SaveAsync(ViewModel.AppSettings);
-        ApplyChannelViewMode();
-    }
-
-    /// <summary>
-    /// Наполняет подменю «Сменить плейлист» в меню настроек: активный отмечен
-    /// галочкой (ToggleMenuFlyoutItem в стиле остальных пунктов), клик по
-    /// пункту переключает плейлист. Подменю прячется, когда плейлист один
-    /// (переключать нечего). Вызывается при старте и после изменения списка
-    /// плейлистов в диалоге настроек.
-    /// </summary>
-    private void UpdatePlaylistMenu()
-    {
-        var playlists = ViewModel.AppSettings.Playlists;
-        SwitchPlaylistSubMenu.Items.Clear();
-        foreach (var playlist in playlists)
-        {
-            var item = new ToggleMenuFlyoutItem
-            {
-                Text = playlist.Name,
-                IsChecked = playlist.Id == ViewModel.AppSettings.ActivePlaylistId,
-                Tag = playlist
-            };
-            item.Click += SwitchPlaylistMenuItem_Click;
-            SwitchPlaylistSubMenu.Items.Add(item);
-        }
-
-        SwitchPlaylistSubMenu.Visibility = playlists.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    private async void SwitchPlaylistMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuFlyoutItem { Tag: PlaylistSource playlist } &&
-            playlist.Id != ViewModel.AppSettings.ActivePlaylistId)
-        {
-            await SwitchPlaylistAsync(playlist);
-        }
-    }
-
-    /// <summary>
-    /// Переключение активного плейлиста: останавливает воспроизведение, чистит
-    /// каналы предыдущего плейлиста (репозиторий + список + EPG) и наполняет
-    /// их каналами нового — той же логикой кэша/обновления, что и при старте.
-    /// Автопродолжение последнего канала не запускается: переключение —
-    /// осознанное действие, видео включится кликом по каналу.
-    /// </summary>
-    private async Task SwitchPlaylistAsync(PlaylistSource playlist)
-    {
-        if (_activePlaylist?.Id == playlist.Id)
-        {
-            return;
-        }
-
-        try
-        {
-            ViewModel.Player.Stop();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Остановка плеера при переключении плейлиста.");
-        }
-
-        _activePlaylist = playlist;
-        ViewModel.AppSettings.ActivePlaylistId = playlist.Id;
-        await _settingsService.SaveAsync(ViewModel.AppSettings);
-
-        // Сбрасываем серверные фильтры при смене плейлиста.
-        if (!playlist.IsPortal)
-        {
-            ViewModel.ClearPortalInfo();
-        }
-
-        _playlistLoadCts?.Cancel();
-        _playlistLoadCts = new System.Threading.CancellationTokenSource();
-        var channels = await LoadPlaylistChannelsAsync(playlist, _playlistLoadCts.Token);
-
-        var channelId = 1;
-        foreach (var channel in channels)
-        {
-            channel.Id = channelId++;
-        }
-
-        await _channelRepository.Clear();
-        foreach (var channel in channels)
-        {
-            await _channelRepository.AddChannelAsync(channel);
-        }
-
-        ViewModel.Channels = new ObservableCollection<ChannelViewModel>(channels);
-
-        // Избранное глобальное (по имени канала) — переживает переключение.
-        if (ViewModel.AppSettings.FavoriteChannels.Count > 0)
-        {
-            var favorites = new HashSet<string>(ViewModel.AppSettings.FavoriteChannels, StringComparer.OrdinalIgnoreCase);
-            foreach (var channel in ViewModel.Channels)
-            {
-                channel.IsFavorite = favorites.Contains(channel.Name);
-            }
-        }
-
-        ViewModel.EpgViewModel.SetChannels(ViewModel.Channels.ToList());
-        ViewModel.UpdateChannelCountText();
-        ViewModel.RefreshGroups();
-        ViewModel.FilterChannels();
-
-        var lastWatched = string.IsNullOrWhiteSpace(playlist.LastWatchedChannel)
-            ? null
-            : ViewModel.Channels.FirstOrDefault(c =>
-                string.Equals(c.Name, playlist.LastWatchedChannel, StringComparison.OrdinalIgnoreCase));
-        ViewModel.SelectedChannel = lastWatched ?? ViewModel.Channels.FirstOrDefault();
-
-        UpdatePlaylistMenu();
-
-        // EPG у каждого плейлиста свой (источники XMLTV в PlaylistSource):
-        // после смены набора каналов программы перечитываются с источников
-        // нового плейлиста фоном, без очистки дискового кэша общего фида.
-        _ = LoadEpgAfterPlaylistSwitchAsync();
-    }
-
-    private async Task LoadEpgAfterPlaylistSwitchAsync()
-    {
-        try
-        {
-            await ViewModel.EpgViewModel.ReloadForPlaylistAsync();
-            ViewModel.ApplyReminderFlags();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Перезагрузка EPG после переключения плейлиста.");
-        }
-    }
-
-    /// <summary>
-    /// Автопродолжение последнего канала при запуске: то же, что клик по
-    /// каналу, но без блокировки InitializeAsync и без обновления
-    /// LastWatchedChannel (он и есть этот канал).
-    /// </summary>
-    private async Task ContinueWatchingAsync(ChannelViewModel channel)
-    {
-        try
-        {
-            // Родительский контроль: автопродолжение заблокированной группы
-            // тоже требует PIN — тихо включать такой канал нельзя.
-            if (!await ViewModel.CanPlayChannelAsync(channel))
-            {
-                return;
-            }
-            await PlayLiveAsync(channel);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Автопродолжение последнего канала ({Name}).", channel.Name);
-        }
-    }
-
-    /// <summary>
-    /// Прокручивает список каналов к восстановленному при старте каналу.
-    /// Задержка после Yield — как у ScrollToCurrentProgramAsync: ListView
-    /// должен успеть отрисовать элементы после фильтрации по группе.
-    /// </summary>
-    private async Task ScrollSelectedChannelIntoViewAsync()
-    {
-        await ScrollChannelIntoViewAsync(ChannelsListView);
-    }
-
-    /// <summary>
-    /// Прокрутка полноэкранного списка каналов к текущему. Только ScrollIntoView
-    /// (режим Leading — канал становится первым видимым сверху): поиск контейнера
-    /// и ручное позиционирование через ChangeView на группированном списке из
-    /// ~2000 каналов вызывали зависание UI.
-    /// </summary>
-    private async Task ScrollOverlayChannelIntoViewAsync()
-    {
-        var channel = ViewModel.SelectedChannel;
-        if (channel == null)
-        {
-            return;
-        }
-
-        await Task.Yield();
-
-        // Ждём (до ~1,5 с), пока развёрнутый оверлей создаст панель списка —
-        // сразу после ShowFullScreenOverlay она ещё может быть не готова.
-        var waited = 0;
-        for (var i = 0; i < 15 && OverlayChannelsListView.ItemsPanelRoot == null; i++)
-        {
-            await Task.Delay(100);
-            waited += 100;
-        }
-
-        Serilog.Log.Debug(
-            "OverlayList: прокрутка к «{Channel}» — панель списка {PanelState} (ожидали {Waited} мс), Items {Count}",
-            channel.Name,
-            OverlayChannelsListView.ItemsPanelRoot == null ? "НЕ готова" : "готова",
-            waited,
-            OverlayChannelsListView.Items.Count);
-
-        // Leading — канал становится первым (верхним) из видимых; без явного
-        // выравнивания список прокручивается «минимально» и канал висит внизу.
-        OverlayChannelsListView.ScrollIntoView(channel, ScrollIntoViewAlignment.Leading);
-    }
-
-    /// <summary>
-    /// Прокрутка списка каналов к выбранному — как оконного, так и полноэкранного
-    /// оверлея: выделение без прокрутки «невидимо», если канал глубоко в списке.
-    /// </summary>
-    private async Task ScrollChannelIntoViewAsync(ListView list)
-    {
-        if (ViewModel.SelectedChannel == null)
-        {
-            return;
-        }
-
-        await Task.Yield();
-        await Task.Delay(150);
-
-        // Сначала Leading-прокрутка (реализует контейнер виртуализированного
-        // списка), затем сдвигаем его в центр видимой области.
-        list.ScrollIntoView(ViewModel.SelectedChannel);
-        await Task.Delay(50);
-
-        try
-        {
-            if (list.ContainerFromItem(ViewModel.SelectedChannel) is not FrameworkElement container)
-            {
-                return;
-            }
-
-            var scrollViewer = FindDescendant<ScrollViewer>(list);
-            if (scrollViewer == null)
-            {
-                return;
-            }
-
-            var content = (UIElement)scrollViewer.Content;
-            // Координата Y относительно корня контента — это УЖЕ абсолютная
-            // позиция в списке (VerticalOffset здесь добавлять не нужно:
-            // двойной учёт смещения раньше уводил прокрутку «мимо» канала).
-            var itemTop = container.TransformToVisual(content)
-                .TransformPoint(new Windows.Foundation.Point(0, 0)).Y;
-            // Канал — в верхнюю часть видимой области (первая строка списка).
-            scrollViewer.ChangeView(null, Math.Max(0, itemTop - 4), null, disableAnimation: true);
-        }
-        catch (Exception ex)
-        {
-            // Центрирование — косметика: любая гонка с пересборкой списка
-            // не должна ломать прокрутку целиком.
-            Serilog.Log.Information(ex, "Центрирование выбранного канала в списке.");
         }
     }
 
@@ -1658,43 +1285,8 @@ public sealed partial class MainPage : Page
     /// Вызывается из UpdateArchiveBanner при каждой смене состояния плеера и
     /// непосредственно после переключения паузы.
     /// </summary>
-    private void UpdateArchivePauseButton()
-    {
-        var isArchiveActive = Player.IsArchivePlaying && Player.Player != null;
-        OverlayPauseButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
-        VideoOverlayPauseButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
-        OverlayBackToLiveButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
-        VideoOverlayBackToLiveButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
-
-        var channel = Player.CurrentPlayerChannelId != null
-            ? ViewModel.Channels.FirstOrDefault(c => c.Id == Player.CurrentPlayerChannelId.Value)
-            : null;
-        var isPaused = isArchiveActive && channel is { IsPlaying: false };
-
-        // Полоса перемотки архива живёт в тех же панелях, что и кнопка паузы.
-        WindowedArchiveSeekPanel.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
-        OverlayArchiveSeekPanel.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
-        if (isArchiveActive)
-        {
-            Player.RefreshArchivePosition();
-            UpdateArchiveSeekBar();
-        }
-
-        // Нарисованные иконки (AppIcons): «плей» — на паузе, «пауза» — играет.
-        OverlayPauseButton.Content = isPaused ? AppIcons.Play(20) : AppIcons.Pause(20);
-        ToolTipService.SetToolTip(OverlayPauseButton, isPaused ? L.T("Prodolzhit_Arkhiv_Probel") : L.T("Pauza_Arkhiv_Probel"));
-        VideoOverlayPauseButton.Content = isPaused ? AppIcons.Play(16) : AppIcons.Pause(16);
-        ToolTipService.SetToolTip(VideoOverlayPauseButton, isPaused ? L.T("Prodolzhit_Arkhiv_Probel") : L.T("Pauza_Arkhiv_Probel"));
-    }
-
     // ===================== Делегаты к PlayerViewModel =====================
-    // Тяжёлая логика воспроизведения переехала в PlayerViewModel (этап 2
-    // MVVM); здесь остались тонкие обёртки, чтобы точки вызова в представлении
-    // не менялись. Визуальная реакция (прогресс, ошибки, баннеры, подключение
-    // MediaPlayerElement) — через события VM, подписки в конструкторе.
 
-    // Автопродолжение: без диалога выбора серии (interactive:false —
-    // сериал портала продолжается с первой серии).
     private Task PlayLiveAsync(ChannelViewModel channel) => ViewModel.PlayChannelAsync(channel, interactive: false);
 
     private void StopPlayback() => Player.Stop();
@@ -1705,82 +1297,6 @@ public sealed partial class MainPage : Page
         {
             ViewModel.PlayArchiveEntryCommand.Execute(entry);
         }
-    }
-
-    /// <summary>
-    /// Синхронизирует индикаторы архивного режима с состоянием плеера:
-    /// строку в полноэкранном оверлее, кнопку "В эфир" и кнопку паузы в обеих
-    /// панелях управления. Постоянный баннер над видео убран — он мешал
-    /// просмотру; информация об архиве теперь появляется только вместе с
-    /// панелями управления (по движению мыши) и прячется вместе с ними.
-    /// Вызывается при каждой смене состояния плеера.
-    /// </summary>
-    /// <summary>
-    /// Кнопка качества VOD портала в нижних панелях (оконной и fullscreen):
-    /// видна только когда портал отдал варианты качества; метка — текущее
-    /// качество, меню со всеми вариантами строится заново при каждом старте
-    /// VOD (галочкой отмечен активный, клик переключает).
-    /// </summary>
-    private void UpdateVodQualityButtons()
-    {
-        var visible = Player.IsVodPlaying && Player.VodQualities.Count > 1;
-        OverlayVodQualityButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        WindowedVodQualityButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-
-        // Полосы перемотки VOD — те же условия видимости, что у кнопки
-        // качества: только элементы портала с вариантом потока.
-        OverlayVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
-        WindowedVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
-
-        UpdateVodSeasonEpisodeCombos();
-
-        // Кнопка EPG при просмотре портала не нужна — программ передач у
-        // фильмов/сериалов нет; на обычных каналах остаётся.
-        var epgVisible = Player.IsVodPlaying ? Visibility.Collapsed : Visibility.Visible;
-        VideoOverlayEpgButton.Visibility = epgVisible;
-        OverlayEpgButton.Visibility = epgVisible;
-
-        if (Player.CurrentVodQuality is { } quality)
-        {
-            OverlayVodQualityButton.Content = quality;
-            WindowedVodQualityButton.Content = quality;
-        }
-
-        if (!visible)
-        {
-            return;
-        }
-
-        var menu = new MenuFlyout();
-        foreach (var option in Player.VodQualities)
-        {
-            var item = new ToggleMenuFlyoutItem
-            {
-                Text = option,
-                IsChecked = option == Player.CurrentVodQuality,
-                Tag = option
-            };
-            item.Click += VodQualityMenuItem_Click;
-            menu.Items.Add(item);
-        }
-
-        // Один и тот же MenuFlyout нельзя показать у двух владельцев —
-        // каждой кнопке своя копия.
-        var menuCopy = new MenuFlyout();
-        foreach (var option in Player.VodQualities)
-        {
-            var item = new ToggleMenuFlyoutItem
-            {
-                Text = option,
-                IsChecked = option == Player.CurrentVodQuality,
-                Tag = option
-            };
-            item.Click += VodQualityMenuItem_Click;
-            menuCopy.Items.Add(item);
-        }
-
-        OverlayVodQualityButton.Flyout = menu;
-        WindowedVodQualityButton.Flyout = menuCopy;
     }
 
     // ===================== Выбор канала в списке/сетке =====================
@@ -1810,1147 +1326,4 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async void VodQualityMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuFlyoutItem { Tag: string quality })
-        {
-            await Player.SwitchVodQualityAsync(quality);
-        }
-    }
-
-    // ===================== Сезон/серия VOD =====================
-
-    private bool _updatingVodCombos;
-
-    /// <summary>
-    /// Наполняет комбобоксы сезона и серии обеих панелей по текущему VOD:
-    /// сезон — соседние карточки каталога («Название. Сезон N»), серия —
-    /// список эпизодов из flick, живущий в PlayerViewModel. Скрыты, когда
-    /// выбора нет (фильм, эфир, одна серия).
-    /// </summary>
-    private void UpdateVodSeasonEpisodeCombos()
-    {
-        _updatingVodCombos = true;
-        try
-        {
-            var seasonsVisible = false;
-            var episodesVisible = false;
-
-            if (Player.IsVodPlaying && Player.VodChannel is { } vodChannel)
-            {
-                var siblings = ViewModel.GetPortalSeasonSiblings(vodChannel);
-                seasonsVisible = siblings.Count > 1;
-                if (seasonsVisible)
-                {
-                    foreach (var combo in new[] { WindowedVodSeasonCombo, OverlayVodSeasonCombo })
-                    {
-                        combo.Items.Clear();
-                        foreach (var sibling in siblings)
-                        {
-                            combo.Items.Add(new ComboBoxItem
-                            {
-                                Content = SeasonLabel(sibling.Name),
-                                Tag = sibling,
-                                IsSelected = ReferenceEquals(sibling, vodChannel)
-                            });
-                        }
-                    }
-                }
-
-                episodesVisible = Player.VodEpisodes.Count > 1;
-                if (episodesVisible)
-                {
-                    foreach (var combo in new[] { WindowedVodEpisodeCombo, OverlayVodEpisodeCombo })
-                    {
-                        combo.Items.Clear();
-                        for (var i = 0; i < Player.VodEpisodes.Count; i++)
-                        {
-                            combo.Items.Add(new ComboBoxItem
-                            {
-                                Content = $"{i + 1}. {Player.VodEpisodes[i].Title}",
-                                Tag = i,
-                                IsSelected = i == Player.CurrentVodEpisodeIndex
-                            });
-                        }
-                    }
-                }
-            }
-
-            WindowedVodSeasonCombo.Visibility = OverlayVodSeasonCombo.Visibility =
-                seasonsVisible ? Visibility.Visible : Visibility.Collapsed;
-            WindowedVodEpisodeCombo.Visibility = OverlayVodEpisodeCombo.Visibility =
-                episodesVisible ? Visibility.Visible : Visibility.Collapsed;
-
-            if (!seasonsVisible)
-            {
-                WindowedVodSeasonCombo.Items.Clear();
-                OverlayVodSeasonCombo.Items.Clear();
-            }
-
-            if (!episodesVisible)
-            {
-                WindowedVodEpisodeCombo.Items.Clear();
-                OverlayVodEpisodeCombo.Items.Clear();
-            }
-        }
-        finally
-        {
-            _updatingVodCombos = false;
-        }
-    }
-
-    /// <summary>«Название. Сезон 3. (2021)» → «Сезон 3»; без пометки — как есть.</summary>
-    private static string SeasonLabel(string name) =>
-        MainPageViewModel.ParsePortalSeasonName(name).Season is { } season
-            ? (season.From == season.To
-                ? string.Format(L.T("Sezon_0"), season.From)
-                : string.Format(L.T("Sezon_0_1"), season.From, season.To))
-            : name;
-
-    private async void VodSeasonCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_updatingVodCombos ||
-            sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: ChannelViewModel sibling } })
-        {
-            return;
-        }
-
-        // Сезон — соседняя карточка каталога: полный путь запуска без диалога
-        // (первая серия сезона; дальше — комбобоксом серий).
-        if (!ReferenceEquals(sibling, Player.VodChannel))
-        {
-            await ViewModel.PlayChannelAsync(sibling, interactive: false);
-        }
-    }
-
-    private async void VodEpisodeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_updatingVodCombos ||
-            sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: int index } })
-        {
-            return;
-        }
-
-        if (index != Player.CurrentVodEpisodeIndex)
-        {
-            await Player.PlayVodEpisodeAsync(index);
-        }
-    }
-
-    // ===================== Перемотка VOD =====================
-
-    private bool _updatingVodSeekBarValue;
-    private Slider? _activeVodSlider;
-
-    /// <summary>
-    /// Толкает позицию/длительность VOD в слайдеры и подписи обеих панелей.
-    /// Пока пользователь тянет ползунок (IsVodSeeking), Value не трогаем.
-    /// </summary>
-    private void UpdateVodSeekBar()
-    {
-        if (!Player.IsVodPlaying)
-        {
-            return;
-        }
-
-        WindowedVodPositionText.Text = Player.VodPositionText;
-        OverlayVodPositionText.Text = Player.VodPositionText;
-        WindowedVodDurationText.Text = Player.VodDurationText;
-        OverlayVodDurationText.Text = Player.VodDurationText;
-
-        if (Player.IsVodSeeking)
-        {
-            return;
-        }
-
-        var duration = Math.Max(1.0, Player.VodDurationSeconds);
-        var position = Math.Clamp(Player.VodPositionSeconds, 0.0, duration);
-
-        _updatingVodSeekBarValue = true;
-        try
-        {
-            WindowedVodSeekBar.Maximum = duration;
-            WindowedVodSeekBar.Value = position;
-            OverlayVodSeekBar.Maximum = duration;
-            OverlayVodSeekBar.Value = position;
-        }
-        finally
-        {
-            _updatingVodSeekBarValue = false;
-        }
-    }
-
-    private void VodSeekBar_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        if (sender is not Slider slider || _updatingVodSeekBarValue)
-        {
-            return;
-        }
-
-        _activeVodSlider = slider;
-        Player.IsVodSeeking = true;
-
-        var text = PlayerViewModel.FormatArchiveTime(slider.Value);
-        WindowedVodPositionText.Text = text;
-        OverlayVodPositionText.Text = text;
-    }
-
-    private void VodSeekBar_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Slider slider)
-        {
-            _activeVodSlider = slider;
-        }
-        Player.IsVodSeeking = true;
-    }
-
-    // Перемотка VOD дешёвая (без рестарта потока) — коммитим сразу по
-    // отпусканию ползунка; на CaptureLost тоже, см. комментарий у архива.
-    private void VodSeekBar_PointerReleased(object sender, PointerRoutedEventArgs e) => CommitVodSeek();
-
-    private void VodSeekBar_PointerCaptureLost(object sender, PointerRoutedEventArgs e) => CommitVodSeek();
-
-    private void CommitVodSeek()
-    {
-        Player.IsVodSeeking = false;
-        if (_activeVodSlider == null || !Player.IsVodPlaying)
-        {
-            return;
-        }
-
-        var target = _activeVodSlider.Value;
-        _activeVodSlider = null;
-        Player.SeekVod(target);
-    }
-
-    private void UpdateArchiveBanner()
-    {
-        if (Player.IsArchivePlaying && Player.ArchiveEntry != null)
-        {
-            var title = string.Format(L.T("Arkhiv_0_1"), Player.ArchiveEntry.ProgramName, $"{Player.ArchiveEntry.StartTime:dd.MM HH:mm}");
-
-            OverlayArchiveText.Text = string.Format(L.T("Arkhiv_0"), Player.ArchiveEntry.ProgramName);
-            OverlayArchiveIndicator.Visibility = Visibility.Visible;
-
-            WindowedArchiveText.Text = string.Format(L.T("Arkhiv_0"), Player.ArchiveEntry.ProgramName);
-            WindowedArchiveIndicator.Visibility = Visibility.Visible;
-
-            // Подсказки кнопок "В эфир" несут ту же информацию, что старый
-            // баннер: что именно из архива смотрится.
-            ToolTipService.SetToolTip(VideoOverlayBackToLiveButton, title);
-            ToolTipService.SetToolTip(OverlayBackToLiveButton, title);
-        }
-        else
-        {
-            OverlayArchiveIndicator.Visibility = Visibility.Collapsed;
-            WindowedArchiveIndicator.Visibility = Visibility.Collapsed;
-        }
-
-        UpdateArchivePauseButton();
-    }
-
-    /// <summary>
-    /// Показывает или прячет EPG-оверлей поверх видео (визуальная часть:
-    /// панель, иконка кнопки, прокрутка к текущей передаче). Истиной о
-    /// видимости владеет ViewModel.IsEpgVisible — меняет команда ToggleEpg,
-    /// а представление реагирует через EpgVisibilityChanged.
-    /// </summary>
-    private void ApplyEpgVisibility()
-    {
-        var visible = ViewModel.IsEpgVisible;
-        EpgPanelBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        EpgScrimBorder.Visibility = EpgPanelBorder.Visibility;
-        Serilog.Log.Debug("EPG: {Vis} (fullScreen={FS})", visible ? "open" : "close", _isFullScreen);
-
-        // В полноэкранном режиме EPG-скрим (ZIndex 20) лежит выше FullScreenOverlay.
-        // Если оверлей оставить видимым, он продолжает реагировать на таймер
-        // автоскрытия и мерцает под скримом. Прячем при открытии EPG,
-        // восстанавливаем при закрытии.
-        if (_isFullScreen && visible)
-        {
-            Serilog.Log.Debug("EPG: fullscreen — скрыть оверлей, показать курсор для EPG-панели");
-            HideFullScreenOverlay(immediate: true);
-            _overlayHideTimer.Stop();
-            ShowCursorOverVideo();
-        }
-
-        // Иконка кнопки EPG — всегда календарь (E787), как в полноэкранном
-        // оверлее: раньше для скрытого состояния ставился E785 «Unlock»
-        // (открытый замок) — читался как «неправильная иконка». Состояние
-        // и так видно по самой панели, меняется только подсказка.
-        ToolTipService.SetToolTip(VideoOverlayEpgButton, visible ? L.T("Skryt_EPG") : L.T("Pokazat_EPG_Lbl"));
-
-        if (visible)
-        {
-            _ = ScrollToCurrentProgramAsync();
-        }
-    }
-
-    /// <summary>
-    /// Клик по затемнению вокруг EPG-окна — закрыть EPG («вне окна»).
-    /// </summary>
-    private void EpgScrimBorder_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
-    {
-        ViewModel.IsEpgVisible = false;
-        ApplyEpgVisibility();
-    }
-
-    private void FullScreenButton_Click(object sender, RoutedEventArgs e)
-    {        SetFullScreenMode(!_isFullScreen);
-    }
-
-    private void ExitFullScreenButton_Click(object sender, RoutedEventArgs e)
-    {
-        SetFullScreenMode(false);
-    }
-
-    /// <summary>
-    /// Слайдеры громкости в обоих оверлеях (оконном и полноэкранном): меняют
-    /// громкость текущего плеера, запоминаются в Player.LastUserVolume (применится
-    /// и к следующим плеерам — переключение каналов, архив) и через дебаунс
-    /// сохраняются в настройки, чтобы пережить перезапуск приложения.
-    /// </summary>
-    private void OverlayVolumeSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-        => OnVolumeSliderChanged(e.NewValue);
-
-    private void VideoOverlayVolumeSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-        => OnVolumeSliderChanged(e.NewValue);
-
-    private void OnVolumeSliderChanged(double value)
-    {
-        if (_isVolumeSliderSyncing)
-        {
-            return;
-        }
-
-        Player.LastUserVolume = value;
-
-        // Движение слайдера снимает беззвучный режим (громкость применяем
-        // ниже сами — ClearMute её не трогает намеренно).
-        Player.ClearMute();
-
-        if (Player.Player != null)
-        {
-            Player.Player.Volume = value;
-        }
-
-        // Второй слайдер показывает то же значение (флаг отличает
-        // программную синхронизацию от действия пользователя).
-        SyncVolumeSliders(value);
-
-        // Пишем в настройки не сразу, а после того как пользователь
-        // перестал двигать слайдер (см. конструктор).
-        _volumeSaveDebounceTimer.Stop();
-        _volumeSaveDebounceTimer.Start();
-    }
-
-    /// <summary>
-    /// Программно выставляет оба слайдера громкости в одно значение,
-    /// не провоцируя обратные события ValueChanged.
-    /// </summary>
-    private void SyncVolumeSliders(double value)
-    {
-        _isVolumeSliderSyncing = true;
-        if (Math.Abs(OverlayVolumeSlider.Value - value) > 0.001)
-        {
-            OverlayVolumeSlider.Value = value;
-        }
-        if (Math.Abs(VideoOverlayVolumeSlider.Value - value) > 0.001)
-        {
-            VideoOverlayVolumeSlider.Value = value;
-        }
-        _isVolumeSliderSyncing = false;
-    }
-
-    private async Task SaveVolumeToSettingsAsync()
-    {
-        try
-        {
-            // Пишем в каноническую копию настроек, а не во свежезагруженную —
-            // иначе затёрли бы несохранённые избранное/напоминания.
-            ViewModel.AppSettings.Volume = Player.LastUserVolume ?? 1.0;
-            await _settingsService.SaveAsync(ViewModel.AppSettings);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Не удалось сохранить громкость.");
-        }
-    }
-
-    // ===================== Избранные каналы =====================
-
-    private void FavoriteButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { DataContext: ChannelViewModel channel })
-        {
-            return;
-        }
-
-        ViewModel.ToggleFavoriteCommand.Execute(channel);
-    }
-
-    // ===================== Напоминания о передачах =====================
-
-    private void ReminderButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { DataContext: EPGEntry entry })
-        {
-            return;
-        }
-
-        ViewModel.ToggleReminderCommand.Execute(entry);
-    }
-
-    /// <summary>
-    /// Тост Windows (CommunityToolkit.WinUI.Notifications). В unpackaged-режиме
-    /// тосты требуют ярлыка в меню «Пуск» с AUMID — тулкит создаёт его сам при
-    /// первом показе; если окружение всё же отказало — логируем однократно
-    /// и больше не спамим.
-    /// </summary>
-    private void ShowReminderToast(Models.ProgramReminder reminder)
-    {
-        try
-        {
-            new CommunityToolkit.WinUI.Notifications.ToastContentBuilder()
-                .AddText(string.Format(L.T("Skoro_V_Efire_0"), reminder.ProgramName))
-                .AddText(string.Format(L.T("Nachalo_V_0"), reminder.ChannelName, $"{reminder.StartTime:HH:mm}"))
-                .Show();
-        }
-        catch (Exception ex)
-        {
-            if (!_toastFailureLogged)
-            {
-                _toastFailureLogged = true;
-                _logger.LogError(ex,
-                    "Показ тоста-напоминания не удался (последующие ошибки до перезапуска не логируются).");
-            }
-        }
-    }
-
-    // ===================== Запись передач и каналов =====================
-
-    private void ScheduleRecordButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { DataContext: EPGEntry entry })
-        {
-            return;
-        }
-
-        ViewModel.ToggleScheduleRecordCommand.Execute(entry);
-    }
-
-    /// <summary>Синхронизирует вид обеих кнопок записи с состоянием сервиса.</summary>
-    private void UpdateRecordButtons()
-    {
-        // Кнопка относится к ТЕКУЩЕМУ каналу: параллельно могут идти и другие записи.
-        var active = ViewModel.Recording.IsRecordingStream(ViewModel.SelectedChannel?.StreamUrl);
-        var currentPath = ViewModel.Recording.Active
-            .FirstOrDefault(r => r.StreamUrl == ViewModel.SelectedChannel?.StreamUrl)?.OutputPath;
-
-        // Нарисованные иконки (AppIcons): идёт запись — красный квадрат STOP,
-        // простаивает — красная точка REC. Цвет зашит в фигуру, Foreground
-        // кнопки не трогаем.
-        VideoOverlayRecordButton.Content = active ? AppIcons.StopSquare(13) : AppIcons.RecordDot(14);
-        ToolTipService.SetToolTip(VideoOverlayRecordButton, active
-            ? string.Format(L.T("Ostanovit_Zapis_0"), currentPath, currentPath)
-            : L.T("Zapisat_Kanal_Lbl"));
-
-        OverlayRecordButton.Content = active ? AppIcons.StopSquare(17) : AppIcons.RecordDot(18);
-        ToolTipService.SetToolTip(OverlayRecordButton, active
-            ? L.T("Ostanovit_Zapis")
-            : L.T("Zapisat_Kanal_Lbl"));
-    }
-
-    // ===================== Мини-плеер =====================
-
-    private bool _panelsHiddenForMini;
-
-    /// <summary>
-    /// Ctrl+M: компактное always-on-top окно только с видео; панели
-    /// (список каналов, EPG) скрываются и возвращаются при выходе из режима.
-    /// </summary>
-    private void ToggleMiniPlayer()
-    {
-        MainWindow.Instance!.ToggleMiniPlayer();
-        var mini = MainWindow.Instance.IsMiniPlayer;
-
-        if (mini && !_panelsHiddenForMini)
-        {
-            _panelsHiddenForMini = true;
-            // MinWidth колонки (240) не даёт сжать её в ноль — прячем саму
-            // панель и разрешаем нулевую ширину.
-            ChannelListPanel.Visibility = Visibility.Collapsed;
-            ChannelListColumn.MinWidth = 0;
-            ChannelListColumn.Width = new GridLength(0);
-            SplitterColumn.Width = new GridLength(0);
-            ViewModel.IsEpgVisible = false;
-            EpgPanelBorder.Visibility = Visibility.Collapsed;
-        }
-        else if (!mini && _panelsHiddenForMini)
-        {
-            _panelsHiddenForMini = false;
-            ChannelListColumn.MinWidth = 240;
-            ChannelListColumn.Width = new GridLength(
-                Math.Max(240, ViewModel.AppSettings.ChannelListWidth), GridUnitType.Pixel);
-            SplitterColumn.Width = GridLength.Auto;
-            ChannelListPanel.Visibility = Visibility.Visible;
-        }
-    }
-
-    // ===================== Родительский контроль: PIN при запуске =====================
-
-    /// <summary>
-    /// Диалог PIN при запуске канала заблокированной группы: ввод PIN + выбор,
-    /// на сколько отключить запрос (15/30/45/60 мин, до выключения) или отмена.
-    /// Возвращает null (отмена), 0 («до выключения») или число минут.
-    /// </summary>
-    private Task<int?>? _pinDialogInProgress;
-
-    private async Task<int?> ShowParentalPinDialogAsync(ChannelViewModel channel)
-    {
-        // Повторный запрос PIN, пока диалог уже открыт, упал бы на втором
-        // ContentDialog.ShowAsync («нельзя два диалога») и мог оставить UI в
-        // полузаблокированном состоянии — ждём результат уже открытого.
-        if (_pinDialogInProgress != null)
-        {
-            Serilog.Log.Warning("Повторный запрос PIN при открытом диалоге — присоединяемся к нему.");
-            return await _pinDialogInProgress;
-        }
-
-        var task = ShowParentalPinDialogCoreAsync(channel);
-        _pinDialogInProgress = task;
-        try
-        {
-            return await task;
-        }
-        finally
-        {
-            _pinDialogInProgress = null;
-        }
-    }
-
-    private async Task<int?> ShowParentalPinDialogCoreAsync(ChannelViewModel channel)
-    {
-        Serilog.Log.Information("PIN-диалог открыт для канала {Channel}.", channel.Name);
-        var tcs = new System.Threading.Tasks.TaskCompletionSource<int?>();
-
-        var pinBox = new PasswordBox { PlaceholderText = "PIN", Width = 200, HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Left };
-        var errorText = new TextBlock
-        {
-            FontSize = 12,
-            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.OrangeRed),
-            TextWrapping = TextWrapping.Wrap
-        };
-
-        void TryUnlock(int minutes)
-        {
-            if (Services.ParentalControlService.VerifyPin(ViewModel.AppSettings, pinBox.Password))
-            {
-                Serilog.Log.Information("PIN верен — отключение запроса на {Minutes} мин.", minutes);
-                tcs.TrySetResult(minutes);
-                _pinDialog?.Hide();
-            }
-            else
-            {
-                Serilog.Log.Warning("Введен неверный PIN (канал {Channel}).", channel.Name);
-                errorText.Text = L.T("Nevernyy_PIN");
-            }
-        }
-
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing =8 };
-        foreach (var (label, minutes) in new (string, int)[]
-                 {
-                     (L.T("15_Min_Lbl"), 15),
-                     (L.T("30_Min_Lbl"), 30),
-                     (L.T("45_Min_Lbl"), 45),
-                     (L.T("1_Chas_Lbl"), 60),
-                     (L.T("Do_Vyklyucheniya"), 0),
-                 })
-        {
-            var captured = minutes;
-            var b = new Button { Content = label };
-            b.Click += (s, e) => TryUnlock(captured);
-            buttons.Children.Add(b);
-        }
-
-        var panel = new StackPanel { Spacing = 12, Width = 380 };
-        panel.Children.Add(new TextBlock
-        {
-            Text = string.Format(L.T("Kanal_0_Zakryt_Roditelskim_Kontrolem_Vvedite"), channel.Name, channel.Name),
-            TextWrapping = TextWrapping.Wrap
-        });
-        panel.Children.Add(pinBox);
-        panel.Children.Add(errorText);
-        panel.Children.Add(buttons);
-
-        var dialog = new ContentDialog
-        {
-            XamlRoot = Content.XamlRoot,
-            Title = L.T("Roditelskiy_Kontrol_Lbl"),
-            Content = panel,
-            CloseButtonText = L.T("Otmena_Lbl")
-        };
-        dialog.Closed += (s, e) => tcs.TrySetResult(null);
-        _pinDialog = dialog;
-        await dialog.ShowAsync();
-        _pinDialog = null;
-        Serilog.Log.Information("PIN-диалог закрыт, результат: {Result}.", await tcs.Task);
-        return await tcs.Task;
-    }
-
-    private ContentDialog? _pinDialog;
-
-    // ===================== Беззвучный режим и двойной клик =====================
-
-    private void MuteButton_Click(object sender, RoutedEventArgs e) => Player.ToggleMute();
-
-    /// <summary>
-    /// Кнопки M в обеих панелях: иконка (динамик/динамик с крестом), подсказка
-    /// и слайдеры (в mute показывают ноль — синхронизация программная и
-    /// LastUserVolume не затирает).
-    /// </summary>
-    private void UpdateMuteButtons()
-    {
-        VideoOverlayMuteButton.Content = Player.IsMuted ? AppIcons.SpeakerMuted(16) : AppIcons.SpeakerOn(16);
-        OverlayMuteButton.Content = Player.IsMuted ? AppIcons.SpeakerMuted(18) : AppIcons.SpeakerOn(18);
-
-        var tooltip = Player.IsMuted
-            ? L.T("Vklyuchit_Zvuk_M")
-            : L.T("Bez_Zvuka_M_Lbl");
-        ToolTipService.SetToolTip(VideoOverlayMuteButton, tooltip);
-        ToolTipService.SetToolTip(OverlayMuteButton, tooltip);
-
-        SyncVolumeSliders(Player.IsMuted ? 0.0 : Player.LastUserVolume ?? Player.Player?.Volume ?? 1.0);
-    }
-
-    /// <summary>
-    /// Двойной клик по видео — переключение полноэкранного режима (клик по
-    /// оверлеям управления и открытому EPG сюда не доходит — они лежат выше
-    /// и гасят событие своей областью).
-    /// </summary>
-    private void VideoArea_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
-    {
-        SetFullScreenMode(!_isFullScreen);
-        e.Handled = true;
-    }
-
-    /// <summary>
-    /// Двойной клик по видимому полноэкранному оверлею. Прозрачный фон
-    /// оверлея hit-testable и стоит над видео, поэтому клики по «пустому»
-    /// месту не доходили до VideoAreaBorder и не выключали fullscreen —
-    /// обрабатываем здесь. По органам управления (кнопки, слайдеры, список
-    /// каналов) не срабатываем, только по фону и шапке.
-    /// </summary>
-    private void FullScreenOverlay_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
-    {
-        if (e.OriginalSource is DependencyObject source &&
-            AnyAncestorOrSelf(source, element => IsInteractiveControl(element)))
-        {
-            return;
-        }
-
-        SetFullScreenMode(!_isFullScreen);
-        e.Handled = true;
-    }
-
-    /// <summary>
-    /// Элементы, чьи двойные клики принадлежат им самим (кнопки, слайдеры,
-    /// списки, поля) — полноэкранный режим они переключать не должны.
-    /// </summary>
-    private static bool IsInteractiveControl(DependencyObject element) =>
-        element is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase
-            or Slider or ListView or ComboBox or TextBox or AutoSuggestBox;
-
-    // ===================== Режимы отображения видео =====================
-
-    // Uniform (вписать, letterbox) → Fill (растянуть без сохранения
-    // пропорций) → UniformToFill (обрезать: масштаб с пропорциями, лишнее за
-    // краями). Кнопка в обеих панелях управления и клавиша V; выбор
-    // сохраняется в настройках (AppSettings.VideoStretch).
-
-    private void StretchButton_Click(object sender, RoutedEventArgs e) => CycleVideoStretch();
-
-    // ===================== Таймер сна =====================
-
-    private async void SleepTimerButton_Click(object sender, RoutedEventArgs e)
-    {
-        // Диалог выбора времени таймера сна
-        var dialog = new ContentDialog
-        {
-            Title = L.T("Taymer_Sna_Lbl"),
-            PrimaryButtonText = L.T("Ustanovit"),
-            CloseButtonText = L.T("Otmena_Lbl"),
-            XamlRoot = ((Button)sender).XamlRoot
-        };
-
-        var panel = new StackPanel { Orientation = Microsoft.UI.Xaml.Controls.Orientation.Vertical, Spacing = 12 };
-        var timeOptions = new[] { 15, 30, 45, 60, 90, 120 };
-        var radioPanel = new StackPanel { Orientation = Microsoft.UI.Xaml.Controls.Orientation.Vertical, Spacing = 4 };
-
-        // Опция "Отключить" если таймер активен
-        if (ViewModel.IsSleepTimerActive)
-        {
-            radioPanel.Children.Add(new RadioButton
-            {
-                Content = L.T("Otklyuchit_Taymer"),
-                Tag = 0,
-                GroupName = "SleepTimer"
-            });
-        }
-
-        foreach (var minutes in timeOptions)
-        {
-            radioPanel.Children.Add(new RadioButton
-            {
-                Content = string.Format(L.T("0_Min"), minutes, minutes),
-                Tag = minutes,
-                GroupName = "SleepTimer"
-            });
-        }
-
-        // Пользовательский ввод
-        var customBox = new TextBox
-        {
-            Header = L.T("Svoe_Znachenie_Minuty"),
-            PlaceholderText = "60",
-            Width = 200
-        };
-
-        // Подсказка о действии по истечении — чтобы «выключить компьютер»
-        // из настроек не оказалось сюрпризом.
-        var action = ViewModel.AppSettings.SleepTimerAction switch
-        {
-            "Exit" => L.T("SleepTimer_Exit"),
-            "Shutdown" => L.T("SleepTimer_Shutdown"),
-            _ => L.T("SleepTimer_Stop")
-        };
-        var actionHint = new TextBlock
-        {
-            Text = string.Format(L.T("Po_Istechenii_Taymera_0"), action),
-            FontSize = 12,
-            Opacity = 0.7,
-            TextWrapping = TextWrapping.Wrap
-        };
-
-        panel.Children.Add(radioPanel);
-        panel.Children.Add(customBox);
-        panel.Children.Add(actionHint);
-        dialog.Content = panel;
-
-        dialog.PrimaryButtonClick += (s, args) =>
-        {
-            var selectedMinutes = 0;
-
-            // Проверяем RadioButton
-            foreach (var child in radioPanel.Children)
-            {
-                if (child is RadioButton { IsChecked: true, Tag: int tag })
-                {
-                    selectedMinutes = tag;
-                    break;
-                }
-            }
-
-            // Если не выбран RadioButton, пробуем TextBox
-            if (selectedMinutes == 0 && int.TryParse(customBox.Text.Trim(), out var custom) && custom > 0)
-            {
-                selectedMinutes = custom;
-            }
-
-            if (selectedMinutes > 0)
-            {
-                ViewModel.StartSleepTimer(selectedMinutes);
-            }
-            else if (ViewModel.IsSleepTimerActive && selectedMinutes == 0)
-            {
-                ViewModel.StopSleepTimer();
-            }
-        };
-
-        await dialog.ShowAsync();
-        UpdateSleepTimerDisplays();
-    }
-
-    private void SleepTimerCancelButton_Click(object sender, RoutedEventArgs e)
-    {
-        ViewModel.StopSleepTimer();
-        UpdateSleepTimerDisplays();
-    }
-
-    /// <summary>
-    /// Планирует выключение компьютера (shutdown /s /t 0). shutdown.exe лежит
-    /// в System32 и не требует прав администратора; CreateNoWindow, чтобы не
-    /// мигало консольное окно. Packaged-режиму запуск стороннего процесса
-    /// разрешает объявленная в манифесте capability runFullTrust.
-    /// </summary>
-    private bool TryShutdownPc()
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = "shutdown.exe",
-                Arguments = "/s /t 0",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Не удалось запустить shutdown.exe для выключения ПК.");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Обновляет индикаторы таймера сна в обеих панелях (оконной и полноэкранной).
-    /// </summary>
-    private void UpdateSleepTimerDisplays()
-    {
-        var isActive = ViewModel.IsSleepTimerActive;
-        var remainingText = ViewModel.SleepTimerRemainingText;
-
-        // Оконный индикатор
-        WindowedSleepTimerPanel.Visibility = isActive ? Visibility.Visible : Visibility.Collapsed;
-        WindowedSleepTimerText.Text = remainingText ?? string.Empty;
-
-        // Полноэкранный индикатор
-        OverlaySleepTimerPanel.Visibility = isActive ? Visibility.Visible : Visibility.Collapsed;
-        OverlaySleepTimerText.Text = remainingText ?? string.Empty;
-    }
-
-    /// <summary>Строковый режим настроек → Stretch медиаэлемента.</summary>
-    private static Stretch ParseStretch(string? value) => value switch
-    {
-        "Fill" => Stretch.Fill,
-        "UniformToFill" => Stretch.UniformToFill,
-        _ => Stretch.Uniform
-    };
-
-    /// <summary>Применяет сохранённый режим отображения (старт приложения).</summary>
-    private void ApplyVideoStretch()
-    {
-        MediaPlayer.Stretch = ParseStretch(ViewModel.AppSettings.VideoStretch);
-        UpdateStretchButtons();
-    }
-
-    private void CycleVideoStretch()
-    {
-        var next = MediaPlayer.Stretch switch
-        {
-            Stretch.Uniform => Stretch.Fill,
-            Stretch.Fill => Stretch.UniformToFill,
-            _ => Stretch.Uniform
-        };
-
-        MediaPlayer.Stretch = next;
-        ViewModel.AppSettings.VideoStretch = next.ToString();
-        UpdateStretchButtons();
-
-        // Сохранение — тем же дебаунсом, что избранное/последний канал.
-        _settingsSaveDebounceTimer.Stop();
-        _settingsSaveDebounceTimer.Start();
-    }
-
-    private void UpdateStretchButtons()
-    {
-        var mode = MediaPlayer.Stretch switch
-        {
-            Stretch.Fill => L.T("Stretch_Rastyanut"),
-            Stretch.UniformToFill => L.T("Stretch_Oberezat"),
-            _ => L.T("Stretch_Vpisat")
-        };
-        var tooltip = string.Format(L.T("Rezhim_Otobrazheniya_0_V"), mode);
-        ToolTipService.SetToolTip(VideoOverlayStretchButton, tooltip);
-        ToolTipService.SetToolTip(OverlayStretchButton, tooltip);
-    }
-
-    // ===================== Оверлей статистики (Ctrl+J) =====================
-
-    private void ShowStreamError(string message)
-    {
-        StreamErrorText.Text = message;
-        StreamErrorCard.Visibility = Visibility.Visible;
-    }
-
-    // ===================== Перемотка архива =====================
-
-    /// <summary>
-    /// Толкает позицию/длительность архива из PlayerViewModel в слайдеры и
-    /// подписи обеих панелей (оконной и полноэкранной). Секундный тик и смена
-    /// состояния плеера. Пока пользователь тянет ползунок (IsArchiveSeeking),
-    /// Value не трогаем — иначе палец сбрасывало бы каждым тиком.
-    /// </summary>
-    private void UpdateArchiveSeekBar()
-    {
-        if (!Player.IsArchivePlaying)
-        {
-            return;
-        }
-
-        WindowedArchivePositionText.Text = Player.ArchivePositionText;
-        OverlayArchivePositionText.Text = Player.ArchivePositionText;
-        WindowedArchiveDurationText.Text = Player.ArchiveDurationText;
-        OverlayArchiveDurationText.Text = Player.ArchiveDurationText;
-
-        if (Player.IsArchiveSeeking)
-        {
-            return;
-        }
-
-        var duration = Math.Max(1.0, Player.ArchiveDurationSeconds);
-        var position = Math.Clamp(Player.ArchivePositionSeconds, 0.0, duration);
-
-        // Флаг отличает программные присваивания от действий пользователя:
-        // ValueChanged на них реагировать не должен.
-        _updatingSeekBarValue = true;
-        try
-        {
-            // Maximum раньше Value: Value зажимается в [Minimum..Maximum] в
-            // момент присваивания.
-            WindowedArchiveSeekBar.Maximum = duration;
-            WindowedArchiveSeekBar.Value = position;
-            OverlayArchiveSeekBar.Maximum = duration;
-            OverlayArchiveSeekBar.Value = position;
-        }
-        finally
-        {
-            _updatingSeekBarValue = false;
-        }
-    }
-
-    private void ArchiveSeekBar_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        // Пользователь двигает ползунок (drag, тап по дорожке, стрелки
-        // клавиатуры): обновляем подпись и взводим отложенный коммит.
-        // Программные присваивания из таймера отфильтровываются флагом.
-        if (sender is not Slider slider || _updatingSeekBarValue)
-        {
-            return;
-        }
-
-        _activeSeekSlider = slider;
-        Player.IsArchiveSeeking = true;
-
-        var text = PlayerViewModel.FormatArchiveTime(slider.Value);
-        WindowedArchivePositionText.Text = text;
-        OverlayArchivePositionText.Text = text;
-
-        _archiveSeekDebounceTimer.Stop();
-        _archiveSeekDebounceTimer.Start();
-    }
-
-    private void ArchiveSeekBar_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is Slider slider)
-        {
-            _activeSeekSlider = slider;
-        }
-        Player.IsArchiveSeeking = true;
-    }
-
-    // Оба события (Release и CaptureLost) ведут на один коммит: в WinUI
-    // захват указателя при перетаскивании Thumb может не дойти до слайдера,
-    // поэтому полагаемся на то, что придёт хотя бы одно из них, а если не
-    // придёт ничего — сработает дебаунс по ValueChanged.
-    private void ArchiveSeekBar_PointerReleased(object sender, PointerRoutedEventArgs e) => CommitArchiveSeek();
-
-    private void ArchiveSeekBar_PointerCaptureLost(object sender, PointerRoutedEventArgs e) => CommitArchiveSeek();
-
-    /// <summary>Перемотка к текущему значению активного слайдера (идемпотентен).</summary>
-    private void CommitArchiveSeek()
-    {
-        _archiveSeekDebounceTimer.Stop();
-        Player.IsArchiveSeeking = false;
-
-        if (_activeSeekSlider == null || !Player.IsArchivePlaying)
-        {
-            return;
-        }
-
-        var target = _activeSeekSlider.Value;
-        _activeSeekSlider = null;
-
-        // Fire-and-forget: SeekArchiveAsync перезапускает поток (как
-        // переключение канала) и сам обновит состояние через события VM.
-        _ = Player.SeekArchiveAsync(target);
-    }
-
-    /// <summary>
-    /// Проверяет, наступил ли срок обновления кэша по настройкам
-    /// (AppSettings.PlaylistRefreshDays / EpgRefreshDays).
-    /// savedAtUtc — момент последнего сохранения кэша (UTC).
-    /// refreshDays — количество дней из настроек (0 = никогда не обновлять).
-    /// </summary>
-    private static bool IsCacheDue(DateTime savedAtUtc, int refreshDays)
-    {
-        if (refreshDays <= 0)
-        {
-            return false; // "Никогда" — кэш всегда считается свежим
-        }
-
-        if (savedAtUtc == default)
-        {
-            return true; // Нет метки — считаем просроченным
-        }
-
-        return (DateTime.UtcNow - savedAtUtc) >= TimeSpan.FromDays(refreshDays);
-    }
-
-    /// <summary>
-    /// Сохраняет разобранные каналы плейлиста в локальный кэш SQLite
-    /// (PlaylistDatabaseService) — при следующем запуске, если срок
-    /// обновления из настроек ещё не наступил, плейлист не придётся
-    /// перекачивать.
-    /// </summary>
-    private Task SavePlaylistCacheAsync(int playlistId, List<ChannelViewModel> channels)
-    {
-        var cache = new Models.PlaylistCache
-        {
-            FormatVersion = Models.PlaylistCache.CurrentFormatVersion,
-            SavedAtUtc = DateTime.UtcNow,
-            Channels = channels.Select(c => new Models.CachedChannel
-            {
-                Name = c.Name,
-                StreamUrl = c.StreamUrl,
-                LogoUrl = c.LogoUrl,
-                Group = c.Group,
-                TvgId = c.TvgId,
-                CatchupDays = c.CatchupDays,
-                PortalRequest = c.PortalRequest,
-                Description = c.Description,
-                Year = c.Year,
-                Genre = c.Genre
-            }).ToList()
-        };
-
-        return _playlistCacheService.SaveAsync(playlistId, cache);
-    }
-
-    private async void PlaybackSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Dialogs.PlaybackSettingsDialog(
-            ViewModel,
-            _settingsService,
-            _streamService);
-        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
-    }
-
-    private async void DiagnosticsMenu_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Dialogs.DiagnosticsDialog(
-            show => SetStatsOverlayVisible(show),
-            () =>
-            {
-                _settingsSaveDebounceTimer.Stop();
-                _settingsSaveDebounceTimer.Start();
-            });
-        var settings = ViewModel.AppSettings;
-        await dialog.ShowAsync(
-            ((MenuFlyoutItem)sender).XamlRoot,
-            statsVisible: StatsOverlay.Visibility == Visibility.Visible,
-            new Dialogs.DiagnosticsDialog.AppSettingsSnapshot(
-                settings.DiagnosticStreamProxy,
-                settings.FileLoggingEnabled,
-                settings.TempDiagnosticsEnabled));
-    }
-
-    private async void InterfaceSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Dialogs.InterfaceSettingsDialog(
-            ViewModel,
-            _settingsService,
-            ApplyTheme);
-        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
-    }
-
-    private async void EpgSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Dialogs.EpgSettingsDialog(
-            ViewModel,
-            _settingsService);
-        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
-    }
-
-    private async void PlaylistSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Dialogs.PlaylistSettingsDialog(
-            ViewModel,
-            _settingsService,
-            _m3uParserService,
-            _channelRepository,
-            _playlistCacheService,
-            App.Services.GetRequiredService<ILogger<Dialogs.PlaylistSettingsDialog>>(),
-            SwitchPlaylistAsync);
-        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
-
-        // Список/имена плейлистов могли измениться в диалоге — обновляем подменю.
-        UpdatePlaylistMenu();
-    }
-
-    private async void RecordingSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Dialogs.RecordingSettingsDialog(ViewModel, _settingsService);
-        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
-    }
-
-    private async void ParentalSettingsButton_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new Dialogs.ParentalControlDialog(
-            ViewModel,
-            _settingsService,
-            App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Dialogs.ParentalControlDialog>>());
-        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
-    }
-
-    private async void AboutButton_Click(object sender, RoutedEventArgs e)
-    {
-        // Установка — тот же сценарий, что при автообновлении (OfferUpdateInstallAsync):
-        // согласие пользователя, откладывание при активных записях, тихая установка.
-        var dialog = new Dialogs.AboutDialog(_updateService, OfferUpdateInstallAsync);
-        await dialog.ShowAsync(((FrameworkElement)sender).XamlRoot);
-    }
-
-    /// <summary>
-    /// Прокручивает список программ передач к текущей (IsCurrent == true)
-    /// программе выбранного канала. Вызывается после загрузки EPG для канала.
-    /// </summary>
-    private async Task ScrollToCurrentProgramAsync()
-    {
-        if (ViewModel.SelectedChannel == null) return;
-
-        var entries = ViewModel.SelectedChannel.EPGEntries;
-        if (entries.Count == 0) return;
-
-        // Дожидаемся, пока ListView отрисует элементы
-        await Task.Yield();
-        await Task.Delay(50);
-
-        var currentEntry = entries.FirstOrDefault(e => e.IsCurrent);
-        if (currentEntry != null)
-        {
-            EPGProgramsListView.ScrollIntoView(currentEntry);
-        }
-        else
-        {
-            // Нет текущей программы — скроллим к ближайшей будущей
-            var now = DateTime.Now;
-            var nextEntry = entries.FirstOrDefault(e => e.StartTime > now);
-            if (nextEntry != null)
-            {
-                EPGProgramsListView.ScrollIntoView(nextEntry);
-            }
-            else if (entries.Count > 0)
-            {
-                EPGProgramsListView.ScrollIntoView(entries[0]);
-            }
-        }
-    }
-
-    private void EPGProgramsListView_Loaded(object sender, RoutedEventArgs e)
-    {
-        // При первой загрузке списка — скроллим к текущей программе
-        _ = ScrollToCurrentProgramAsync();
-    }
 }

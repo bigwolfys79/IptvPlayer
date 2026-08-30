@@ -136,12 +136,28 @@ namespace IptvPlayer.Dialogs
             AutoUpdateToggle.Toggled += AutoUpdateToggle_Toggled;
             AutoUpdateHint.Text = L.T("Posle_Zapuska_Ne_Chashche_Raza_V");
 
+            // Главное меню (Hub Page): показывать при запуске.
+            ShowHubOnStartupToggle.Toggled -= ShowHubOnStartupToggle_Toggled;
+            ShowHubOnStartupToggle.IsOn = settings.ShowHubOnStartup;
+            ShowHubOnStartupToggle.Header = "Показывать главное меню при запуске";
+            ShowHubOnStartupToggle.OnContent = L.T("Vkl");
+            ShowHubOnStartupToggle.OffContent = L.T("Vykl");
+            ShowHubOnStartupToggle.Toggled += ShowHubOnStartupToggle_Toggled;
+            ShowHubOnStartupHint.Text = "При выключении приложение сразу открывает последний канал";
+
         }
 
         /// <summary>Автообновление — применяется сразу, персистится в настройках.</summary>
         private async void AutoUpdateToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.AutoUpdateEnabled = AutoUpdateToggle.IsOn;
+            await _settingsService.SaveAsync(_viewModel.AppSettings);
+        }
+
+        /// <summary>Главное меню (Hub Page) — применяется при следующем запуске.</summary>
+        private async void ShowHubOnStartupToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AppSettings.ShowHubOnStartup = ShowHubOnStartupToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 

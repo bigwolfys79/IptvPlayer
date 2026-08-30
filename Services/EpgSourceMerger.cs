@@ -109,7 +109,7 @@ public static class EpgSourceMerger
                 continue;
             }
 
-            var rawName = entries[0].ChannelName;
+            var rawName = entries[0].ChannelName ?? string.Empty;
             var normalized = EpgNameNormalizer.Normalize(rawName);
             if (string.IsNullOrEmpty(normalized))
             {

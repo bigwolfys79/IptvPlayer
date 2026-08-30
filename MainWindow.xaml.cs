@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Windows.Graphics;
 using IptvPlayer.Models;
 using IptvPlayer.Services;
@@ -23,6 +24,11 @@ public sealed partial class MainWindow : Window
     /// в частности, переключать настоящий полноэкранный режим ОС.
     /// </summary>
     public static MainWindow? Instance { get; private set; }
+
+    /// <summary>
+    /// Корневой Frame для навигации между Hub Page и MainPage.
+    /// </summary>
+    public Frame AppFrame => RootFrame;
 
     /// <summary>
     /// True, если сейчас активен системный полноэкранный presenter
@@ -99,8 +105,7 @@ public sealed partial class MainWindow : Window
             ShowFromTray,
             ExitFromTray);
 
-        // Navigate the root frame to the main page on startup.
-        RootFrame.Navigate(typeof(MainPage));
+        // Навигация перенесена в App.OnLaunched (HubPage или MainPage)
     }
 
     private bool _miniPlayer;
