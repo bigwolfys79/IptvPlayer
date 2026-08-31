@@ -2860,5 +2860,9 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Usilitel_SD.Text" xml:space="preserve">
     <value>SD-каналы: чистка + резкость</value>
   </data>
+
+  <data name="Usilitel_Render_Eks.Text" xml:space="preserve">
+    <value>Рендер-апскейл (эксперимент)</value>
+  </data>
 </root>
 

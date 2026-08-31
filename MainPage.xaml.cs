@@ -60,6 +60,9 @@ public sealed partial class MainPage : Page
     private readonly ChannelRepository _channelRepository;
     private readonly ILogger<MainPage> _logger;
 
+    // Рендер-путь frame server (экспериментальный апскейл, фаза 2).
+    private readonly FrameServerRenderer _frameServerRenderer;
+
     // Раньше здесь и в InitializeAsync() создавались ДВА разных EpgViewModel:
     // временный (в инициализаторе свойства ViewModel, с одноразовым
     // ChannelRepository "в никуда") и настоящий (в InitializeAsync, с
@@ -165,6 +168,8 @@ public sealed partial class MainPage : Page
         _channelRepository = services.GetRequiredService<ChannelRepository>();
         _epgService = services.GetRequiredService<EPGService>();
         _logger = services.GetRequiredService<ILogger<MainPage>>();
+        _frameServerRenderer = new FrameServerRenderer(
+            services.GetRequiredService<ILogger<FrameServerRenderer>>());
         ViewModel = services.GetRequiredService<MainPageViewModel>();
 
         // Мосты «ViewModel → представление» (этап 2 MVVM): VM меняет состояние,
@@ -176,13 +181,28 @@ public sealed partial class MainPage : Page
             // TryEnqueue SetMediaPlayer(null) выполнялся уже после Dispose —
             // медиа-движок доставал освобождённый плеер, процесс падал
             // при переключении канала.
+            void ApplyPlayer()
+            {
+                var player = Player.Player;
+                MediaPlayer.SetMediaPlayer(player);
+
+                // Рендер-путь frame server: привязка рендера к новому плееру.
+                // Старый плеер Stop() уже мог Dispos'ить — Detach обязателен.
+                _frameServerRenderer.Detach();
+                if (player != null &&
+                    ViewModel.AppSettings.FrameServerRender)
+                {
+                    _frameServerRenderer.Attach(FrameServerPanel, player);
+                }
+            }
+
             if (DispatcherQueue.HasThreadAccess)
             {
-                MediaPlayer.SetMediaPlayer(Player.Player);
+                ApplyPlayer();
             }
             else
             {
-                DispatcherQueue.TryEnqueue(() => MediaPlayer.SetMediaPlayer(Player.Player));
+                DispatcherQueue.TryEnqueue(ApplyPlayer);
             }
         };
         Player.ArchiveStateChanged += (s, e) =>
@@ -742,6 +762,15 @@ public sealed partial class MainPage : Page
         // Пресет улучшения картинки — отметка в меню кнопки и режим для
         // всех открываемых далее потоков (считывается в StartPlaybackAsync).
         Player.VideoUpscalerMode = VideoUpscaler.Normalize(savedSettings.VideoUpscaler);
+
+        // Рендер-апскейл (frame server): если включён в прошлой сессии —
+        // показываем панель; рендер привяжется при PlayerChanged первого
+        // запуска потока.
+        FrameServerPanel.Visibility = savedSettings.FrameServerRender
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        VideoOverlayFrameServerItem.IsChecked = savedSettings.FrameServerRender;
+        OverlayFrameServerItem.IsChecked = savedSettings.FrameServerRender;
 
         // Оверлей статистики — если был включён в прошлой сессии.
         if (savedSettings.StatsOverlayVisible)

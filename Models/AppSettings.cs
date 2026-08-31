@@ -98,6 +98,13 @@ public class AppSettings
     public string VideoUpscaler { get; set; } = "Off";
 
     /// <summary>
+    /// Экспериментальный рендер-путь «frame server»: плеер отдаёт кадры
+    /// событием, отрисовка в SwapChainPanel через Win2D. Требует пересоздания
+    /// плеера (переключение канала). По умолчанию выключен.
+    /// </summary>
+    public bool FrameServerRender { get; set; } = false;
+
+    /// <summary>
     /// За сколько минут до начала передачи показывать тост-напоминание.
     /// </summary>
     public int ReminderMinutes { get; set; } = 5;

@@ -10,6 +10,7 @@
     xmlns:controls="using:Microsoft.UI.Xaml.Controls"
     xmlns:ctk="using:CommunityToolkit.WinUI.Controls"
     xmlns:converters="using:IptvPlayer.Converters"
+    xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -436,6 +437,14 @@
                                         Stretch="Uniform"
                                         Visibility="{x:Bind ViewModel.SelectedChannel.IsPlaying, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
 
+                    <!-- Рендер-путь frame server (экспериментальный апскейл):
+                         кадры рисуются Win2D поверх MPE; сам MPE в этом режиме
+                         ничего не выводит (чёрный), панель его закрывает.
+                         Видимость управляется FrameServerItem_Click. -->
+                    <canvas:CanvasSwapChainPanel x:Name="FrameServerPanel"
+                                                 Grid.Row="0"
+                                                 Visibility="Collapsed" />
+
                     <!-- Баннер архива над видео убран — мешал просмотру. Информация
                          об архивной передаче и кнопка "В эфир" теперь в панелях
                          управления (WindowedVideoOverlay и полноэкранный оверлей),
@@ -640,6 +649,13 @@
                                 <RadioMenuFlyoutItem x:Name="UpscalerSdItem" Tag="SdUpscale"
                                                      GroupName="UpscalerMenu" Click="UpscalerItem_Click"
                                                      x:Uid="Usilitel_SD"/>
+                                <MenuFlyoutSeparator/>
+                                <!-- Экспериментальный рендер-путь: реальное
+                                     масштабирование под размер окна. Включение
+                                     пересоздаёт плеер (перезапуск канала). -->
+                                <ToggleMenuFlyoutItem x:Name="VideoOverlayFrameServerItem"
+                                                     Click="FrameServerItem_Click"
+                                                     x:Uid="Usilitel_Render_Eks"/>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
@@ -1223,6 +1239,10 @@
                                 <RadioMenuFlyoutItem x:Name="OverlayUpscalerSdItem" Tag="SdUpscale"
                                                      GroupName="OverlayUpscalerMenu" Click="UpscalerItem_Click"
                                                      x:Uid="Usilitel_SD"/>
+                                <MenuFlyoutSeparator/>
+                                <ToggleMenuFlyoutItem x:Name="OverlayFrameServerItem"
+                                                     Click="FrameServerItem_Click"
+                                                     x:Uid="Usilitel_Render_Eks"/>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
