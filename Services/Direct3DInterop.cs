@@ -131,7 +131,12 @@ namespace IptvPlayer.Services
             var qi = (delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)vtbl[0];
             IntPtr result = IntPtr.Zero;
             int hr = qi(unknown, &iid, &result);
-            Marshal.ThrowExceptionForHR(hr);
+            if (hr < 0)
+            {
+                // E_NOINTERFACE здесь отображается как InvalidCastException —
+                // логируем исходный HRESULT для диагностики.
+                throw new COMException($"QueryInterface {{${iid}}} failed", hr);
+            }
             return result;
         }
 
