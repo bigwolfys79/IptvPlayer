@@ -42,6 +42,7 @@ namespace IptvPlayer.Services
         private int _frameWidth, _frameHeight;
         private MediaPlayer? _player;
         private CanvasSwapChainPanel? _panel;
+        private int _errorCount;
 
         public FrameServerRenderer(ILogger logger)
         {
@@ -146,7 +147,12 @@ namespace IptvPlayer.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "FrameServerRenderer: ошибка рендера кадра.");
+                // Без лимита ошибка рендера сыпалась бы 30-60 раз в секунду.
+                if (_errorCount < 5)
+                {
+                    _errorCount++;
+                    _logger.LogWarning(ex, "FrameServerRenderer: ошибка рендера кадра ({N}).", _errorCount);
+                }
             }
             finally
             {
