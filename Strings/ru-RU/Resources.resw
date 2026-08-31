@@ -2840,5 +2840,25 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="HK_F1" xml:space="preserve">
     <value>Эта справка</value>
   </data>
+
+  <data name="Kachestvo_Kartinki.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Качество картинки</value>
+  </data>
+
+  <data name="Usilitel_Vyklyuch.Text" xml:space="preserve">
+    <value>Без обработки</value>
+  </data>
+
+  <data name="Usilitel_Rezkost.Text" xml:space="preserve">
+    <value>Резкость</value>
+  </data>
+
+  <data name="Usilitel_Chistka.Text" xml:space="preserve">
+    <value>Чистка артефактов + резкость</value>
+  </data>
+
+  <data name="Usilitel_SD.Text" xml:space="preserve">
+    <value>SD-апскейл (x2, нагружает CPU)</value>
+  </data>
 </root>
 

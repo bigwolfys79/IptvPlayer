@@ -13,7 +13,8 @@ namespace IptvPlayer.Services
         string? AudioNormalization,
         int ReadAheadSeconds,
         int VodReadAheadSeconds,
-        bool DiagnosticProxy = false);
+        bool DiagnosticProxy = false,
+        string? VideoUpscaler = null);
 
     public interface IStreamService
     {
@@ -30,6 +31,13 @@ namespace IptvPlayer.Services
         /// (переключение режима в настройках).
         /// </summary>
         void ApplyAudioFilters(MediaPlayer? player, string? mode);
+
+        /// <summary>
+        /// Применяет пресет улучшения картинки к уже играющему плееру
+        /// (кнопка «Качество картинки»). Для плееров без FFmpeg-источника
+        /// ничего не делает.
+        /// </summary>
+        void ApplyVideoFilters(MediaPlayer? player, string? mode);
 
         /// <summary>
         /// Снимок параметров потока, открытого последним CreatePlayerAsync

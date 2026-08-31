@@ -739,6 +739,10 @@ public sealed partial class MainPage : Page
         // Режим отображения видео (вписать/растянуть/обрезать).
         ApplyVideoStretch();
 
+        // Пресет улучшения картинки — отметка в меню кнопки и режим для
+        // всех открываемых далее потоков (считывается в StartPlaybackAsync).
+        Player.VideoUpscalerMode = VideoUpscaler.Normalize(savedSettings.VideoUpscaler);
+
         // Оверлей статистики — если был включён в прошлой сессии.
         if (savedSettings.StatsOverlayVisible)
         {

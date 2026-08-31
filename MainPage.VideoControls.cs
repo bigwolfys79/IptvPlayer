@@ -183,6 +183,35 @@ public sealed partial class MainPage : Page
         ToolTipService.SetToolTip(OverlayStretchButton, tooltip);
     }
 
+    // ===================== Улучшение картинки (апскейлер) =====================
+
+    /// <summary>
+    /// Перед открытием меню кнопки отмечаем текущий пресет: RadioMenuFlyoutItem
+    /// не синхронизируется сам — группировка даёт только взаимоисключающий выбор.
+    /// </summary>
+    private void UpscalerMenu_Opening(object? sender, object e)
+    {
+        var mode = Player.VideoUpscalerMode;
+        UpscalerOffItem.IsChecked = mode == VideoUpscaler.Off;
+        UpscalerSharpItem.IsChecked = mode == VideoUpscaler.Sharp;
+        UpscalerDenoiseItem.IsChecked = mode == VideoUpscaler.Denoise;
+        UpscalerSdItem.IsChecked = mode == VideoUpscaler.SdUpscale;
+
+        OverlayUpscalerOffItem.IsChecked = UpscalerOffItem.IsChecked;
+        OverlayUpscalerSharpItem.IsChecked = UpscalerSharpItem.IsChecked;
+        OverlayUpscalerDenoiseItem.IsChecked = UpscalerDenoiseItem.IsChecked;
+        OverlayUpscalerSdItem.IsChecked = UpscalerSdItem.IsChecked;
+    }
+
+    private async void UpscalerItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Microsoft.UI.Xaml.Controls.MenuFlyoutItem item &&
+            item.Tag is string mode)
+        {
+            await Player.SetVideoUpscalerAsync(mode);
+        }
+    }
+
     // ===================== Таймер сна =====================
 
     private async void SleepTimerButton_Click(object sender, RoutedEventArgs e)

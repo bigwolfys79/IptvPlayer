@@ -99,6 +99,50 @@ namespace IptvPlayer.Services
             }
         }
 
+        /// <summary>
+        /// Применяет пресет улучшения картинки к уже играющему плееру
+        /// (кнопка «Качество картинки»). Живая смена видео-фильтров — тот же
+        /// механизм, что у аудио: граф FFmpeg перестраивается без разрыва
+        /// потока. Для плееров без FFmpeg-источника ничего не делает.
+        /// </summary>
+        public void ApplyVideoFilters(MediaPlayer? player, string? mode)
+        {
+            if (player is null || !LiveSources.TryGetValue(player, out var source))
+            {
+                return;
+            }
+
+            var filters = VideoUpscaler.GetFilters(mode);
+            try
+            {
+                if (string.IsNullOrEmpty(filters))
+                {
+                    source.ClearFFmpegVideoFilters();
+                }
+                else
+                {
+                    source.SetFFmpegVideoFilters(filters);
+                }
+                CurrentVideoFilter = filters;
+                _logger.LogInformation(
+                    "Применён пресет улучшения картинки {Mode}: {Filters}",
+                    mode, filters ?? "(выкл)");
+            }
+            catch (Exception ex)
+            {
+                // Частая причина — xbr требует чётных размеров входа: канал
+                // не подходит под пресет, оставляем прежние фильтры.
+                _logger.LogWarning(ex,
+                    "Не удалось применить видео-фильтры {Mode} ({Filters}) к текущему потоку.",
+                    mode, filters);
+            }
+        }
+
+        /// <summary>
+        /// Видео-фильтры, действующие на последнем открытом потоке (для Ctrl+J).
+        /// </summary>
+        public string? CurrentVideoFilter { get; private set; }
+
         public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig streamConfig, bool isVod = false)
         {
             MediaPlayer player;
@@ -138,6 +182,15 @@ namespace IptvPlayer.Services
                 if (!string.IsNullOrEmpty(normFilter))
                 {
                     ffmpegConfig.Audio.FFmpegAudioFilters = normFilter;
+                }
+
+                // Улучшение картинки (кнопка «Качество картинки»): цепочка
+                // видео-фильтров FFmpeg при открытии потока.
+                var upscalerMode = VideoUpscaler.Normalize(streamConfig.VideoUpscaler);
+                var videoFilter = VideoUpscaler.GetFilters(upscalerMode);
+                if (!string.IsNullOrEmpty(videoFilter))
+                {
+                    ffmpegConfig.Video.FFmpegVideoFilters = videoFilter;
                 }
 
                 // Упреждающая буферизация: провайдер отдаёт HLS сегментами по
