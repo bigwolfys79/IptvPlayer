@@ -192,7 +192,9 @@ public sealed partial class MainPage : Page
                 if (player != null &&
                     ViewModel.AppSettings.FrameServerRender)
                 {
-                    _frameServerRenderer.Attach(FrameServerPanel, player);
+                    var diag = _streamService.CurrentDiagnostics;
+                    _frameServerRenderer.Attach(FrameServerPanel, player,
+                        diag?.VideoWidth ?? 0, diag?.VideoHeight ?? 0);
                 }
             }
 
