@@ -23,8 +23,8 @@ namespace IptvPlayer.Services
     {
         // IID_IDXGIDevice {54EC77FA-1377-44E6-8C32-88FD5F44C84C}
         private static readonly Guid IidIdxgiDevice = new("54EC77FA-1377-44E6-8C32-88FD5F44C84C");
-        // IID_IDXGISurface {CAF5CFA4-D7CB-42AB-9DB1-1E0EB33E5AF2}
-        private static readonly Guid IidIdxgiSurface = new("CAF5CFA4-D7CB-42AB-9DB1-1E0EB33E5AF2");
+        // IID_IDXGISurface {CAFCB56C-6AC3-4889-BF47-9E23BBD260EC}
+        private static readonly Guid IidIdxgiSurface = new("CAFCB56C-6AC3-4889-BF47-9E23BBD260EC");
 
         private const uint D3D11CreateDeviceBgraSupport = 0x20;
         private const int DxgiFormatB8G8R8A8UNorm = 87;
