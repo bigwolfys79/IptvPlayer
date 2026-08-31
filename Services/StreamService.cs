@@ -210,6 +210,16 @@ namespace IptvPlayer.Services
                         normFilter, streamConfig.AudioNormalization);
                 }
                 CurrentDiagnostics = BuildDiagnostics(ffmpegSource, ffmpegConfig, normFilter);
+
+                var videoStreams = ffmpegSource.VideoStreams.ToList();
+                var audioStreams = ffmpegSource.AudioStreams.ToList();
+                _logger.LogInformation(
+                    "Поток открыт: видео дорожек {VCount}, аудио дорожек {ACount}{AudioDetail}.",
+                    videoStreams.Count, audioStreams.Count,
+                    audioStreams.Count > 0
+                        ? " — " + string.Join(", ", audioStreams.Select(a =>
+                            $"{a.CodecName} {a.ChannelLayout} {a.SampleRate}Hz {a.Bitrate/1000}kbps"))
+                        : " (аудио не обнаружено)");
             }
             catch (Exception ex)
             {
