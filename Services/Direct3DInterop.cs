@@ -51,8 +51,9 @@ namespace IptvPlayer.Services
         /// </summary>
         public static (IntPtr NativeDevice, IDirect3DDevice Device) CreateDevice()
         {
-            // Feature level 11.0; driverType 1 = D3D_DRIVER_TYPE_HARDWARE.
-            var fl = stackalloc uint[] { 0xa000, 0x9100, 0x9000 }; // 11.0, 10.1, 10.0
+            // Уровни фич: 11.0 = 0xB000, 10.1 = 0xA100, 10.0 = 0xA000;
+            // driverType 1 = D3D_DRIVER_TYPE_HARDWARE.
+            var fl = stackalloc uint[] { 0xb000, 0xa100, 0xa000 };
             int hr = D3D11CreateDevice(
                 IntPtr.Zero, 1, 0, D3D11CreateDeviceBgraSupport,
                 (IntPtr)fl, 3, 7, out var device, IntPtr.Zero, out var context);
