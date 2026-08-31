@@ -2860,5 +2860,9 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Usilitel_SD.Text" xml:space="preserve">
     <value>SD channels: denoise + sharpen</value>
   </data>
+
+  <data name="Usilitel_Render_Eks.Text" xml:space="preserve">
+    <value>Render upscale (experimental)</value>
+  </data>
 </root>
 

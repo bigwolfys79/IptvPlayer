@@ -405,7 +405,8 @@ public partial class PlayerViewModel : ObservableObject
                 streamSettings.ReadAheadSeconds,
                 streamSettings.VodReadAheadSeconds,
                 streamSettings.DiagnosticStreamProxy,
-                streamSettings.VideoUpscaler);
+                streamSettings.VideoUpscaler,
+                streamSettings.FrameServerRender);
             try
             {
                 var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod);

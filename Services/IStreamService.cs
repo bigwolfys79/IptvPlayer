@@ -14,7 +14,8 @@ namespace IptvPlayer.Services
         int ReadAheadSeconds,
         int VodReadAheadSeconds,
         bool DiagnosticProxy = false,
-        string? VideoUpscaler = null);
+        string? VideoUpscaler = null,
+        bool FrameServer = false);
 
     public interface IStreamService
     {

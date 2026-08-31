@@ -155,6 +155,11 @@ namespace IptvPlayer.Services
             try
             {
                 player = new MediaPlayer();
+
+                // Режим frame server (экспериментальный рендер-апскейл):
+                // медиа-движок ничего не рисует, кадры отдаёт событием.
+                // Должно быть выставлено ДО назначения Source.
+                player.IsVideoFrameServerEnabled = streamConfig.FrameServer;
             }
             catch (Exception ex)
             {

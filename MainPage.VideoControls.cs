@@ -212,6 +212,36 @@ public sealed partial class MainPage : Page
         }
     }
 
+    // ===================== Рендер-апскейл (frame server, эксперимент) =====================
+
+    /// <summary>
+    /// Переключение рендер-пути frame server: плеер создаётся с флагом
+    /// IsVideoFrameServerEnabled при открытии потока, поэтому смена режима
+    /// требует перезапуска текущего канала. Отрисовка — FrameServerRenderer
+    /// в CanvasSwapChainPanel поверх MediaPlayerElement.
+    /// </summary>
+    private async void FrameServerItem_Click(object sender, RoutedEventArgs e)
+    {
+        var enable = !ViewModel.AppSettings.FrameServerRender;
+        ViewModel.AppSettings.FrameServerRender = enable;
+        VideoOverlayFrameServerItem.IsChecked = enable;
+        OverlayFrameServerItem.IsChecked = enable;
+        FrameServerPanel.Visibility = enable ? Visibility.Visible : Visibility.Collapsed;
+
+        _settingsSaveDebounceTimer.Stop();
+        _settingsSaveDebounceTimer.Start();
+
+        _logger.LogInformation("Рендер-апскейл (frame server): {State}.", enable ? "вкл" : "выкл");
+
+        // Перезапускаем текущий канал: флаг IsVideoFrameServerEnabled
+        // задаётся при создании плеера и в обе стороны требует
+        // пересоздания (PlayerChanged привяжет/отвяжет рендер сам).
+        if (ViewModel.SelectedChannel is { } channel)
+        {
+            await ViewModel.PlayChannelAsync(channel);
+        }
+    }
+
     // ===================== Таймер сна =====================
 
     private async void SleepTimerButton_Click(object sender, RoutedEventArgs e)
