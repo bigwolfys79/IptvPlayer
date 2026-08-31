@@ -124,14 +124,20 @@ namespace IptvPlayer.Services
                     source.SetFFmpegVideoFilters(filters);
                 }
                 CurrentVideoFilter = filters;
+                // Readback: подтверждаем, что источник хранит именно наши
+                // фильтры (сам граф строится при следующем кадре; при ошибке
+                // сборки FFmpegInteropX молча откатывается к кадрам без
+                // фильтра — других подтверждений нет).
+                var readback = source.CurrentVideoStream is { } vs
+                    ? source.GetFFmpegVideoFilters(vs)
+                    : null;
                 _logger.LogInformation(
-                    "Применён пресет улучшения картинки {Mode}: {Filters}",
-                    mode, filters ?? "(выкл)");
+                    "Применён пресет улучшения картинки {Mode}: {Filters} (подтверждено источником: {Readback})",
+                    mode, filters ?? "(выкл)",
+                    string.IsNullOrEmpty(readback) ? "(выкл)" : readback);
             }
             catch (Exception ex)
             {
-                // Частая причина — xbr требует чётных размеров входа: канал
-                // не подходит под пресет, оставляем прежние фильтры.
                 _logger.LogWarning(ex,
                     "Не удалось применить видео-фильтры {Mode} ({Filters}) к текущему потоку.",
                     mode, filters);

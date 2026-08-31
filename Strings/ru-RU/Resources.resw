@@ -2858,7 +2858,7 @@ Serilog (логирование), Inno Setup (установщик)</value>
   </data>
 
   <data name="Usilitel_SD.Text" xml:space="preserve">
-    <value>SD-апскейл (x2, нагружает CPU)</value>
+    <value>SD-каналы: чистка + резкость</value>
   </data>
 </root>
 
