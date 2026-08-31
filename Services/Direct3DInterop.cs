@@ -37,13 +37,13 @@ namespace IptvPlayer.Services
             IntPtr featureLevels, uint featureLevelCount, uint sdkVersion,
             out IntPtr device, IntPtr featureLevelOut, out IntPtr immediateContext);
 
-        [DllImport("d3d11.dll", EntryPoint = "CreateDirect3D11DeviceFromDXGIBuffer", PreserveSig = true)]
-        private static extern int CreateDirect3D11DeviceFromDXGIBuffer(
-            IntPtr dxgiSurface, out IntPtr inspectable);
-
         [DllImport("d3d11.dll", EntryPoint = "CreateDirect3D11DeviceFromDXGIDevice", PreserveSig = true)]
         private static extern int CreateDirect3D11DeviceFromDXGIDevice(
             IntPtr dxgiDevice, out IntPtr inspectable);
+
+        [DllImport("d3d11.dll", EntryPoint = "CreateDirect3D11SurfaceFromDXGISurface", PreserveSig = true)]
+        private static extern int CreateDirect3D11SurfaceFromDXGISurface(
+            IntPtr dxgiSurface, out IntPtr inspectable);
 
         /// <summary>
         /// Создаёт D3D11-девайс и возвращает (нативный девайс, IDirect3DDevice).
@@ -103,8 +103,8 @@ namespace IptvPlayer.Services
                 var dxgiSurface = QueryInterfaceRaw(texture, IidIdxgiSurface);
                 try
                 {
-                    hr = CreateDirect3D11DeviceFromDXGIBuffer(dxgiSurface, out var inspectable);
-                    Marshal.ThrowExceptionForHR(hr);
+                    var wrapHr = CreateDirect3D11SurfaceFromDXGISurface(dxgiSurface, out var inspectable);
+                    Marshal.ThrowExceptionForHR(wrapHr);
                     try
                     {
                         return WinRT.MarshalInspectable<IDirect3DSurface>.FromAbi(inspectable);
