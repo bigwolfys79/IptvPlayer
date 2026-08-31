@@ -43,6 +43,8 @@ namespace IptvPlayer.Services
         private MediaPlayer? _player;
         private CanvasSwapChainPanel? _panel;
         private int _errorCount;
+        private int _streamWidth, _streamHeight;
+        private bool _loggedScaleInfo;
 
         public FrameServerRenderer(ILogger logger)
         {
@@ -51,8 +53,10 @@ namespace IptvPlayer.Services
 
         /// <summary>
         /// Подключает рендер к панели и играющему плееру. UI-поток.
+        /// streamWidth/streamHeight — разрешение потока (для лога «что → куда»).
         /// </summary>
-        public void Attach(CanvasSwapChainPanel panel, MediaPlayer player)
+        public void Attach(CanvasSwapChainPanel panel, MediaPlayer player,
+            int streamWidth = 0, int streamHeight = 0)
         {
             Detach();
 
@@ -64,10 +68,15 @@ namespace IptvPlayer.Services
 
             _panel = panel;
             _player = player;
+            _loggedScaleInfo = false;
+            _streamWidth = streamWidth;
+            _streamHeight = streamHeight;
             RecreateSwapChain();
             panel.SizeChanged += Panel_SizeChanged;
             player.VideoFrameAvailable += Player_VideoFrameAvailable;
-            _logger.LogInformation("FrameServerRenderer: подключён к плееру.");
+            _logger.LogInformation(
+                "FrameServerRenderer: подключён к плееру (поток {SW}x{SH}).",
+                streamWidth, streamHeight);
         }
 
         /// <summary>
@@ -184,6 +193,17 @@ namespace IptvPlayer.Services
                 _frameHeight = h;
                 // Сообщаем медиа-движку размер приёмника.
                 sender.SetSurfaceSize(new Size(w, h));
+            }
+
+            // Однократно логируем, происходит ли апскейл и во сколько раз:
+            // кадр копируется в приёмник размером окна, масштабирует движок.
+            if (!_loggedScaleInfo && _streamWidth > 0)
+            {
+                _loggedScaleInfo = true;
+                var scale = (double)w / _streamWidth;
+                _logger.LogInformation(
+                    "Рендер-апскейл: поток {SW}x{SH} → окно {W}x{H} (×{Scale:F2}).",
+                    _streamWidth, _streamHeight, w, h, scale);
             }
 
             // Кадр: медиа-движок → наша текстура (GPU).
