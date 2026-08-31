@@ -49,6 +49,9 @@
 
   <ItemGroup>
     <Content Include="Assets\SplashScreen.scale-200.png" />
+    <!-- Шейдеры рендер-апскейла (фаза 2) — скомпилированные fxc, sources рядом. -->
+    <Content Include="Assets\Shaders\Upscale.cso" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Shaders\Sharpen.cso" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\Square150x150Logo.scale-200.png" />
     <Content Include="Assets\Square44x44Logo.scale-200.png" />
