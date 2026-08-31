@@ -2858,7 +2858,7 @@ Serilog (logging), Inno Setup (installer)</value>
   </data>
 
   <data name="Usilitel_SD.Text" xml:space="preserve">
-    <value>SD upscale (2x, CPU heavy)</value>
+    <value>SD channels: denoise + sharpen</value>
   </data>
 </root>
 

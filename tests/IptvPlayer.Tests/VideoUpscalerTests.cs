@@ -26,11 +26,30 @@ public class VideoUpscalerTests
     [Theory]
     [InlineData(VideoUpscaler.Sharp, "unsharp")]
     [InlineData(VideoUpscaler.Denoise, "hqdn3d")]
-    [InlineData(VideoUpscaler.SdUpscale, "xbr")]
+    [InlineData(VideoUpscaler.SdUpscale, "unsharp")]
     public void GetFilters_KnownModes_ReturnFilterChain(string mode, string expectedFragment)
     {
         var filters = VideoUpscaler.GetFilters(mode);
         Assert.NotNull(filters);
         Assert.Contains(expectedFragment, filters);
+    }
+
+    [Fact]
+    public void GetFilters_AllModes_PreserveFrameSize()
+    {
+        // Разрешение выхода в FFmpegInteropX зафиксировано дескриптором
+        // потока — фильтры с изменением размера (scale, xbr и т.п.)
+        // безусловно сжимаются обратно и не имеют эффекта.
+        foreach (var mode in VideoUpscaler.AllModes)
+        {
+            var filters = VideoUpscaler.GetFilters(mode);
+            if (filters == null)
+            {
+                continue;
+            }
+            Assert.DoesNotContain("xbr", filters);
+            Assert.DoesNotContain("hqx", filters);
+            Assert.DoesNotContain("scale=", filters);
+        }
     }
 }
