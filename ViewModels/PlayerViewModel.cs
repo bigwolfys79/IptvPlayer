@@ -404,7 +404,8 @@ public partial class PlayerViewModel : ObservableObject
                 streamSettings.AudioNormalization,
                 streamSettings.ReadAheadSeconds,
                 streamSettings.VodReadAheadSeconds,
-                streamSettings.DiagnosticStreamProxy);
+                streamSettings.DiagnosticStreamProxy,
+                streamSettings.VideoUpscaler);
             try
             {
                 var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod);
@@ -835,6 +836,45 @@ public partial class PlayerViewModel : ObservableObject
         _isMuted = false;
         _volumeBeforeMute = null;
         OnPropertyChanged(nameof(IsMuted));
+    }
+
+    // Текущий пресет улучшения картинки (для отметки в меню кнопки).
+    private string _videoUpscaler = VideoUpscaler.Off;
+
+    public string VideoUpscalerMode
+    {
+        get => _videoUpscaler;
+        set => SetProperty(ref _videoUpscaler, value);
+    }
+
+    /// <summary>
+    /// Смена пресета улучшения картинки (кнопка «Качество картинки»):
+    /// применяется живьём к играющему плееру и сохраняется в настройках —
+    /// следующие каналы открываются уже с выбранным пресетом.
+    /// </summary>
+    public async Task SetVideoUpscalerAsync(string mode)
+    {
+        var normalized = VideoUpscaler.Normalize(mode);
+        if (normalized == _videoUpscaler && normalized == VideoUpscaler.Off)
+        {
+            // Повторный выбор Off — экономим запись настроек.
+            _streamService.ApplyVideoFilters(Player, normalized);
+            return;
+        }
+
+        VideoUpscalerMode = normalized;
+        _streamService.ApplyVideoFilters(Player, normalized);
+
+        try
+        {
+            var settings = await _settingsService.LoadAsync();
+            settings.VideoUpscaler = normalized;
+            await _settingsService.SaveAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось сохранить пресет улучшения картинки.");
+        }
     }
 
     private async void OnMediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)

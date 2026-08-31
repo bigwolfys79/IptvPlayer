@@ -89,6 +89,15 @@ public class AppSettings
     public string AudioNormalization { get; set; } = "Dynamic";
 
     /// <summary>
+    /// Улучшение картинки (видео-фильтры FFmpeg): "Off" (без обработки),
+    /// "Sharp" (резкость), "Denoise" (чистка артефактов + резкость) или
+    /// "SdUpscale" (xbr x2 + чистка + резкость, для SD-каналов). Применяется
+    /// кнопкой «Качество картинки» в видео-оверлее, меняется живьём без
+    /// перезапуска потока. По умолчанию — Off.
+    /// </summary>
+    public string VideoUpscaler { get; set; } = "Off";
+
+    /// <summary>
     /// За сколько минут до начала передачи показывать тост-напоминание.
     /// </summary>
     public int ReminderMinutes { get; set; } = 5;

@@ -2840,5 +2840,25 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="HK_F1" xml:space="preserve">
     <value>This help</value>
   </data>
+
+  <data name="Kachestvo_Kartinki.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Picture quality</value>
+  </data>
+
+  <data name="Usilitel_Vyklyuch.Text" xml:space="preserve">
+    <value>No processing</value>
+  </data>
+
+  <data name="Usilitel_Rezkost.Text" xml:space="preserve">
+    <value>Sharpness</value>
+  </data>
+
+  <data name="Usilitel_Chistka.Text" xml:space="preserve">
+    <value>Denoise + sharpness</value>
+  </data>
+
+  <data name="Usilitel_SD.Text" xml:space="preserve">
+    <value>SD upscale (2x, CPU heavy)</value>
+  </data>
 </root>
 
