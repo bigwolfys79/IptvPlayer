@@ -157,7 +157,6 @@ namespace IptvPlayer.Services
                 _panel.SwapChain = null;
                 _panel = null;
             }
-            _recreateDebounce?.Stop();
         }
 
         public void Dispose() => Detach();
@@ -170,36 +169,16 @@ namespace IptvPlayer.Services
             }
         }
 
-        // Дебаунс пересоздания свапчейна: при входе/выходе из фулскрина XAML
-        // шлёт два SizeChanged подряд (~4 мс) — без дебаунса свапчейн
-        // создавался ДВАЖДЫ (промежуточный 1904x1013, затем финальный
-        // 2560x1438), каждое создание ~15 МБ буферов + D3D-аллокации на
-        // UI-потоке. 50 мс не видны глазу (старый свапчейн временно
-        // масштабируется панелью), а лишнее создание исчезает.
-        private DispatcherQueueTimer? _recreateDebounce;
+        // Без дебаунса: замеры показали, что создание свапчейна стоит 1–9 мс
+        // (даже 2560x1438), поэтому двойное создание при двух SizeChanged
+        // подряд дешевле, чем любая задержка пересоздания. Дебаунс 50 мс
+        // проверялся и убран: он добавлял 50 мс к ощущаемому развороту.
         // Момент пересоздания свапчейна: для лога «первый кадр после
         // пересоздания» — отделяет стоимость D3D-создания от ожидания
         // первого кадра медиа-движка при объективной проверке разворота.
         private System.Diagnostics.Stopwatch? _recreatedAt;
 
         private void RecreateSwapChain()
-        {
-            var panel = _panel;
-            if (panel is null)
-            {
-                return;
-            }
-
-            _recreateDebounce ??= panel.DispatcherQueue.CreateTimer();
-            _recreateDebounce.Interval = TimeSpan.FromMilliseconds(50);
-            // IsRepeating=false: один тик после последнего SizeChanged.
-            _recreateDebounce.IsRepeating = false;
-            _recreateDebounce.Tick -= RecreateDebounce_Tick;
-            _recreateDebounce.Tick += RecreateDebounce_Tick;
-            _recreateDebounce.Start();
-        }
-
-        private void RecreateDebounce_Tick(DispatcherQueueTimer sender, object args)
         {
             RecreateSwapChainCore();
         }
