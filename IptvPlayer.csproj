@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
@@ -6,7 +6,7 @@
     <RootNamespace>IptvPlayer</RootNamespace>
     <!-- D3D11-интероп рендер-пути frame server (Services/Direct3DInterop.cs) -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>1.14.0</Version>
+    <Version>1.15.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
@@ -97,9 +97,13 @@
     <!-- Офлайн-генератор лицензий (Tools/LicenseGenerator) — отдельный
          проект разработчика: без исключения его Program.cs и obj\** из
          глоба исходников ломают сборку приложения (дубли атрибутов
-         сборки, конфликт двух точек входа). -->
+         сборки, конфликт двух точек входа). Tools/LicenseGeneratorGui —
+         WPF-генератор: его .xaml без Page-исключения подхватывает глоб
+         **/*.xaml от WinUI. -->
     <Compile Remove="Tools\**" />
     <None Remove="Tools\**" />
+    <Page Remove="Tools\**" />
+    <ApplicationDefinition Remove="Tools\**" />
   </ItemGroup>
 
   <!-- dotnet publish в unpackaged-режиме (Release для Inno Setup) не

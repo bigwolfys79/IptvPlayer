@@ -298,9 +298,6 @@
             <Border.RenderTransform>
                 <CompositeTransform x:Name="FlyoutTransform" ScaleX="1" ScaleY="1"/>
             </Border.RenderTransform>
-            <Border.Shadow>
-                <ThemeShadow x:Name="FlyoutShadow"/>
-            </Border.Shadow>
             <ScrollViewer x:Name="FlyoutScroll" VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="FlyoutContent" Spacing="2"/>
             </ScrollViewer>

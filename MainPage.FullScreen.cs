@@ -44,9 +44,16 @@ public sealed partial class MainPage
         _isFullScreen = enable;
         Serilog.Log.Information("FullScreen: {Action}", enable ? "вход в полноэкранный режим" : "выход из полноэкранного режима");
 
+        // Диагностика отставания видео при смене фулскрина: замеряем шаги до
+        // момента, когда панель видео получит новый размер (в лог рендерера
+        // придёт «свапчейн ...»). Временно.
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var swTotal = System.Diagnostics.Stopwatch.StartNew();
+
         // Presenter переключается первым и в отеле от остальной логики:
         // если что-то ниже бросит исключение, окно всё равно развернётся.
         MainWindow.Instance?.SetOsFullScreen(enable);
+        Serilog.Log.Information("FullScreen-DIAG: presenter {Ms:F0} мс", sw.Elapsed.TotalMilliseconds);
 
         // Смена presenter'а иногда оставляет видео-остров со смещённой
         // компоновкой (видео рисуется не там, где элемент): пересобираем
@@ -54,6 +61,7 @@ public sealed partial class MainPage
         // воспроизведение не прерывается, только мгновенная перерисовка.
         ForceVideoRelayout();
 
+        sw.Restart();
         if (enable)
         {
             // Запоминаем, была ли EPG открыта, чтобы вернуть как было при выходе.
@@ -91,13 +99,17 @@ public sealed partial class MainPage
             // Слайдеры громкости обоих оверлеев показывают текущую громкость.
             SyncVolumeSliders(Player.Player?.Volume ?? Player.LastUserVolume ?? 1.0);
 
+            Serilog.Log.Information("FullScreen-DIAG: колонки/оверлеи {Ms:F0} мс", sw.Elapsed.TotalMilliseconds);
+
             // Сначала показываем оверлей. Группированный источник для оверлейного
             // списка пересобираем ЗДЕСЬ: в оконном режиме RefreshOverlayChannelGroups
             // по FilterChanged пропускается при скрытом оверлее (оптимизация
             // больших каталогов) — при входе в fullscreen нужен свежий.
             _lastOverlayPointerPosition = new Windows.Foundation.Point(-1, -1);
             ShowFullScreenOverlay();
+            sw.Restart();
             RefreshOverlayChannelGroups();
+            Serilog.Log.Information("FullScreen-DIAG: RefreshOverlayChannelGroups {Ms:F0} мс", sw.Elapsed.TotalMilliseconds);
 
             // БИСЕКЦИЯ, шаг 2: входной нудж включён (проверяем связку).
             _ = NudgePointerDelayedAsync();
@@ -124,6 +136,8 @@ public sealed partial class MainPage
             HideFullScreenOverlay(immediate: true);
             _lastWindowedOverlayPointerPosition = new Windows.Foundation.Point(-1, -1);
         }
+
+        Serilog.Log.Information("FullScreen-DIAG: итого {Ms:F0} мс", swTotal.Elapsed.TotalMilliseconds);
     }
 
     /// <summary>

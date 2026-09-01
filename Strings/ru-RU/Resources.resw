@@ -2672,6 +2672,15 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="License_FileReadFailed" xml:space="preserve">
     <value>Не удалось прочитать файл лицензии.</value>
   </data>
+  <data name="License_Activation_Title" xml:space="preserve">
+    <value>Активация лицензии</value>
+  </data>
+  <data name="License_Activation_Message" xml:space="preserve">
+    <value>Купленная лицензия приходит письмом. Вставьте ключ в поле ниже или импортируйте .lic-файл — новая лицензия заменит прежнюю.</value>
+  </data>
+  <data name="License_Manage_Button" xml:space="preserve">
+    <value>Активация лицензии…</value>
+  </data>
   <data name="Dobroe_Utro" xml:space="preserve">
     <value>Доброе утро</value>
   </data>
