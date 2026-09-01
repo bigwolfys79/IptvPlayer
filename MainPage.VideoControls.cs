@@ -149,7 +149,11 @@ public sealed partial class MainPage : Page
     /// <summary>Применяет сохранённый режим отображения (старт приложения).</summary>
     private void ApplyVideoStretch()
     {
-        MediaPlayer.Stretch = ParseStretch(ViewModel.AppSettings.VideoStretch);
+        var stretch = ParseStretch(ViewModel.AppSettings.VideoStretch);
+        MediaPlayer.Stretch = stretch;
+        // При frame server-рендере кадр рисует FrameServerRenderer, режим
+        // применяем и там (иначе кнопка работает только на обычном пути).
+        _frameServerRenderer.VideoStretchMode = stretch;
         UpdateStretchButtons();
     }
 
@@ -163,6 +167,7 @@ public sealed partial class MainPage : Page
         };
 
         MediaPlayer.Stretch = next;
+        _frameServerRenderer.VideoStretchMode = next;
         ViewModel.AppSettings.VideoStretch = next.ToString();
         UpdateStretchButtons();
 

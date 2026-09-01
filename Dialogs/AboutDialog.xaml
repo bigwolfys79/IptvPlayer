@@ -56,6 +56,7 @@
         <!-- Кнопки (всегда видны внизу, не уезжают при прокрутке) -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
             <Button x:Name="CheckUpdateButton" Click="CheckUpdateButton_Click"/>
+            <Button x:Name="LicenseButton" Click="LicenseButton_Click"/>
             <Button x:Name="OpenLogsButton" Click="OpenLogsButton_Click"/>
         </StackPanel>
     </Grid>

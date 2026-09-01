@@ -2672,6 +2672,15 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="License_FileReadFailed" xml:space="preserve">
     <value>Could not read the license file.</value>
   </data>
+  <data name="License_Activation_Title" xml:space="preserve">
+    <value>License activation</value>
+  </data>
+  <data name="License_Activation_Message" xml:space="preserve">
+    <value>The purchased license arrives by email. Paste the key into the field below or import a .lic file — the new license replaces the old one.</value>
+  </data>
+  <data name="License_Manage_Button" xml:space="preserve">
+    <value>License activation…</value>
+  </data>
   <data name="BackToHub_ToolTip" xml:space="preserve">
     <value>Back</value>
   </data>

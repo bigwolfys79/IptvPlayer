@@ -349,16 +349,27 @@ public sealed partial class HubPage : Page
 
     private void SetupFlyoutShadow()
     {
-        // ThemeShadow рендерится только при наличии приёмников и ненулевом
-        // смещении по Z у отбрасывающего элемента.
+        // ThemeShadow не позволяет использовать предок элемента как
+        // приёмник (RootGrid — предок FlyoutBorder), поэтому применяем
+        // тень через Composition DropShadow API (отдельный SpriteVisual).
         try
         {
-            FlyoutBorder.Translation = new System.Numerics.Vector3(0, 0, 32);
-            FlyoutShadow.Receivers.Add(RootGrid);
+            var visual = ElementCompositionPreview.GetElementVisual(FlyoutBorder);
+            var compositor = visual.Compositor;
+            var dropShadow = compositor.CreateDropShadow();
+            dropShadow.Offset = new System.Numerics.Vector3(0, 8, 0);
+            dropShadow.BlurRadius = 32;
+            dropShadow.Opacity = 0.5f;
+            dropShadow.Color = Windows.UI.Color.FromArgb(255, 0, 0, 0);
+
+            var shadowVisual = compositor.CreateSpriteVisual();
+            shadowVisual.Shadow = dropShadow;
+            shadowVisual.Size = new System.Numerics.Vector2((float)FlyoutBorder.ActualWidth, (float)FlyoutBorder.ActualHeight);
+            ElementCompositionPreview.SetElementChildVisual(FlyoutBorder, shadowVisual);
         }
         catch (Exception ex)
         {
-            Serilog.Log.Warning(ex, "HubPage: ThemeShadow не настроен, тень отключена");
+            Serilog.Log.Warning(ex, "HubPage: Composition DropShadow не настроен, тень отключена");
         }
     }
 

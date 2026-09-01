@@ -27,18 +27,34 @@ public sealed partial class LicenseExpiredDialog : UserControl
         InitializeComponent();
     }
 
-    /// <summary>Показывает диалог; true — лицензия активирована, запуск продолжать.</summary>
-    public async Task<bool> ShowAsync(XamlRoot xamlRoot, int daysRemaining = 0)
+    /// <summary>
+    /// Показывает диалог; true — лицензия активирована, запуск продолжать.
+    /// <paramref name="manageMode"/> — принудительный вызов из «О программе»:
+    /// заголовок про активацию, а не про истёкший триал.
+    /// </summary>
+    public async Task<bool> ShowAsync(XamlRoot xamlRoot, int daysRemaining = 0,
+        bool manageMode = false)
     {
-        TitleText.Text = L.T("License_TrialExpired_Title");
-        MessageText.Text = L.T("License_TrialExpired_Message");
+        TitleText.Text = manageMode
+            ? L.T("License_Activation_Title")
+            : L.T("License_TrialExpired_Title");
+        MessageText.Text = manageMode
+            ? L.T("License_Activation_Message")
+            : L.T("License_TrialExpired_Message");
 
         if (daysRemaining > 0)
         {
+            DaysText.Visibility = Visibility.Visible;
             DaysText.Text = string.Format(L.T("License_DaysRemaining_0"), daysRemaining);
+        }
+        else if (manageMode)
+        {
+            // Принудительный вызов: строки про истёкший триал здесь не к месту.
+            DaysText.Visibility = Visibility.Collapsed;
         }
         else
         {
+            DaysText.Visibility = Visibility.Visible;
             DaysText.Text = L.T("License_TrialExpired_FullMessage");
         }
 
