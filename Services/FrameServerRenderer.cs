@@ -11,6 +11,7 @@ using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
 using Windows.Media.Playback;
 using Microsoft.UI;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media;
 
 namespace IptvPlayer.Services
@@ -156,6 +157,7 @@ namespace IptvPlayer.Services
                 _panel.SwapChain = null;
                 _panel = null;
             }
+            _recreateDebounce?.Stop();
         }
 
         public void Dispose() => Detach();
@@ -168,12 +170,37 @@ namespace IptvPlayer.Services
             }
         }
 
+        // Дебаунс пересоздания свапчейна: при входе/выходе из фулскрина XAML
+        // шлёт два SizeChanged подряд (~4 мс) — без дебаунса свапчейн
+        // создавался ДВАЖДЫ (промежуточный 1904x1013, затем финальный
+        // 2560x1438), каждое создание ~15 МБ буферов + D3D-аллокации на
+        // UI-потоке. 50 мс не видны глазу (старый свапчейн временно
+        // масштабируется панелью), а лишнее создание исчезает.
+        private DispatcherQueueTimer? _recreateDebounce;
+        // Момент пересоздания свапчейна: для лога «первый кадр после
+        // пересоздания» — отделяет стоимость D3D-создания от ожидания
+        // первого кадра медиа-движка при объективной проверке разворота.
+        private System.Diagnostics.Stopwatch? _recreatedAt;
+
         private void RecreateSwapChain()
         {
-            // Без дебаунса: при входе/выходе из фулскрина XAML шлёт два
-            // SizeChanged подряд (~4 мс), второй пересоздаёт свапчейн под
-            // финальный размер. Лишнее создание безвредно, а любая задержка
-            // пересоздания видна как отстающая картинка при развороте окна.
+            var panel = _panel;
+            if (panel is null)
+            {
+                return;
+            }
+
+            _recreateDebounce ??= panel.DispatcherQueue.CreateTimer();
+            _recreateDebounce.Interval = TimeSpan.FromMilliseconds(50);
+            // IsRepeating=false: один тик после последнего SizeChanged.
+            _recreateDebounce.IsRepeating = false;
+            _recreateDebounce.Tick -= RecreateDebounce_Tick;
+            _recreateDebounce.Tick += RecreateDebounce_Tick;
+            _recreateDebounce.Start();
+        }
+
+        private void RecreateDebounce_Tick(DispatcherQueueTimer sender, object args)
+        {
             RecreateSwapChainCore();
         }
 
@@ -191,11 +218,15 @@ namespace IptvPlayer.Services
                 var dpiScale = _panel.XamlRoot?.RasterizationScale ?? 1.0;
                 var dpi = (float)(dpiScale * 96.0);
                 _cachedDpi = dpi;
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 _panel.SwapChain = new CanvasSwapChain(_canvasDevice, w, h, 60f,
                     DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, CanvasAlphaMode.Ignore);
+                var createMs = sw.Elapsed.TotalMilliseconds;
                 _upscaledTarget = null; // пересоздаётся в Render под новый размер
+                _recreatedAt = System.Diagnostics.Stopwatch.StartNew();
                 _logger.LogInformation(
-                    "FrameServerRenderer: свапчейн {W}x{H} (dpi {Dpi:F0}, scale {Scale:F2}).", w, h, dpi, dpiScale);
+                    "FrameServerRenderer: свапчейн {W}x{H} (dpi {Dpi:F0}, scale {Scale:F2}) за {Ms:F0} мс.",
+                    w, h, dpi, dpiScale, createMs);
             }
             catch (Exception ex)
             {
@@ -313,6 +344,18 @@ namespace IptvPlayer.Services
                 _logger.LogInformation(
                     "Рендер-апскейл ({Mode}): поток {SW}x{SH} → окно {W}x{H}, выведено {DW}x{DH} (×{SX:F2};{SY:F2}), {ShaderPath}.",
                     VideoStretchMode, _streamWidth, _streamHeight, w, h, dstW, dstH, sx, sy, shaderMode);
+            }
+
+            // Первый кадр после пересоздания свапчейна: отделяет стоимость
+            // D3D-создания от ожидания кадра медиа-движка (диагностика
+            // ощущаемой задержки разворота в fullscreen).
+            var recreated = _recreatedAt;
+            if (recreated != null)
+            {
+                _recreatedAt = null;
+                _logger.LogInformation(
+                    "FrameServerRenderer: первый кадр после пересоздания свапчейна — через {Ms:F0} мс.",
+                    recreated.Elapsed.TotalMilliseconds);
             }
         }
 
