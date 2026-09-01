@@ -68,7 +68,8 @@ namespace IptvPlayer.Services
         private float _cachedDpi = 96f;
 
         // Сила резкости прохода 2 (0..1). Позже — в настройки.
-        private const float Sharpening = 0.50f;
+        // Для RCAS 0.5 — заметный, 0.8 — агрессивный (почти максимум).
+        private const float Sharpening = 0.80f;
 
         /// <summary>
         /// Режим отображения (дублирует MediaPlayer.Stretch, который при
