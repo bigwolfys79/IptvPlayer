@@ -525,7 +525,7 @@ namespace IptvPlayer.Services
                 // грузим до источников (файл локальный, ~120 КБ).
                 LoadTvgIdNameMap();
 
-                var settings = await _settingsService.LoadAsync();
+                var settings = await _settingsService.LoadAsync().ConfigureAwait(false);
                 var enabledSources = settings.GetActiveEpgSources()
                     .Where(s => s.IsEnabled).ToList();
 
@@ -580,10 +580,10 @@ namespace IptvPlayer.Services
                     }
                 }).ToList();
 
-                var results = await Task.WhenAll(loadTasks);
+                var results = await Task.WhenAll(loadTasks).ConfigureAwait(false);
                 var sourceResults = results.Where(r => r != null).Select(r => r!).ToList();
 
-                var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger));
+                var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger)).ConfigureAwait(false);
 
                 _entriesByChannelId = byChannel;
                 _entriesByNormalizedName = nameIndex;
@@ -603,13 +603,13 @@ namespace IptvPlayer.Services
                 // по сопоставлению, чтобы не задерживать её, если репозиторий
                 // окажется недоступен (ApplyMissingLogosAsync сама логирует
                 // и глотает свою ошибку, не мешая остальной загрузке).
-                await ApplyMissingLogosAsync();
+                await ApplyMissingLogosAsync().ConfigureAwait(false);
 
                 // Сводка сопоставления M3U-плейлиста и XMLTV (с учётом резервного
                 // сопоставления по имени) — без этого расхождение было видно только
                 // по одному предупреждению на канал при клике на него. Здесь же сразу
                 // после загрузки XMLTV считаем итог по ВСЕМ каналам разом.
-                await LogMatchSummaryAsync();
+                await LogMatchSummaryAsync().ConfigureAwait(false);
             }
             finally
             {
@@ -649,7 +649,7 @@ namespace IptvPlayer.Services
             List<ChannelViewModel> channels;
             try
             {
-                channels = await _channelRepository.GetAllChannelsAsync();
+                channels = await _channelRepository.GetAllChannelsAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -659,59 +659,71 @@ namespace IptvPlayer.Services
 
             var fills = new List<(ChannelViewModel Channel, string IconUrl)>();
 
-            foreach (var channel in channels)
+            // Подбор кандидатов — regex-нормализация ~22k имён: чистая CPU-
+            // работа, ранее шла в продолжении await на UI-потоке и морозила
+            // интерфейс (фриз при входе в fullscreen совпадал по времени с
+            // этими диагностиками). Уводим в пул потоков; мутации каналов
+            // остаются на UI-потоке (ApplyFills).
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            await Task.Run(() =>
             {
-                if (!string.IsNullOrWhiteSpace(channel.LogoUrl))
+                foreach (var channel in channels)
                 {
-                    continue;
-                }
-
-                // Элементы портала пропускают и нормализацию имён: у фильмов
-                // «Её личный ад (2026)» и т.п. совпадений с TV-каналами нет,
-                // а регулярки по 22k названий — заметная лишняя работа.
-                if (channel.IsPortalItem)
-                {
-                    continue;
-                }
-
-                // Кандидаты tvg-id: собственный из плейлиста, затем строгий и
-                // мягкий ключи таблицы (плейлист tvg-id не содержит, поэтому
-                // раньше этот метод не срабатывал ни для одного канала).
-                var strictKey = EpgNameNormalizer.NormalizePreservingTimeshift(channel.Name);
-                var lenientKey = EpgNameNormalizer.Normalize(channel.Name);
-                if (!_tvgIdByStrictName.TryGetValue(strictKey, out var strictId))
-                {
-                    strictId = string.Empty;
-                }
-                if (!_tvgIdByLenientName.TryGetValue(lenientKey, out var lenientId))
-                {
-                    lenientId = string.Empty;
-                }
-
-                var candidates = new[]
-                {
-                    channel.TvgId,
-                    strictId,
-                    lenientId
-                };
-
-                foreach (var id in candidates)
-                {
-                    if (string.IsNullOrWhiteSpace(id))
+                    if (!string.IsNullOrWhiteSpace(channel.LogoUrl))
                     {
                         continue;
                     }
 
-                    // Приоритет — иконка из самого XMLTV; если источник её не
-                    // отдаёт, берём tvg-logo из таблицы epg.one.
-                    if (_iconsByChannelId.TryGetValue(id, out var iconUrl) ||
-                        _logoByTvgId.TryGetValue(id, out iconUrl))
+                    // Элементы портала пропускают и нормализацию имён: у фильмов
+                    // «Её личный ад (2026)» и т.п. совпадений с TV-каналами нет,
+                    // а регулярки по 22k названий — заметная лишняя работа.
+                    if (channel.IsPortalItem)
                     {
-                        fills.Add((channel, iconUrl));
-                        break;
+                        continue;
+                    }
+
+                    // Кандидаты tvg-id: собственный из плейлиста, затем строгий и
+                    // мягкий ключи таблицы (плейлист tvg-id не содержит, поэтому
+                    // раньше этот метод не срабатывал ни для одного канала).
+                    var strictKey = EpgNameNormalizer.NormalizePreservingTimeshift(channel.Name);
+                    var lenientKey = EpgNameNormalizer.Normalize(channel.Name);
+                    if (!_tvgIdByStrictName.TryGetValue(strictKey, out var strictId))
+                    {
+                        strictId = string.Empty;
+                    }
+                    if (!_tvgIdByLenientName.TryGetValue(lenientKey, out var lenientId))
+                    {
+                        lenientId = string.Empty;
+                    }
+
+                    var candidates = new[]
+                    {
+                        channel.TvgId,
+                        strictId,
+                        lenientId
+                    };
+
+                    foreach (var id in candidates)
+                    {
+                        if (string.IsNullOrWhiteSpace(id))
+                        {
+                            continue;
+                        }
+
+                        // Приоритет — иконка из самого XMLTV; если источник её не
+                        // отдаёт, берём tvg-logo из таблицы epg.one.
+                        if (_iconsByChannelId.TryGetValue(id, out var iconUrl) ||
+                            _logoByTvgId.TryGetValue(id, out iconUrl))
+                        {
+                            fills.Add((channel, iconUrl));
+                            break;
+                        }
                     }
                 }
-            }
+            });
+            _logger.LogInformation(
+                "Подстановка логотипов: подбор по {Count} каналам за {Ms:F0} мс (вне UI-потока).",
+                channels.Count, sw.Elapsed.TotalMilliseconds);
 
             if (fills.Count == 0)
             {
@@ -721,22 +733,52 @@ namespace IptvPlayer.Services
             void ApplyFills()
             {
                 var filled = 0;
-                foreach (var (channel, iconUrl) in fills)
+
+                // Один dispatcher-элемент на ЧАНК: 2041 запись LogoUrl одним
+                // куском = 2041 x:Bind-обновление за один проход UI (фриз).
+                // По ~150 на элемент работа размазывается по кадрам.
+                const int ChunkSize = 150;
+                var index = 0;
+
+                void ApplyChunk()
                 {
-                    // Повторная проверка: между подбором кандидатов (возможно,
-                    // на пуле потоков) и применением логотип канала могли
-                    // заполнить другим путём.
-                    if (string.IsNullOrWhiteSpace(channel.LogoUrl))
+                    var end = Math.Min(index + ChunkSize, fills.Count);
+                    for (; index < end; index++)
                     {
-                        channel.LogoUrl = iconUrl;
-                        filled++;
+                        var (channel, iconUrl) = fills[index];
+                        // Повторная проверка: между подбором кандидатов (на
+                        // пуле потоков) и применением логотип канала могли
+                        // заполнить другим путём.
+                        if (string.IsNullOrWhiteSpace(channel.LogoUrl))
+                        {
+                            channel.LogoUrl = iconUrl;
+                            filled++;
+                        }
+                    }
+
+                    if (index < fills.Count)
+                    {
+                        _uiDispatcher?.TryEnqueue(ApplyChunk);
+                        return;
+                    }
+
+                    if (filled > 0)
+                    {
+                        _logger.LogInformation(
+                            "Подставлено логотипов (XMLTV icon / таблица epg.one): {Count}.", filled);
                     }
                 }
 
-                if (filled > 0)
+                if (fills.Count > 0)
                 {
-                    _logger.LogInformation(
-                        "Подставлено логотипов (XMLTV icon / таблица epg.one): {Count}.", filled);
+                    if (_uiDispatcher != null && !_uiDispatcher.HasThreadAccess)
+                    {
+                        _uiDispatcher.TryEnqueue(ApplyChunk);
+                    }
+                    else
+                    {
+                        ApplyChunk();
+                    }
                 }
             }
 
@@ -755,7 +797,7 @@ namespace IptvPlayer.Services
             List<ChannelViewModel> channels;
             try
             {
-                channels = await _channelRepository.GetAllChannelsAsync();
+                channels = await _channelRepository.GetAllChannelsAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -774,34 +816,43 @@ namespace IptvPlayer.Services
             var matchedByName = 0;
             var unmatched = new List<string>();
 
-            foreach (var channel in channels)
+            // Сводка по ~22k каналов — тоже чистая CPU-работа: как и подбор
+            // логотипов, ранее выполнялась в продолжении на UI-потоке.
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            await Task.Run(() =>
             {
-                // Элементы портала (фильмы/сериалы) с XMLTV не сопоставляются
-                // в принципе: в VOD-плейлисте 22k таких — раньше все гонялись
-                // через 3 поиска по словарям на каждый (в логе это были
-                // «не сопоставлено вообще 21963»).
-                if (channel.IsPortalItem)
+                foreach (var channel in channels)
                 {
-                    continue;
-                }
+                    // Элементы портала (фильмы/сериалы) с XMLTV не сопоставляются
+                    // в принципе: в VOD-плейлисте 22k таких — раньше все гонялись
+                    // через 3 поиска по словарям на каждый (в логе это были
+                    // «не сопоставлено вообще 21963»).
+                    if (channel.IsPortalItem)
+                    {
+                        continue;
+                    }
 
-                var (_, method) = MatchChannel(channel);
-                switch (method)
-                {
-                    case MatchMethod.TvgId:
-                        matchedById++;
-                        break;
-                    case MatchMethod.NameMap:
-                        matchedByMap++;
-                        break;
-                    case MatchMethod.Name:
-                        matchedByName++;
-                        break;
-                    default:
-                        unmatched.Add(channel.Name);
-                        break;
+                    var (_, method) = MatchChannel(channel);
+                    switch (method)
+                    {
+                        case MatchMethod.TvgId:
+                            matchedById++;
+                            break;
+                        case MatchMethod.NameMap:
+                            matchedByMap++;
+                            break;
+                        case MatchMethod.Name:
+                            matchedByName++;
+                            break;
+                        default:
+                            unmatched.Add(channel.Name);
+                            break;
+                    }
                 }
-            }
+            });
+            _logger.LogInformation(
+                "Сводка сопоставления: {Count} каналов за {Ms:F0} мс (вне UI-потока).",
+                channels.Count, sw.Elapsed.TotalMilliseconds);
 
             var unmatchedSample = unmatched.Take(10).ToList();
             var sampleXmlTvIds = _entriesByChannelId.Keys.Take(10).ToList();
