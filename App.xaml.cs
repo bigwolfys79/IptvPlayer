@@ -272,8 +272,9 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
+        // ВАЖНО: CloseAndFlush только в самом конце — раньше слепок дерева
+        // при LayoutCycle писался уже в закрытый логгер и терялся.
         Log.Error(e.Exception, "Необработанное исключение UI-потока (App.UnhandledException)");
-        Serilog.Log.CloseAndFlush();
 
         // LayoutCycleException не называет виновника — снимаем слепок
         // визуального дерева (имена + фактические размеры первых N узлов):
@@ -329,6 +330,7 @@ public partial class App : Application
         // шестерёнки → Диагностика). После подтверждения, что зависания
         // починены, переключатель и этот код можно удалить.
         e.Handled = TempDiagnosticsEnabled;
+        Serilog.Log.CloseAndFlush();
     }
 
     /// <summary>
