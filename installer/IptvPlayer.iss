@@ -1,4 +1,4 @@
-; Inno Setup-скрипт инсталятора IptvPlayer.
+﻿; Inno Setup-скрипт инсталятора IptvPlayer.
 ;
 ; Сборка инсталятора (из корня проекта):
 ;   1) dotnet publish IptvPlayer.csproj -c Release -p:PublishProfile=win-x64
@@ -9,7 +9,7 @@
 ; Готовый файл: installer\output\IptvPlayer-Setup-<версия>-x64.exe
 
 #define MyAppName "IptvPlayer"
-#define MyAppVersion "1.15.0"
+#define MyAppVersion "1.15.1"
 #define MyAppExeName "IptvPlayer.exe"
 #define MyAppPublisher "IptvPlayer"
 ; Папка публикации из win-x64.pubxml

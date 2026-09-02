@@ -88,6 +88,12 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    private async void LicenseMenu_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Dialogs.LicenseStatusDialog();
+        await dialog.ShowAsync(((FrameworkElement)sender).XamlRoot);
+    }
+
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
     {
         // Установка — тот же сценарий, что при автообновлении (OfferUpdateInstallAsync):
