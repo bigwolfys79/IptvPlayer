@@ -6,7 +6,7 @@
     <RootNamespace>IptvPlayer</RootNamespace>
     <!-- D3D11-интероп рендер-пути frame server (Services/Direct3DInterop.cs) -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>1.15.2</Version>
+    <Version>1.15.3</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>

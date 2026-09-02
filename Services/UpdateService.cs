@@ -137,10 +137,32 @@ public class UpdateService : IUpdateService
         using (var response = await Http.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct))
         {
             response.EnsureSuccessStatusCode();
+            var totalBytes = response.Content.Headers.ContentLength;
             await using (var source = await response.Content.ReadAsStreamAsync(ct))
             await using (var target = System.IO.File.Create(path))
             {
-                await source.CopyToAsync(target, 81920, ct);
+                // CopyToAsync не умеет отчитывать прогресс — качаем чанками
+                // и сообщаем процент от Content-Length.
+                var buffer = new byte[81920];
+                long copied = 0;
+                int read;
+                var lastReport = DateTimeOffset.MinValue;
+                while ((read = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+                {
+                    await target.WriteAsync(buffer.AsMemory(0, read), ct);
+                    copied += read;
+                    // Не чаще ~5 раз в секунду — чаще только лишние диспатчи UI.
+                    if (progress != null && totalBytes > 0 &&
+                        (DateTimeOffset.UtcNow - lastReport).TotalMilliseconds >= 200)
+                    {
+                        lastReport = DateTimeOffset.UtcNow;
+                        progress.Report(copied * 100.0 / totalBytes.Value);
+                    }
+                }
+                if (progress != null && totalBytes > 0)
+                {
+                    progress.Report(100);
+                }
             }
         }
 

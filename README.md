@@ -10,7 +10,7 @@
 
 IPTV-плеер для плейлистов M3U/M3U8 с архивом (timeshift) и полноценным HEVC/AC-3 воспроизведением на базе FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Версия:** 1.15.2
+- **Версия:** 1.15.3
 - **Репозиторий и релизы:** https://github.com/bigwolfys79/IptvPlayer (проверка обновлений встроена в «О программе»)
 - **Настройки и кэш:** `%LocalAppData%\IptvPlayer`
 - **Лог (Serilog):** `%LocalAppData%\IptvPlayer\logs` (ежедневный роллинг, включается/выключается в настройках)
