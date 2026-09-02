@@ -695,6 +695,7 @@
                                      (UpdatePlaylistMenu), прячется, когда плейлист один. -->
                                 <MenuFlyoutSubItem x:Name="SwitchPlaylistSubMenu" x:Uid="Smenit_Pleylist"/>
                                 <MenuFlyoutSeparator/>
+                                <MenuFlyoutItem x:Uid="Litsenziya" Click="LicenseMenu_Click"/>
                                 <MenuFlyoutItem x:Uid="O_Programme" Click="AboutButton_Click"/>
                             </MenuFlyout>
                         </Button.Flyout>

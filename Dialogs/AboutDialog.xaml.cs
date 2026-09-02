@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using IptvPlayer.Services;
 using Microsoft.UI.Xaml;
@@ -30,7 +30,6 @@ public sealed partial class AboutDialog : UserControl
 
     private ContentDialog? _hostDialog;
     private UpdateInfo? _update;
-    private XamlRoot? _xamlRoot;
 
     public AboutDialog(IUpdateService updateService,
         Func<Version, string, Task> installHandler)
@@ -65,10 +64,7 @@ public sealed partial class AboutDialog : UserControl
         _update = null;
         CheckUpdateButton.Content = L.T("Proverit_Obnovleniya");
         UpdateStatusText.Visibility = Visibility.Collapsed;
-        LicenseButton.Content = L.T("License_Manage_Button");
         OpenLogsButton.Content = L.T("Otkryt_Papku_Logov");
-        _xamlRoot = xamlRoot;
-
         var dialog = new ContentDialog
         {
             XamlRoot = xamlRoot,
@@ -166,26 +162,6 @@ public sealed partial class AboutDialog : UserControl
             UpdateStatusText.Text = string.Format(L.T("Ne_Udalos_Skachat_Obnovlenie_0"), ex.Message, ex.Message);
             CheckUpdateButton.IsEnabled = true;
         }
-    }
-
-    private async void LicenseButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_xamlRoot == null) return;
-
-        // Два ContentDialog одновременно открытыми быть не могут — как и в
-        // сценарии обновления, закрываем «О программе» и даём ему закрыться.
-        _hostDialog?.Hide();
-        await Task.Delay(50);
-
-        // Остаток триала показываем только когда триал реально идёт;
-        // у активированной лицензии DaysRemaining не про триал.
-        var license = LicenseService.CheckLicense();
-        var days = license.UsageType == IptvPlayer.Models.UsageType.Commercial && !license.IsActivated
-            ? license.DaysRemaining
-            : 0;
-
-        var activation = new LicenseExpiredDialog();
-        await activation.ShowAsync(_xamlRoot, days, manageMode: true);
     }
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e)

@@ -2714,6 +2714,36 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Diagnostika_Prefiks_0" xml:space="preserve">
     <value>Diagnostics: {0}</value>
   </data>
+  <data name="Litsenziya.Text" xml:space="preserve">
+    <value>License</value>
+  </data>
+  <data name="License_Dialog_Title" xml:space="preserve">
+    <value>License</value>
+  </data>
+  <data name="License_Status_Personal_Header" xml:space="preserve">
+    <value>Personal use</value>
+  </data>
+  <data name="License_Status_Personal_Text" xml:space="preserve">
+    <value>Free of charge, no limitations. Commercial use requires a license.</value>
+  </data>
+  <data name="License_Status_Activated_Header" xml:space="preserve">
+    <value>Commercial license</value>
+  </data>
+  <data name="License_Licensee_0" xml:space="preserve">
+    <value>Licensee: {0}</value>
+  </data>
+  <data name="License_Expiry_Until_0" xml:space="preserve">
+    <value>Valid until {0}</value>
+  </data>
+  <data name="License_Expiry_Lifetime" xml:space="preserve">
+    <value>Lifetime license</value>
+  </data>
+  <data name="License_Status_Expired" xml:space="preserve">
+    <value>This license has expired — a new one is required.</value>
+  </data>
+  <data name="License_Status_Trial_Header" xml:space="preserve">
+    <value>Commercial trial period</value>
+  </data>
   <data name="Dobroe_Utro" xml:space="preserve">
     <value>Good morning</value>
   </data>
