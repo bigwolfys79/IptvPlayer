@@ -612,6 +612,60 @@ public sealed partial class HubPage : Page
             var d = new Dialogs.PlaybackSettingsDialog(viewModel, _settingsService, streamService);
             await d.ShowAsync(Content.XamlRoot);
         });
+
+        // Лицензия и «О программе» — те же диалоги, что в меню основного окна.
+        AddFlyoutItem("\uEC4B", L.T("License_Dialog_Title"), null, async (_, _) =>
+        {
+            CloseFlyout();
+            var d = new Dialogs.LicenseStatusDialog();
+            await d.ShowAsync(Content.XamlRoot);
+        });
+        AddFlyoutItem("\uE946", L.T("O_Programme_Lbl"), null, async (_, _) =>
+        {
+            CloseFlyout();
+            var updateService = App.Services.GetRequiredService<IUpdateService>();
+            var d = new Dialogs.AboutDialog(updateService, OfferUpdateInstallFromHubAsync);
+            await d.ShowAsync(Content.XamlRoot);
+        });
+    }
+
+    /// <summary>
+    /// Установка обновления из хаба: как MainPage.OfferUpdateInstallAsync,
+    /// но записи проверяются напрямую через RecordingService (у хаба нет
+    /// ViewModel главной страницы). При активных записях обновление
+    /// откладываем — установщик завершит приложение вместе с ними.
+    /// </summary>
+    private async Task OfferUpdateInstallFromHubAsync(Version version, string setupPath)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = L.T("Dostupno_Obnovlenie"),
+            Content = string.Format(L.T("Versiya_0_Skachana_Ustanovit_Seychas_Prilozhenie"), version, version),
+            PrimaryButtonText = L.T("Ustanovit_Seychas"),
+            CloseButtonText = L.T("Pozzhe"),
+            DefaultButton = ContentDialogButton.Primary
+        };
+
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        if (App.Services.GetRequiredService<RecordingService>().IsActive)
+        {
+            var info = new ContentDialog
+            {
+                XamlRoot = Content.XamlRoot,
+                Title = L.T("Obnovlenie_Otlozheno"),
+                Content = L.T("Idet_Zapis_Peredach_Obnovlenie_Ustanovitsya_Avtomaticheski"),
+                CloseButtonText = L.T("Ponyatno")
+            };
+            await info.ShowAsync();
+            return;
+        }
+
+        App.Services.GetRequiredService<IUpdateService>().RunInstallerAndExit(setupPath);
     }
 
     private void AddFlyoutItem(string glyph, string text, string? foreground, RoutedEventHandler? click,
