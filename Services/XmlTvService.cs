@@ -89,7 +89,12 @@ public class XmlTvService : IXmlTvService
                     source.Url, (DateTime.UtcNow - GetSavedAtUtc(cached)).TotalHours, age.TotalDays);
             }
 
-            return new XmlTvLoadResult { Entries = cached.Entries, ChannelIcons = cached.ChannelIcons };
+            return new XmlTvLoadResult
+            {
+                Entries = cached.Entries,
+                ChannelIcons = cached.ChannelIcons,
+                DataSavedAtUtc = GetSavedAtUtc(cached)
+            };
         }
 
         // Скачивание (DownloadAsync) — настоящее async I/O, оно UI-поток не
@@ -101,6 +106,7 @@ public class XmlTvService : IXmlTvService
         var now = DateTime.Now;
         var windowStart = now.Date.AddDays(-DaysBack);
         var windowEnd = now.AddDays(DaysAhead + 1);
+        var dataSavedAtUtc = DateTime.UtcNow;
         await using (System.IO.Stream stream = await DownloadAsync(source.Url, ct))
         {
             parsed = await Task.Run(() => ParseXmlTv(stream, windowStart, windowEnd), ct);
@@ -114,11 +120,16 @@ public class XmlTvService : IXmlTvService
         {
             Entries = parsed.Entries,
             ChannelIcons = parsed.ChannelIcons,
-            SavedAtUtc = DateTime.UtcNow,
+            SavedAtUtc = dataSavedAtUtc,
             ExpiresAt = DateTime.UtcNow.Add(CacheTtl)
         });
 
-        return parsed;
+        return new XmlTvLoadResult
+        {
+            Entries = parsed.Entries,
+            ChannelIcons = parsed.ChannelIcons,
+            DataSavedAtUtc = dataSavedAtUtc
+        };
     }
 
     private async Task<System.IO.Stream> DownloadAsync(string url, CancellationToken ct)

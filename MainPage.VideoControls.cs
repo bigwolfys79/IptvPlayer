@@ -411,11 +411,16 @@ public sealed partial class MainPage : Page
         else if (!mini && _panelsHiddenForMini)
         {
             _panelsHiddenForMini = false;
-            ChannelListColumn.MinWidth = 240;
-            ChannelListColumn.Width = new GridLength(
-                Math.Max(240, ViewModel.AppSettings.ChannelListWidth), GridUnitType.Pixel);
-            SplitterColumn.Width = GridLength.Auto;
-            ChannelListPanel.Visibility = Visibility.Visible;
+            // Локальный файл (карточка «Видео»): панель каналов скрыта
+            // навсегда — восстанавливать колонку нечего.
+            if (_localVideoFile == null)
+            {
+                ChannelListColumn.MinWidth = 240;
+                ChannelListColumn.Width = new GridLength(
+                    Math.Max(240, ViewModel.AppSettings.ChannelListWidth), GridUnitType.Pixel);
+                SplitterColumn.Width = GridLength.Auto;
+                ChannelListPanel.Visibility = Visibility.Visible;
+            }
         }
     }
 

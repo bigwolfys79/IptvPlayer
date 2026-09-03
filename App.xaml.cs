@@ -212,6 +212,7 @@ public partial class App : Application
         services.AddSingleton<PlayerViewModel>();
         services.AddSingleton<MainPageViewModel>();
         services.AddSingleton<VodResumeStore>();
+        services.AddSingleton<LocalVideoFileService>();
     }
 
     // ===================== Страж зависания UI =====================
@@ -338,6 +339,20 @@ public partial class App : Application
     /// (в том числе когда оно свернуто в трей) и выводим на передний план.
     /// Событие приходит в контексте WinAppSDK — marshaling в UI-поток.
     /// </summary>
+    /// <summary>Второй экземпляр передаёт видеофайл через этот файл.</summary>
+    private static string PendingVideoFilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "IptvPlayer", "pending_video.txt");
+
+    /// <summary>Видеофайл в аргументах командной строки (ассоциация «Открыть с помощью»), null — нет.</summary>
+    internal static string? GetCommandLineVideoFile()
+    {
+        var args = Environment.GetCommandLineArgs();
+        return args.Skip(1)
+            .Select(a => { try { return Path.GetFullPath(a); } catch { return null; } })
+            .FirstOrDefault(p => p != null && File.Exists(p) && LocalVideoFileService.IsVideoFile(p));
+    }
+
     private void OnInstanceActivated(object? sender, Microsoft.Windows.AppLifecycle.AppActivationArguments e)
     {
         _window?.DispatcherQueue.TryEnqueue(() =>
@@ -345,6 +360,29 @@ public partial class App : Application
             if (_window is MainWindow mainWindow)
             {
                 mainWindow.ShowFromTray();
+
+                // Второй экземпляр был запущен открытием видеофайла —
+                // играем его в работающем приложении.
+                try
+                {
+                    if (File.Exists(PendingVideoFilePath))
+                    {
+                        var videoPath = File.ReadAllText(PendingVideoFilePath).Trim();
+                        File.Delete(PendingVideoFilePath);
+                        if (File.Exists(videoPath) && LocalVideoFileService.IsVideoFile(videoPath))
+                        {
+                            var file = LocalVideoFileService.FromPath(videoPath);
+                            mainWindow.AppFrame.Navigate(typeof(MainPage), file);
+                            Log.Information("Открыт видеофайл из проводника: {File}", videoPath);
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Открытие видеофайла из проводника не удалось.");
+                }
+
                 Log.Information("Активация переадресована: окно восстановлено из трея.");
             }
         });
@@ -385,6 +423,24 @@ public partial class App : Application
         var instance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("IptvPlayer.Main");
         if (!instance.IsCurrent)
         {
+            // Если второй экземпляр запущен открытием видеофайла (ассоциация
+            // в проводнике) — передаём путь первому через pending-файл:
+            // RedirectActivationToAsync не переносит произвольные аргументы.
+            var redirectedVideo = GetCommandLineVideoFile();
+            if (redirectedVideo != null)
+            {
+                try
+                {
+                    Directory.CreateDirectory(LogDirectory);
+                    File.WriteAllText(PendingVideoFilePath, redirectedVideo);
+                    Log.Information("Переадресация видеофайла работающему экземпляру: {File}", redirectedVideo);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Не удалось записать pending-файл видеофайла.");
+                }
+            }
+
             Log.Information("Уже запущен другой экземпляр — переадресация активации и выход.");
             try
             {
@@ -452,9 +508,19 @@ public partial class App : Application
         // чтобы последние события гарантированно попали в файл.
         _window.Closed += (_, _) => Log.CloseAndFlush();
 
-        // Навигация: Hub или MainPage (auto-resume)
+        // Навигация: Hub или MainPage (auto-resume). Запуск с видеофайлом
+        // (ассоциация в проводнике) имеет приоритет: сразу играем файл.
         if (_window is MainWindow mainWindow)
         {
+            var launchVideoFile = GetCommandLineVideoFile();
+            if (launchVideoFile != null)
+            {
+                var videoFile = LocalVideoFileService.FromPath(launchVideoFile);
+                Log.Information("OnLaunched: запуск с видеофайлом «{File}» → MainPage", launchVideoFile);
+                mainWindow.AppFrame.Navigate(typeof(MainPage), videoFile);
+                return;
+            }
+
             var settingsService = App.Services.GetRequiredService<ISettingsService>();
             var settings = settingsService.LoadAsync().GetAwaiter().GetResult();
             Log.Information("OnLaunched: ShowHubOnStartup={Hub}", settings.ShowHubOnStartup);

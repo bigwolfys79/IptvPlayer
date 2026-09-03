@@ -95,8 +95,12 @@ public static class EpgSourceMerger
     /// целиком (ни один канал с этим названием не получал EPG) — теперь
     /// выбирается детерминированно лучший кандидат, а имя попадает в
     /// список эвристических в сводке лога.
+    ///
+    /// Публичный для EPGService: кэш слитого EPG (MergedEpgCache) хранит
+    /// только ByChannel, а этот индекс перестраивает после чтения — он
+    /// детерминирован по ByChannel и стоит миллисекунды.
     /// </summary>
-    private static Dictionary<string, List<EPGEntry>> BuildNameIndex(
+    public static Dictionary<string, List<EPGEntry>> BuildNameIndex(
         Dictionary<string, List<EPGEntry>> byChannel,
         ILogger logger)
     {

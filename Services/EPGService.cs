@@ -176,6 +176,15 @@ namespace IptvPlayer.Services
         {
             await EnsureEpgLoadedAsync();
 
+            // Локальный видеофайл (карточка «Видео») — Id = -1, его нет и не
+            // должно быть в ChannelRepository: EPG для файла с диска не
+            // существует. Без выхода здесь каждый выбор карточки сыпал
+            // предупреждение «Канал с id=-1 не найден».
+            if (channelId < 0)
+            {
+                return new List<EPGEntry>();
+            }
+
             var channel = await _channelRepository.GetChannelByIdAsync(channelId);
             if (channel == null)
             {
@@ -533,8 +542,25 @@ namespace IptvPlayer.Services
                 // XMLTV) больше не нужны — чистим раз при загрузке EPG.
                 // Ключ обязан совпадать с cacheKey в XmlTvService.LoadAsync,
                 // иначе живые файлы посчитаются осиротевшими.
+                // ВАЖНО: живые ключи — из ВСЕХ источников (глобальных и всех
+                // плейлистов), а не только активного плейлиста. У каждого
+                // плейлиста свой набор источников EPG, и раньше чистка по
+                // активному плейлисту удаляла кэш источников других
+                // плейлистов — каждый запуск/переключение плейлиста заново
+                // скачивал и заново парсил их XMLTV.
+                // Ключи слитого EPG тоже живые: чистка не должна удалять
+                // кэш слияния действующих наборов источников.
+                var sourceSets = new[] { settings.EpgSources }
+                    .Concat(settings.Playlists.Select(p => p.EpgSources))
+                    .Select(set => set.Where(s => s.IsEnabled).Select(s => s.Url).ToArray())
+                    .Where(urls => urls.Length > 0)
+                    .Select(urls => EpgCacheStore.MergedKeyFor(urls));
                 EpgCacheStore.CleanupOrphans(
-                    enabledSources.Select(s => $"xmltv:{s.Url}"));
+                    settings.EpgSources
+                        .Concat(settings.Playlists.SelectMany(p => p.EpgSources))
+                        .Select(s => $"xmltv:{s.Url}")
+                        .Concat(sourceSets)
+                        .Distinct(StringComparer.Ordinal));
 
                 // Периодичность обновления EPG из настроек (1/3/7 дней):
                 // пока кэш источника младше maxAge, XmlTvService берёт его с
@@ -546,10 +572,36 @@ namespace IptvPlayer.Services
 
                 if (enabledSources.Count == 0)
                 {
-                    _logger.LogWarning(
-                        "Нет ни одного включённого источника EPG (всего в настройках: {Total}). " +
-                        "EPG будет пустым, пока в настройках не добавите/не включите хотя бы один источник.",
-                        settings.GetActiveEpgSources().Count);
+                    var totalSources = settings.GetActiveEpgSources().Count;
+                    if (totalSources > 0)
+                    {
+                        _logger.LogWarning(
+                            "Нет ни одного включённого источника EPG (всего в настройках: {Total}). " +
+                            "EPG будет пустым, пока в настройках не добавите/не включите хотя бы один источник.",
+                            totalSources);
+                    }
+                    else
+                    {
+                        // Портал без назначенных источников — это норма, а не
+                        // проблема: EPG VOD-каталогу не нужен (см.
+                        // AppSettings.GetActiveEpgSources).
+                        _logger.LogInformation(
+                            "EPG не загружается: у активного плейлиста нет источников EPG.");
+                    }
+                }
+
+                // Быстрый путь: кэш слитого EPG. Если набор источников
+                // (URL в порядке приоритета) и момент скачивания каждого
+                // не изменились, а периодичность обновления ещё не истекла —
+                // пропускаем и чтение кэшей источников, и слияние: читаем
+                // один файл и только достраиваем индекс имён (миллисекунды).
+                // Экономит секунды CPU на каждом запуске с большим XMLTV.
+                if (enabledSources.Count > 0 &&
+                    await TryLoadMergedCacheAsync(enabledSources, maxAge).ConfigureAwait(false))
+                {
+                    await ApplyMissingLogosAsync().ConfigureAwait(false);
+                    await LogMatchSummaryAsync().ConfigureAwait(false);
+                    return;
                 }
 
                 // Скачивание/парсинг источников — async (XmlTvService сам
@@ -584,6 +636,26 @@ namespace IptvPlayer.Services
                 var sourceResults = results.Where(r => r != null).Select(r => r!).ToList();
 
                 var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger)).ConfigureAwait(false);
+
+                // Слияние выполнено — сохраняем результат для быстрого пути
+                // следующих запусков (ключ — набор источников и метки их
+                // скачивания; запись в фоне, старт не ждёт диска). Только если
+                // удались ВСЕ источники: при провале хотя бы одного набор
+                // неполон, а недавний провал не стоит кэшировать. Результаты
+                // идут в порядке enabledSources (loadTasks строился по нему).
+                if (sourceResults.Count == enabledSources.Count)
+                {
+                    var urls = enabledSources.Select(s => s.Url).ToArray();
+                    _ = EpgCacheStore.WriteRecordAsync(
+                        EpgCacheStore.MergedKeyFor(urls),
+                        new MergedEpgCache
+                        {
+                            SourceUrls = urls.ToList(),
+                            SourceSavedAtUtc = sourceResults.Select(r => r.DataSavedAtUtc).ToList(),
+                            ByChannel = byChannel,
+                            IconsByChannelId = iconsByChannelId
+                        });
+                }
 
                 _entriesByChannelId = byChannel;
                 _entriesByNormalizedName = nameIndex;
@@ -622,6 +694,74 @@ namespace IptvPlayer.Services
                     _loadingTask = null;
                 }
             }
+        }
+
+        /// <summary>
+        /// <summary>
+        /// Быстрый путь загрузки EPG: читает кэш слитого результата
+        /// (MergedEpgCache) и, если он валиден, заполняет индексы без
+        /// чтения кэшей источников и без слияния. Валидность: набор URL
+        /// совпадает с включёнными источниками (в том же порядке) и
+        /// периодичность обновления (maxAge) ещё не истекла ни по одному
+        /// источнику — ровно то же условие, по которому XmlTvService взял
+        /// бы кэш источника без сети, поэтому данные идентичны полному
+        /// пути. false — промах (идти полным путём).
+        /// </summary>
+        private async Task<bool> TryLoadMergedCacheAsync(
+            List<Models.EPGSource> enabledSources, TimeSpan maxAge)
+        {
+            var urls = enabledSources.Select(s => s.Url).ToArray();
+            var cached = await EpgCacheStore.ReadRecordAsync<MergedEpgCache>(
+                EpgCacheStore.MergedKeyFor(urls)).ConfigureAwait(false);
+            if (cached is null ||
+                cached.FormatVersion != MergedEpgCache.CurrentFormatVersion ||
+                cached.SourceUrls.Count != urls.Length ||
+                cached.SourceSavedAtUtc.Count != urls.Length)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < urls.Length; i++)
+            {
+                if (!string.Equals(cached.SourceUrls[i], urls[i], StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                var savedAt = cached.SourceSavedAtUtc[i];
+                if (savedAt == default ||
+                    (maxAge != TimeSpan.MaxValue && DateTime.UtcNow - savedAt >= maxAge))
+                {
+                    return false;
+                }
+            }
+
+            // Индекс имён не хранится — достраиваем из ByChannel (мс).
+            // Словари пересобираем в регистронезависимые: MemoryPack
+            // восстанавливает Dictionary с дефолтным (чувствительным к
+            // регистру) компаратором, а поиск каналов по tvg-id в полном
+            // пути регистр игнорирует.
+            var byChannel = new Dictionary<string, List<Models.EPGEntry>>(
+                cached.ByChannel, StringComparer.OrdinalIgnoreCase);
+            var icons = new Dictionary<string, string>(
+                cached.IconsByChannelId, StringComparer.OrdinalIgnoreCase);
+            var nameIndex = await Task.Run(
+                () => EpgSourceMerger.BuildNameIndex(byChannel, _logger)).ConfigureAwait(false);
+
+            _entriesByChannelId = byChannel;
+            _entriesByNormalizedName = nameIndex;
+            _iconsByChannelId = icons;
+            _epgLoaded = true;
+            _lastSuccessfulLoad = DateTime.Now;
+            _skipLogged = false;
+
+            _logger.LogInformation(
+                "Слитый EPG взят из кэша слияния: источников {Sources}, каналов с программами: {Channels}, всего программ: {Entries} — без загрузки источников и слияния.",
+                cached.SourceUrls.Count,
+                byChannel.Count,
+                byChannel.Values.Sum(list => list.Count));
+
+            return true;
         }
 
         /// <summary>

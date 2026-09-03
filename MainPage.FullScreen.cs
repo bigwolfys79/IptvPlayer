@@ -82,6 +82,16 @@ public sealed partial class MainPage
             ChannelListColumn.Width = new GridLength(0);
             SplitterColumn.Width = new GridLength(0);
 
+            // Локальный файл (карточка «Видео»): списка каналов нет и в
+            // полноэкранном оверлее — скрываем панель и схлопываем её
+            // колонку (иначе шапка/нижняя панель обрезаются на 320 px).
+            OverlayChannelsPanel.Visibility = _localVideoFile == null
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            OverlayChannelsColumn.Width = _localVideoFile == null
+                ? new GridLength(320)
+                : new GridLength(0);
+
             // Оконный оверлей поверх видео больше не нужен — в fullscreen
             // все органы управления в полноэкранном оверлее.
             HideWindowedVideoOverlay(immediate: true);
@@ -101,15 +111,12 @@ public sealed partial class MainPage
 
             Serilog.Log.Information("FullScreen-DIAG: колонки/оверлеи {Ms:F0} мс", sw.Elapsed.TotalMilliseconds);
 
-            // Сначала показываем оверлей. Группированный источник для оверлейного
-            // списка пересобираем ЗДЕСЬ: в оконном режиме RefreshOverlayChannelGroups
-            // по FilterChanged пропускается при скрытом оверлее (оптимизация
-            // больших каталогов) — при входе в fullscreen нужен свежий.
+            // ItemsSource оверлейного списка забинден на ViewModel.DisplayedChannels
+            // (MainPage.xaml) — ручная пересборка при входе в fullscreen не нужна.
             _lastOverlayPointerPosition = new Windows.Foundation.Point(-1, -1);
             ShowFullScreenOverlay();
-            sw.Restart();
-            RefreshOverlayChannelGroups();
-            Serilog.Log.Information("FullScreen-DIAG: RefreshOverlayChannelGroups {Ms:F0} мс", sw.Elapsed.TotalMilliseconds);
+            // ItemsSource оверлейного списка забинден на ViewModel.DisplayedChannels
+            // (MainPage.xaml) — ручная пересборка при входе в fullscreen не нужна.
 
             // БИСЕКЦИЯ, шаг 2: входной нудж включён (проверяем связку).
             _ = NudgePointerDelayedAsync();
@@ -121,9 +128,14 @@ public sealed partial class MainPage
         }
         else
         {
-            ChannelListColumn.MinWidth = 280;
-            ChannelListColumn.Width = new GridLength(_channelListExpandedWidth);
-            SplitterColumn.Width = GridLength.Auto;
+            // Локальный файл (карточка «Видео»): панель каналов скрыта
+            // навсегда — восстанавливать колонку нечего.
+            if (_localVideoFile == null)
+            {
+                ChannelListColumn.MinWidth = 280;
+                ChannelListColumn.Width = new GridLength(_channelListExpandedWidth);
+                SplitterColumn.Width = GridLength.Auto;
+            }
             ViewModel.IsEpgVisible = _wasEpgVisibleBeforeFullScreen;
             ApplyEpgVisibility();
 
