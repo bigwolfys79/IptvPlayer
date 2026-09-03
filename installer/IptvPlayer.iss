@@ -9,7 +9,7 @@
 ; Готовый файл: installer\output\IptvPlayer-Setup-<версия>-x64.exe
 
 #define MyAppName "IptvPlayer"
-#define MyAppVersion "1.15.3"
+#define MyAppVersion "1.16.0"
 #define MyAppExeName "IptvPlayer.exe"
 #define MyAppPublisher "IptvPlayer"
 ; Папка публикации из win-x64.pubxml
@@ -85,6 +85,31 @@ Source: "dolby\DolbyAC4DecoderOEM_1.0.0.0.AppxBundle"; DestDir: "{app}\dolby"; F
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+; Ассоциации видеофайлов (карточка «Видео»): ProgId + «Открыть с помощью».
+; Дефолтную ассоциацию НЕ перехватываем (только OpenWithProgids) — Windows
+; предложит IptvPlayer в контекстном меню «Открыть с помощью», не отбирая
+; файлы у существующего плеера пользователя. HKLM (машинная область) —
+; установщик работает в admin-режиме, и записи в HKCU попадали в реестр
+; повышенного пользователя, а не того, кто будет смотреть видео.
+[Registry]
+Root: HKLM; Subkey: "Software\Classes\IptvPlayer.Video"; ValueType: string; ValueData: "IptvPlayer Video"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\IptvPlayer.Video"; ValueType: string; ValueName: "AppUserModelId"; ValueData: "IptvPlayer.Video"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\IptvPlayer.Video\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\IptvPlayer.Video\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\.mp4\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.mkv\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.avi\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.mov\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.webm\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.flv\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.ts\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.m2ts\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.wmv\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.m4v\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.mpg\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.mpeg\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Classes\.3gp\OpenWithProgids"; ValueType: string; ValueName: "IptvPlayer.Video"; ValueData: ""; Flags: uninsdeletevalue
 
 [Code]
 var

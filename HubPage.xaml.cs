@@ -22,7 +22,10 @@ public sealed partial class HubPage : Page
     private AppSettings? _settings;
     private PlaylistSource? _lastWatchedPlaylist;
     private string? _lastWatchedChannelName;
-    private List<(string Title, string RawTitle, int EpisodeIndex, VodResumePosition Position, int? PlaylistId)> _vodResumeItems = new();
+    private List<(string Title, string RawTitle, int EpisodeIndex, VodResumePosition Position, int? PlaylistId, string? LocalPath)> _vodResumeItems = new();
+
+    /// <summary>Префикс ключей позиции досмотра локальных файлов (MainPageViewModel.LocalFileResumeKey).</summary>
+    private const string LocalFileKeyPrefix = "file::";
     private FlyoutType? _openFlyout;
     private DispatcherTimer? _clockTimer;
     private bool _initialized;
@@ -103,13 +106,22 @@ public sealed partial class HubPage : Page
                 .Select(p =>
                 {
                     var key = p.Key;
+                    var episodeIndex = p.Value.EpisodeIndex;
+
+                    // Локальный файл (карточка «Видео»): ключ «file::путь» —
+                    // открывается как LocalVideoFile, а не через портал.
+                    if (key.StartsWith(LocalFileKeyPrefix, StringComparison.Ordinal))
+                    {
+                        var path = key[LocalFileKeyPrefix.Length..];
+                        return (Path.GetFileNameWithoutExtension(path), path, -1, p.Value, (int?)null, path);
+                    }
+
                     var parts = key.Split("::");
                     var title = parts[0];
-                    var episodeIndex = p.Value.EpisodeIndex;
                     var display = episodeIndex >= 0
                         ? string.Format(L.T("Seriya_Nomer_0"), title, episodeIndex + 1)
                         : title;
-                    return (display, title, episodeIndex, p.Value, p.Value.PortalPlaylistId);
+                    return (display, title, episodeIndex, p.Value, p.Value.PortalPlaylistId, (string?)null);
                 })
                 .ToList();
 
@@ -182,7 +194,8 @@ public sealed partial class HubPage : Page
     {
         ToolTipService.SetToolTip(PlaylistsButton, $"{L.T("Hub_Pleylisty_ToolTip")} — 1");
         ToolTipService.SetToolTip(PortalButton, $"{L.T("Portal_Lbl")} — 2");
-        ToolTipService.SetToolTip(SettingsButton, $"{L.T("Nastroyki_Card_Lbl")} — 3");
+        ToolTipService.SetToolTip(VideoButton, $"{L.T("Hub_Video_ToolTip")} — 3");
+        ToolTipService.SetToolTip(SettingsButton, $"{L.T("Nastroyki_Card_Lbl")} — 4");
         ToolTipService.SetToolTip(InfoButton, $"{L.T("Hotkeys_Title")} — F1");
         UpdateContinueButton();
     }
@@ -249,6 +262,7 @@ public sealed partial class HubPage : Page
             ResetCardTransform(PlaylistsTransform);
             ResetCardTransform(PortalTransform);
             ResetCardTransform(SettingsTransform);
+            ResetCardTransform(VideoTransform);
             MainPanel.Opacity = 1;
             _introPlayed = true;
             return;
@@ -268,7 +282,8 @@ public sealed partial class HubPage : Page
         AddAnimation(sb, AccentLineTransform, "ScaleX", 0, 1, 400, 250);
         AddCardAnimation(sb, PlaylistsTransform, -180, 0);
         AddCardAnimation(sb, PortalTransform, 180, 80);
-        AddCardAnimation(sb, SettingsTransform, -180, 80);
+        AddCardAnimation(sb, VideoTransform, -180, 80);
+        AddCardAnimation(sb, SettingsTransform, 180, 120);
         await RunStoryboard(sb);
 
         // Плашка «Продолжить просмотр» — после карточек
@@ -565,12 +580,15 @@ public sealed partial class HubPage : Page
             }
         }
 
-        if (_vodResumeItems.Count > 0)
+        // Недосмотренные — только портал: локальные файлы (карточка «Видео»)
+        // в списке портала неуместны, они показываются плашкой «Продолжить».
+        var portalResumeItems = _vodResumeItems.Where(i => i.LocalPath == null).ToList();
+        if (portalResumeItems.Count > 0)
         {
             AddFlyoutSeparator();
-            AddFlyoutItem("\uE8B6", string.Format(L.T("Nedosmotrennye_0"), _vodResumeItems.Count), "#99FFFFFF", null, false);
+            AddFlyoutItem("\uE8B6", string.Format(L.T("Nedosmotrennye_0"), portalResumeItems.Count), "#99FFFFFF", null, false);
 
-            foreach (var item in _vodResumeItems)
+            foreach (var item in portalResumeItems)
             {
                 var captured = item;
                 AddFlyoutItem("\uE8B6", captured.Title, null, (_, _) => VodMenuItem_Click(captured),
@@ -776,7 +794,7 @@ public sealed partial class HubPage : Page
             ("Ctrl+F", "HK_CtrlF"),
             ("Ctrl+J", "HK_CtrlJ"),
             ("Ctrl+M", "HK_CtrlM"),
-            ("1 / 2 / 3", "HK_Hub123"),
+            ("1 / 2 / 3 / 4", "HK_Hub123"),
             ("F1", "HK_F1"),
         };
 
@@ -852,6 +870,26 @@ public sealed partial class HubPage : Page
         ShowCustomFlyout(FlyoutType.Settings, SettingsButton);
     }
 
+    /// <summary>
+    /// Карточка «Видео»: выбор локального видеофайла и воспроизведение его
+    /// на MainPage тем же конвейером, что VOD портала. Отмена пикера —
+    /// тихий возврат на хаб.
+    /// </summary>
+    private async void VideoButton_Click(object sender, RoutedEventArgs e)
+    {
+        await PickAndPlayLocalVideoAsync();
+    }
+
+    private async System.Threading.Tasks.Task PickAndPlayLocalVideoAsync()
+    {
+        var pickerService = App.Services.GetRequiredService<LocalVideoFileService>();
+        var file = await pickerService.PickAsync();
+        if (file != null)
+        {
+            Frame.Navigate(typeof(MainPage), file);
+        }
+    }
+
     private void PlaylistsAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
@@ -868,6 +906,12 @@ public sealed partial class HubPage : Page
     {
         args.Handled = true;
         ShowCustomFlyout(FlyoutType.Settings, SettingsButton);
+    }
+
+    private void VideoAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        _ = PickAndPlayLocalVideoAsync();
     }
 
     private void ContinueButton_Click(object sender, RoutedEventArgs e)
@@ -892,9 +936,18 @@ public sealed partial class HubPage : Page
         }
     }
 
-    private void VodMenuItem_Click(ValueTuple<string, string, int, VodResumePosition, int?> item)
+    private void VodMenuItem_Click(ValueTuple<string, string, int, VodResumePosition, int?, string?> item)
     {
-        var (title, rawTitle, episodeIndex, position, playlistId) = item;
+        var (title, rawTitle, episodeIndex, position, playlistId, localPath) = item;
+
+        // Локальный файл — играем напрямую, портал не нужен.
+        if (localPath != null)
+        {
+            CloseFlyout();
+            Frame.Navigate(typeof(MainPage), new LocalVideoFile(localPath, title));
+            return;
+        }
+
         var playlist = playlistId.HasValue
             ? _settings?.Playlists.FirstOrDefault(p => p.Id == playlistId.Value)
             : _settings?.Playlists.FirstOrDefault(p => p.IsPortal);

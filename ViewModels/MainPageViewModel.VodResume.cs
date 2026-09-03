@@ -25,6 +25,38 @@ public partial class MainPageViewModel
     internal static string VodResumeKey(string title, int episodeIndex)
         => episodeIndex >= 0 ? $"{title}::{episodeIndex}" : title;
 
+    /// <summary>
+    /// Отдельное пространство ключей для локальных файлов (карточка
+    /// «Видео»): «file::полный-путь». Имя файла может совпасть с фильмом
+    /// портала — по пути они не пересекутся, а хаб отличит локальный файл
+    /// по префиксу и предложит «Продолжить» именно файл.
+    /// </summary>
+    internal static string LocalFileResumeKey(string path) => $"file::{path}";
+
+    public TimeSpan? GetSavedLocalFilePosition(string path)
+    {
+        if (_vodResumePositions.TryGetValue(LocalFileResumeKey(path),
+                out var entry) && entry.PositionSeconds >= MinVodResumeSeconds &&
+            (entry.DurationSeconds <= 0 ||
+             entry.PositionSeconds <= entry.DurationSeconds * VodResumeWatchedFraction))
+        {
+            return TimeSpan.FromSeconds(entry.PositionSeconds);
+        }
+
+        return null;
+    }
+
+    public async Task<TimeSpan?> OfferLocalFileResumeAsync(string path, string title)
+    {
+        var saved = GetSavedLocalFilePosition(path);
+        if (saved == null || VodResumePromptRequested == null)
+        {
+            return null;
+        }
+
+        return await VodResumePromptRequested(title, saved.Value) ? saved : null;
+    }
+
     public async Task LoadVodResumePositionsAsync()
     {
         var stored = await _vodResumeStore.LoadAllAsync();
@@ -89,22 +121,30 @@ public partial class MainPageViewModel
             return;
         }
 
+        // Локальный файл хранится под ключом «file::путь» и без привязки к
+        // порталу (PortalPlaylistId=null) — иначе он попадал в плашку
+        // «Продолжить» портала и его нельзя было корректно открыть.
+        var isLocalFile = channel.IsLocalFile && !string.IsNullOrWhiteSpace(channel.StreamUrl);
+        var key = isLocalFile
+            ? LocalFileResumeKey(channel.StreamUrl!)
+            : VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex);
+
         var position = Player.VodPositionSeconds;
         if (position < MinVodResumeSeconds)
         {
-            _vodResumePositions.Remove(VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex));
+            _vodResumePositions.Remove(key);
             return;
         }
 
         var activePlaylist = AppSettings.Playlists.FirstOrDefault(p => p.Id == AppSettings.ActivePlaylistId);
-        _vodResumePositions[VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex)] =
+        _vodResumePositions[key] =
             new VodResumePosition
             {
                 PositionSeconds = position,
                 DurationSeconds = Player.VodDurationSeconds,
                 EpisodeIndex = Player.CurrentVodEpisodeIndex,
                 UpdatedAt = DateTime.Now,
-                PortalPlaylistId = activePlaylist?.Id
+                PortalPlaylistId = isLocalFile ? null : activePlaylist?.Id
             };
 
         PruneVodResumeEntries();

@@ -2903,5 +2903,29 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Usilitel_Render_Eks.Text" xml:space="preserve">
     <value>Render upscale (experimental)</value>
   </data>
+  <data name="Video_Card.Text" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="Video_Card_Subtitle.Text" xml:space="preserve">
+    <value>Open a video file from disk</value>
+  </data>
+  <data name="Hub_Video_ToolTip" xml:space="preserve">
+    <value>Video file from disk</value>
+  </data>
+  <data name="Pauza_Probel" xml:space="preserve">
+    <value>Pause (Space)</value>
+  </data>
+  <data name="Prodolzhit_Probel" xml:space="preserve">
+    <value>Resume (Space)</value>
+  </data>
+  <data name="LocalVideo_Open_Failed" xml:space="preserve">
+    <value>Could not open the video file</value>
+  </data>
+  <data name="Badge_Pauza" xml:space="preserve">
+    <value>Paused</value>
+  </data>
+  <data name="Badge_Vosproizvedenie" xml:space="preserve">
+    <value>Playing</value>
+  </data>
 </root>
 

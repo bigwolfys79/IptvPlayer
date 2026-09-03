@@ -203,7 +203,10 @@ namespace IptvPlayer.Dialogs
             // Переключение аудио фильтров слышно сразу — фильтры заменяются
             // в графе играющего канала, без пересоздания плеера. Следующие
             // каналы получат их ещё при создании (StreamService.CreatePlayerAsync).
-            _streamService.ApplyAudioFilters(_viewModel.Player.Player, audioNorm);
+            // Loudness разрешён только для VOD/файлов: на живом эфире
+            // StreamService сам подменит его на Dynamic.
+            _streamService.ApplyAudioFilters(_viewModel.Player.Player, audioNorm,
+                _viewModel.Player.IsVodPlaying);
 
             CloseDialog();
         }

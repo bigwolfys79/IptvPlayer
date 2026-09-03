@@ -151,6 +151,8 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="24"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="24"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
             <!-- Плейлисты: клавиша 1 -->
@@ -211,15 +213,15 @@
                 </StackPanel>
             </Button>
 
-            <!-- Настройки: клавиша 3 -->
-            <Button x:Name="SettingsButton" Grid.Column="4"
+            <!-- Настройки: клавиша 4 -->
+            <Button x:Name="SettingsButton" Grid.Column="6"
                     Click="SettingsButton_Click"
                     Style="{StaticResource HubCard}"
                     Background="#2A2030"
                     RenderTransformOrigin="0.5,0.5"
                     AutomationProperties.AutomationId="HubSettingsCard">
                 <Button.KeyboardAccelerators>
-                    <KeyboardAccelerator Key="Number3" Invoked="SettingsAccelerator_Invoked"/>
+                    <KeyboardAccelerator Key="Number4" Invoked="SettingsAccelerator_Invoked"/>
                 </Button.KeyboardAccelerators>
                 <Button.RenderTransform>
                     <CompositeTransform x:Name="SettingsTransform" Rotation="-180" ScaleX="0.3" ScaleY="0.3"/>
@@ -234,6 +236,33 @@
                                Foreground="White" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                     <TextBlock x:Uid="Yazyk_Interfeys_Vosproizv" FontSize="12"
+                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Margin="0,4,0,0"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Видео (локальные файлы): клавиша 3 -->
+            <Button x:Name="VideoButton" Grid.Column="4"
+                    Click="VideoButton_Click"
+                    Style="{StaticResource HubCard}"
+                    Background="#3A2A20"
+                    RenderTransformOrigin="0.5,0.5"
+                    AutomationProperties.AutomationId="HubVideoCard">
+                <Button.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="Number3" Invoked="VideoAccelerator_Invoked"/>
+                </Button.KeyboardAccelerators>
+                <Button.RenderTransform>
+                    <CompositeTransform x:Name="VideoTransform" Rotation="180" ScaleX="0.3" ScaleY="0.3"/>
+                </Button.RenderTransform>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="44"
+                               Foreground="White" HorizontalAlignment="Center"
+                               Margin="0,0,0,16"/>
+                    <TextBlock x:Uid="Video_Card" FontSize="18" FontWeight="SemiBold"
+                               Foreground="White" HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                    <TextBlock x:Uid="Video_Card_Subtitle" FontSize="12"
                                Foreground="#B3FFFFFF" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>

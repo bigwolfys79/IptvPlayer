@@ -6,8 +6,10 @@ using IptvPlayer.Models;
 using IptvPlayer.Services;
 using IptvPlayer.ViewModels;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 
 namespace IptvPlayer;
 
@@ -19,16 +21,29 @@ public sealed partial class MainPage : Page
 {
     private void UpdateArchivePauseButton()
     {
+        // Пауза доступна и в архиве, и в VOD (ToggleArchivePause работает
+        // в обоих режимах), а «В эфир» и архивный seek-таймлайн — только
+        // в архиве: VOD перематывается своей VodSeekPanel.
+        var isPauseAvailable = (Player.IsArchivePlaying || Player.IsVodPlaying) && Player.Player != null;
         var isArchiveActive = Player.IsArchivePlaying && Player.Player != null;
-        OverlayPauseButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
-        VideoOverlayPauseButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
+        OverlayPauseButton.Visibility = isPauseAvailable ? Visibility.Visible : Visibility.Collapsed;
+        VideoOverlayPauseButton.Visibility = isPauseAvailable ? Visibility.Visible : Visibility.Collapsed;
         OverlayBackToLiveButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
         VideoOverlayBackToLiveButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
 
-        var channel = Player.CurrentPlayerChannelId != null
-            ? ViewModel.Channels.FirstOrDefault(c => c.Id == Player.CurrentPlayerChannelId.Value)
-            : null;
-        var isPaused = isArchiveActive && channel is { IsPlaying: false };
+        // Канал паузы: у SelectedChannel приоритет — у каналов портала и
+        // локальных файлов Id не уникален (все нули), поиск по Id в списке
+        // вернул бы первый попавшийся канал с чужим IsPlaying. Локальный файл
+        // (карточка «Видео») в списке вообще не состоит.
+        var channel = ViewModel.SelectedChannel is { } selected &&
+                      Player.CurrentPlayerChannelId == selected.Id
+            ? selected
+            : Player.CurrentPlayerChannelId.HasValue &&
+              ViewModel.Channels.FirstOrDefault(c => c.Id == Player.CurrentPlayerChannelId.Value)
+                  is { } listed
+                ? listed
+                : ViewModel.SelectedChannel;
+        var isPaused = isPauseAvailable && channel is { IsPlaying: false };
 
         WindowedArchiveSeekPanel.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
         OverlayArchiveSeekPanel.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
@@ -39,9 +54,70 @@ public sealed partial class MainPage : Page
         }
 
         OverlayPauseButton.Content = isPaused ? AppIcons.Play(20) : AppIcons.Pause(20);
-        ToolTipService.SetToolTip(OverlayPauseButton, isPaused ? L.T("Prodolzhit_Arkhiv_Probel") : L.T("Pauza_Arkhiv_Probel"));
+        ToolTipService.SetToolTip(OverlayPauseButton, isPaused ? L.T("Prodolzhit_Probel") : L.T("Pauza_Probel"));
         VideoOverlayPauseButton.Content = isPaused ? AppIcons.Play(16) : AppIcons.Pause(16);
-        ToolTipService.SetToolTip(VideoOverlayPauseButton, isPaused ? L.T("Prodolzhit_Arkhiv_Probel") : L.T("Pauza_Arkhiv_Probel"));
+        ToolTipService.SetToolTip(VideoOverlayPauseButton, isPaused ? L.T("Prodolzhit_Probel") : L.T("Pauza_Probel"));
+
+        ShowPlaybackStateBadge(isPauseAvailable, isPaused);
+    }
+
+    // Состояние паузы на предыдущем вызове UpdateArchivePauseButton:
+    // null — воспроизведения нет (старт/остановка), индикатор не показываем.
+    private bool? _lastBadgeState;
+    private DispatcherQueueTimer? _badgeHideTimer;
+
+    private void ShowPlaybackStateBadge(bool isPauseAvailable, bool isPaused)
+    {
+        if (!isPauseAvailable)
+        {
+            // Плеер остановился — следующая пауза снова получает индикатор.
+            _lastBadgeState = null;
+            return;
+        }
+
+        if (_lastBadgeState == isPaused)
+        {
+            return;
+        }
+
+        var isFirstState = _lastBadgeState == null;
+        _lastBadgeState = isPaused;
+        if (isFirstState)
+        {
+            // Первый расчёт после старта воспроизведения — не событие паузы.
+            return;
+        }
+
+        PlaybackStateBadgeIcon.Content = isPaused ? AppIcons.Play(22) : AppIcons.Pause(22);
+        PlaybackStateBadgeText.Text = L.T(isPaused ? "Badge_Pauza" : "Badge_Vosproizvedenie");
+        AnimateBadgeOpacity(1);
+
+        _badgeHideTimer ??= DispatcherQueue.CreateTimer();
+        _badgeHideTimer.Stop();
+        _badgeHideTimer.Interval = TimeSpan.FromMilliseconds(900);
+        _badgeHideTimer.Tick += BadgeHideTimer_Tick;
+        _badgeHideTimer.Start();
+    }
+
+    private void BadgeHideTimer_Tick(object? sender, object e)
+    {
+        _badgeHideTimer?.Stop();
+        AnimateBadgeOpacity(0);
+    }
+
+    private void AnimateBadgeOpacity(double to)
+    {
+        var storyboard = new Storyboard();
+        var animation = new DoubleAnimation
+        {
+            To = to,
+            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
+            EasingFunction = new QuadraticEase()
+        };
+        Storyboard.SetTarget(animation, PlaybackStateBadge);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
     }
 
     private void UpdateArchiveBanner()

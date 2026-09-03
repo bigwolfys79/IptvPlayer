@@ -17,6 +17,14 @@ public sealed class XmlTvLoadResult
 
     /// <summary>channel id → icon url из &lt;icon src&gt; этого источника.</summary>
     public Dictionary<string, string> ChannelIcons { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Момент (UTC), когда данные этого источника были скачаны по сети —
+    /// из SavedAtUtc дискового кэша либо «сейчас» для свежескачанного.
+    /// Используется ключом кэша слитого EPG (см. EPGService): пока метки
+    /// всех источников не изменились, слияние можно не повторять.
+    /// </summary>
+    public DateTime DataSavedAtUtc { get; init; }
 }
 
 public interface IXmlTvService

@@ -298,7 +298,7 @@
              Границы перетаскивания заданы на самой колонке ChannelListColumn
              (Min/MaxWidth), сплиттер их соблюдает. Контент — три точки-захвата
              (понятно, что тянуть можно отсюда); при наведении точки темнеют. -->
-        <ctk:GridSplitter Grid.Column="1"
+        <ctk:GridSplitter x:Name="ChannelListSplitter" Grid.Column="1"
                                Width="5"
                                ResizeBehavior="PreviousAndNext"
                                Background="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -306,7 +306,7 @@
         <!-- Точки-захват поверх сплиттера: GridSplitter (CommunityToolkit)
              не принимает контент, поэтому grip — отдельный элемент с
              выключенным вводом (клики/перетаскивание проходят в сплиттер). -->
-        <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="3"
+        <StackPanel x:Name="ChannelListSplitterGrip" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="3"
                     IsHitTestVisible="False">
             <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
             <Ellipse Width="2" Height="2" Fill="{ThemeResource TextFillColorTertiaryBrush}"/>
@@ -430,12 +430,14 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
+                    <!-- Без привязки видимости к IsPlaying: при паузе флаг
+                         ложится, и сворачивание элемента гасило последний
+                         кадр в серый фон. Пауза обязана замораживать кадр. -->
                     <MediaPlayerElement x:Name="MediaPlayer"
                                         Grid.Row="0"
                                         AreTransportControlsEnabled="False"
                                         AutoPlay="False"
-                                        Stretch="Uniform"
-                                        Visibility="{x:Bind ViewModel.SelectedChannel.IsPlaying, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
+                                        Stretch="Uniform" />
 
                     <!-- Рендер-путь frame server (экспериментальный апскейл):
                          кадры рисуются Win2D поверх MPE; сам MPE в этом режиме
@@ -444,6 +446,34 @@
                     <canvas:CanvasSwapChainPanel x:Name="FrameServerPanel"
                                                  Grid.Row="0"
                                                  Visibility="Collapsed" />
+
+                    <!-- Всплывающий индикатор «Пауза / Воспроизведение» по
+                         центру видео (как в YouTube): показывается на секунду
+                         при смене состояния паузы, работает и в окне, и в
+                         fullscreen. Живёт в сетке области видео, чтобы
+                         центрироваться именно по видео, а не по окну.
+                         Прозрачен для мыши. -->
+                    <Border x:Name="PlaybackStateBadge"
+                            Grid.Row="0"
+                            Canvas.ZIndex="20"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Padding="20,14"
+                            CornerRadius="12"
+                            Background="{ThemeResource OverlayScrimBrush}"
+                            Opacity="0"
+                            IsHitTestVisible="False">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <ContentPresenter x:Name="PlaybackStateBadgeIcon"
+                                              Width="24" Height="24"
+                                              VerticalAlignment="Center" />
+                            <TextBlock x:Name="PlaybackStateBadgeText"
+                                       Foreground="White"
+                                       FontSize="17"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
 
                     <!-- Баннер архива над видео убран — мешал просмотру. Информация
                          об архивной передаче и кнопка "В эфир" теперь в панелях
@@ -962,7 +992,7 @@
                  относительно неё — раньше нижняя панель центрировалась по всей
                  ширине окна и наезжала на список слева. -->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320" />
+                <ColumnDefinition x:Name="OverlayChannelsColumn" Width="320" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -1040,7 +1070,7 @@
             </Border>
 
             <!-- Список каналов слева, сгруппированный и отсортированный по группам -->
-            <Border Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
+            <Border x:Name="OverlayChannelsPanel" Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
                     HorizontalAlignment="Left"
                     Width="320"
                     Background="{ThemeResource OverlayScrimDarkBrush}">
@@ -1054,9 +1084,16 @@
                                Foreground="White" FontSize="18" FontWeight="SemiBold"
                                Padding="16,16,16,8" />
 
+                    <!-- ЕДИНЫЙ источник с оконным списком: плоский
+                         DisplayedChannels. Раньше ItemsSource собирался вручную
+                         в сгруппированный CollectionViewSource
+                         (RefreshOverlayChannelGroups), и fullscreen-список
+                         структурно расходился с оконным, а обновлялся только
+                         при видимом оверлее — оставался устаревшим. -->
                     <ListView x:Name="OverlayChannelsListView"
                               Grid.Row="1"
                               Background="Transparent"
+                              ItemsSource="{x:Bind ViewModel.DisplayedChannels, Mode=OneWay}"
                               SelectedItem="{x:Bind ViewModel.SelectedChannel, Mode=OneWay}"
                               SelectionMode="Single"
                               IsItemClickEnabled="True"
@@ -1082,19 +1119,6 @@
                                 <Setter Property="Padding" Value="0" />
                             </Style>
                         </ListView.ItemContainerStyle>
-                        <ListView.GroupStyle>
-                            <GroupStyle>
-                                <GroupStyle.HeaderTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Key}"
-                                                   Foreground="#B3FFFFFF"
-                                                   FontSize="12"
-                                                   FontWeight="SemiBold"
-                                                   Padding="16,12,16,4" />
-                                    </DataTemplate>
-                                </GroupStyle.HeaderTemplate>
-                            </GroupStyle>
-                        </ListView.GroupStyle>
                     </ListView>
                 </Grid>
             </Border>

@@ -34,7 +34,6 @@ namespace IptvPlayer;
 public sealed partial class MainPage : Page
 {
     private static string AllGroupsOption => L.T("Vse_Gruppy");
-    private static string FavoritesOption => L.T("Izbrannoe");
 
     // Все сервисы и ViewModel резолвятся в конструкторе из DI-контейнера
     // App.Services (WinUI не даёт внедрять зависимости в конструкторы
@@ -210,9 +209,14 @@ public sealed partial class MainPage : Page
         Player.ArchiveStateChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(UpdateArchiveBanner);
         // Качество VOD портала: кнопки в обеих нижних панелях обновляются при
-        // старте/остановке VOD и смене качества.
+        // старте/остановке VOD и смене качества. Кнопка паузы также зависит
+        // от IsVodPlaying (видна и в VOD, и в архиве).
         Player.VodStateChanged += (s, e) =>
-            DispatcherQueue.TryEnqueue(UpdateVodQualityButtons);
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                UpdateVodQualityButtons();
+                UpdateArchivePauseButton();
+            });
         // Выбор серии сериала портала: VM просит — показываем диалог.
         ViewModel.PortalEpisodePickRequested += OnPortalEpisodePickRequested;
         // Возобновление VOD: VM нашла сохранённую позицию — спрашиваем,
@@ -316,13 +320,20 @@ public sealed partial class MainPage : Page
                 {
                     ChannelsListView.SelectedItem = ViewModel.SelectedChannel;
                     PosterGridView.SelectedItem = ViewModel.SelectedChannel;
+                    // Оверлейный список полноэкранного режима живёт на том же
+                    // плоском DisplayedChannels, что и оконные списки, — после
+                    // замены коллекции выделение у него тоже сбрасывается.
+                    OverlayChannelsListView.SelectedItem = ViewModel.SelectedChannel;
                 }
                 finally
                 {
                     _syncingListSelection = false;
                 }
 
-                RefreshOverlayChannelGroups();
+                // Группированная пересборка оверлейного списка
+                // (RefreshOverlayChannelGroups) удалена: ItemsSource
+                // OverlayChannelsListView теперь забинден напрямую на
+                // ViewModel.DisplayedChannels и обновляется автоматически.
             });
             // Пересборка DisplayedChannels (фильтр, поиск, фоновая загрузка
             // EPG) сбрасывает прокрутку списка наверх — возвращаем выбранный
@@ -611,6 +622,12 @@ public sealed partial class MainPage : Page
             Serilog.Log.Information("OnNavigatedTo: загрузка из Hub, skipResume={Skip}, плейлист Id={Id} Name={Name}",
                 loadTuple.Item2, loadTuple.Item1.Id, loadTuple.Item1.Name);
         }
+        else if (e.Parameter is LocalVideoFile localVideo)
+        {
+            _localVideoFile = localVideo;
+            _cameFromHub = true;
+            Serilog.Log.Information("OnNavigatedTo: локальный видеофайл «{File}»", localVideo.Path);
+        }
         else
         {
             Serilog.Log.Information("OnNavigatedTo: параметр = {Param}", e.Parameter?.ToString() ?? "NULL");
@@ -803,58 +820,80 @@ public sealed partial class MainPage : Page
         }
 
         // Активный плейлист: приоритет у переданного из Hub Page.
-        _activePlaylist = _navigatedPlaylist
-            ?? ViewModel.AppSettings.Playlists
-                .FirstOrDefault(p => p.Id == ViewModel.AppSettings.ActivePlaylistId)
-            ?? ViewModel.AppSettings.Playlists.FirstOrDefault();
-        Serilog.Log.Information("InitializeAsync: _activePlaylist Id={Id} Name={Name} IsPortal={IsPortal}",
-            _activePlaylist?.Id ?? -1, _activePlaylist?.Name ?? "NULL", _activePlaylist?.IsPortal ?? false);
-        if (_activePlaylist != null)
+        // Локальный видеофайл (карточка «Видео»): плейлист/портал не нужны —
+        // не качаем каналы и не отдаём epgService пустой список (иначе он
+        // закэширует пустоту и сломает следующую загрузку EPG). Список
+        // каналов остаётся пустым до возврата в хаб.
+        if (_localVideoFile == null)
         {
-            ViewModel.AppSettings.ActivePlaylistId = _activePlaylist.Id;
-            initialChannels.AddRange(await LoadPlaylistChannelsAsync(_activePlaylist));
-        }
-
-        // Id назначаются один раз для обоих путей появления каналов (скачанный
-        // плейлист или кэш) — до этого ChannelViewModel.Id может быть default.
-        // Очищаем singleton-репозиторий: при навигации Hub→MainPage→Hub→MainPage
-        // старые каналы из предыдущего плейлиста остались бы в репозитории.
-        await _channelRepository.Clear();
-        var channelId = 1;
-        foreach (var channel in initialChannels)
-        {
-            channel.Id = channelId++;
-        }
-
-        foreach (var channel in initialChannels)
-        {
-            // Наполняем именно _channelRepository — это тот объект, на который
-            // ссылается epgService, и по которому EPGService.GetEPGEntriesAsync
-            // ищет TvgId канала при сопоставлении с XMLTV-программами.
-            await _channelRepository.AddChannelAsync(channel);
-        }
-
-        var channels = await _epgService.GetChannelsAsync();
-        ViewModel.Channels = new ObservableCollection<ChannelViewModel>(channels);
-
-        // Избранное из настроек (по имени канала — см. комментарий в AppSettings).
-        if (ViewModel.AppSettings.FavoriteChannels.Count > 0)
-        {
-            var favorites = new HashSet<string>(ViewModel.AppSettings.FavoriteChannels, StringComparer.OrdinalIgnoreCase);
-            foreach (var channel in ViewModel.Channels)
+            _activePlaylist = _navigatedPlaylist
+                ?? ViewModel.AppSettings.Playlists
+                    .FirstOrDefault(p => p.Id == ViewModel.AppSettings.ActivePlaylistId)
+                ?? ViewModel.AppSettings.Playlists.FirstOrDefault();
+            Serilog.Log.Information("InitializeAsync: _activePlaylist Id={Id} Name={Name} IsPortal={IsPortal}",
+                _activePlaylist?.Id ?? -1, _activePlaylist?.Name ?? "NULL", _activePlaylist?.IsPortal ?? false);
+            if (_activePlaylist != null)
             {
-                channel.IsFavorite = favorites.Contains(channel.Name);
+                ViewModel.AppSettings.ActivePlaylistId = _activePlaylist.Id;
+                initialChannels.AddRange(await LoadPlaylistChannelsAsync(_activePlaylist));
             }
+
+            // Id назначаются один раз для обоих путей появления каналов (скачанный
+            // плейлист или кэш) — до этого ChannelViewModel.Id может быть default.
+            // Очищаем singleton-репозиторий: при навигации Hub→MainPage→Hub→MainPage
+            // старые каналы из предыдущего плейлиста остались бы в репозитории.
+            await _channelRepository.Clear();
+            var channelId = 1;
+            foreach (var channel in initialChannels)
+            {
+                channel.Id = channelId++;
+            }
+
+            foreach (var channel in initialChannels)
+            {
+                // Наполняем именно _channelRepository — это тот объект, на который
+                // ссылается epgService, и по которому EPGService.GetEPGEntriesAsync
+                // ищет TvgId канала при сопоставлении с XMLTV-программами.
+                await _channelRepository.AddChannelAsync(channel);
+            }
+
+            var channels = await _epgService.GetChannelsAsync();
+            ViewModel.Channels = new ObservableCollection<ChannelViewModel>(channels);
+
+            // Избранное из настроек (по имени канала — см. комментарий в AppSettings).
+            if (ViewModel.AppSettings.FavoriteChannels.Count > 0)
+            {
+                var favorites = new HashSet<string>(ViewModel.AppSettings.FavoriteChannels, StringComparer.OrdinalIgnoreCase);
+                foreach (var channel in ViewModel.Channels)
+                {
+                    channel.IsFavorite = favorites.Contains(channel.Name);
+                }
+            }
+
+            ViewModel.EpgViewModel.SetChannels(ViewModel.Channels.ToList());
+            ViewModel.UpdateChannelCountText();
+
+            // RefreshGroups пересобирает Groups и назначает SelectedGroup, а
+            // FilterChannels пересчитывает DisplayedChannels (представление
+            // обновит GroupFilterComboBox и оверлей через событие FilterChanged).
+            ViewModel.RefreshGroups();
+            ViewModel.FilterChannels();
         }
+        else
+        {
+            Serilog.Log.Information("InitializeAsync: локальный видеофайл — плейлист и EPG не загружаются");
+            ViewModel.Channels = new ObservableCollection<ChannelViewModel>();
+            ViewModel.UpdateChannelCountText();
 
-        ViewModel.EpgViewModel.SetChannels(ViewModel.Channels.ToList());
-        ViewModel.UpdateChannelCountText();
-
-        // RefreshGroups пересобирает Groups и назначает SelectedGroup, а
-        // FilterChannels пересчитывает DisplayedChannels (представление
-        // обновит GroupFilterComboBox и оверлей через событие FilterChanged).
-        ViewModel.RefreshGroups();
-        ViewModel.FilterChannels();
+            // Панель каналов не нужна: списка нет и не будет — видео занимает
+            // всё окно. Колонка в 0 (не Collapsed) + сплиттер скрыт, чтобы
+            // не осталось мёртвой полосы перетаскивания.
+            ChannelListPanel.Visibility = Visibility.Collapsed;
+            ChannelListSplitter.Visibility = Visibility.Collapsed;
+            ChannelListSplitterGrip.Visibility = Visibility.Collapsed;
+            ChannelListColumn.MinWidth = 0;
+            ChannelListColumn.Width = new GridLength(0);
+        }
 
         // Показываем кнопку "Назад" если пришли из Hub Page
         if (_cameFromHub)
@@ -885,7 +924,7 @@ public sealed partial class MainPage : Page
         // При загрузке из Hub через "Загрузить плейлист" или "Загрузить портал"
         // (_cameFromHub + нет VOD-резюма) — НЕ применяем последний канал,
         // чтобы пользователь начинал с чистого списка.
-        var autoResume = !_skipResume && _vodResumeChannelTitle == null;
+        var autoResume = !_skipResume && _vodResumeChannelTitle == null && _localVideoFile == null;
         if (ViewModel.Channels.Count > 0 && autoResume)
         {
             // Последний смотренный канал хранится на каждый плейлист свой
@@ -939,22 +978,33 @@ public sealed partial class MainPage : Page
             _ = ResumeVodFromHubAsync(_vodResumeChannelTitle, _vodResumeEpisodeIndex);
         }
 
+        // Локальный видеофайл из хаба (карточка «Видео»)
+        if (_localVideoFile != null)
+        {
+            _ = PlayLocalVideoFileAsync(_localVideoFile);
+        }
+
         // Даем UI отрисовать список каналов до старта загрузки EPG. Без
         // этого ListView мог получить коллекцию, но не успеть отрисоваться
         // до первого await внутри LoadEPGAsync — и на экране список
         // появлялся только вместе с EPG.
         await Task.Yield();
 
-        // Загрузка EPG больше не блокирует UI (тяжёлая работа в пуле
-        // потоков — см. EpgCacheStore и EPGService.MergeSources), а
-        // программы догружаются в панели по мере готовности.
-        await ViewModel.EpgViewModel.LoadEPGAsync();
-
-        // Загружаем полный EPG (список передач) для выбранного канала,
-        // чтобы панель EPG не была пустой при старте.
-        if (ViewModel.SelectedChannel is { } selected)
+        // Локальный файл: EPG не загружаем (каналов нет, пустой список
+        // закэшировался бы в EPGService и сломал следующую загрузку).
+        if (_localVideoFile == null)
         {
-            await ViewModel.EpgViewModel.LoadEPGForChannelAsync(selected.Id);
+            // Загрузка EPG больше не блокирует UI (тяжёлая работа в пуле
+            // потоков — см. EpgCacheStore и EPGService.MergeSources), а
+            // программы догружаются в панели по мере готовности.
+            await ViewModel.EpgViewModel.LoadEPGAsync();
+
+            // Загружаем полный EPG (список передач) для выбранного канала,
+            // чтобы панель EPG не была пустой при старте.
+            if (ViewModel.SelectedChannel is { } selected)
+            {
+                await ViewModel.EpgViewModel.LoadEPGForChannelAsync(selected.Id);
+            }
         }
 
         // После (пере)загрузки EPG коллекции передач пересобраны — возвращаем
@@ -1169,97 +1219,11 @@ public sealed partial class MainPage : Page
     // ApplyChannelFilters() удалён: фильтрация теперь полностью в
     // ViewModel.FilterChannels(), которая автоматически вызывается
     // при изменении SearchQuery / SelectedGroup через TwoWay-биндинги.
-    // RefreshOverlayChannelGroups() вызывается через событие FilterChanged.
 
-    /// <summary>
-    /// Небольшая обёртка над списком каналов одной группы для группированного
-    /// ListView в полноэкранном оверлее — GroupStyle.HeaderTemplate биндится
-    /// на её свойство Key.
-    /// </summary>
-    private sealed class ChannelGroup : List<ChannelViewModel>
-    {
-        public string Key { get; }
-
-        public ChannelGroup(string key, IEnumerable<ChannelViewModel> items) : base(items)
-        {
-            Key = key;
-        }
-    }
-
-    /// <summary>
-    /// Перестраивает сгруппированный источник для OverlayChannelsListView на
-    /// основе текущего ViewModel.DisplayedChannels. Порядок каналов — ТОТ ЖЕ,
-    /// что в оконном списке: избранные блоком наверх, дальше порядок плейлиста
-    /// (OrderByDescending(IsFavorite) в FilterChannels — стабильная сортировка).
-    /// Группы идут по первому вхождению своих каналов, внутри группы — тоже
-    /// порядок плейлиста; иначе список в fullscreen не совпадал с оконным, и
-    /// номер из цифрового ввода указывал не на тот канал. Избранные выводятся
-    /// в группу «★ Избранное» наверху и исключаются из тематических групп —
-    /// чтобы один канал не встречался в списке дважды (иначе путается выделение).
-    /// </summary>
-    private void RefreshOverlayChannelGroups()
-    {
-        // Пересборка сгруппированного источника на 20k+ элементов дорогая —
-        // делаем её только когда полноэкранный оверлей реально виден; при
-        // входе в fullscreen SetFullScreenMode вызывает этот метод явно.
-        if (FullScreenOverlay.Visibility != Visibility.Visible)
-        {
-            return;
-        }
-
-        var favorites = new List<ChannelViewModel>();
-
-        // Dictionary держит ключи без учёта регистра (дубликаты групп
-        // «Фильмы»/«фильмы» схлопываются), orderedGroups — порядок вставки.
-        var buckets = new Dictionary<string, ChannelGroup>(StringComparer.OrdinalIgnoreCase);
-        var orderedGroups = new List<ChannelGroup>();
-
-        foreach (var channel in ViewModel.DisplayedChannels)
-        {
-            if (channel.IsFavorite)
-            {
-                favorites.Add(channel);
-                continue;
-            }
-
-            var key = string.IsNullOrWhiteSpace(channel.Group) ? L.T("Bez_Gruppy") : channel.Group!.Trim();
-            if (!buckets.TryGetValue(key, out var group))
-            {
-                group = new ChannelGroup(key, Enumerable.Empty<ChannelViewModel>());
-                buckets[key] = group;
-                orderedGroups.Add(group);
-            }
-            group.Add(channel);
-        }
-
-        if (favorites.Count > 0)
-        {
-            orderedGroups.Insert(0, new ChannelGroup(FavoritesOption, favorites));
-        }
-
-        var cvs = new CollectionViewSource
-        {
-            IsSourceGrouped = true,
-            Source = orderedGroups
-        };
-
-        OverlayChannelsListView.ItemsSource = cvs.View;
-
-        // Назначение нового ItemsSource сбрасывает выделение — восстанавливаем
-        // текущий канал, иначе в fullscreen теряется подсветка играющего.
-        // TwoWay-биндинг SelectedItem сам не сработает: значение на пути
-        // (ViewModel.SelectedChannel) при этом не менялось.
-        if (ViewModel.SelectedChannel is { } selected)
-        {
-            OverlayChannelsListView.SelectedItem = selected;
-        }
-
-        Serilog.Log.Debug(
-            "OverlayList: пересборка — каналов {Channels}, групп {Groups}, выделен «{Selected}», в списке выделение: {HasSelection}",
-            ViewModel.DisplayedChannels.Count, orderedGroups.Count,
-            ViewModel.SelectedChannel?.Name,
-            OverlayChannelsListView.SelectedItem != null);
-    }
+    // RefreshOverlayChannelGroups() и класс ChannelGroup удалены: оверлейный
+    // список полноэкранного режима биндится на ViewModel.DisplayedChannels
+    // напрямую (MainPage.xaml) и больше не требует ручной сгруппированной
+    // копии — состав, порядок и выделение всегда совпадают с оконным списком.
 
     // ChannelSearchBox.Text и GroupFilterComboBox.SelectedItem теперь забиндены
     // TwoWay на ViewModel.SearchQuery / ViewModel.SelectedGroup — фильтрация

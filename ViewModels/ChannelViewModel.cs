@@ -111,6 +111,13 @@ public partial class ChannelViewModel : ObservableObject
     /// </summary>
     public bool IsPortalItem => !string.IsNullOrEmpty(_portalRequest);
 
+    /// <summary>
+    /// Локальный видеофайл (карточка «Видео» на хабе), а не канал из
+    /// плейлиста: StreamUrl — «сырой» путь диска, позиция досмотра хранится
+    /// под отдельным ключом «file::путь» и не попадает в списки портала.
+    /// </summary>
+    public bool IsLocalFile { get; set; }
+
     private string? _description;
 
     /// <summary>

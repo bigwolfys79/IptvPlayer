@@ -305,10 +305,20 @@ public class AppSettings
     /// он задан; иначе — глобальный EpgSources (плейлистов ещё нет, у плейлиста
     /// источники не настраивались, или все удалены — разумный фолбэк, чтобы
     /// EPG не пропадал молча).
+    /// Исключение — портальный плейлист без собственных источников: это
+    /// VOD-каталог, программа передач для него бессмысленна, а глобальный
+    /// фолбэк заставлял скачивать и парсить XMLTV (десятки МБ и сотни тысяч
+    /// программ) впустую при каждом открытии портала. EPG у портала появится,
+    /// только если явно назначить источники самому плейлисту.
     /// </summary>
     public List<EPGSource> GetActiveEpgSources()
     {
         var playlist = Playlists.FirstOrDefault(p => p.Id == ActivePlaylistId);
+        if (playlist is { IsPortal: true } && playlist.EpgSources.Count == 0)
+        {
+            return new List<EPGSource>();
+        }
+
         return playlist?.EpgSources.Count > 0 ? playlist.EpgSources : EpgSources;
     }
 }

@@ -103,6 +103,76 @@ public static class EpgCacheStore
         }
     }
 
+    /// <summary>
+    /// Ключ кэша слитого EPG для набора источников (URL в порядке
+    /// приоритета слияния). Публичный, чтобы EPGService считал его и для
+    /// чтения/записи, и для списка живых ключей в CleanupOrphans.
+    /// </summary>
+    public static string MergedKeyFor(IEnumerable<string> sourceUrls)
+    {
+        var joined = string.Join("|", sourceUrls);
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(joined)));
+        return $"epgmerged:{hash}";
+    }
+
+    /// <summary>
+    /// Читает произвольную запись кэша (например, MergedEpgCache).
+    /// null — промах (нет файла/битый/ошибка).
+    /// </summary>
+    public static async Task<T?> ReadRecordAsync<T>(string key) where T : class
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var path = PathForKey(key);
+                if (!File.Exists(path))
+                {
+                    return null;
+                }
+
+                using var compressed = File.OpenRead(path);
+                using var brotli = new BrotliStream(compressed, CompressionMode.Decompress);
+                using var plain = new MemoryStream();
+                brotli.CopyTo(plain);
+
+                return MemoryPackSerializer.Deserialize<T>(plain.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Промах чтения дискового кэша EPG ({Key}).", key);
+                return null;
+            }
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Записывает произвольную запись кэша. Ошибки проглатываются:
+    /// отсутствие места на диске не должно ломать воспроизведение.
+    /// </summary>
+    public static Task WriteRecordAsync<T>(string key, T value) where T : class
+    {
+        return Task.Run(() =>
+        {
+            try
+            {
+                var path = PathForKey(key);
+                var tmp = path + ".tmp";
+                var bytes = MemoryPackSerializer.Serialize(value);
+                using (var file = File.Create(tmp))
+                using (var brotli = new BrotliStream(file, CompressionLevel.Fastest))
+                {
+                    brotli.Write(bytes, 0, bytes.Length);
+                }
+                File.Move(tmp, path, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Ошибка записи дискового кэша EPG ({Key}).", key);
+            }
+        });
+    }
+
     private static string PathForKey(string key)
     {
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));

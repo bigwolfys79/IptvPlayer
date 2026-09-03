@@ -856,6 +856,44 @@ public partial class PlayerViewModel : ObservableObject
     public async Task SetVideoUpscalerAsync(string mode)
     {
         var normalized = VideoUpscaler.Normalize(mode);
+
+        // Локальный файл: живая смена фильтров (SetFFmpegVideoFilters)
+        // перестраивает граф и стопорит воспроизведение насмерть — файл
+        // не сеть, рестарт мгновенный. Перезапускаем с новой настройкой
+        // и той же позицией: CreatePlayerAsync читает VideoUpscaler из
+        // настроек, поэтому пресет сохраняем ДО рестарта.
+        if (VodChannel is { IsLocalFile: true } localChannel &&
+            !string.IsNullOrWhiteSpace(localChannel.StreamUrl))
+        {
+            VideoUpscalerMode = normalized;
+            try
+            {
+                var localSettings = await _settingsService.LoadAsync();
+                localSettings.VideoUpscaler = normalized;
+                await _settingsService.SaveAsync(localSettings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось сохранить пресет улучшения картинки.");
+            }
+
+            var resume = VodPositionSeconds;
+            if (resume > 0)
+            {
+                await StartPlaybackAsync(localChannel, localChannel.StreamUrl!, archiveEntry: null,
+                    isVod: true, resumePosition: TimeSpan.FromSeconds(resume));
+            }
+            else
+            {
+                await StartPlaybackAsync(localChannel, localChannel.StreamUrl!, archiveEntry: null, isVod: true);
+            }
+
+            _logger.LogInformation(
+                "Пресет улучшения картинки {Mode} применён рестартом локального файла (живая смена фильтров его стопорит).",
+                normalized);
+            return;
+        }
+
         if (normalized == _videoUpscaler && normalized == VideoUpscaler.Off)
         {
             // Повторный выбор Off — экономим запись настроек.

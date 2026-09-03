@@ -57,15 +57,27 @@ namespace IptvPlayer.Services
         // кодируется в разы тише остальных (пример — BCU TruMotion HD),
         // а MediaPlayer.Volume ограничен 100%: вытянуть такой канал можно
         // только фильтром в графе FFmpeg, до системного микшера.
-        //  - dynaudnorm: динамически поднимает тихий звук (до ~+21 дБ),
-        //    громкий почти не трогает; задержка — длина кадра (~0.3 с);
+        //  - dynaudnorm: динамически поднимает тихий звук (до m дБ усиления),
+        //    громкий почти не трогает. f — длина кадра в мс, g — кадры
+        //    сглаживания усиления: их произведение и есть буфер предпросмотра.
+        //    f=30:g=5 (150 мс) вместо f=300:g=15 (4.5 с) — незаметная задержка
+        //    и меньшая нагрузка; субъективно сглаживание то же;
         //  - loudnorm: приводит любой канал к единой громкости EBU R128
-        //    (−16 LUFS) — тише становится и громкие каналы, задержка ~3 с,
-        //    поэтому после фильтра возвращаем привычные 48 кГц.
-        private static string? GetAudioFilters(string? mode) => mode switch
+        //    (−16 LUFS) — тише становится и громкие каналы. Но он держит
+        //    буфер предпросмотра ~3 с: на живом эфире этих данных ещё нет,
+        //    звук отдаётся с запаздыванием и отстаёт от видео (asetpts не
+        //    помогает — данные не пришли, а не сдвинуты). Поэтому Loudness
+        //    разрешён только для потоков, доступных наперёд (VOD, файлы),
+        //    а на эфире подменяется облегчённым dynaudnorm. asetpts
+        //    пересчитывает PTS по счётчику выходных сэмплов, убирая
+        //    собственный сдвиг PTS loudnorm; aresample возвращает 48 кГц
+        //    (loudnorm внутри работает на 192 кГц).
+        private static string? GetAudioFilters(string? mode, bool allowLoudness) => mode switch
         {
-            "Dynamic" => "dynaudnorm=f=300:g=15:m=12:p=0.95",
-            "Loudness" => "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000",
+            "Dynamic" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
+            "Loudness" when allowLoudness =>
+                "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,asetpts=N/SR/TB",
+            "Loudness" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
             _ => null
         };
 
@@ -73,8 +85,10 @@ namespace IptvPlayer.Services
         /// Применяет нормализацию громкости к уже играющему плееру
         /// (переключение режима в настройках). Для плееров без FFmpeg-
         /// источника (системный откат) — тихо ничего не делает.
+        /// allowLoudness=false (живой эфир) — Loudness подменяется Dynamic:
+        /// буфер loudnorm ~3 с на эфире даёт отставание звука от видео.
         /// </summary>
-        public void ApplyAudioFilters(MediaPlayer? player, string? mode)
+        public void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false)
         {
             if (player is null || !LiveSources.TryGetValue(player, out var source))
             {
@@ -83,13 +97,18 @@ namespace IptvPlayer.Services
 
             try
             {
-                var filters = GetAudioFilters(mode);
+                var filters = GetAudioFilters(mode, allowLoudness);
                 if (string.IsNullOrEmpty(filters))
                 {
                     source.ClearFFmpegAudioFilters();
                 }
                 else
                 {
+                    if (mode == "Loudness" && !allowLoudness)
+                    {
+                        _logger.LogInformation(
+                            "Loudness на живом эфире отстаёт от видео (~3 с буфера loudnorm) — применён Dynamic.");
+                    }
                     source.SetFFmpegAudioFilters(filters);
                 }
             }
@@ -187,9 +206,29 @@ namespace IptvPlayer.Services
                 // система сводит его сама, как в системном плеере.
                 ffmpegConfig.Audio.DownmixAudioStreamsToStereo = false;
 
+                // Локальный файл (карточка «Видео» на хабе): в канал идёт
+                // «сырой» путь диска (E:\видео\x.mpg) — протокол file: в
+                // FFmpeg не декодирует URL-проценты, кириллица ломается.
+                // Определяется заранее — нужен и для read-ahead, и для
+                // решения о loudnorm ниже. Read-ahead нужен только сети —
+                // с диска он лишь откладывает старт (плеер молча набивает
+                // буфер до порога).
+                var isLocalFile = streamUrl.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+                    || (streamUrl.Length >= 2 && streamUrl[1] == ':');
+
                 // Нормализация громкости (переключается в настройках):
-                // тихие каналы подтягиваются к общему уровню.
-                var normFilter = GetAudioFilters(streamConfig.AudioNormalization);
+                // тихие каналы подтягиваются к общему уровню. Loudness
+                // (loudnorm, буфер ~3 с) разрешён только для VOD и локальных
+                // файлов — на живом эфире он даёт отставание звука от видео.
+                var allowLoudness = isVod || isLocalFile;
+                var audioNormalization = streamConfig.AudioNormalization;
+                if (audioNormalization == "Loudness" && !allowLoudness)
+                {
+                    _logger.LogInformation(
+                        "Loudness на живом эфире отстаёт от видео (~3 с буфера loudnorm) — применён Dynamic.");
+                    audioNormalization = "Dynamic";
+                }
+                var normFilter = GetAudioFilters(audioNormalization, allowLoudness);
                 if (!string.IsNullOrEmpty(normFilter))
                 {
                     ffmpegConfig.Audio.FFmpegAudioFilters = normFilter;
@@ -225,9 +264,14 @@ namespace IptvPlayer.Services
                     readAheadBytes = Math.Max(8 * 1024 * 1024, readAheadSeconds * 2 * 1024 * 1024);
                 }
 
-                ffmpegConfig.General.ReadAheadBufferEnabled = true;
-                ffmpegConfig.General.ReadAheadBufferDuration = TimeSpan.FromSeconds(readAheadSeconds);
-                ffmpegConfig.General.ReadAheadBufferSize = readAheadBytes;
+                // Read-ahead нужен только сети — с диска он лишь откладывает
+                // старт (плеер молча набивает буфер до порога).
+                ffmpegConfig.General.ReadAheadBufferEnabled = !isLocalFile;
+                if (!isLocalFile)
+                {
+                    ffmpegConfig.General.ReadAheadBufferDuration = TimeSpan.FromSeconds(readAheadSeconds);
+                    ffmpegConfig.General.ReadAheadBufferSize = readAheadBytes;
+                }
 
                 // HTTP-протокол FFmpeg: провайдер отдаёт сегменты попеременно
                 // с двух серверов, поэтому keepalive-переиспользование
@@ -271,7 +315,7 @@ namespace IptvPlayer.Services
                 {
                     _logger.LogInformation(
                         "Поток открыт с аудиофильтром громкости: {Filter} (режим {Mode}) — тяжёлые фильтры могут влиять на плавность.",
-                        normFilter, streamConfig.AudioNormalization);
+                        normFilter, audioNormalization);
                 }
                 CurrentDiagnostics = BuildDiagnostics(ffmpegSource, ffmpegConfig, normFilter);
 
@@ -349,6 +393,15 @@ namespace IptvPlayer.Services
         {
             if (string.IsNullOrWhiteSpace(streamUrl))
                 return L.T("Url_Potoka_Pust");
+
+            // Локальный файл (карточка «Видео») — сетевой диагноз неприменим.
+            if (streamUrl.StartsWith("file:", StringComparison.OrdinalIgnoreCase) ||
+                (streamUrl.Length >= 2 && streamUrl[1] == ':'))
+            {
+                return File.Exists(streamUrl) || File.Exists(new Uri(streamUrl).LocalPath)
+                    ? L.T("Diag_200_OK_No_Decode")
+                    : "Файл не найден на диске";
+            }
 
             try
             {

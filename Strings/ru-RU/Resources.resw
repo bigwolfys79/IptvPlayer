@@ -2903,5 +2903,29 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Usilitel_Render_Eks.Text" xml:space="preserve">
     <value>Рендер-апскейл (эксперимент)</value>
   </data>
+  <data name="Video_Card.Text" xml:space="preserve">
+    <value>Видео</value>
+  </data>
+  <data name="Video_Card_Subtitle.Text" xml:space="preserve">
+    <value>Откройте видеофайл с диска</value>
+  </data>
+  <data name="Hub_Video_ToolTip" xml:space="preserve">
+    <value>Видеофайл с диска</value>
+  </data>
+  <data name="Pauza_Probel" xml:space="preserve">
+    <value>Пауза (пробел)</value>
+  </data>
+  <data name="Prodolzhit_Probel" xml:space="preserve">
+    <value>Продолжить (пробел)</value>
+  </data>
+  <data name="LocalVideo_Open_Failed" xml:space="preserve">
+    <value>Не удалось открыть видеофайл</value>
+  </data>
+  <data name="Badge_Pauza" xml:space="preserve">
+    <value>Пауза</value>
+  </data>
+  <data name="Badge_Vosproizvedenie" xml:space="preserve">
+    <value>Воспроизведение</value>
+  </data>
 </root>
 
