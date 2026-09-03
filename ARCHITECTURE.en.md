@@ -19,7 +19,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): live / archive (timeshift) / 
 
 Key classes:
 - `HubPage` — launch screen with "Playlists", "Portal", "Settings" cards.
-- `MainPage` (+ partial files `MainPage.FullScreen/Hotkeys/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — all UI and overlays.
+- `MainPage` (+ partial files `MainPage.FullScreen/Hotkeys/LocalVideo/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — all UI and overlays.
 - `MainPageViewModel` (+ partial files `MainPageViewModel.PortalFilters/Recording/VodResume.cs`) — channel list logic, filtering, recording, VOD resume.
 - `EpgViewModel` — EPG: loading, lazy per-channel loading, current program.
 - `PlayerViewModel` — player management (FFmpegInteropX), archive, VOD.
@@ -76,6 +76,8 @@ Layers of the right area are set by `Canvas.ZIndex`: video (1) → header/contro
 - Playback (`MainPageViewModel.PlayChannelAsync`): on click, `flick` is executed (lazily, without caching), starts in VOD mode (`PlayerViewModel.IsVodPlaying`) — pause without restarting the stream, seeking on the fly via `PlaybackSession.Position`, quality selection — restart with a new link and position transfer.
 - VOD resume: position is saved in SQLite (`VodResumeStore`) with pruning (max 200 entries). On VOD entry — dialog "continue from saved position?".
 
+**Local video files** (`Services/LocalVideoFileService`, the "Video" card on the Hub): a `FileOpenPicker` (hwnd via `IInitializeWithWindow` — unpackaged too) builds a pseudo-channel with `Id = -1` (`IsLocalFile = true`): it is absent from the lists and the repository, UI lookups by Id must fall back to `SelectedChannel`, and `GetEPGEntriesAsync` returns empty for `channelId < 0`. `StreamUrl` is the raw disk path (not a file:/// URI: FFmpeg does not URL-decode percent-escapes — Cyrillic/spaces in the URI broke opening; the system fallback builds a correct URI itself). Everything after that is the regular VOD pipeline (`CreatePlayerAsync(isVod: true)`): pause/seek/fullscreen for free. Launching the app with a video file as a command-line argument — `App.GetCommandLineVideoFile`.
+
 ## 4. EPG (XMLTV)
 
 `EPGService` loads sources of the active playlist (own list, fallback — global), merges them (`EpgSourceMerger`: the first source in the list wins when programs overlap in time) and matches them to channels: by `tvg-id` from the playlist → by a "name → tvg-id" lookup table (`Assets/epg-name-map.json`) → by normalized name (`EpgNameNormalizer`, timeshift suffixes are taken into account).
@@ -83,6 +85,10 @@ Layers of the right area are set by `Canvas.ZIndex`: video (1) → header/contro
 `XmlTvService` parses XMLTV with a ±3 day window (programs outside the window are not parsed at all — this is the main savings for feeds with hundreds of thousands of programs). **Important**: iterating over `programme`/`channel` children is done via the main reader with exit exactly at the closing tag — `ReadElementContentAsString()` on a reader from `ReadSubtree()` in .NET "eats" subsequent siblings, which for a long time caused only title to be read (desc/category/icons were lost). Cache of parsed feeds — MemoryPack+Brotli (`EpgCacheStore`, format version is invalidated when serializable fields change).
 
 **Lazy loading**: on startup, `RecalculateCurrentProgramsAsync` loads only the current program for each channel (`GetCurrentProgramAsync`) — saving ~20MB. The full program list (`EPGEntries`) is loaded only on channel click (`LoadEPGForChannelAsync`). The EPG panel shows the program list of the selected channel at startup (for which `LoadEPGForChannelAsync` is called after `LoadEPGAsync`).
+
+**Merged EPG cache** (`MergedEpgCache`): the merge result (program index by tvg-id + logos) is serialized with MemoryPack+Brotli next to the per-source caches. `TryLoadMergedCacheAsync` hits when the set of enabled sources matches (URLs and order) and the refresh period (`EpgRefreshDays`) has not expired for any source's download timestamp — skipping both the per-source cache reads and the `Merge` (seconds of CPU on hundreds of thousands of programs); the name index is not stored — it is rebuilt from ByChannel in milliseconds (`EpgSourceMerger.BuildNameIndex`). Dictionaries are rebuilt with `OrdinalIgnoreCase` comparers after reading (MemoryPack restores Dictionary with the default comparer). The cache is written after a full merge, only if all sources succeeded; "Refresh EPG" (`ClearAll`) wipes it entirely. Orphan cache cleanup (`CleanupOrphans`) treats all playlists' sources plus global ones and the merge keys of every source set as live — previously cleanup by active playlist deleted other playlists' EPG caches, making every launch/switch re-download and re-parse their XMLTV.
+
+**EPG for portals**: a portal playlist without its own EPG sources no longer falls back to the global list (`AppSettings.GetActiveEpgSources`) — a VOD catalog does not need a TV schedule, and the fallback made it download and parse XMLTV uselessly on every portal open. Portal EPG appears only if sources are assigned to the playlist itself.
 
 The current program of a channel (`CurrentProgramTitle/CurrentProgramDescription`) is recalculated by a timer (30 s); clicking a program that has started launches the archive.
 
@@ -103,7 +109,7 @@ HLS-timeshift is not searched on the fly, so seeking is a stream restart with a 
 5. **Audio normalization** — an FFmpeg audio filter per setting: `Dynamic` (dynaudnorm, boosts quiet channels, default) or `Loudness` (loudnorm, EBU R128 target); heavy filters may affect smoothness — the mode is logged on stream start.
 5. Player errors are logged with codes (`MediaPlayer.MediaFailed`); `OnMediaFailed` is async with diagnostics.
 
-**Pause** — only archive and portal VOD (spacebar, `ToggleArchivePause`): live broadcast cannot be paused, this is a deliberate limitation. For VOD, the same toggle works without archive clocks.
+**Pause** — only archive and portal VOD (spacebar, `ToggleArchivePause`): live broadcast cannot be paused, this is a deliberate limitation. For VOD, the same toggle works without archive clocks. `MediaPlayerElement` visibility is not bound to `IsPlaying` (collapsing the element on pause blanked the last frame to a gray screen) — the frame stays frozen and playback resumes from it. A pause state change shows a popup "Paused / Playing" indicator: `PlaybackStateBadge` (inside the video area grid — centered on the video in both windowed and fullscreen modes) is fed from `UpdateArchivePauseButton` (MainPage.Seek.cs), the single point that knows the state; the first calculation after playback start does not raise the badge, stopping playback resets the remembered state.
 
 **Application shutdown**: a subscription to `MainWindow.Closed` stops/releases the player and recordings and calls `Environment.Exit(0)` — otherwise the media pipeline would keep the process alive for several seconds.
 
@@ -113,7 +119,7 @@ HLS-timeshift is not searched on the fly, so seeking is a stream restart with a 
 |---|---|
 | Settings (sources, portals, frequencies, volume, decoder, favorites) | `%LocalAppData%\IptvPlayer\settings.json` (atomic writes via `.tmp`; previous version in `settings.json.prev`, corrupted ones as `*.corrupt-*`) |
 | Channel/catalog cache (SQLite, single DB for all playlists; legacy `playlist_cache_{id}.json` files are migrated into it once) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
-| Parsed XMLTV source cache (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
+| Parsed XMLTV source cache and merged EPG cache (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
 | Recordings (ffmpeg, MPEG-TS without transcoding) | "Videos\IptvPlayer" or configured folder |
 | Log (Serilog, daily rolling, 14 days) | `%LocalAppData%\IptvPlayer\logs\` |
 | VOD resume positions (SQLite) | `%LocalAppData%\IptvPlayer\` |
@@ -144,32 +150,33 @@ Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAs
 
 ## 11. Partial File Split
 
-**MainPage** (3133 → 1329 lines):
+**MainPage** (3133 → 1328 lines):
 
 | File | Lines | Content |
 |---|---|---|
-| `MainPage.xaml.cs` | 1329 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.xaml.cs` | 1328 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
 | `MainPage.Portal.cs` | 264 | Portal API methods |
-| `MainPage.Settings.cs` | 98 | Settings dialogs |
+| `MainPage.Settings.cs` | 104 | Settings dialogs |
 | `MainPage.Navigation.cs` | 375 | Playlist switching, navigation |
-| `MainPage.VideoControls.cs` | 442 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
-| `MainPage.Seek.cs` | 584 | VOD seek/quality/season/episode, Archive seek, EPG, Fullscreen, PIN |
-| `MainPage.FullScreen.cs` | 277 | Fullscreen mode |
+| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
+| `MainPage.Seek.cs` | 660 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, PIN |
+| `MainPage.LocalVideo.cs` | 41 | Local video files: file picking, playback start |
+| `MainPage.FullScreen.cs` | 303 | Fullscreen mode |
 | `MainPage.Hotkeys.cs` | 388 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
 | `MainPage.Overlays.cs` | 450 | Overlays |
 | `MainPage.StatsOverlay.cs` | 213 | Statistics |
 
-**HubPage** (843 lines):
+**HubPage** (961 lines):
 
 | File | Lines | Content |
 |---|---|---|
-| `HubPage.xaml.cs` | 843 | Launch screen: greeting, cards, custom flyout menus, hotkey help (F1) |
+| `HubPage.xaml.cs` | 961 | Launch screen: greeting, cards, custom flyout menus, hotkey help (F1) |
 
-**MainPageViewModel** (1870 → 941 lines):
+**MainPageViewModel** (1787 lines):
 
 | File | Lines | Content |
 |---|---|---|
 | `MainPageViewModel.cs` | 941 | Initialization, filters, categories, EPG, SaveSettings |
 | `MainPageViewModel.PortalFilters.cs` | 275 | Portal API + portal filters |
 | `MainPageViewModel.Recording.cs` | 284 | Recording, reminders, favorites, archive |
-| `MainPageViewModel.VodResume.cs` | 247 | VOD resume, PlayChannelAsync (interactive) |
+| `MainPageViewModel.VodResume.cs` | 287 | VOD resume, PlayChannelAsync (interactive) |

@@ -19,7 +19,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timesh
 
 Ключевые классы:
 - `HubPage` — экран запуска с карточками «Плейлисты», «Портал», «Настройки».
-- `MainPage` (+ partial-файлы `MainPage.FullScreen/Hotkeys/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — весь UI и оверлеи.
+- `MainPage` (+ partial-файлы `MainPage.FullScreen/Hotkeys/LocalVideo/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — весь UI и оверлеи.
 - `MainPageViewModel` (+ partial-файлы `MainPageViewModel.PortalFilters/Recording/VodResume.cs`) — логика списка каналов, фильтрация, запись, VOD resume.
 - `EpgViewModel` — EPG: загрузка, ленивая загрузка по каналу, текущая передача.
 - `PlayerViewModel` — управление плеером (FFmpegInteropX), архив, VOD.
@@ -76,6 +76,8 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timesh
 - Воспроизведение (`MainPageViewModel.PlayChannelAsync`): по клику выполняется `flick` (лениво, без кэширования), старт в режиме VOD (`PlayerViewModel.IsVodPlaying`) — пауза без рестарта потока, перемотка на лету через `PlaybackSession.Position`, выбор качества — рестарт с новой ссылкой и переносом позиции.
 - Возобновление просмотра VOD: позиция сохраняется в SQLite (`VodResumeStore`) с прореживанием (макс. 200 записей). При входе в VOD — диалог «продолжить с сохранённого места?».
 
+**Локальные видеофайлы** (`Services/LocalVideoFileService`, карточка «Видео» на хабе): `FileOpenPicker` (hwnd через `IInitializeWithWindow` — unpackaged тоже) собирает «канал» с `Id = -1` (`IsLocalFile = true`): его нет в списках и репозитории, UI-поиск по Id обязан падать обратно на `SelectedChannel`, а `GetEPGEntriesAsync` при `channelId < 0` сразу возвращает пусто. `StreamUrl` — «сырой» путь диска (не file:///-URI: FFmpeg не декодирует URL-проценты, кириллица/пробелы в URI ломали открытие; системный фолбэк сам строит корректный URI). Дальше — обычный VOD-конвейер (`CreatePlayerAsync(isVod: true)`): пауза/перемотка/fullscreen бесплатно. Запуск приложения с видеофайлом в аргументе командной строки — `App.GetCommandLineVideoFile`.
+
 ## 4. EPG (XMLTV)
 
 `EPGService` загружает источники активного плейлиста (свой список, фолбэк — глобальные), сливает их (`EpgSourceMerger`: первый источник в списке выигрывает при пересечении передач по времени) и сопоставляет с каналами: по `tvg-id` из плейлиста → по таблице «имя → tvg-id» (`Assets/epg-name-map.json`) → по нормализованному имени (`EpgNameNormalizer`, таймшифт-суффиксы учитываются).
@@ -83,6 +85,10 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timesh
 `XmlTvService` парсит XMLTV окном ±3 дня (программы вне окна не разбираются вовсе — главная экономия на фидах в сотни тысяч передач). **Важно**: обход детей `programme`/`channel` идёт по основному ридеру с выходом ровно на закрывающий тег — `ReadElementContentAsString()` на ридере из `ReadSubtree()` в .NET «съедает» последующих соседей, из-за чего долгое время читались только title (desc/category/иконки терялись). Кэш разобранного фида — MemoryPack+Brotli (`EpgCacheStore`, версия формата инвалидируется при изменении сериализуемых полей).
 
 **Ленивая загрузка**: при старте `RecalculateCurrentProgramsAsync` загружает только текущую передачу для каждого канала (`GetCurrentProgramAsync`) — экономия ~20MB. Полный список передач (`EPGEntries`) загружается только при клике на канал (`LoadEPGForChannelAsync`). Панель EPG при старте показывает список передач выбранного канала (для него вызывается `LoadEPGForChannelAsync` после `LoadEPGAsync`).
+
+**Кэш слитого EPG** (`MergedEpgCache`): результат слияния (индекс программ по tvg-id + логотипы) сериализуется MemoryPack+Brotli рядом с кэшами источников. `TryLoadMergedCacheAsync` срабатывает, если набор включённых источников совпал (URL и порядок) и периодичность обновления (`EpgRefreshDays`) не истекла по метке скачивания любого источника — тогда пропускаются и чтение кэшей источников, и `Merge` (секунды CPU на сотнях тысяч передач); индекс имён не хранится — достраивается из ByChannel за миллисекунды (`EpgSourceMerger.BuildNameIndex`). Словари после чтения пересобираются в `OrdinalIgnoreCase` (MemoryPack восстанавливает Dictionary с дефолтным компаратором). Запись — после полного слияния, только если удались все источники; «Обновить EPG» (`ClearAll`) чистит кэш целиком. Чистка осиротевших кэшей (`CleanupOrphans`) считает живыми источники всех плейлистов и глобальные плюс ключи слияния всех наборов — раньше чистка по активному плейлисту удаляла кэш EPG других плейлистов, и каждый запуск/переключение заново скачивал и парсил их XMLTV.
+
+**EPG у порталов**: у плейлиста-портала без собственных источников EPG фолбэк на глобальный список отключён (`AppSettings.GetActiveEpgSources`) — VOD-каталогу программа передач не нужна, а фолбэк заставлял скачивать и парсить XMLTV впустую при каждом открытии портала. EPG у портала появится, только если назначить источники самому плейлисту.
 
 Текущая передача канала (`CurrentProgramTitle/CurrentProgramDescription`) пересчитывается таймером (30 с); клик по начавшейся передаче запускает архив.
 
@@ -103,7 +109,7 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 5. **Нормализация громкости** — аудиофильтр FFmpeg по настройке: `Dynamic` (dynaudnorm, усиливает тихие каналы, по умолчанию) или `Loudness` (loudnorm, единая громкость EBU R128); тяжёлые фильтры могут влиять на плавность — режим пишется в лог при старте потока.
 6. Ошибки плеера логируются с кодами (`MediaPlayer.MediaFailed`); `OnMediaFailed` — async с диагностикой.
 
-**Пауза** — только архив и VOD портала (пробел, `ToggleArchivePause`): живой эфир паузить нельзя, это осознанное ограничение. Для VOD тот же переключатель работает без архивных часов.
+**Пауза** — только архив и VOD портала (пробел, `ToggleArchivePause`): живой эфир паузить нельзя, это осознанное ограничение. Для VOD тот же переключатель работает без архивных часов. `MediaPlayerElement` не привязан видимостью к `IsPlaying` (сворачивание элемента на паузе гасило последний кадр в серый фон) — кадр остаётся замороженным, и воспроизведение продолжается с него. Смена состояния паузы показывает всплывающий индикатор «Пауза / Воспроизведение»: `PlaybackStateBadge` (в сетке области видео — центрируется по видео и в fullscreen) заполняется из `UpdateArchivePauseButton` (MainPage.Seek.cs), единственной точки, знающей состояние; первый расчёт после старта индикатор не поднимает, остановка воспроизведения сбрасывает запомненное состояние.
 
 **Закрытие приложения**: подписка на `MainWindow.Closed` останавливает/освобождает плеер и записи и вызывает `Environment.Exit(0)` — иначе медиа-конвейер держал процесс живым несколько секунд.
 
@@ -113,7 +119,7 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 |---|---|
 | Настройки (источники, порталы, периодичности, громкость, декодер, избранное) | `%LocalAppData%\IptvPlayer\settings.json` (запись атомарная, через `.tmp`; прошлые версии — `settings.json.prev`, битые — `*.corrupt-*`) |
 | Кэш каналов/каталога (SQLite, общий файл на все плейлисты; старые JSON-кэши `playlist_cache_{id}.json` мигрируются в него разово) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
-| Кэш разобранных XMLTV-источников (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
+| Кэш разобранных XMLTV-источников и слитого EPG (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
 | Записи (ffmpeg, MPEG-TS без перекодирования) | «Видео\IptvPlayer» или настроенная папка |
 | Лог (Serilog, ежедневный роллинг, 14 дней) | `%LocalAppData%\IptvPlayer\logs\` |
 | Позиции просмотра VOD (SQLite) | `%LocalAppData%\IptvPlayer\` |
@@ -148,28 +154,29 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `MainPage.xaml.cs` | 1329 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.xaml.cs` | 1328 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
 | `MainPage.Portal.cs` | 264 | Portal API методы |
-| `MainPage.Settings.cs` | 98 | Диалоги настроек |
+| `MainPage.Settings.cs` | 104 | Диалоги настроек |
 | `MainPage.Navigation.cs` | 375 | Переключение плейлистов, навигация |
-| `MainPage.VideoControls.cs` | 442 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
-| `MainPage.Seek.cs` | 584 | VOD seek/quality/season/episode, Archive seek, EPG, Fullscreen, PIN |
-| `MainPage.FullScreen.cs` | 277 | Полноэкранный режим |
+| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
+| `MainPage.Seek.cs` | 660 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, PIN |
+| `MainPage.LocalVideo.cs` | 41 | Локальные видеофайлы: выбор файла, запуск |
+| `MainPage.FullScreen.cs` | 303 | Полноэкранный режим |
 | `MainPage.Hotkeys.cs` | 388 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
 | `MainPage.Overlays.cs` | 450 | Оверлеи |
 | `MainPage.StatsOverlay.cs` | 213 | Статистика |
 
-**HubPage** (843 строки):
+**HubPage** (961 строка):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `HubPage.xaml.cs` | 843 | Экран запуска: приветствие, карточки, кастомные flyout-меню, справка горячих клавиш (F1) |
+| `HubPage.xaml.cs` | 961 | Экран запуска: приветствие, карточки, кастомные flyout-меню, справка горячих клавиш (F1) |
 
-**MainPageViewModel** (1870 → 941 строк):
+**MainPageViewModel** (1787 строк):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
 | `MainPageViewModel.cs` | 941 | Инициализация, фильтры, категории, EPG, SaveSettings |
 | `MainPageViewModel.PortalFilters.cs` | 275 | Portal API + фильтры портала |
 | `MainPageViewModel.Recording.cs` | 284 | Запись, напоминания, избранное, архив |
-| `MainPageViewModel.VodResume.cs` | 247 | VOD resume, PlayChannelAsync (interactive) |
+| `MainPageViewModel.VodResume.cs` | 287 | VOD resume, PlayChannelAsync (interactive) |

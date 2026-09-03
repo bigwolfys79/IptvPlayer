@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.14.0
+- **Version:** 1.16.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -36,7 +36,13 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
 - Hotkeys: digits (channel number), Enter (confirm), Backspace (previous channel), arrows/PgUp/PgDn (adjacent channel), Space (pause for archive and VOD), M (mute), V (display mode), F/F11 (fullscreen), Esc (back/exit), Ctrl+F (search), Ctrl+J (stream stats), Ctrl+M (mini-player); full help — F1
 - Archive (timeshift) with seeking and program progress
+- Archive/VOD pause freezes the last frame (no gray screen); a popup "Paused / Playing" indicator appears on pause state changes
 - Stream diagnostics on playback error
+
+### Local video files
+- "Video" card on the Hub — open a video file from disk (FileOpenPicker: mp4, mkv, avi, ts, mpg, etc.)
+- Same playback pipeline as VOD: pause, seeking, fullscreen, audio normalization
+- Cyrillic and spaces in paths supported; launching with a video file as a command-line argument
 
 ### Video library (video portal)
 - Hub Page with greeting, animations, and custom flyout menus
@@ -63,6 +69,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 
 ### EPG and extras
 - EPG (XMLTV) with lazy loading (current program at startup, full list on click)
+- Multi-level EPG cache: downloaded feed, merged result and positions — startup takes a fraction of a second, network is touched once per refresh period (1/3/7 days)
 - Program reminders
 - Favorite channels
 - Parental control (PIN)
