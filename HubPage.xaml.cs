@@ -392,7 +392,7 @@ public sealed partial class HubPage : Page
 
     private async System.Threading.Tasks.Task ShowWelcomeDialogAsync()
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = L.T("Welcome_Title"),
             Content = new TextBlock
@@ -667,7 +667,7 @@ public sealed partial class HubPage : Page
     /// </summary>
     private async Task OfferUpdateInstallFromHubAsync(Version version, string setupPath)
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = Content.XamlRoot,
             Title = L.T("Dostupno_Obnovlenie"),
@@ -684,7 +684,7 @@ public sealed partial class HubPage : Page
 
         if (App.Services.GetRequiredService<RecordingService>().IsActive)
         {
-            var info = new ContentDialog
+            var info = new ThemedContentDialog
             {
                 XamlRoot = Content.XamlRoot,
                 Title = L.T("Obnovlenie_Otlozheno"),
@@ -698,6 +698,16 @@ public sealed partial class HubPage : Page
         App.Services.GetRequiredService<IUpdateService>().RunInstallerAndExit(setupPath);
     }
 
+    /// <summary>
+    /// Тема окна: светлая — чёрные тона элементов флайаута/справки,
+    /// тёмная (по умолчанию) — белые, как было изначально.
+    /// </summary>
+    private static bool HubIsLight =>
+        (MainWindow.Instance?.Content as FrameworkElement)?.ActualTheme == ElementTheme.Light;
+
+    private static Microsoft.UI.Xaml.Media.SolidColorBrush HubFg(byte alpha) =>
+        new(HubIsLight ? Color.FromArgb(alpha, 0, 0, 0) : Color.FromArgb(alpha, 255, 255, 255));
+
     private void AddFlyoutItem(string glyph, string text, string? foreground, RoutedEventHandler? click,
         bool enabled = true, string? subtitle = null)
     {
@@ -707,7 +717,7 @@ public sealed partial class HubPage : Page
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Padding = new Thickness(12, 10, 12, 10),
             CornerRadius = new CornerRadius(8),
-            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(20, 255, 255, 255)),
+            Background = HubFg(20),
             IsEnabled = enabled
         };
 
@@ -719,9 +729,11 @@ public sealed partial class HubPage : Page
             Text = glyph,
             FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe MDL2 Assets"),
             FontSize = 16,
-            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(foreground != null
-                ? Color.FromArgb(255, 153, 255, 255)
-                : Color.FromArgb(255, 255, 255, 255)),
+            Foreground = foreground != null
+                ? new Microsoft.UI.Xaml.Media.SolidColorBrush(HubIsLight
+                    ? Color.FromArgb(255, 0, 95, 184)
+                    : Color.FromArgb(255, 153, 255, 255))
+                : HubFg(255),
             VerticalAlignment = VerticalAlignment.Center
         });
 
@@ -729,9 +741,11 @@ public sealed partial class HubPage : Page
         {
             Text = text,
             FontSize = 14,
-            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(foreground != null
-                ? Color.FromArgb(180, 255, 255, 255)
-                : Color.FromArgb(255, 255, 255, 255)),
+            Foreground = foreground != null
+                ? new Microsoft.UI.Xaml.Media.SolidColorBrush(HubIsLight
+                    ? Color.FromArgb(180, 0, 95, 184)
+                    : Color.FromArgb(180, 153, 255, 255))
+                : HubFg(255),
             VerticalAlignment = VerticalAlignment.Center,
             TextWrapping = TextWrapping.NoWrap,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -746,7 +760,7 @@ public sealed partial class HubPage : Page
             {
                 Text = subtitle,
                 FontSize = 12,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(170, 255, 255, 255)),
+                Foreground = HubFg(170),
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 240
             });
@@ -766,7 +780,7 @@ public sealed partial class HubPage : Page
         FlyoutContent.Children.Add(new Border
         {
             Height = 1,
-            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+            Background = HubFg(40),
             Margin = new Thickness(8, 4, 8, 4)
         });
     }
@@ -819,7 +833,7 @@ public sealed partial class HubPage : Page
 
             var chip = new Border
             {
-                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(30, 255, 255, 255)),
+                Background = HubFg(30),
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(10, 4, 10, 4),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -839,7 +853,7 @@ public sealed partial class HubPage : Page
             {
                 Text = L.T(descKey),
                 FontSize = 14,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(230, 255, 255, 255)),
+                Foreground = HubFg(230),
                 VerticalAlignment = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.Wrap
             };
@@ -849,7 +863,7 @@ public sealed partial class HubPage : Page
             panel.Children.Add(row);
         }
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = L.T("Hotkeys_Title"),
             Content = new ScrollViewer

@@ -65,7 +65,7 @@ public sealed partial class AboutDialog : UserControl
         CheckUpdateButton.Content = L.T("Proverit_Obnovleniya");
         UpdateStatusText.Visibility = Visibility.Collapsed;
         OpenLogsButton.Content = L.T("Otkryt_Papku_Logov");
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = xamlRoot,
             Title = L.T("O_Programme_Lbl"),

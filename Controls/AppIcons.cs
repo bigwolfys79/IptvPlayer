@@ -23,6 +23,19 @@ public static class AppIcons
 
     private static readonly Brush White = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
 
+    /// <summary>
+    /// Цвет иконок оверлеев: в тёмной теме — белый, в светлой — тёмный
+    /// (OverlayFgBrush из App.xaml). Иконки пересобираются при каждом
+    /// обновлении состояния кнопок; смена темы вызывает те же обновления
+    /// (ApplyTheme), поэтому кэшировать не нужно.
+    /// </summary>
+    private static Brush Fg()
+    {
+        return (MainWindow.Instance?.Content as FrameworkElement)?.ActualTheme == ElementTheme.Light
+            ? new SolidColorBrush(Color.FromArgb(0xE6, 0x00, 0x00, 0x00))
+            : White;
+    }
+
     /// <summary>Точка записи ● — красная, как индикатор REC у камер.</summary>
     public static Ellipse RecordDot(double size = 14)
     {
@@ -65,7 +78,7 @@ public static class AppIcons
         return new Microsoft.UI.Xaml.Shapes.Path
         {
             Data = geometry,
-            Fill = White,
+            Fill = Fg(),
             Width = size,
             Height = size,
             Stretch = Stretch.Uniform,
@@ -87,7 +100,7 @@ public static class AppIcons
                 Height = size,
                 RadiusX = 1.5,
                 RadiusY = 1.5,
-                Fill = White,
+                Fill = Fg(),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 Margin = new Thickness(leftMargin, 0, 0, 0)
             });
@@ -143,7 +156,7 @@ public static class AppIcons
         grid.Children.Add(new Microsoft.UI.Xaml.Shapes.Path
         {
             Data = cross,
-            Stroke = White,
+            Stroke = Fg(),
             StrokeThickness = 1.5,
             Width = size,
             Height = size,
@@ -160,8 +173,8 @@ public static class AppIcons
         return new Microsoft.UI.Xaml.Shapes.Path
         {
             Data = geometry,
-            Fill = stroke ? null : White,
-            Stroke = stroke ? White : null,
+            Fill = stroke ? null : Fg(),
+            Stroke = stroke ? Fg() : null,
             StrokeThickness = 1.3,
             Stretch = Stretch.Uniform,
             HorizontalAlignment = HorizontalAlignment.Center,

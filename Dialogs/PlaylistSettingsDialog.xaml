@@ -91,7 +91,8 @@
                                 </Grid>
 
                                 <!-- Источники EPG этого плейлиста (раскрывается кнопкой EPG):
-                                     чекбокс — использовать, ✕ — удалить, снизу добавление по «+». -->
+                                     чекбокс — использовать, корзина — удалить (с подтверждением
+                                     в отдельном окне), снизу добавление по «+». -->
                                 <StackPanel Spacing="6" Margin="0,8,0,0"
                                             Visibility="{x:Bind EpgSectionVisibility}">
                                     <ItemsControl ItemsSource="{x:Bind Playlist.EpgSources}">
@@ -108,10 +109,12 @@
                                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                                TextTrimming="CharacterEllipsis"/>
                                                     <Button Width="32" Height="32"
+                                                            Padding="0"
                                                             VerticalAlignment="Center"
+                                                            HorizontalAlignment="Stretch"
                                                             x:Uid="Udalit_Istochnik"
                                                             Click="PlaylistEpgSourceRemoveButton_Click">
-                                                        <Path Data="M3,3.8 L4.1,2.7 L8,6.6 L11.9,2.7 L13,3.8 L9.1,7.7 L13,11.6 L11.9,12.7 L8,8.8 L4.1,12.7 L3,11.6 L6.9,7.7 Z" Fill="{ThemeResource TextFillColorPrimaryBrush}" Stretch="Uniform" Width="12" Height="12" />
+                                                        <FontIcon Glyph="&#xE74D;" FontSize="12"/>
                                                     </Button>
                                                 </StackPanel>
                                             </DataTemplate>

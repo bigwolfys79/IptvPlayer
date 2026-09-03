@@ -343,7 +343,7 @@ public partial class EpgViewModel : ObservableObject
             }
             else
             {
-                channel.CurrentProgramTitle = string.Empty;
+                channel.CurrentProgramTitle = NoProgramTitle;
                 channel.CurrentProgramDescription = string.Empty;
                 channel.CurrentEPGEntry = null;
             }
@@ -427,6 +427,12 @@ public partial class EpgViewModel : ObservableObject
     /// </summary>
     private const int YieldEveryNChannels = 50;
 
+    /// <summary>
+    /// Заглушка вместо пустой текущей программы: у каналов без EPG в списке
+    /// и в шапке плеера показывается «Программа недоступна».
+    /// </summary>
+    private static string NoProgramTitle => L.T("Programma_Nedostupna_Lbl");
+
     private async Task RecalculateCurrentProgramsAsync()
     {
         var now = DateTime.Now;
@@ -446,7 +452,9 @@ public partial class EpgViewModel : ObservableObject
             // все EPGEntries — экономия ~20 MB при 2000+ каналах.
             var current = await _epgService.GetCurrentProgramAsync(channel.Id);
 
-            channel.CurrentProgramTitle = current?.ProgramName ?? string.Empty;
+            // Без EPG в строке канала показываем «Программа недоступна»,
+            // а не пустоту.
+            channel.CurrentProgramTitle = current?.ProgramName ?? NoProgramTitle;
             channel.CurrentProgramDescription = current?.Description ?? string.Empty;
             channel.CurrentEPGEntry = current;
             if (current != null)
@@ -499,7 +507,7 @@ public partial class EpgViewModel : ObservableObject
 
             var current = await _epgService.GetCurrentProgramAsync(channel.Id);
 
-            if (!string.Equals(channel.CurrentProgramTitle, current?.ProgramName ?? string.Empty, StringComparison.Ordinal))
+            if (!string.Equals(channel.CurrentProgramTitle, current?.ProgramName ?? NoProgramTitle, StringComparison.Ordinal))
             {
                 // Снять признак с прежней текущей и поставить новой — чтобы
                 // подсветка и полоса прогресса в панели передач не врали
@@ -513,7 +521,7 @@ public partial class EpgViewModel : ObservableObject
                     current.IsCurrent = true;
                 }
 
-                channel.CurrentProgramTitle = current?.ProgramName ?? string.Empty;
+                channel.CurrentProgramTitle = current?.ProgramName ?? NoProgramTitle;
                 channel.CurrentProgramDescription = current?.Description ?? string.Empty;
                 channel.CurrentEPGEntry = current;
             }

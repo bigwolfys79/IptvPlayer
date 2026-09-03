@@ -66,7 +66,7 @@ public sealed partial class EpisodePickerDialog : UserControl
         var control = new EpisodePickerDialog(channel, flick);
         await control.LoadAsync();
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = xamlRoot,
             Title = L.T("Vybor_Serii"),

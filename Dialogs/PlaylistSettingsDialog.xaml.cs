@@ -75,11 +75,6 @@ namespace IptvPlayer.Dialogs
 
         public ObservableCollection<PlaylistListItem> PlaylistItems { get; } = new();
 
-        // Двухшаговое подтверждение удаления: плейлист удаляется безвозвратно
-        // (вместе с локальным кэшем), случайный клик недопустим.
-        private PlaylistSource? _removeArmedPlaylist;
-        private Button? _removeArmedButton;
-
         public PlaylistSettingsDialog(
             MainPageViewModel viewModel,
             ISettingsService settingsService,
@@ -105,7 +100,7 @@ namespace IptvPlayer.Dialogs
             // не нужен, иначе «Плейлист» читается дважды.
             TitleText.Visibility = Visibility.Collapsed;
 
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 XamlRoot = xamlRoot,
                 Title = L.T("Pleylist_Lbl"),
@@ -145,7 +140,6 @@ namespace IptvPlayer.Dialogs
             PlaylistTypeCombo.SelectedIndex = 0;
             UpdatePlaylistTypeUi();
             PlaylistStatusText.Visibility = Visibility.Collapsed;
-            DisarmRemove();
 
             RebuildPlaylistItems();
 
@@ -195,7 +189,6 @@ namespace IptvPlayer.Dialogs
                 return;
             }
 
-            DisarmRemove();
             _renamingPlaylist = ReferenceEquals(_renamingPlaylist, item.Playlist) ? null : item.Playlist;
             RebuildPlaylistItems();
 
@@ -214,8 +207,11 @@ namespace IptvPlayer.Dialogs
 
         /// <summary>
         /// Источник EPG, с которым работает обработчик: сам EPGSource (чекбокс/
-        /// удаление в строке) и владеющий плейлист — ItemsControl строки
-        /// вложен в карточку, его DataContext наследуется вниз до строки.
+        /// удаление в строке) и владеющий плейлист. ВАЖНО: строка живёт во
+        /// вложенном ItemsControl, её контейнер-ContentPresenter не является
+        /// логическим потомком карточки — подъём по node.Parent обрывается на
+        /// null и владелец не находится. Поднимаемся по ВИЗУАЛЬНОМУ дереву:
+        /// DataContext = PlaylistListItem по нему наследуется до карточки.
         /// </summary>
         private static (PlaylistSource Playlist, EPGSource Source)? FindEpgSourceOwner(object sender)
         {
@@ -225,10 +221,10 @@ namespace IptvPlayer.Dialogs
             }
 
             var source = element.DataContext as EPGSource;
-            var node = element;
+            var node = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(element) as FrameworkElement;
             while (node != null && node.DataContext is not PlaylistListItem)
             {
-                node = node.Parent as FrameworkElement;
+                node = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(node) as FrameworkElement;
             }
 
             return node?.DataContext is PlaylistListItem item && source != null
@@ -283,11 +279,22 @@ namespace IptvPlayer.Dialogs
 
         private async void PlaylistEpgSourceRemoveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (FindEpgSourceOwner(sender) is { } owner)
+            if (FindEpgSourceOwner(sender) is not { } owner)
             {
-                owner.Playlist.EpgSources.Remove(owner.Source);
-                await PlaylistEpgSourcesChangedAsync(owner.Playlist);
+                return;
             }
+
+            var confirmed = await ConfirmAsync(
+                L.T("Udalit_Istochnik_EPG_Lbl"),
+                string.Format(L.T("Udalit_Istochnik_EPG_Vopros_0"), owner.Source.Url),
+                L.T("Udalit_Lbl"));
+            if (!confirmed)
+            {
+                return;
+            }
+
+            owner.Playlist.EpgSources.Remove(owner.Source);
+            await PlaylistEpgSourcesChangedAsync(owner.Playlist);
         }
 
         private async void PlaylistEpgSource_CheckedChanged(object sender, RoutedEventArgs e)
@@ -542,23 +549,17 @@ namespace IptvPlayer.Dialogs
                 return;
             }
 
-            // Двухшаговое подтверждение: первый клик взводит кнопку, второй —
-            // удаляет (ContentDialog из диалога не показать).
-            if (!ReferenceEquals(_removeArmedPlaylist, item.Playlist))
+            // Подтверждение отдельным окном: плейлист удаляется безвозвратно
+            // (вместе с локальным кэшем), случайный клик недопустим.
+            var confirmed = await ConfirmAsync(
+                L.T("Udalit_Lbl"),
+                string.Format(L.T("Udalit_Pleylist_Vopros_0"), item.Playlist.Name),
+                L.T("Udalit_Lbl"));
+            if (!confirmed)
             {
-                DisarmRemove();
-                _removeArmedPlaylist = item.Playlist;
-                if (sender is Button button)
-                {
-                    _removeArmedButton = button;
-                    button.Content = "?";
-                    ToolTipService.SetToolTip(button, L.T("Tochno_Udalit_Nazhmite_Eshche_Raz"));
-                }
-                SetPlaylistStatus(string.Format(L.T("Povtornoe_Nazhatie_Udalit_Pleylist_0_Vmeste"), item.Playlist.Name, item.Playlist.Name));
                 return;
             }
 
-            DisarmRemove();
             var playlist = item.Playlist;
             _viewModel.AppSettings.Playlists.Remove(playlist);
             await _playlistCacheService.DeleteAsync(playlist.Id);
@@ -592,18 +593,6 @@ namespace IptvPlayer.Dialogs
             await _settingsService.SaveAsync(_viewModel.AppSettings);
             RebuildPlaylistItems();
             SetPlaylistStatus(string.Format(L.T("Pleylist_0_Udalen"), playlist.Name, playlist.Name));
-        }
-
-        /// <summary>Возвращает взведённую кнопку удаления в обычный вид.</summary>
-        private void DisarmRemove()
-        {
-            if (_removeArmedButton != null)
-            {
-                _removeArmedButton.Content = "✕";
-                ToolTipService.SetToolTip(_removeArmedButton, L.T("Udalit_Lbl"));
-                _removeArmedButton = null;
-            }
-            _removeArmedPlaylist = null;
         }
 
         private void SetPlaylistStatus(string text)
@@ -655,7 +644,7 @@ namespace IptvPlayer.Dialogs
 
             while (true)
             {
-                var dialog = new ContentDialog
+                var dialog = new ThemedContentDialog
                 {
                     XamlRoot = root,
                     Title = title,
@@ -704,6 +693,38 @@ namespace IptvPlayer.Dialogs
             await Task.Delay(50);
         }
 
+        /// <summary>
+        /// Окно подтверждения действия (удаление плейлиста/источника EPG):
+        /// хост-диалог прячется — два ContentDialog одновременно показать
+        /// нельзя — и показывается снова после ответа. true — подтверждено.
+        /// </summary>
+        private async Task<bool> ConfirmAsync(string title, string message, string confirmLabel)
+        {
+            // XamlRoot берём ДО Hide: после скрытия хост-диалога этот
+            // UserControl выгружается из дерева и его XamlRoot становится
+            // null — ContentDialog без XamlRoot падает COMException'ом.
+            var root = _hostDialog?.XamlRoot ?? XamlRoot;
+            await HideHostAsync();
+
+            try
+            {
+                var dialog = new ThemedContentDialog
+                {
+                    XamlRoot = root,
+                    Title = title,
+                    Content = message,
+                    PrimaryButtonText = confirmLabel,
+                    CloseButtonText = L.T("Otmena_Lbl"),
+                    DefaultButton = ContentDialogButton.Close
+                };
+                return await dialog.ShowAsync() == ContentDialogResult.Primary;
+            }
+            finally
+            {
+                _ = ReshowHostAsync();
+            }
+        }
+
         /// <summary>Показывает хост-диалог «Плейлисты» снова (после вложенного диалога).</summary>
         private async Task ReshowHostAsync()
         {
@@ -715,7 +736,7 @@ namespace IptvPlayer.Dialogs
 
         private async Task ShowTransferErrorAsync(string message)
         {
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
                 Title = L.T("Perenos_Nastroek_Lbl"),
@@ -851,7 +872,7 @@ namespace IptvPlayer.Dialogs
             }
 
             // Хост уже скрыт PromptPasswordAsync; XamlRoot хоста ещё жив.
-            var modeDialog = new ContentDialog
+            var modeDialog = new ThemedContentDialog
             {
                 XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
                 Title = L.T("Import_Nastroek"),

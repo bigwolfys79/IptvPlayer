@@ -229,6 +229,24 @@ public sealed partial class MainPage : Page
         ViewModel.ParentalUnlockRequested += channel => ShowParentalPinDialogAsync(channel);
         ViewModel.EpgVisibilityChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(ApplyEpgVisibility);
+        // Пустое состояние EPG («Программа недоступна»): пересчитывать при
+        // смене канала, после перезагрузки EPG и по старте/завершении загрузки.
+        ViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModel.SelectedChannel))
+            {
+                DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
+            }
+        };
+        ViewModel.EpgViewModel.EpgReloaded += (s, e) =>
+            DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
+        ViewModel.EpgViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModel.EpgViewModel.IsLoading))
+            {
+                DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
+            }
+        };
         Player.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName is not (nameof(PlayerViewModel.IsBuffering) or nameof(PlayerViewModel.StreamError)))
@@ -666,7 +684,7 @@ public sealed partial class MainPage : Page
             var names = string.Join(Environment.NewLine, ViewModel.AppSettings.InterruptedRecordings
                 .Select(r => $"• {r.ChannelName}" +
                              (r.EndTime != null ? string.Format(L.T("Do_Vremeni_0"), $"{r.EndTime:HH:mm}") : "")));
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 XamlRoot = Content.XamlRoot,
                 Title = L.T("Prervannaya_Zapis"),
@@ -1082,7 +1100,7 @@ public sealed partial class MainPage : Page
     /// </summary>
     private async Task OfferUpdateInstallAsync(Version version, string setupPath)
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = Content.XamlRoot,
             Title = L.T("Dostupno_Obnovlenie"),
@@ -1108,7 +1126,7 @@ public sealed partial class MainPage : Page
                 "Обновление {Version} отложено: идут записи ({Count}), установится после их окончания.",
                 version, ViewModel.Recording.Active.Count);
 
-            var info = new ContentDialog
+            var info = new ThemedContentDialog
             {
                 XamlRoot = Content.XamlRoot,
                 Title = L.T("Obnovlenie_Otlozheno"),
@@ -1185,6 +1203,13 @@ public sealed partial class MainPage : Page
         {
             root.RequestedTheme = elementTheme;
         }
+
+        // Иконки оверлеев собираются из кода (Controls/AppIcons) с цветом по
+        // фактической теме — пересобираем, чтобы в светлой теме значки были
+        // тёмными, а в тёмной — белыми.
+        UpdateMuteButtons();
+        UpdateRecordButtons();
+        UpdateArchivePauseButton();
     }
 
     /// <summary>
@@ -1242,7 +1267,7 @@ public sealed partial class MainPage : Page
 
     private async void AddChannelButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = L.T("Dobavit_Kanal"),
             PrimaryButtonText = L.T("Dobavit_Lbl"),

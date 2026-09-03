@@ -33,7 +33,7 @@ public sealed partial class RecordingSettingsDialog : UserControl
         // пересобираем списки на каждое изменение состояния сервиса.
         _viewModel.Recording.RecordingsChanged += OnRecordingsChanged;
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = xamlRoot,
             Title = L.T("Zapisi_Lbl"),

@@ -14,6 +14,10 @@
                  дублировались hex-значениями по всему XAML/коду (REC, эфир,
                  архив, избранное, выделение канала, скримы оверлеев).
                  Менять цветовую схему — только здесь. -->
+            <!-- Кисти оверлеев поверх видео: в тёмной теме — тёмный скрим с
+                 белыми иконками, в светлой — светлый скрим с тёмными.
+                 OverlayScrimDarkBrush (EPG-панель) в светлой теме тоже
+                 осветляется, иначе панель выделяется на фоне темы. -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="RecRedBrush" Color="#FFF53B3B"/>
@@ -25,8 +29,13 @@
                     <SolidColorBrush x:Key="ChannelSelectedBrush" Color="#FF2B6CB0"/>
                     <SolidColorBrush x:Key="ChannelSelectedHoverBrush" Color="#FF3178C6"/>
                     <SolidColorBrush x:Key="ChannelSelectedPressedBrush" Color="#FF245D94"/>
-                    <SolidColorBrush x:Key="OverlayScrimBrush" Color="#B2000000"/>
-                    <SolidColorBrush x:Key="OverlayScrimDarkBrush" Color="#D9101010"/>
+                    <SolidColorBrush x:Key="OverlayScrimBrush" Color="#C8FFFFFF"/>
+                    <SolidColorBrush x:Key="OverlayScrimDarkBrush" Color="#F2FAFAFA"/>
+                    <SolidColorBrush x:Key="OverlayFgBrush" Color="#E6000000"/>
+                    <SolidColorBrush x:Key="OverlayFgSoftBrush" Color="#CC000000"/>
+                    <SolidColorBrush x:Key="OverlayFgFaintBrush" Color="#99000000"/>
+                    <SolidColorBrush x:Key="OverlayBtnHoverBrush" Color="#1F000000"/>
+                    <SolidColorBrush x:Key="OverlayBtnPressedBrush" Color="#33000000"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="RecRedBrush" Color="#FFF53B3B"/>
@@ -40,15 +49,21 @@
                     <SolidColorBrush x:Key="ChannelSelectedPressedBrush" Color="#FF245D94"/>
                     <SolidColorBrush x:Key="OverlayScrimBrush" Color="#B2000000"/>
                     <SolidColorBrush x:Key="OverlayScrimDarkBrush" Color="#D9101010"/>
+                    <SolidColorBrush x:Key="OverlayFgBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="OverlayFgSoftBrush" Color="#CCFFFFFF"/>
+                    <SolidColorBrush x:Key="OverlayFgFaintBrush" Color="#99FFFFFF"/>
+                    <SolidColorBrush x:Key="OverlayBtnHoverBrush" Color="#22FFFFFF"/>
+                    <SolidColorBrush x:Key="OverlayBtnPressedBrush" Color="#44FFFFFF"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
             <!-- Стиль кнопок видео-оверлеев (оконная панель и полноэкранная):
-                 прозрачный фон в покое, мягкая белая подсветка при наведении —
-                 стандартный дефолтный ховер плохо читается на тёмном скриме. -->
+                 прозрачный фон в покое, мягкая подсветка при наведении —
+                 стандартный дефолтный ховер плохо читается на скриме.
+                 Цвета подсветки — из темы (OverlayBtnHover/PressedBrush). -->
             <Style x:Key="OverlayButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Foreground" Value="{ThemeResource OverlayFgBrush}"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Padding" Value="0"/>
                 <Setter Property="CornerRadius" Value="6"/>
@@ -64,13 +79,13 @@
                             <VisualState x:Name="Normal"/>
                             <VisualState x:Name="PointerOver">
                                 <VisualState.Setters>
-                                    <Setter Target="RootBorder.Background" Value="#22FFFFFF"/>
+                                    <Setter Target="RootBorder.Background" Value="{ThemeResource OverlayBtnHoverBrush}"/>
                                     <Setter Target="RootBorder.BorderThickness" Value="0"/>
                                 </VisualState.Setters>
                             </VisualState>
                             <VisualState x:Name="Pressed">
                                 <VisualState.Setters>
-                                    <Setter Target="RootBorder.Background" Value="#44FFFFFF"/>
+                                    <Setter Target="RootBorder.Background" Value="{ThemeResource OverlayBtnPressedBrush}"/>
                                 </VisualState.Setters>
                             </VisualState>
                             <VisualState x:Name="Disabled">

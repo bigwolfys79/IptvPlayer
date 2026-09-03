@@ -251,7 +251,7 @@ public sealed partial class MainPage : Page
 
     private async void SleepTimerButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             Title = L.T("Taymer_Sna_Lbl"),
             PrimaryButtonText = L.T("Ustanovit"),
