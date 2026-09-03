@@ -35,7 +35,7 @@ public sealed partial class MainPage : Page
         {
             try
             {
-                var dialog = new ContentDialog
+                var dialog = new ThemedContentDialog
                 {
                     XamlRoot = Content.XamlRoot,
                     Title = L.T("Prodolzhit_Prosmotr"),

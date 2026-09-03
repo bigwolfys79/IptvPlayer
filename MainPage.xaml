@@ -344,10 +344,10 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}"
-                                   Foreground="White" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource OverlayFgBrush}" FontSize="14" FontWeight="SemiBold"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" />
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramTitle, Mode=OneWay}"
-                                   Foreground="#CCFFFFFF" FontSize="13"
+                                   Foreground="{ThemeResource OverlayFgSoftBrush}" FontSize="13"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
@@ -397,12 +397,12 @@
                          неограниченной авто-высотой в этой панели — источник
                          LayoutCycleException (зависание UI при смене канала). -->
                     <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
-                               Foreground="#99FFFFFF" FontSize="12"
+                               Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
                                TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
                                Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                     <!-- Описание текущей передачи EPG (ТВ-каналы) — там же. -->
                     <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
-                               Foreground="#99FFFFFF" FontSize="12"
+                               Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
                                TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
                                Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                 </StackPanel>
@@ -468,7 +468,7 @@
                                               Width="24" Height="24"
                                               VerticalAlignment="Center" />
                             <TextBlock x:Name="PlaybackStateBadgeText"
-                                       Foreground="White"
+                                       Foreground="{ThemeResource OverlayFgBrush}"
                                        FontSize="17"
                                        FontWeight="SemiBold"
                                        VerticalAlignment="Center" />
@@ -505,7 +505,7 @@
                                   VerticalAlignment="Center"/>
                             <TextBlock x:Name="StreamErrorText"
                                        FontSize="13"
-                                       Foreground="White"
+                                       Foreground="{ThemeResource OverlayFgBrush}"
                                        TextWrapping="Wrap"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
@@ -538,7 +538,7 @@
                                                         Width="40" Height="40"
                                                         Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
                                                         x:Uid="Predydushchiy_Kanal_Backspace">
-                                            <Path Data="M12,3.5 L5,8.5 L12,13.5 Z" Fill="White" />
+                                            <Path Data="M12,3.5 L5,8.5 L12,13.5 Z" Fill="{ThemeResource OverlayFgBrush}" />
                                         </Button>
                                         <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayRecordButton"
                                                         Width="40" Height="40"
@@ -563,7 +563,7 @@
                                             <!-- Нарисованная пауза (две полосы); на плей
                                                  переключает UpdateArchivePauseButton. -->
                                             <Path Data="M3.5,2.5 H6.4 V13.5 H3.5 Z M9.6,2.5 H12.5 V13.5 H9.6 Z"
-                                                  Width="16" Height="16" Stretch="Uniform" Fill="White" />
+                                                  Width="16" Height="16" Stretch="Uniform" Fill="{ThemeResource OverlayFgBrush}" />
                                         </Button>
                     <!-- Полоса перемотки архива (timeshift): позиция считается по
                          часам от старта показа, отпускание ползунка перезапускает
@@ -575,7 +575,7 @@
                                 Visibility="Collapsed"
                                 x:Uid="Peremotka_Arkhiva_Otpustite_Polzunok_Dlya_Perekhoda">
                         <TextBlock x:Name="WindowedArchivePositionText"
-                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   Text="00:00" FontSize="11" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                    VerticalAlignment="Center" />
                         <Slider x:Name="WindowedArchiveSeekBar"
                                 Width="150" Minimum="0" Maximum="1"
@@ -585,7 +585,7 @@
                                 PointerReleased="ArchiveSeekBar_PointerReleased"
                                 PointerCaptureLost="ArchiveSeekBar_PointerCaptureLost" />
                         <TextBlock x:Name="WindowedArchiveDurationText"
-                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   Text="00:00" FontSize="11" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                     <!-- Полоса перемотки VOD портала (MP4/HLS-VOD перематывается
@@ -596,7 +596,7 @@
                                 Visibility="Collapsed"
                                 x:Uid="Peremotka_Video_Otpustite_Polzunok">
                         <TextBlock x:Name="WindowedVodPositionText"
-                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   Text="00:00" FontSize="11" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                    VerticalAlignment="Center" />
                         <Slider x:Name="WindowedVodSeekBar"
                                 Width="150" Minimum="0" Maximum="1"
@@ -607,7 +607,7 @@
                                 PointerReleased="VodSeekBar_PointerReleased"
                                 PointerCaptureLost="VodSeekBar_PointerCaptureLost" />
                         <TextBlock x:Name="WindowedVodDurationText"
-                                   Text="00:00" FontSize="11" Foreground="#CCFFFFFF"
+                                   Text="00:00" FontSize="11" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                    VerticalAlignment="Center" />
                     </StackPanel>
                     <!-- Сезон/серия текущего VOD-сериала: сезон — соседние
@@ -650,10 +650,10 @@
                             x:Uid="Rezhim_Otobrazheniya_V">
                         <!-- Рамка и двунаправленная стрелка (растяжение). -->
                         <Grid Width="16" Height="16">
-                            <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                            <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
                                        Margin="1,2.4,1,1" />
                             <Path Data="M4,8 H12 M5.8,5.6 L3.4,8 L5.8,10.4 M10.2,5.6 L12.6,8 L10.2,10.4"
-                                  Stroke="White" StrokeThickness="1.2" />
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.2" />
                         </Grid>
                     </Button>
                     <!-- Улучшение картинки («апскейлер»): пресеты видео-фильтров
@@ -664,7 +664,7 @@
                             x:Uid="Kachestvo_Kartinki">
                         <!-- Нарисованная «искра» (улучшение). -->
                         <Path Data="M8,1 L9.6,6.4 L15,8 L9.6,9.6 L8,15 L6.4,9.6 L1,8 L6.4,6.4 Z"
-                              Fill="White" Stretch="Uniform" Width="15" Height="15" />
+                              Fill="{ThemeResource OverlayFgBrush}" Stretch="Uniform" Width="15" Height="15" />
                         <Button.Flyout>
                             <MenuFlyout Opening="UpscalerMenu_Opening">
                                 <RadioMenuFlyoutItem x:Name="UpscalerOffItem" Tag="Off"
@@ -695,13 +695,13 @@
                                                         x:Uid="Pokazat_EPG">
                                             <!-- Нарисованный календарь (программа передач). -->
                                             <Grid Width="16" Height="16">
-                                                <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                                                <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
                                                            Margin="1,2.6,1,1" />
-                                                <Rectangle Fill="White" Height="1.7" RadiusX="0.8"
+                                                <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.7" RadiusX="0.8"
                                                            Margin="1,5.6,1,0" VerticalAlignment="Top" />
-                                                <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                                                <Rectangle Fill="{ThemeResource OverlayFgBrush}" Width="2.4" Height="4.4" RadiusX="1.2"
                                                            Margin="3.7,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                                <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                                                <Rectangle Fill="{ThemeResource OverlayFgBrush}" Width="2.4" Height="4.4" RadiusX="1.2"
                                                            Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
                                             </Grid>
                                         </Button>
@@ -730,12 +730,12 @@
                             </MenuFlyout>
                         </Button.Flyout>
                         <Grid Width="16" Height="16">
-                            <Rectangle Fill="White" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,3.4,1.5,0" />
-                            <Ellipse Fill="White" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2.6,1.9,0,0" />
-                            <Rectangle Fill="White" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,8.2,1.5,0" />
-                            <Ellipse Fill="White" Width="4.6" Height="4.6" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6.7,2.6,0" />
-                            <Rectangle Fill="White" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,13,1.5,0" />
-                            <Ellipse Fill="White" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,11.5,0,0" />
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,3.4,1.5,0" />
+                            <Ellipse Fill="{ThemeResource OverlayFgBrush}" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2.6,1.9,0,0" />
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,8.2,1.5,0" />
+                            <Ellipse Fill="{ThemeResource OverlayFgBrush}" Width="4.6" Height="4.6" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6.7,2.6,0" />
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,13,1.5,0" />
+                            <Ellipse Fill="{ThemeResource OverlayFgBrush}" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,11.5,0,0" />
                         </Grid>
                     </Button>
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlaySleepTimerButton"
@@ -745,9 +745,9 @@
                         <!-- Нарисованные часы с луной. -->
                         <Grid Width="16" Height="16">
                             <Path Data="M8,1.5 A6.5,6.5 0 1 0 14.5,8"
-                                  Stroke="White" StrokeThickness="1.3" Fill="Transparent" />
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" Fill="Transparent" />
                             <Path Data="M8,4 V8 L11,10"
-                                  Stroke="White" StrokeThickness="1.3" />
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" />
                             <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
                                   Fill="#B39DDB" Stretch="Uniform"
                                   Width="6" Height="6"
@@ -762,7 +762,7 @@
                         <!-- Нарисованные уголки «на весь экран». -->
                         <Path Data="M1,5.5 V3 Q1,1 3,1 H5.5 M10.5,1 H13 Q15,1 15,3 V5.5 M15,10.5 V13 Q15,15 13,15 H10.5 M5.5,15 H3 Q1,15 1,13 V10.5"
                               Width="16" Height="16" Stretch="Uniform"
-                              Stroke="White" StrokeThickness="1.5" />
+                              Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.5" />
                     </Button>
                 </StackPanel>
             </Border>
@@ -794,10 +794,10 @@
                     IsHitTestVisible="False">
                 <StackPanel Orientation="Horizontal" Spacing="12">
                     <TextBlock x:Name="ChannelNumberText"
-                               FontSize="26" FontWeight="SemiBold" Foreground="White"
+                               FontSize="26" FontWeight="SemiBold" Foreground="{ThemeResource OverlayFgBrush}"
                                VerticalAlignment="Center" />
                     <TextBlock x:Name="ChannelNumberName"
-                               FontSize="13" Foreground="#CCFFFFFF"
+                               FontSize="13" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                VerticalAlignment="Center" MaxWidth="380"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
@@ -947,13 +947,14 @@
                         </ListView.ItemTemplate>
                     </ListView>
 
-                    <!-- Пустое состояние — если нет EPG данных у выбранного канала -->
+                    <!-- Пустое состояние — если нет EPG данных у выбранного канала
+                         (включается в UpdateEpgEmptyState, MainPage.Seek.cs) -->
                     <StackPanel x:Name="EmptyChannelEPGState" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,52,0,0">
                         <Path Data="M3.7,1.7 H12.3 V14.3 H3.7 Z M5.8,5.4 H10.2 M5.8,8.2 H10.2 M5.8,11 H8.8"
                               Width="36" Height="36" Stretch="Uniform"
                               Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1.2"
                               HorizontalAlignment="Center" />
-                        <TextBlock x:Name="EmptyChannelEpgText" x:Uid="Net_Dannykh_O_Programmakh_Dlya_Etogo" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" Margin="0,8,0,0" />
+                        <TextBlock x:Name="EmptyChannelEpgText" x:Uid="Programma_Nedostupna" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" Margin="0,8,0,0" />
                     </StackPanel>
                 </Grid>
 
@@ -1008,9 +1009,9 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}"
-                                   Foreground="White" FontSize="18" FontWeight="SemiBold" />
+                                   Foreground="{ThemeResource OverlayFgBrush}" FontSize="18" FontWeight="SemiBold" />
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramTitle, Mode=OneWay}"
-                                   Foreground="#CCFFFFFF" FontSize="13" />
+                                   Foreground="{ThemeResource OverlayFgSoftBrush}" FontSize="13" />
                         <!-- Прогресс текущей передачи в шапке оверлея: сколько уже
                              прошло. Обновляется 30-секундным таймером (как и полосы
                              в списке каналов) через INPC SelectedChannel. -->
@@ -1023,12 +1024,12 @@
                              (высота шапки растёт по тексту). MaxLines — против
                              LayoutCycleException, как в оконном оверлее. -->
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
-                                   Foreground="#99FFFFFF" FontSize="12"
+                                   Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
                                    TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis" Margin="0,4,24,0"
                                    Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                         <!-- Описание текущей передачи EPG (ТВ-каналы) — там же. -->
                         <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
-                                   Foreground="#99FFFFFF" FontSize="12"
+                                   Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
                                    TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis" Margin="0,4,24,0"
                                    Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
                         <!-- Показывается вместо/рядом с текущей программой, когда в
@@ -1081,7 +1082,7 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" x:Name="OverlayChannelsHeaderText" x:Uid="Kanaly"
-                               Foreground="White" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{ThemeResource OverlayFgBrush}" FontSize="18" FontWeight="SemiBold"
                                Padding="16,16,16,8" />
 
                     <!-- ЕДИНЫЙ источник с оконным списком: плоский
@@ -1136,7 +1137,7 @@
                                                                 Width="56" Height="56"
                                                                 Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
                                                                 x:Uid="Predydushchiy_Kanal_Backspace">
-                                                    <Path Data="M16,5 L7,11 L16,17 Z" Fill="White" />
+                                                    <Path Data="M16,5 L7,11 L16,17 Z" Fill="{ThemeResource OverlayFgBrush}" />
                                                 </Button>
                                                 <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayRecordButton"
                                                                 Width="56" Height="56"
@@ -1157,7 +1158,7 @@
                                                                 Visibility="Collapsed"
                                                                 x:Uid="Pauza_Arkhiv">
                                                     <Path Data="M3.5,2.5 H6.4 V13.5 H3.5 Z M9.6,2.5 H12.5 V13.5 H9.6 Z"
-                                                          Width="20" Height="20" Stretch="Uniform" Fill="White" />
+                                                          Width="20" Height="20" Stretch="Uniform" Fill="{ThemeResource OverlayFgBrush}" />
                                                 </Button>
                         <!-- Полоса перемотки архива (timeshift) в полноэкранном
                              оверлее — аналог оконной (WindowedArchiveSeekPanel). -->
@@ -1167,7 +1168,7 @@
                                     Visibility="Collapsed"
                                     x:Uid="Peremotka_Arkhiva_Otpustite_Polzunok_Dlya_Perekhoda">
                             <TextBlock x:Name="OverlayArchivePositionText"
-                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       Text="00:00" FontSize="12" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                        VerticalAlignment="Center" />
                             <Slider x:Name="OverlayArchiveSeekBar"
                                     Width="190" Minimum="0" Maximum="1"
@@ -1177,7 +1178,7 @@
                                     PointerReleased="ArchiveSeekBar_PointerReleased"
                                     PointerCaptureLost="ArchiveSeekBar_PointerCaptureLost" />
                             <TextBlock x:Name="OverlayArchiveDurationText"
-                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       Text="00:00" FontSize="12" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                         <!-- Полоса перемотки VOD портала — аналог оконной. -->
@@ -1187,7 +1188,7 @@
                                     Visibility="Collapsed"
                                     x:Uid="Peremotka_Video_Otpustite_Polzunok">
                             <TextBlock x:Name="OverlayVodPositionText"
-                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       Text="00:00" FontSize="12" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                        VerticalAlignment="Center" />
                             <Slider x:Name="OverlayVodSeekBar"
                                     Width="190" Minimum="0" Maximum="1"
@@ -1198,7 +1199,7 @@
                                     PointerReleased="VodSeekBar_PointerReleased"
                                     PointerCaptureLost="VodSeekBar_PointerCaptureLost" />
                             <TextBlock x:Name="OverlayVodDurationText"
-                                       Text="00:00" FontSize="12" Foreground="#CCFFFFFF"
+                                       Text="00:00" FontSize="12" Foreground="{ThemeResource OverlayFgSoftBrush}"
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     <!-- Сезон/серия текущего VOD-сериала — аналог оконной панели. -->
@@ -1238,10 +1239,10 @@
                             Click="StretchButton_Click"
                             x:Uid="Rezhim_Otobrazheniya_V">
                         <Grid Width="18" Height="18">
-                            <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                            <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
                                        Margin="1,2.4,1,1" />
                             <Path Data="M4,8 H12 M5.8,5.6 L3.4,8 L5.8,10.4 M10.2,5.6 L12.6,8 L10.2,10.4"
-                                  Stroke="White" StrokeThickness="1.2" />
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.2" />
                         </Grid>
                     </Button>
                     <!-- Улучшение картинки — аналог кнопки в оконной панели. -->
@@ -1249,7 +1250,7 @@
                             Width="44" Height="44"
                             x:Uid="Kachestvo_Kartinki">
                         <Path Data="M8,1 L9.6,6.4 L15,8 L9.6,9.6 L8,15 L6.4,9.6 L1,8 L6.4,6.4 Z"
-                              Fill="White" Stretch="Uniform" Width="16" Height="16" />
+                              Fill="{ThemeResource OverlayFgBrush}" Stretch="Uniform" Width="16" Height="16" />
                         <Button.Flyout>
                             <MenuFlyout Opening="UpscalerMenu_Opening">
                                 <RadioMenuFlyoutItem x:Name="OverlayUpscalerOffItem" Tag="Off"
@@ -1281,9 +1282,9 @@
                         <!-- Нарисованные часы с луной. -->
                         <Grid Width="18" Height="18">
                             <Path Data="M8,1.5 A6.5,6.5 0 1 0 14.5,8"
-                                  Stroke="White" StrokeThickness="1.3" Fill="Transparent" />
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" Fill="Transparent" />
                             <Path Data="M8,4 V8 L11,10"
-                                  Stroke="White" StrokeThickness="1.3" />
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" />
                             <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
                                   Fill="#B39DDB" Stretch="Uniform"
                                   Width="7" Height="7"
@@ -1297,13 +1298,13 @@
                             x:Uid="Pokazat_Skryt_EPG">
                         <!-- Нарисованный календарь (программа передач). -->
                         <Grid Width="17" Height="17">
-                            <Rectangle Stroke="White" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
+                            <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" RadiusX="2" RadiusY="2"
                                        Margin="1,2.6,1,1" />
-                            <Rectangle Fill="White" Height="1.7" RadiusX="0.8"
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.7" RadiusX="0.8"
                                        Margin="1,5.6,1,0" VerticalAlignment="Top" />
-                            <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Width="2.4" Height="4.4" RadiusX="1.2"
                                        Margin="3.7,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                            <Rectangle Fill="White" Width="2.4" Height="4.4" RadiusX="1.2"
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Width="2.4" Height="4.4" RadiusX="1.2"
                                        Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
                         </Grid>
                     </Button>
@@ -1314,7 +1315,7 @@
                         <!-- Нарисованные уголки, «сворачивающиеся» внутрь. -->
                         <Path Data="M5.5,1 V3 Q5.5,5 3.5,5 H1 M15,5 H12.5 Q10.5,5 10.5,3 V1 M10.5,15 V13 Q10.5,11 12.5,11 H15 M1,11 H3.5 Q5.5,11 5.5,13 V15"
                               Width="16" Height="16" Stretch="Uniform"
-                              Stroke="White" StrokeThickness="1.5" />
+                              Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.5" />
                     </Button>
                 </StackPanel>
             </Border>

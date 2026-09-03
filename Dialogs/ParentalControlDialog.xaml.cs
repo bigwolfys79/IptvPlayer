@@ -43,7 +43,7 @@ public sealed partial class ParentalControlDialog : UserControl
     {
         LoadSection();
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = xamlRoot,
             Title = L.T("Roditelskiy_Kontrol_Lbl"),

@@ -7,116 +7,167 @@
     mc:Ignorable="d">
 
     <Page.Resources>
-        <LinearGradientBrush x:Key="HubBackground" StartPoint="0,0" EndPoint="1,1">
-            <GradientStop Color="#FF0D1117" Offset="0"/>
-            <GradientStop Color="#FF161B22" Offset="0.5"/>
-            <GradientStop Color="#FF0D1117" Offset="1"/>
-        </LinearGradientBrush>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <LinearGradientBrush x:Key="HubBackground" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FFF6F8FB" Offset="0"/>
+                        <GradientStop Color="#FFFFFFFF" Offset="0.5"/>
+                        <GradientStop Color="#FFF6F8FB" Offset="1"/>
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="HubCardGradient" StartPoint="0,1" EndPoint="0,0">
+                        <GradientStop Color="#30000000" Offset="0"/>
+                        <GradientStop Color="#10000000" Offset="0.5"/>
+                        <GradientStop Color="#00000000" Offset="1"/>
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="HubCardBorderBrush" Color="#20000000"/>
+                    <SolidColorBrush x:Key="HubCardBorderHoverBrush" Color="#50000000"/>
+                    <SolidColorBrush x:Key="HubCardPlaylistsBrush" Color="#FFD9E4F2"/>
+                    <SolidColorBrush x:Key="HubCardPortalBrush" Color="#FFD8EBDD"/>
+                    <SolidColorBrush x:Key="HubCardSettingsBrush" Color="#FFE8DFF2"/>
+                    <SolidColorBrush x:Key="HubCardVideoBrush" Color="#FFF2E4D7"/>
+                    <SolidColorBrush x:Key="HubRoundBtnBrush" Color="#20000000"/>
+                    <SolidColorBrush x:Key="HubRoundBtnBorderBrush" Color="#40000000"/>
+                    <SolidColorBrush x:Key="HubRoundBtnHoverBrush" Color="#35000000"/>
+                    <SolidColorBrush x:Key="HubRoundBtnHoverBorderBrush" Color="#80000000"/>
+                    <SolidColorBrush x:Key="HubRoundBtnPressedBrush" Color="#45000000"/>
+                    <SolidColorBrush x:Key="HubFgBrush" Color="#F0000000"/>
+                    <SolidColorBrush x:Key="HubFgSoftBrush" Color="#B3000000"/>
+                    <SolidColorBrush x:Key="HubFgSemiBrush" Color="#E6000000"/>
+                    <SolidColorBrush x:Key="HubFlyoutBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="HubFlyoutBorderBrush" Color="#20000000"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <LinearGradientBrush x:Key="HubBackground" StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FF0D1117" Offset="0"/>
+                        <GradientStop Color="#FF161B22" Offset="0.5"/>
+                        <GradientStop Color="#FF0D1117" Offset="1"/>
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="HubCardGradient" StartPoint="0,1" EndPoint="0,0">
+                        <GradientStop Color="#30FFFFFF" Offset="0"/>
+                        <GradientStop Color="#10FFFFFF" Offset="0.5"/>
+                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                    </LinearGradientBrush>
+                    <SolidColorBrush x:Key="HubCardBorderBrush" Color="#20FFFFFF"/>
+                    <SolidColorBrush x:Key="HubCardBorderHoverBrush" Color="#50FFFFFF"/>
+                    <SolidColorBrush x:Key="HubCardPlaylistsBrush" Color="#FF303A47"/>
+                    <SolidColorBrush x:Key="HubCardPortalBrush" Color="#FF1A3A2A"/>
+                    <SolidColorBrush x:Key="HubCardSettingsBrush" Color="#FF2A2030"/>
+                    <SolidColorBrush x:Key="HubCardVideoBrush" Color="#FF3A2A20"/>
+                    <SolidColorBrush x:Key="HubRoundBtnBrush" Color="#20FFFFFF"/>
+                    <SolidColorBrush x:Key="HubRoundBtnBorderBrush" Color="#40FFFFFF"/>
+                    <SolidColorBrush x:Key="HubRoundBtnHoverBrush" Color="#35FFFFFF"/>
+                    <SolidColorBrush x:Key="HubRoundBtnHoverBorderBrush" Color="#80FFFFFF"/>
+                    <SolidColorBrush x:Key="HubRoundBtnPressedBrush" Color="#45FFFFFF"/>
+                    <SolidColorBrush x:Key="HubFgBrush" Color="#FFFFFFFF"/>
+                    <SolidColorBrush x:Key="HubFgSoftBrush" Color="#B3FFFFFF"/>
+                    <SolidColorBrush x:Key="HubFgSemiBrush" Color="#E6FFFFFF"/>
+                    <SolidColorBrush x:Key="HubFlyoutBrush" Color="#FF1C2128"/>
+                    <SolidColorBrush x:Key="HubFlyoutBorderBrush" Color="#30FFFFFF"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
 
-        <LinearGradientBrush x:Key="HubCardGradient" StartPoint="0,1" EndPoint="0,0">
-            <GradientStop Color="#30FFFFFF" Offset="0"/>
-            <GradientStop Color="#10FFFFFF" Offset="0.5"/>
-            <GradientStop Color="#00FFFFFF" Offset="1"/>
-        </LinearGradientBrush>
-
-        <Style x:Key="HubCard" TargetType="Button">
-            <Setter Property="Width" Value="280"/>
-            <Setter Property="Height" Value="220"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#20FFFFFF"/>
-            <Setter Property="CornerRadius" Value="16"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="RootBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="16"
-                                Padding="24"
-                                RenderTransformOrigin="0.5,0.5">
-                            <Border.RenderTransform>
-                                <CompositeTransform x:Name="Transform" ScaleX="1.0" ScaleY="1.0"/>
-                            </Border.RenderTransform>
-                            <Grid>
-                                <Border x:Name="HoverOverlay"
-                                        CornerRadius="16"
-                                        Opacity="0"
-                                        Background="{StaticResource HubCardGradient}"/>
-                                <ContentPresenter HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"/>
-                            </Grid>
-                            <VisualStateManager.VisualStateGroups>
-                                <VisualStateGroup x:Name="CommonStates">
-                                    <VisualState x:Name="Normal"/>
-                                    <VisualState x:Name="PointerOver">
-                                        <VisualState.Setters>
-                                            <Setter Target="Transform.ScaleX" Value="1.05"/>
-                                            <Setter Target="Transform.ScaleY" Value="1.05"/>
-                                            <Setter Target="RootBorder.BorderBrush" Value="#50FFFFFF"/>
-                                            <Setter Target="HoverOverlay.Opacity" Value="1"/>
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                </VisualStateGroup>
-                            </VisualStateManager.VisualStateGroups>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!-- Круглая иконка-кнопка (кнопка «Справка»): подсветка при наведении -->
-        <Style x:Key="HubRoundButton" TargetType="Button">
-            <Setter Property="Width" Value="44"/>
-            <Setter Property="Height" Value="44"/>
-            <Setter Property="CornerRadius" Value="22"/>
-            <Setter Property="Background" Value="#20FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#40FFFFFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="B"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="22"
-                                RenderTransformOrigin="0.5,0.5">
-                            <Border.RenderTransform>
-                                <CompositeTransform x:Name="T"/>
-                            </Border.RenderTransform>
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <VisualStateManager.VisualStateGroups>
-                                <VisualStateGroup x:Name="CommonStates">
-                                    <VisualState x:Name="Normal"/>
-                                    <VisualState x:Name="PointerOver">
-                                        <VisualState.Setters>
-                                            <Setter Target="B.Background" Value="#35FFFFFF"/>
-                                            <Setter Target="B.BorderBrush" Value="#80FFFFFF"/>
-                                            <Setter Target="T.ScaleX" Value="1.08"/>
-                                            <Setter Target="T.ScaleY" Value="1.08"/>
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                    <VisualState x:Name="Pressed">
-                                        <VisualState.Setters>
-                                            <Setter Target="B.Background" Value="#45FFFFFF"/>
-                                            <Setter Target="T.ScaleX" Value="0.95"/>
-                                            <Setter Target="T.ScaleY" Value="0.95"/>
-                                        </VisualState.Setters>
-                                    </VisualState>
-                                </VisualStateGroup>
-                            </VisualStateManager.VisualStateGroups>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+            <!-- Карточка раздела: подъём при наведении + градиентная подсветка.
+                 Цвета фона/рамок — тема-зависимые (выше). -->
+            <Style x:Key="HubCard" TargetType="Button">
+                <Setter Property="Width" Value="280"/>
+                <Setter Property="Height" Value="220"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource HubCardBorderBrush}"/>
+                <Setter Property="CornerRadius" Value="16"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="RootBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="16"
+                                    Padding="24"
+                                    RenderTransformOrigin="0.5,0.5">
+                                <Border.RenderTransform>
+                                    <CompositeTransform x:Name="Transform" ScaleX="1.0" ScaleY="1.0"/>
+                                </Border.RenderTransform>
+                                <Grid>
+                                    <Border x:Name="HoverOverlay"
+                                            CornerRadius="16"
+                                            Opacity="0"
+                                            Background="{ThemeResource HubCardGradient}"/>
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                </Grid>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal"/>
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Transform.ScaleX" Value="1.05"/>
+                                                <Setter Target="Transform.ScaleY" Value="1.05"/>
+                                                <Setter Target="RootBorder.BorderBrush" Value="{ThemeResource HubCardBorderHoverBrush}"/>
+                                                <Setter Target="HoverOverlay.Opacity" Value="1"/>
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <!-- Круглая иконка-кнопка (кнопка «Справка»): подсветка при наведении -->
+            <Style x:Key="HubRoundButton" TargetType="Button">
+                <Setter Property="Width" Value="44"/>
+                <Setter Property="Height" Value="44"/>
+                <Setter Property="CornerRadius" Value="22"/>
+                <Setter Property="Background" Value="{ThemeResource HubRoundBtnBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource HubRoundBtnBorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="B"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="22"
+                                    RenderTransformOrigin="0.5,0.5">
+                                <Border.RenderTransform>
+                                    <CompositeTransform x:Name="T"/>
+                                </Border.RenderTransform>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal"/>
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="B.Background" Value="{ThemeResource HubRoundBtnHoverBrush}"/>
+                                                <Setter Target="B.BorderBrush" Value="{ThemeResource HubRoundBtnHoverBorderBrush}"/>
+                                                <Setter Target="T.ScaleX" Value="1.08"/>
+                                                <Setter Target="T.ScaleY" Value="1.08"/>
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="B.Background" Value="{ThemeResource HubRoundBtnPressedBrush}"/>
+                                                <Setter Target="T.ScaleX" Value="0.95"/>
+                                                <Setter Target="T.ScaleY" Value="0.95"/>
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </Page.Resources>
 
-    <Grid Background="{StaticResource HubBackground}" x:Name="RootGrid">
+    <Grid Background="{ThemeResource HubBackground}" x:Name="RootGrid">
 
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                     x:Name="MainPanel" Opacity="0">
@@ -124,7 +175,7 @@
                         x:Name="HeaderPanel">
                 <TextBlock x:Name="GreetingText"
                            FontSize="48" FontWeight="Bold"
-                           Foreground="White"
+                           Foreground="{ThemeResource HubFgBrush}"
                            HorizontalAlignment="Center"/>
                 <Border x:Name="AccentLine"
                         HorizontalAlignment="Center"
@@ -139,7 +190,7 @@
                 </Border>
                 <TextBlock x:Name="SubText"
                            FontSize="18"
-                           Foreground="#B3FFFFFF"
+                           Foreground="{ThemeResource HubFgSoftBrush}"
                            HorizontalAlignment="Center"
                            Margin="0,6,0,0"/>
             </StackPanel>
@@ -159,7 +210,7 @@
             <Button x:Name="PlaylistsButton" Grid.Column="0"
                     Click="PlaylistsButton_Click"
                     Style="{StaticResource HubCard}"
-                    Background="#303A47"
+                    Background="{ThemeResource HubCardPlaylistsBrush}"
                     RenderTransformOrigin="0.5,0.5"
                     AutomationProperties.AutomationId="HubPlaylistsCard">
                 <Button.KeyboardAccelerators>
@@ -175,10 +226,10 @@
                         </Image.Source>
                     </Image>
                     <TextBlock x:Uid="Pleylisty" FontSize="18" FontWeight="SemiBold"
-                               Foreground="White" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                     <TextBlock x:Uid="Upravlyayte_Pleylistami" FontSize="12"
-                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                 </StackPanel>
@@ -188,7 +239,7 @@
             <Button x:Name="PortalButton" Grid.Column="2"
                     Click="PortalButton_Click"
                     Style="{StaticResource HubCard}"
-                    Background="#1A3A2A"
+                    Background="{ThemeResource HubCardPortalBrush}"
                     RenderTransformOrigin="0.5,0.5"
                     AutomationProperties.AutomationId="HubPortalCard">
                 <Button.KeyboardAccelerators>
@@ -204,10 +255,10 @@
                         </Image.Source>
                     </Image>
                     <TextBlock x:Uid="Portal" FontSize="18" FontWeight="SemiBold"
-                               Foreground="White" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                     <TextBlock x:Uid="Portal_Card_Subtitle" FontSize="12"
-                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                 </StackPanel>
@@ -217,7 +268,7 @@
             <Button x:Name="SettingsButton" Grid.Column="6"
                     Click="SettingsButton_Click"
                     Style="{StaticResource HubCard}"
-                    Background="#2A2030"
+                    Background="{ThemeResource HubCardSettingsBrush}"
                     RenderTransformOrigin="0.5,0.5"
                     AutomationProperties.AutomationId="HubSettingsCard">
                 <Button.KeyboardAccelerators>
@@ -233,10 +284,10 @@
                         </Image.Source>
                     </Image>
                     <TextBlock x:Uid="Nastroyki_Card" FontSize="18" FontWeight="SemiBold"
-                               Foreground="White" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                     <TextBlock x:Uid="Yazyk_Interfeys_Vosproizv" FontSize="12"
-                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                 </StackPanel>
@@ -246,7 +297,7 @@
             <Button x:Name="VideoButton" Grid.Column="4"
                     Click="VideoButton_Click"
                     Style="{StaticResource HubCard}"
-                    Background="#3A2A20"
+                    Background="{ThemeResource HubCardVideoBrush}"
                     RenderTransformOrigin="0.5,0.5"
                     AutomationProperties.AutomationId="HubVideoCard">
                 <Button.KeyboardAccelerators>
@@ -257,13 +308,13 @@
                 </Button.RenderTransform>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="44"
-                               Foreground="White" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                Margin="0,0,0,16"/>
                     <TextBlock x:Uid="Video_Card" FontSize="18" FontWeight="SemiBold"
-                               Foreground="White" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                     <TextBlock x:Uid="Video_Card_Subtitle" FontSize="12"
-                               Foreground="#B3FFFFFF" HorizontalAlignment="Center"
+                               Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                 </StackPanel>
@@ -286,7 +337,7 @@
                     <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="16"
                                Foreground="#FF6CA0" VerticalAlignment="Center"/>
                     <TextBlock x:Name="ContinueText" FontSize="14" FontWeight="SemiBold"
-                               Foreground="#E6FFFFFF" VerticalAlignment="Center"
+                               Foreground="{ThemeResource HubFgSemiBrush}" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="440"/>
                 </StackPanel>
             </Button>
@@ -309,13 +360,13 @@
                 <KeyboardAccelerator Key="F1" Invoked="InfoAccelerator_Invoked"/>
             </Button.KeyboardAccelerators>
             <TextBlock Text="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="20"
-                       Foreground="#CCFFFFFF"/>
+                       Foreground="{ThemeResource HubFgSemiBrush}"/>
         </Button>
 
         <!-- Кастомный flyout -->
         <Border x:Name="FlyoutBorder"
-                Background="#FF1C2128"
-                BorderBrush="#30FFFFFF"
+                Background="{ThemeResource HubFlyoutBrush}"
+                BorderBrush="{ThemeResource HubFlyoutBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="12"
                 Padding="4"

@@ -32,6 +32,10 @@ namespace IptvPlayer.Dialogs
         // шаблона диалога, а не сам ContentDialog).
         private ContentDialog? _hostDialog;
 
+        // XamlRoot хост-диалога: вложенный диалог подтверждения нужен ПОСЛЕ
+        // Hide хоста, когда собственный XamlRoot этого UserControl уже null.
+        private XamlRoot? _hostXamlRoot;
+
         public EpgSettingsDialog(MainPageViewModel viewModel, ISettingsService settingsService)
         {
             _viewModel = viewModel;
@@ -46,13 +50,14 @@ namespace IptvPlayer.Dialogs
             // не нужен, иначе «Настройки EPG» читается дважды.
             TitleText.Visibility = Visibility.Collapsed;
 
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 XamlRoot = xamlRoot,
                 Title = L.T("Nastroyki_EPG_Lbl"),
                 Content = this
             };
             _hostDialog = dialog;
+            _hostXamlRoot = xamlRoot;
             await dialog.ShowAsync();
         }
 
@@ -153,17 +158,15 @@ namespace IptvPlayer.Dialogs
 
                 var removeButton = new Button
                 {
-                    Content = "✕",
                     Width = 32,
                     Height = 32,
                     VerticalAlignment = VerticalAlignment.Center
                 };
+                // Иконка-корзина вместо текстового «✕» (шрифт без глифа
+                // показывал «?»), удаление — через окно подтверждения.
+                removeButton.Content = new FontIcon { Glyph = "\uE74D", FontSize = 14 };
                 ToolTipService.SetToolTip(removeButton, L.T("Udalit_Istochnik_Lbl"));
-                removeButton.Click += (_, _) =>
-                {
-                    _epgSources.Remove(source);
-                    UpdateEpgSourcesDisplay();
-                };
+                removeButton.Click += async (_, _) => await RemoveEpgSourceWithConfirmAsync(source);
 
                 row.Children.Add(checkBox);
                 row.Children.Add(textBox);
@@ -182,6 +185,53 @@ namespace IptvPlayer.Dialogs
 
             _epgSources.Add(new EPGSource { Url = url, IsEnabled = true });
             EpgUrlBox.Text = string.Empty;
+            UpdateEpgSourcesDisplay();
+        }
+
+        /// <summary>
+        /// Удаление источника с подтверждением отдельным окном. Хост-диалог
+        /// прячется — два ContentDialog одновременно показать нельзя — и
+        /// показывается снова после ответа.
+        /// </summary>
+        private async Task RemoveEpgSourceWithConfirmAsync(EPGSource source)
+        {
+            var root = _hostXamlRoot;
+            if (root == null)
+            {
+                return;
+            }
+
+            _hostDialog?.Hide();
+            await Task.Delay(50);
+
+            bool confirmed;
+            try
+            {
+                var dialog = new ThemedContentDialog
+                {
+                    XamlRoot = root,
+                    Title = L.T("Udalit_Istochnik_EPG_Lbl"),
+                    Content = string.Format(L.T("Udalit_Istochnik_EPG_Vopros_0"), source.Url),
+                    PrimaryButtonText = L.T("Udalit_Lbl"),
+                    CloseButtonText = L.T("Otmena_Lbl"),
+                    DefaultButton = ContentDialogButton.Close
+                };
+                confirmed = await dialog.ShowAsync() == ContentDialogResult.Primary;
+            }
+            finally
+            {
+                if (_hostDialog != null)
+                {
+                    _ = _hostDialog.ShowAsync();
+                }
+            }
+
+            if (!confirmed || _epgSources.Contains(source) == false)
+            {
+                return;
+            }
+
+            _epgSources.Remove(source);
             UpdateEpgSourcesDisplay();
         }
 

@@ -986,7 +986,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
-  <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo.Text" xml:space="preserve">
+    <data name="Programma_Nedostupna.Text" xml:space="preserve">
+
+    <value>Program guide unavailable</value>
+
+  </data>
+
+<data name="Net_Dannykh_O_Programmakh_Dlya_Etogo.Text" xml:space="preserve">
 
     <value>No programme data for this channel</value>
 
@@ -2927,5 +2933,30 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Badge_Vosproizvedenie" xml:space="preserve">
     <value>Playing</value>
   </data>
+  <data name="Udalit_Istochnik_EPG_Lbl" xml:space="preserve">
+
+    <value>Delete EPG source</value>
+
+  </data>
+
+  <data name="Udalit_Istochnik_EPG_Vopros_0" xml:space="preserve">
+
+    <value>Delete EPG source?
+{0}</value>
+
+  </data>
+
+  <data name="Udalit_Pleylist_Vopros_0" xml:space="preserve">
+
+    <value>Delete playlist "{0}"? The channel list and its cache will be removed permanently.</value>
+
+  </data>
+
+  <data name="Programma_Nedostupna_Lbl" xml:space="preserve">
+
+    <value>Program guide unavailable</value>
+
+  </data>
+
 </root>
 

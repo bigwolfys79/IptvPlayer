@@ -29,7 +29,7 @@ public sealed partial class LicenseStatusDialog : UserControl
         _xamlRoot = xamlRoot;
         Refresh();
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = xamlRoot,
             Title = L.T("License_Dialog_Title"),

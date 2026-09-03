@@ -71,7 +71,7 @@ public sealed partial class LicenseExpiredDialog : UserControl
         EmailLink.Content = "bigwolfys@gmail.com";
         EmailLink.Click += OnEmailLinkClick;
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = xamlRoot,
             Title = null,

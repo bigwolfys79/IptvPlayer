@@ -64,7 +64,7 @@ namespace IptvPlayer.Dialogs
             FileLogHint.Text = L.T("Faylovyy_Log_Hint");
             TempDiagHint.Text = L.T("Vremennaya_Diagnostika_Hint");
 
-            _hostDialog = new ContentDialog
+            _hostDialog = new ThemedContentDialog
             {
                 Content = this,
                 XamlRoot = xamlRoot,

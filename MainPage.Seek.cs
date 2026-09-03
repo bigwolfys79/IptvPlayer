@@ -502,10 +502,53 @@ public sealed partial class MainPage : Page
 
         ToolTipService.SetToolTip(VideoOverlayEpgButton, visible ? L.T("Skryt_EPG") : L.T("Pokazat_EPG_Lbl"));
 
+        UpdateEpgEmptyState();
+
         if (visible)
         {
             _ = ScrollToCurrentProgramAsync();
         }
+    }
+
+    // Канал, у которого сейчас подписаны EPGEntries.CollectionChanged:
+    // пересоздаётся при каждом выборе канала.
+    private ChannelViewModel? _epgEmptyStateChannel;
+
+    /// <summary>
+    /// Показывает «Программа недоступна» вместо пустой сетки, когда EPG-панель
+    /// открыта, а у выбранного канала нет ни одной программы (и загрузка EPG
+    /// уже завершилась — во время загрузки пустой список ещё не приговор).
+    /// </summary>
+    private void UpdateEpgEmptyState()
+    {
+        // Подписка на заполнение EPGEntries выбранного канала: коллекция
+        // наполняется фоном после выбора канала, поэтому одного вызова при
+        // смене канала недостаточно.
+        var channel = ViewModel.SelectedChannel;
+        if (!ReferenceEquals(channel, _epgEmptyStateChannel))
+        {
+            if (_epgEmptyStateChannel != null)
+            {
+                _epgEmptyStateChannel.EPGEntries.CollectionChanged -= OnEpgEntriesChanged;
+            }
+            _epgEmptyStateChannel = channel;
+            if (channel != null)
+            {
+                channel.EPGEntries.CollectionChanged += OnEpgEntriesChanged;
+            }
+        }
+
+        var showEmpty = ViewModel.IsEpgVisible &&
+                        channel != null &&
+                        channel.EPGEntries.Count == 0 &&
+                        !ViewModel.EpgViewModel.IsLoading;
+
+        EmptyChannelEPGState.Visibility = showEmpty ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnEpgEntriesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
     }
 
     private void EpgScrimBorder_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
@@ -603,7 +646,7 @@ public sealed partial class MainPage : Page
         panel.Children.Add(errorText);
         panel.Children.Add(buttons);
 
-        var dialog = new ContentDialog
+        var dialog = new ThemedContentDialog
         {
             XamlRoot = Content.XamlRoot,
             Title = L.T("Roditelskiy_Kontrol_Lbl"),

@@ -44,7 +44,7 @@ namespace IptvPlayer.Dialogs
             // не нужен, иначе заголовок читается дважды.
             TitleText.Visibility = Visibility.Collapsed;
 
-            var dialog = new ContentDialog
+            var dialog = new ThemedContentDialog
             {
                 XamlRoot = xamlRoot,
                 Title = L.T("Nastroyki_Interfeysa_Lbl"),

@@ -986,7 +986,13 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
-  <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo.Text" xml:space="preserve">
+    <data name="Programma_Nedostupna.Text" xml:space="preserve">
+
+    <value>Программа недоступна</value>
+
+  </data>
+
+<data name="Net_Dannykh_O_Programmakh_Dlya_Etogo.Text" xml:space="preserve">
 
     <value>Нет данных о программах для этого канала</value>
 
@@ -2927,5 +2933,30 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Badge_Vosproizvedenie" xml:space="preserve">
     <value>Воспроизведение</value>
   </data>
+  <data name="Udalit_Istochnik_EPG_Lbl" xml:space="preserve">
+
+    <value>Удалить источник EPG</value>
+
+  </data>
+
+  <data name="Udalit_Istochnik_EPG_Vopros_0" xml:space="preserve">
+
+    <value>Удалить источник EPG?
+{0}</value>
+
+  </data>
+
+  <data name="Udalit_Pleylist_Vopros_0" xml:space="preserve">
+
+    <value>Удалить плейлист «{0}»? Список каналов и кэш будут удалены безвозвратно.</value>
+
+  </data>
+
+  <data name="Programma_Nedostupna_Lbl" xml:space="preserve">
+
+    <value>Программа недоступна</value>
+
+  </data>
+
 </root>
 
