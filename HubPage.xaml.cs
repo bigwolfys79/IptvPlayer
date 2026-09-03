@@ -416,6 +416,12 @@ public sealed partial class HubPage : Page
     private async System.Threading.Tasks.Task OpenPlaylistSettingsAsync()
     {
         var viewModel = App.Services.GetRequiredService<MainPageViewModel>();
+        // Сессия могла начаться с хаба — тогда MainPage не инициализировал
+        // вьюмодель, и AppSettings там пустая заготовка: любой диалог,
+        // сохраняющий её, стёр бы плейлисты из settings.json. Подставляем
+        // реальные настройки (LoadAsync отдаёт один и тот же закэшированный
+        // экземпляр, так что после MainPage это присваивание — no-op).
+        viewModel.AppSettings = await _settingsService.LoadAsync();
         var m3uParser = App.Services.GetRequiredService<IM3UParserService>();
         var channelRepo = App.Services.GetRequiredService<IChannelRepository>();
         var cacheService = App.Services.GetRequiredService<IPlaylistCacheService>();
@@ -617,6 +623,9 @@ public sealed partial class HubPage : Page
         {
             CloseFlyout();
             var viewModel = App.Services.GetRequiredService<MainPageViewModel>();
+            // Как в OpenPlaylistSettingsAsync: без этого диалог из хаба
+            // сохранил бы пустую заготовку AppSettings поверх настроек.
+            viewModel.AppSettings = await _settingsService.LoadAsync();
             var d = new Dialogs.InterfaceSettingsDialog(viewModel, _settingsService, _ => { });
             await d.ShowAsync(Content.XamlRoot);
             // Смена языка/темы — обновляем локализованные тексты хаба.
@@ -626,6 +635,9 @@ public sealed partial class HubPage : Page
         {
             CloseFlyout();
             var viewModel = App.Services.GetRequiredService<MainPageViewModel>();
+            // Как в OpenPlaylistSettingsAsync: без этого диалог из хаба
+            // сохранил бы пустую заготовку AppSettings поверх настроек.
+            viewModel.AppSettings = await _settingsService.LoadAsync();
             var streamService = App.Services.GetRequiredService<IStreamService>();
             var d = new Dialogs.PlaybackSettingsDialog(viewModel, _settingsService, streamService);
             await d.ShowAsync(Content.XamlRoot);
