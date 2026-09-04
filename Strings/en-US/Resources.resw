@@ -2879,9 +2879,6 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="HK_CtrlM" xml:space="preserve">
     <value>Mini-player always on top</value>
   </data>
-  <data name="HK_CtrlM" xml:space="preserve">
-    <value>Mini-player always on top</value>
-  </data>
   <data name="HK_CtrlT" xml:space="preserve">
     <value>Window always on top (without mini mode)</value>
   </data>
@@ -2889,6 +2886,12 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>Always on top (Ctrl+T)</value>
   </data>
   <data name="Poverkh_Vsekh_Okon_Vykl.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Not always on top (Ctrl+T)</value>
+  </data>
+  <data name="AlwaysOnTop_On" xml:space="preserve">
+    <value>Always on top (Ctrl+T)</value>
+  </data>
+  <data name="AlwaysOnTop_Off" xml:space="preserve">
     <value>Not always on top (Ctrl+T)</value>
   </data>
   <data name="HK_Hub123" xml:space="preserve">

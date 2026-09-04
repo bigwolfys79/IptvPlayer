@@ -417,8 +417,8 @@ public sealed partial class MainPage : Page
         }
 
         var tooltip = window.IsAlwaysOnTop
-            ? L.T("Poverkh_Vsekh_Okon_Vykl")
-            : L.T("Poverkh_Vsekh_Okon_Vkl");
+            ? L.T("AlwaysOnTop_Off")
+            : L.T("AlwaysOnTop_On");
         ToolTipService.SetToolTip(VideoOverlayAlwaysOnTopButton, tooltip);
         ToolTipService.SetToolTip(OverlayAlwaysOnTopButton, tooltip);
 
