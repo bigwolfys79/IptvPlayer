@@ -116,12 +116,43 @@ public sealed partial class MainWindow : Window
     private bool _miniPlayer;
     private Windows.Graphics.RectInt32 _preMiniPlacement;
 
+    /// <summary>Включён ли режим «поверх всех окон» по Ctrl+T. Хранится
+    /// отдельно от фактического состояния presenter'а: мини-плеер временно
+    /// включает always-on-top, а полный экран пересоздаёт presenter — после
+    /// возврата из обоих режимов включённое состояние восстанавливается.</summary>
+    private bool _alwaysOnTop;
+
+    /// <summary>Состояние always-on-top до входа в мини-плеер.</summary>
+    private bool _alwaysOnTopBeforeMini;
+
     /// <summary>Subclass для перехвата сворачивания; поле обязательно —
     /// иначе delegate соберётся GC и wndproc упадёт.</summary>
     private Services.MinimizeToTrayHook? MinimizeHook;
 
     /// <summary>Активен ли компактный режим мини-плеера (always-on-top).</summary>
     public bool IsMiniPlayer => _miniPlayer;
+
+    /// <summary>Окно сейчас поверх всех окон (по желанию пользователя или
+    /// потому, что активен мини-плеер).</summary>
+    public bool IsAlwaysOnTop =>
+        AppWindow.Presenter is OverlappedPresenter { IsAlwaysOnTop: true };
+
+    /// <summary>
+    /// «Поверх всех окон» без смены размера и панелей — в отличие от
+    /// мини-плеера. В полноэкранном режиме смысла не имеет (окно и так
+    /// поверх всего), поэтому там игнорируется. Состояние сессионное,
+    /// в настройки не сохраняется.
+    /// </summary>
+    public void SetAlwaysOnTop(bool enable)
+    {
+        if (IsOsFullScreen || _miniPlayer)
+        {
+            return; // в этих режимах окно уже поверх всего — не спорим с ними
+        }
+
+        _alwaysOnTop = enable;
+        (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = enable;
+    }
 
     /// <summary>
     /// Мини-плеер: компактное окно 480x270 поверх всех окон, без панелей
@@ -141,6 +172,7 @@ public sealed partial class MainWindow : Window
             _preMiniPlacement = new Windows.Graphics.RectInt32(pos.X, pos.Y, size.Width, size.Height);
 
             _miniPlayer = true;
+            _alwaysOnTopBeforeMini = _alwaysOnTop;
             (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = true;
             // 16:9 + запас на рамку и строку заголовка.
             AppWindow.Resize(new Windows.Graphics.SizeInt32(480, 300));
@@ -148,7 +180,9 @@ public sealed partial class MainWindow : Window
         else
         {
             _miniPlayer = false;
-            (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = false;
+            // Если «поверх всех окон» было включено до входа в мини-плеер,
+            // окно остаётся поверх всех и после выхода из него.
+            (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = _alwaysOnTopBeforeMini;
             AppWindow.MoveAndResize(_preMiniPlacement);
         }
     }
@@ -177,6 +211,13 @@ public sealed partial class MainWindow : Window
 
         AppTitleBar.Visibility = enable ? Visibility.Collapsed : Visibility.Visible;
         TitleBarRowDefinition.Height = enable ? new GridLength(0) : GridLength.Auto;
+
+        // Смена presenter'а создаёт новый OverlappedPresenter с настройками
+        // по умолчанию — возвращаем включённый режим «поверх всех окон».
+        if (!enable && _alwaysOnTop)
+        {
+            (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = true;
+        }
     }
 
     /// <summary>

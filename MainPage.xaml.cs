@@ -227,6 +227,16 @@ public sealed partial class MainPage : Page
         // Родительский контроль: VM просит PIN при запуске канала
         // заблокированной группы — показываем диалог с выбором длительности.
         ViewModel.ParentalUnlockRequested += channel => ShowParentalPinDialogAsync(channel);
+        // Дневной лимит просмотра: попытка запуска при исчерпанном лимите —
+        // сообщаем; исчерпание во время просмотра — останавливаем и сообщаем.
+        ViewModel.DailyLimitBlocked += (s, e) =>
+            DispatcherQueue.TryEnqueue(async () => await ShowDailyLimitDialogAsync());
+        ViewModel.DailyLimitReached += (s, e) =>
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                StopPlayback();
+                _ = ShowDailyLimitDialogAsync();
+            });
         ViewModel.EpgVisibilityChanged += (s, e) =>
             DispatcherQueue.TryEnqueue(ApplyEpgVisibility);
         // Пустое состояние EPG («Программа недоступна»): пересчитывать при
@@ -474,6 +484,7 @@ public sealed partial class MainPage : Page
             }
             ViewModel.CheckSleepTimer();
             UpdateSleepTimerDisplays();
+            CheckDailyWatchLimit();
         };
         _archivePositionTimer.Start();
 

@@ -578,6 +578,16 @@ public partial class MainPageViewModel : ObservableObject
     /// </summary>
     private async Task<bool> EnsureChannelAllowedAsync(ChannelViewModel channel)
     {
+        // Дневной лимит просмотра: исчерпан — запуск запрещён до полуночи
+        // (независимо от PIN: разблокировка групп снимает скрытие, но не лимит).
+        if (ParentalControlService.IsDailyLimitReached(AppSettings, DateTime.Now))
+        {
+            _logger.LogInformation(
+                "Дневной лимит просмотра исчерпан — канал {Channel} не запущен.", channel.Name);
+            DailyLimitBlocked?.Invoke(this, EventArgs.Empty);
+            return false;
+        }
+
         if (!ParentalControlService.IsLocked(AppSettings) ||
             !ParentalControlService.IsGroupBlocked(AppSettings, channel.Group))
         {
@@ -603,6 +613,57 @@ public partial class MainPageViewModel : ObservableObject
         ParentalControlService.Unlock(AppSettings, result == 0 ? null : result);
         SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
         return true;
+    }
+
+    // ===================== Дневной лимит просмотра =====================
+
+    /// <summary>Лимит исчерпан во время просмотра — остановить воспроизведение.</summary>
+    public event EventHandler? DailyLimitReached;
+
+    /// <summary>Попытка запуска при исчерпанном лимите — показать сообщение.</summary>
+    public event EventHandler? DailyLimitBlocked;
+
+    /// <summary>«Лимит уже объявлен» — событие остановки поднимается один раз за день.</summary>
+    private bool _dailyLimitAnnounced;
+
+    /// <summary>Накопленные, но ещё не записанные на диск секунды просмотра.</summary>
+    private int _unsavedWatchedSeconds;
+
+    /// <summary>
+    /// Учёт секунды активного просмотра (вызывается из секундного таймера
+    /// code-behind, когда плеер реально играет). Запись настроек на диск —
+    /// раз в минуту накопления, чтобы не писать файл каждую секунду.
+    /// </summary>
+    public void AddPlaybackWatchTime(int seconds)
+    {
+        var settings = AppSettings;
+        if (!settings.ParentalControlEnabled || settings.ParentalDailyLimitMinutes <= 0)
+        {
+            return;
+        }
+
+        var localNow = DateTime.Now;
+        ParentalControlService.AddWatchedSeconds(settings, seconds, localNow);
+        _unsavedWatchedSeconds += seconds;
+        if (_unsavedWatchedSeconds >= 60)
+        {
+            _unsavedWatchedSeconds = 0;
+            SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        var reached = ParentalControlService.IsDailyLimitReached(settings, DateTime.Now);
+        if (reached && !_dailyLimitAnnounced)
+        {
+            _dailyLimitAnnounced = true;
+            _logger.LogInformation("Дневной лимит просмотра ({Minutes} мин) исчерпан — остановка воспроизведения.",
+                settings.ParentalDailyLimitMinutes);
+            DailyLimitReached?.Invoke(this, EventArgs.Empty);
+        }
+        else if (!reached)
+        {
+            // Лимит снят (смена настроек) или наступил новый день — снова можно объявлять.
+            _dailyLimitAnnounced = false;
+        }
     }
 
     // ===================== Фильтрация каналов =====================

@@ -822,6 +822,7 @@ public sealed partial class HubPage : Page
             ("Ctrl+F", "HK_CtrlF"),
             ("Ctrl+J", "HK_CtrlJ"),
             ("Ctrl+M", "HK_CtrlM"),
+            ("Ctrl+T", "HK_CtrlT"),
             ("1 / 2 / 3 / 4", "HK_Hub123"),
             ("F1", "HK_F1"),
         };

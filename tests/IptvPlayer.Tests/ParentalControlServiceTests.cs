@@ -137,4 +137,85 @@ public class ParentalControlServiceTests
             ParentalControlService.HashPin("1234"),
             ParentalControlService.HashPin("1234"));
     }
+
+    // ===================== Дневной лимит просмотра =====================
+
+    private static readonly DateTime Day = new(2026, 9, 4, 15, 0, 0);
+
+    [Fact]
+    public void DailyLimit_DisabledOrZero_NeverReached()
+    {
+        var noLimit = Settings();
+        noLimit.ParentalDailyLimitMinutes = 0;
+        Assert.False(ParentalControlService.IsDailyLimitReached(noLimit, Day));
+
+        var limit = Settings(enabled: false);
+        limit.ParentalDailyLimitMinutes = 60;
+        Assert.False(ParentalControlService.IsDailyLimitReached(limit, Day));
+    }
+
+    [Fact]
+    public void DailyLimit_AccumulatesWithinLimit()
+    {
+        var s = Settings();
+        s.ParentalDailyLimitMinutes = 60;
+        for (var i = 0; i < 60 * 60; i++)
+        {
+            ParentalControlService.AddWatchedSeconds(s, 1, Day);
+        }
+
+        Assert.Equal(60 * 60, s.ParentalWatchedSeconds);
+        Assert.True(ParentalControlService.IsDailyLimitReached(s, Day));
+        Assert.Equal(0, ParentalControlService.GetRemainingMinutes(s, Day));
+    }
+
+    [Fact]
+    public void DailyLimit_ResetOnNewDay()
+    {
+        var s = Settings();
+        s.ParentalDailyLimitMinutes = 60;
+        ParentalControlService.AddWatchedSeconds(s, 60 * 60, Day);
+        Assert.True(ParentalControlService.IsDailyLimitReached(s, Day));
+
+        var nextDay = Day.AddDays(1);
+        Assert.False(ParentalControlService.IsDailyLimitReached(s, nextDay));
+        Assert.Equal(0, s.ParentalWatchedSeconds);
+        Assert.Equal(ParentalControlService.DailyDateKey(nextDay), s.ParentalWatchedDate);
+    }
+
+    [Fact]
+    public void DailyLimit_ResetDoesNotExtendBeyondLimit()
+    {
+        // После достижения лимита счётчик не «перескакивает» при чтении.
+        var s = Settings();
+        s.ParentalDailyLimitMinutes = 30;
+        ParentalControlService.AddWatchedSeconds(s, 30 * 60, Day);
+        Assert.True(ParentalControlService.IsDailyLimitReached(s, Day));
+        Assert.Equal(30 * 60, s.ParentalWatchedSeconds);
+    }
+
+    [Fact]
+    public void DailyLimit_RemainingWhenUnlimited_IsIntMax()
+    {
+        var s = Settings();
+        Assert.Equal(int.MaxValue, ParentalControlService.GetRemainingMinutes(s, Day));
+    }
+
+    [Fact]
+    public void DailyLimit_PartialMinute_RoundsRemainingUp()
+    {
+        var s = Settings();
+        s.ParentalDailyLimitMinutes = 60;
+        ParentalControlService.AddWatchedSeconds(s, 59, Day);
+        Assert.False(ParentalControlService.IsDailyLimitReached(s, Day));
+        // Осталась 59 мин 1 с непросмотренных — показываем как 60 мин.
+        Assert.Equal(60, ParentalControlService.GetRemainingMinutes(s, Day));
+    }
+
+    [Fact]
+    public void DailyLimit_TimeUntilReset_ReachesMidnight()
+    {
+        var evening = new DateTime(2026, 9, 4, 23, 30, 0);
+        Assert.Equal(TimeSpan.FromMinutes(30), ParentalControlService.TimeUntilReset(evening));
+    }
 }

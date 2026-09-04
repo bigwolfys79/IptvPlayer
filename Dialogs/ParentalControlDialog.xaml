@@ -37,6 +37,18 @@
                     <TextBlock x:Name="EnabledHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
+                    <!-- Дневной лимит просмотра: 0 = без ограничения. Правка
+                         доступна только в разблокированной секции (EditPanel). -->
+                    <TextBlock x:Name="DailyLimitHeader" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="DailyLimitHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <NumberBox x:Name="DailyLimitBox" Width="160" Minimum="0" Maximum="1440" SpinButtonPlacementMode="Compact"
+                                   SmallChange="15" LargeChange="60" ValueChanged="DailyLimitBox_ValueChanged"/>
+                        <TextBlock x:Name="DailyLimitRemainingText" VerticalAlignment="Center" FontSize="12"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+
                     <TextBlock x:Name="GroupsHeader" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
                     <TextBlock x:Name="GroupsHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>

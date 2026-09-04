@@ -140,7 +140,7 @@ Portal catalogs have 20k+ items; key decisions:
 
 ## 9. Application Updates
 
-Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): background check 2 minutes after startup (no more than once per day — `AppSettings.LastUpdateCheckUtc`), GitHub API parsing is the same as the manual button in "About". The downloaded installer is verified by SHA256 (`assets[].digest`, if the source provided it). User consent — ContentDialog; installation — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` run from the shell (UAC: Program Files), the application closes normally, and after the silent install it is relaunched (a separate `[Run]` entry with `Check: WizardSilent` in .iss — does not affect interactive installs). While recordings are in progress, installation is deferred until the `RecordingsChanged` event. Any error is silent: the old version continues to work (Inno installs over it).
+Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): background check 2 minutes after startup (no more than once per day — `AppSettings.LastUpdateCheckUtc`), GitHub API parsing is the same as the manual button in "About". The downloaded installer is verified by SHA256 (`assets[].digest`, if the source provided it). User consent — ContentDialog; installation — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` run from the shell (UAC: Program Files), the application closes normally, and after the silent install it is relaunched (a separate `[Run]` entry with `Check: WizardSilent` in .iss — does not affect interactive installs). While recordings are in progress, installation is deferred until the `RecordingsChanged` event. "Later" in the update dialog defers installation until the app closes: the downloaded installer path is kept in `App.PendingUpdateSetupPath`, and on real exit (not to tray) `MainWindow` launches the silent install via `App.TryStartPendingUpdateInstall`. Any error is silent: the old version continues to work (Inno installs over it).
 
 ## 10. Logging and DI
 
@@ -160,7 +160,7 @@ Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAs
 | `MainPage.Portal.cs` | 264 | Portal API methods |
 | `MainPage.Settings.cs` | 104 | Settings dialogs |
 | `MainPage.Navigation.cs` | 375 | Playlist switching, navigation |
-| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
+| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
 | `MainPage.Seek.cs` | 660 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, PIN |
 | `MainPage.LocalVideo.cs` | 41 | Local video files: file picking, playback start |
 | `MainPage.FullScreen.cs` | 303 | Fullscreen mode |
