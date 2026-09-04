@@ -679,6 +679,8 @@ public sealed partial class HubPage : Page
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
+            // Откладываем до закрытия приложения — как в MainPage.
+            App.PendingUpdateSetupPath = setupPath;
             return;
         }
 
