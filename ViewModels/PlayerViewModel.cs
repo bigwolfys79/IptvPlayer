@@ -459,9 +459,15 @@ public partial class PlayerViewModel : ObservableObject
                 if (vodVariants is { Count: > 0 })
                 {
                     // Ключи — метки качеств ("Авто", "1080p"), как в VodQualities:
-                    // CycleVodQuality ищет ссылку именно по метке.
-                    _vodVariantUrls = vodVariants.ToDictionary(
-                        kv => VodQualityLabel(kv.Key), kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+                    // CycleVodQuality ищет ссылку именно по метке. Сборка вручную,
+                    // а не ToDictionary: если портал отдаст и "1080", и "1080p",
+                    // обе метки склеятся в "1080p" — дубликат ключа не должен
+                    // ронять запуск воспроизведения.
+                    _vodVariantUrls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kv in vodVariants)
+                    {
+                        _vodVariantUrls[VodQualityLabel(kv.Key)] = kv.Value;
+                    }
                 }
 
                 // Список эпизодов приходит при старте сериала; переключение

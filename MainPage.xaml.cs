@@ -583,6 +583,13 @@ public sealed partial class MainPage : Page
 
                 ViewModel.SaveSettingsAsync().GetAwaiter().GetResult();
 
+                // Позиции досмотра VOD: CaptureVodPosition пишет с дебаунсом
+                // 5 с — flush до выхода, иначе последние секунды просмотра
+                // теряются. Task.Run — чтобы await'ы внутри SaveAllAsync не
+                // цеплялись за UI-контекст (блокировать их здесь = дедлок).
+                Task.Run(() => ViewModel.FlushVodResumePositionsAsync())
+                    .GetAwaiter().GetResult();
+
                 // Идущая запись останавливается — файл остаётся валидным TS
                 // (Kill процесса = обрыв потока, MPEG-TS переживает это).
                 ViewModel.Recording.StopAll();

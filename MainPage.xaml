@@ -29,9 +29,15 @@
         <converters:SecondsToTimeConverter x:Key="SecondsToTimeConverter" />
 
         <DataTemplate x:Key="ChannelItemTemplate" x:DataType="vm:ChannelViewModel">
-            <StackPanel Orientation="Horizontal" Padding="12,8" Spacing="12"
-                        ToolTipService.ToolTip="{x:Bind Description, Mode=OneWay}"
-                        ToolTipService.Placement="Mouse">
+            <Grid Padding="12,8" ColumnSpacing="12"
+                  ToolTipService.ToolTip="{x:Bind Description, Mode=OneWay}"
+                  ToolTipService.Placement="Mouse">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
                 <Image Width="28" Height="28"
                        Stretch="Uniform"
                        VerticalAlignment="Center"
@@ -41,11 +47,12 @@
                      глубину архива. Раньше кружок красился по IsLive, но
                      IsLive у всех каналов всегда true — индикатор был
                      бессмысленным. -->
-                <Ellipse Width="12" Height="12"
+                <Ellipse Grid.Column="1" Width="12" Height="12"
                          Fill="{x:Bind HasArchive, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}"
                          VerticalAlignment="Center"
                          ToolTipService.ToolTip="{x:Bind ArchiveToolTip, Mode=OneWay}" />
-                <Button x:Name="FavoriteButton"
+                <Button Grid.Column="2"
+                        x:Name="FavoriteButton"
                         Width="28" Height="28"
                         Padding="0"
                         Background="Transparent"
@@ -64,13 +71,13 @@
                               Visibility="{x:Bind IsFavorite, Converter={StaticResource InverseBoolToVisConverter}, Mode=OneWay}" />
                     </Grid>
                 </Button>
-                <StackPanel Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
+                <StackPanel Grid.Column="3" Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind Name}" FontSize="14" TextTrimming="CharacterEllipsis" />
                     <!-- OneWay обязательно: список каналов строится до загрузки EPG,
                          и CurrentProgramTitle заполняется позже (RecalculateCurrentPrograms
                          пачками); с OneTime (по умолчанию) строка навсегда оставалась бы
                          пустой — значения, захваченного при создании элемента, ещё нет. -->
-                    <TextBlock Text="{x:Bind CurrentProgramTitle, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{x:Bind CurrentProgramTitle, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
                     <!-- Тонкая полоса прогресса текущей передачи: видно, сколько
                          передачи уже прошло (начало/середина/почти конец). Течёт
                          со временем — обновляется 30-секундным таймером. Шаблон
@@ -80,7 +87,7 @@
                                  Height="3" CornerRadius="1.5" Padding="0" Margin="0,1,0,0"
                                  Visibility="{x:Bind HasCurrentProgram, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
                 </StackPanel>
-            </StackPanel>
+            </Grid>
         </DataTemplate>
 
     </Page.Resources>
@@ -419,7 +426,7 @@
             <Border x:Name="VideoAreaBorder"
                     Canvas.ZIndex="1"
                     Background="{ThemeResource LayerFillColorDefaultBrush}"
-                    Padding="12"
+                    Padding="1"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="0,1,0,0"
                     DoubleTapped="VideoArea_DoubleTapped">
@@ -523,7 +530,7 @@
                     Canvas.ZIndex="4"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
-                    Margin="12"
+                    Margin="1"
                     Padding="16,10"
                     CornerRadius="8"
                     Background="{ThemeResource OverlayScrimBrush}"
