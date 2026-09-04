@@ -70,6 +70,11 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
+            // Настоящий выход: если пользователь отложил установку обновления
+            // («Позже»), запускаем установщик — приложение сейчас закроется и
+            // освободит файлы для копирования.
+            App.TryStartPendingUpdateInstall();
+
             MinimizeHook?.Dispose();
             App.Tray?.Dispose();
             App.Tray = null;

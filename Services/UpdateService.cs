@@ -35,6 +35,13 @@ public interface IUpdateService
     Task<string> DownloadAsync(UpdateInfo update, IProgress<double>? progress = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Запускает установщик в тихом режиме, не трогая приложение (закрытие —
+    /// на вызывающем). Используется и при согласии пользователя, и при
+    /// отложенной установке на выходе.
+    /// </summary>
+    void StartInstaller(string setupPath);
+
+    /// <summary>
     /// Запускает установщик в тихом режиме и закрывает приложение. Установщик
     /// ставит поверх (старая версия остаётся рабочей при сбое), после установки
     /// запускает приложение (запись [Run] в .iss для тихого режима). UAC
@@ -189,9 +196,9 @@ public class UpdateService : IUpdateService
         return path;
     }
 
-    public void RunInstallerAndExit(string setupPath)
+    public void StartInstaller(string setupPath)
     {
-        _logger.LogInformation("Запуск тихой установки обновления и выход из приложения: {Path}", setupPath);
+        _logger.LogInformation("Запуск тихой установки обновления: {Path}", setupPath);
 
         // UseShellExecute — установщику нужен UAC-подъём (Program Files).
         var process = new System.Diagnostics.Process
@@ -203,6 +210,11 @@ public class UpdateService : IUpdateService
             }
         };
         process.Start();
+    }
+
+    public void RunInstallerAndExit(string setupPath)
+    {
+        StartInstaller(setupPath);
 
         // Полный выход приложения: освобождает файлы до того, как установщик
         // дойдёт до копирования (Inno сам ждёт/повторяет при занятых файлах).

@@ -1119,7 +1119,10 @@ public sealed partial class MainPage : Page
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            _logger.LogInformation("Обновление {Version}: пользователь отложил установку.", version);
+            // Откладываем до закрытия приложения: при настоящем выходе
+            // MainWindow запустит установщик (App.TryStartPendingUpdateInstall).
+            App.PendingUpdateSetupPath = setupPath;
+            _logger.LogInformation("Обновление {Version}: пользователь отложил установку до закрытия приложения.", version);
             return;
         }
 

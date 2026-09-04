@@ -53,6 +53,46 @@ public partial class App : Application
     /// </summary>
     public static bool AllowClose;
 
+    /// <summary>
+    /// Скачанный установщик обновления, отложенный пользователем («Позже» в
+    /// диалоге обновления): запускается тихой установкой при настоящем
+    /// закрытии приложения. Файл живёт во временной папке, поэтому устанавливать
+    /// можно только в той же сессии — иначе путь сбрасывается.
+    /// </summary>
+    public static string? PendingUpdateSetupPath;
+
+    /// <summary>
+    /// Запускает отложенную установку обновления, если путь ещё актуален и
+    /// файл на месте; сбрасывает путь в любом случае. Ошибки тихие — выход
+    /// приложения не должен зависеть от обновления.
+    /// </summary>
+    public static void TryStartPendingUpdateInstall()
+    {
+        var setupPath = PendingUpdateSetupPath;
+        PendingUpdateSetupPath = null;
+        if (setupPath == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (File.Exists(setupPath))
+            {
+                Services.GetRequiredService<IUpdateService>().StartInstaller(setupPath);
+            }
+            else
+            {
+                Serilog.Log.Information(
+                    "Отложенное обновление {Path}: файл уже удалён (чистка temp), установка пропущена.", setupPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Отложенное обновление: не удалось запустить установщик {Path}.", setupPath);
+        }
+    }
+
     /// <summary>Иконка в трее (null, пока не создана). Убирается при выходе.</summary>
     public static Services.TrayIconService? Tray { get; set; }
 
