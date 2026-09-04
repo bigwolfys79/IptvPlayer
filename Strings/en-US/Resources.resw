@@ -2879,10 +2879,37 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="HK_CtrlM" xml:space="preserve">
     <value>Mini-player always on top</value>
   </data>
+  <data name="HK_CtrlM" xml:space="preserve">
+    <value>Mini-player always on top</value>
+  </data>
+  <data name="HK_CtrlT" xml:space="preserve">
+    <value>Window always on top (without mini mode)</value>
+  </data>
+  <data name="Poverkh_Vsekh_Okon_Vkl.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Always on top (Ctrl+T)</value>
+  </data>
+  <data name="Poverkh_Vsekh_Okon_Vykl.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Not always on top (Ctrl+T)</value>
+  </data>
   <data name="HK_Hub123" xml:space="preserve">
     <value>Hub: playlists / portal / settings</value>
   </data>
-  <data name="HK_F1" xml:space="preserve">
+    <data name="Dnevnoy_Limit_Prosmotra" xml:space="preserve">
+    <value>Daily watch limit</value>
+  </data>
+  <data name="Dnevnoy_Limit_Hint" xml:space="preserve">
+    <value>How much TV time is allowed per day (0 = unlimited). Only active playback counts; when the limit is reached, watching is blocked until midnight.</value>
+  </data>
+  <data name="Dnevnoy_Limit_Bez_Ogranicheniya" xml:space="preserve">
+    <value>Unlimited</value>
+  </data>
+  <data name="Dnevnoy_Limit_Ostalos" xml:space="preserve">
+    <value>Remaining today: {0} min</value>
+  </data>
+  <data name="Dnevnoy_Limit_Ischerpan" xml:space="preserve">
+    <value>The daily watch limit ({0} min) has been reached. Watching will be available in {1} h, after midnight.</value>
+  </data>
+<data name="HK_F1" xml:space="preserve">
     <value>This help</value>
   </data>
 

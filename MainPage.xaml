@@ -762,6 +762,19 @@
                                   Margin="0,0,-1,-1" />
                         </Grid>
                     </Button>
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayAlwaysOnTopButton"
+                            Width="40" Height="40"
+                            Click="ToggleAlwaysOnTop"
+                            x:Uid="Poverkh_Vsekh_Okon_Vkl">
+                        <!-- Нарисованные «окно поверх окна»: два перекрывающихся окна. -->
+                        <Grid Width="16" Height="16">
+                            <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3"
+                                       Margin="1,1,4.5,4.5" Opacity="0.55" />
+                            <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3"
+                                       Fill="{ThemeResource OverlayScrimBrush}"
+                                       Margin="4.5,4.5,1,1" />
+                        </Grid>
+                    </Button>
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayFullScreenButton"
                             Width="40" Height="40"
                             Click="FullScreenButton_Click"
@@ -1313,6 +1326,19 @@
                                        Margin="3.7,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
                             <Rectangle Fill="{ThemeResource OverlayFgBrush}" Width="2.4" Height="4.4" RadiusX="1.2"
                                        Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayAlwaysOnTopButton"
+                            Width="44" Height="44"
+                            Click="ToggleAlwaysOnTop"
+                            x:Uid="Poverkh_Vsekh_Okon_Vkl">
+                        <!-- Нарисованные «окно поверх окна»: два перекрывающихся окна. -->
+                        <Grid Width="18" Height="18">
+                            <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3"
+                                       Margin="1,1,5,5" Opacity="0.55" />
+                            <Rectangle Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3"
+                                       Fill="{ThemeResource OverlayScrimBrush}"
+                                       Margin="5,5,1,1" />
                         </Grid>
                     </Button>
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="ExitFullScreenButton"

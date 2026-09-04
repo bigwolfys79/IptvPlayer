@@ -83,6 +83,11 @@ public sealed partial class ParentalControlDialog : UserControl
             EnabledToggle.OffContent = L.T("Vykl");
             EnabledHint.Text = L.T("Kanaly_Ostayutsya_V_Spiske_No_Zapusk");
 
+            DailyLimitHeader.Text = L.T("Dnevnoy_Limit_Prosmotra");
+            DailyLimitHint.Text = L.T("Dnevnoy_Limit_Hint");
+            DailyLimitBox.Value = Settings.ParentalDailyLimitMinutes;
+            UpdateDailyLimitRemaining();
+
             GroupsHeader.Text = L.T("Skryvaemye_Gruppy");
             GroupsHint.Text = L.T("Zapusk_Kanalov_Otmechennykh_Grupp_Zaprashivaet_PIN");
             BuildGroupsList();
@@ -145,6 +150,42 @@ public sealed partial class ParentalControlDialog : UserControl
                 Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
             });
         }
+    }
+
+    /// <summary>Сколько времени просмотра осталось сегодня (или «без лимита»).</summary>
+    private void UpdateDailyLimitRemaining()
+    {
+        if (Settings.ParentalDailyLimitMinutes <= 0)
+        {
+            DailyLimitRemainingText.Text = L.T("Dnevnoy_Limit_Bez_Ogranicheniya");
+            return;
+        }
+
+        var remaining = ParentalControlService.GetRemainingMinutes(Settings, DateTime.Now);
+        DailyLimitRemainingText.Text = string.Format(
+            L.T("Dnevnoy_Limit_Ostalos"), Math.Min(remaining, Settings.ParentalDailyLimitMinutes));
+    }
+
+    private async void DailyLimitBox_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
+    {
+        if (_loadingSection)
+        {
+            return;
+        }
+
+        // NumberBox может выдать NaN при вводе мусора — трактуем как 0.
+        var value = double.IsNaN(args.NewValue) ? 0 : (int)Math.Clamp(args.NewValue, 0, 1440);
+        if (value == Settings.ParentalDailyLimitMinutes)
+        {
+            return;
+        }
+
+        Settings.ParentalDailyLimitMinutes = value;
+        // Смена лимита — то же защищённое действие, что и правка списка/PIN:
+        // секция доступна только после разблокировки.
+        await _settingsService.SaveAsync(Settings);
+        _logger.LogInformation("Дневной лимит просмотра: {Minutes} мин.", value);
+        UpdateDailyLimitRemaining();
     }
 
     private async void ToggleGroup(string group, bool blocked)

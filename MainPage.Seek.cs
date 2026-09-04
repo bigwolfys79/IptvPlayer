@@ -658,8 +658,43 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync();
         _pinDialog = null;
         Serilog.Log.Information("PIN-диалог закрыт, результат: {Result}.", await tcs.Task);
-
         return await tcs.Task;
+    }
+
+    // ===================== Дневной лимит просмотра =====================
+
+    /// <summary>
+    /// Секундный тик: считает просмотренное время, когда плеер реально
+    /// играет (не пауза и не остановка). Само накопление и события — в VM.
+    /// </summary>
+    private void CheckDailyWatchLimit()
+    {
+        if (ViewModel.AppSettings.ParentalControlEnabled &&
+            ViewModel.AppSettings.ParentalDailyLimitMinutes > 0 &&
+            Player.Player?.PlaybackSession?.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing)
+        {
+            ViewModel.AddPlaybackWatchTime(1);
+        }
+    }
+
+    /// <summary>Сообщение об исчерпанном дневном лимите просмотра.</summary>
+    private async Task ShowDailyLimitDialogAsync()
+    {
+        var untilMidnight = ParentalControlService.TimeUntilReset(DateTime.Now);
+        var dialog = new ThemedContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = L.T("Roditelskiy_Kontrol_Lbl"),
+            Content = new TextBlock
+            {
+                Text = string.Format(L.T("Dnevnoy_Limit_Ischerpan"),
+                    ViewModel.AppSettings.ParentalDailyLimitMinutes,
+                    $"{(int)untilMidnight.TotalHours}:{untilMidnight.Minutes:D2}"),
+                TextWrapping = TextWrapping.Wrap
+            },
+            CloseButtonText = L.T("Otmena_Lbl")
+        };
+        await dialog.ShowAsync();
     }
 
     private ContentDialog? _pinDialog;

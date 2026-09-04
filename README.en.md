@@ -34,7 +34,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Audio normalization: Dynamic (boost quiet channels) / Loudness (EBU R128)
 - Real stream speed measurement via the diagnostics proxy (playback settings)
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
-- Hotkeys: digits (channel number), Enter (confirm), Backspace (previous channel), arrows/PgUp/PgDn (adjacent channel), Space (pause for archive and VOD), M (mute), V (display mode), F/F11 (fullscreen), Esc (back/exit), Ctrl+F (search), Ctrl+J (stream stats), Ctrl+M (mini-player); full help — F1
+- Hotkeys: digits (channel number), Enter (confirm), Backspace (previous channel), arrows/PgUp/PgDn (adjacent channel), Space (pause for archive and VOD), M (mute), V (display mode), F/F11 (fullscreen), Esc (back/exit), Ctrl+F (search), Ctrl+J (stream stats), Ctrl+M (mini-player), Ctrl+T (always on top); full help — F1
 - Archive (timeshift) with seeking and program progress
 - Archive/VOD pause freezes the last frame (no gray screen); a popup "Paused / Playing" indicator appears on pause state changes
 - Stream diagnostics on playback error
@@ -64,6 +64,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Live panel splitter (240–640 px)
 - Window state memory (position and size restored)
 - Mini-player (Ctrl+M)
+- Always-on-top mode without resizing (Ctrl+T)
 - Auto-resume last channel
 - View toggle "List/Posters" (portal only)
 
@@ -72,7 +73,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Multi-level EPG cache: downloaded feed, merged result and positions — startup takes a fraction of a second, network is touched once per refresh period (1/3/7 days)
 - Program reminders
 - Favorite channels
-- Parental control (PIN)
+- Parental control (PIN, daily watch limit)
 - Program recording (up to 3 parallel)
 - Scheduled recordings
 - Settings export/import (with encryption)

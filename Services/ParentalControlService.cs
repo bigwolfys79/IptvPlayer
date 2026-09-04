@@ -135,4 +135,80 @@ public static class ParentalControlService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    // ===================== Дневной лимит просмотра =====================
+
+    /// <summary>Ключ дня для счётчика просмотра (локальная дата).</summary>
+    public static string DailyDateKey(DateTime localNow) => localNow.ToString("yyyy-MM-dd");
+
+    /// <summary>
+    /// Сбрасывает счётчик просмотра при смене суток. Вызывается перед любым
+    /// чтением/увеличением счётчика (значение и дата хранятся в настройках).
+    /// </summary>
+    public static void ResetWatchedIfNewDay(AppSettings settings, DateTime localNow)
+    {
+        var today = DailyDateKey(localNow);
+        if (!string.Equals(settings.ParentalWatchedDate, today, StringComparison.Ordinal))
+        {
+            settings.ParentalWatchedDate = today;
+            settings.ParentalWatchedSeconds = 0;
+        }
+    }
+
+    /// <summary>
+    /// Исчерпан ли дневной лимит (true = воспроизведение запрещено до
+    /// полуночи). Лимит действует только при включённом родительском контроле.
+    /// </summary>
+    public static bool IsDailyLimitReached(AppSettings settings, DateTime localNow)
+    {
+        if (!settings.ParentalControlEnabled || settings.ParentalDailyLimitMinutes <= 0)
+        {
+            return false;
+        }
+
+        ResetWatchedIfNewDay(settings, localNow);
+        return settings.ParentalWatchedSeconds >= settings.ParentalDailyLimitMinutes * 60L;
+    }
+
+    /// <summary>Остаток лимита на сегодня в минутах (0 — исчерпан; неполная
+    /// минута округляется вверх). Без лимита — int.MaxValue.</summary>
+    public static int GetRemainingMinutes(AppSettings settings, DateTime localNow)
+    {
+        if (!settings.ParentalControlEnabled || settings.ParentalDailyLimitMinutes <= 0)
+        {
+            return int.MaxValue;
+        }
+
+        ResetWatchedIfNewDay(settings, localNow);
+        var remainingSeconds = settings.ParentalDailyLimitMinutes * 60L - settings.ParentalWatchedSeconds;
+        if (remainingSeconds <= 0)
+        {
+            return 0;
+        }
+
+        return (int)Math.Min(int.MaxValue, (remainingSeconds + 59) / 60);
+    }
+
+    /// <summary>
+    /// Добавляет просмотренные секунды к счётчику дня. Смена даты обнуляет
+    /// счётчик. На диск настройки пишет вызывающий.
+    /// </summary>
+    public static void AddWatchedSeconds(AppSettings settings, int seconds, DateTime localNow)
+    {
+        if (seconds <= 0)
+        {
+            return;
+        }
+
+        ResetWatchedIfNewDay(settings, localNow);
+        settings.ParentalWatchedSeconds = (int)Math.Min(
+            int.MaxValue, (long)settings.ParentalWatchedSeconds + seconds);
+    }
+
+    /// <summary>Сколько осталось до полуночи (сброса лимита) — для сообщения.</summary>
+    public static TimeSpan TimeUntilReset(DateTime localNow)
+    {
+        var midnight = localNow.Date.AddDays(1);
+        return midnight - localNow;
+    }
 }

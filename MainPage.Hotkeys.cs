@@ -92,6 +92,12 @@ public sealed partial class MainPage
                     ToggleMiniPlayer();
                     e.Handled = true;
                     return;
+
+                case VirtualKey.T:
+                    // «Поверх всех окон» без смены размера (мини-плеер).
+                    ToggleAlwaysOnTop();
+                    e.Handled = true;
+                    return;
             }
         }
 

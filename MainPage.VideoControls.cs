@@ -385,9 +385,47 @@ public sealed partial class MainPage : Page
         OverlaySleepTimerText.Text = remainingText ?? string.Empty;
     }
 
-    // ===================== Мини-плеер =====================
+    // ===================== Поверх всех окон / мини-плеер =====================
 
     private bool _panelsHiddenForMini;
+
+    /// <summary>
+    /// Ctrl+T / кнопка: окно поверх всех окон без смены размера и панелей —
+    /// в отличие от мини-плеера, который плюс к этому сжимает окно до 480×300.
+    /// </summary>
+    private void ToggleAlwaysOnTop()
+    {
+        var window = MainWindow.Instance;
+        if (window == null)
+        {
+            return;
+        }
+
+        window.SetAlwaysOnTop(!window.IsAlwaysOnTop);
+        UpdateAlwaysOnTopButtons();
+    }
+
+    private void ToggleAlwaysOnTop(object sender, RoutedEventArgs e) => ToggleAlwaysOnTop();
+
+    /// <summary>Синхронизирует тултипы обеих кнопок с состоянием окна.</summary>
+    private void UpdateAlwaysOnTopButtons()
+    {
+        var window = MainWindow.Instance;
+        if (window == null)
+        {
+            return;
+        }
+
+        var tooltip = window.IsAlwaysOnTop
+            ? L.T("Poverkh_Vsekh_Okon_Vykl")
+            : L.T("Poverkh_Vsekh_Okon_Vkl");
+        ToolTipService.SetToolTip(VideoOverlayAlwaysOnTopButton, tooltip);
+        ToolTipService.SetToolTip(OverlayAlwaysOnTopButton, tooltip);
+
+        var opacity = window.IsAlwaysOnTop ? 1.0 : 0.55;
+        VideoOverlayAlwaysOnTopButton.Opacity = opacity;
+        OverlayAlwaysOnTopButton.Opacity = opacity;
+    }
 
     /// <summary>
     /// Ctrl+M: компактное always-on-top окно только с видео; панели
@@ -422,6 +460,11 @@ public sealed partial class MainPage : Page
                 ChannelListPanel.Visibility = Visibility.Visible;
             }
         }
+
+        // Смена размера окна с видео: DComp-остров может продолжать рисовать
+        // по старым координатам — пересобираем компоновку (как при fullscreen).
+        ForceVideoRelayout();
+        UpdateAlwaysOnTopButtons();
     }
 
     // ===================== Избранные каналы =====================

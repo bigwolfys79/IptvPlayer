@@ -140,7 +140,7 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 ## 9. Обновление приложения
 
-Полуавтоматическое обновление (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): фоновая проверка через 2 мин после старта (не чаще раза в сутки — `AppSettings.LastUpdateCheckUtc`), разбор GitHub API тот же, что у ручной кнопки в «О программе». Скачанный установщик проверяется по SHA256 (`assets[].digest`, если источник отдал). Согласие пользователя — ContentDialog; установка — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` от имени оболочки (UAC: Program Files), приложение закрывается штатно, а после тихой установки запускается снова (отдельная запись `[Run]` с `Check: WizardSilent` в .iss — интерактивную установку не затрагивает). Пока идут записи, установка откладывается до события `RecordingsChanged`. Любая ошибка — тихая: старая версия продолжает работать (Inno ставит поверх).
+Полуавтоматическое обновление (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): фоновая проверка через 2 мин после старта (не чаще раза в сутки — `AppSettings.LastUpdateCheckUtc`), разбор GitHub API тот же, что у ручной кнопки в «О программе». Скачанный установщик проверяется по SHA256 (`assets[].digest`, если источник отдал). Согласие пользователя — ContentDialog; установка — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` от имени оболочки (UAC: Program Files), приложение закрывается штатно, а после тихой установки запускается снова (отдельная запись `[Run]` с `Check: WizardSilent` в .iss — интерактивную установку не затрагивает). Пока идут записи, установка откладывается до события `RecordingsChanged`. «Позже» в диалоге обновления откладывает установку до закрытия приложения: путь скачанного установщика хранится в `App.PendingUpdateSetupPath`, а `MainWindow` при настоящем выходе (не в трей) запускает тихую установку через `App.TryStartPendingUpdateInstall`. Любая ошибка — тихая: старая версия продолжает работать (Inno ставит поверх).
 
 ## 10. Логирование и DI
 
@@ -160,7 +160,7 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 | `MainPage.Portal.cs` | 264 | Portal API методы |
 | `MainPage.Settings.cs` | 104 | Диалоги настроек |
 | `MainPage.Navigation.cs` | 375 | Переключение плейлистов, навигация |
-| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Favorite/Reminder/Record |
+| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
 | `MainPage.Seek.cs` | 660 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, PIN |
 | `MainPage.LocalVideo.cs` | 41 | Локальные видеофайлы: выбор файла, запуск |
 | `MainPage.FullScreen.cs` | 303 | Полноэкранный режим |
