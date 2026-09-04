@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.16.2
+- **Version:** 1.16.3
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -68,7 +68,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - View toggle "List/Posters" (portal only)
 
 ### EPG and extras
-- EPG (XMLTV) with lazy loading (current program at startup, full list on click)
+- EPG (XMLTV) with lazy loading (current program at startup, full list on click); current program title in the channel list wraps up to two lines
 - Multi-level EPG cache: downloaded feed, merged result and positions — startup takes a fraction of a second, network is touched once per refresh period (1/3/7 days)
 - Program reminders
 - Favorite channels

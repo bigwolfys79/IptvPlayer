@@ -57,6 +57,16 @@ public partial class MainPageViewModel
         return await VodResumePromptRequested(title, saved.Value) ? saved : null;
     }
 
+    /// <summary>
+    /// Немедленно сохраняет текущие позиции досмотра (путь выхода):
+    /// CaptureVodPosition пишет с дебаунсом 5 с — без flush последние
+    /// секунды просмотра теряются.
+    /// </summary>
+    public Task FlushVodResumePositionsAsync()
+    {
+        return _vodResumeStore.SaveAllAsync(_vodResumePositions);
+    }
+
     public async Task LoadVodResumePositionsAsync()
     {
         var stored = await _vodResumeStore.LoadAllAsync();

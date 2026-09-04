@@ -51,7 +51,7 @@ Next, the license is checked (`LicenseService.CheckLicense`): personal use is un
 
 Layers of the right area are set by `Canvas.ZIndex`: video (1) → header/control panel (2) → EPG overlay (3).
 
-**Channel list** (`ChannelItemTemplate`, shared between windowed and fullscreen overlay): logo (28x28, `StringToImageSourceConverter` with system cache) → archive indicator dot (`HasArchive`) → name; tooltip with description (for portal items).
+**Channel list** (`ChannelItemTemplate`, shared between windowed and fullscreen overlay): logo (28x28, `StringToImageSourceConverter` with system cache) → archive indicator dot (`HasArchive`) → name; tooltip with description (for portal items). The template root is a `Grid` (not a horizontal `StackPanel`): a StackPanel measures children with infinite width and breaks text wrapping; the text block occupies a star-sized column, so the current program title wraps up to two lines (`TextWrapping="Wrap"` + `MaxLines="2"`) and is ellipsized beyond that.
 
 **Fullscreen mode** (`MainPage.FullScreen.cs` → `MainWindow.SetOsFullScreen`): OS presenter `AppWindowPresenterKind.FullScreen` stretches the window to fill the entire monitor (verified by measurements — the client area is exactly screen-sized); content wrapper is done manually: hiding the TitleBar row, collapsing channel list columns, zeroing out the decorative `Padding` of the video container (`VideoAreaBorder`, 12 px in windowed mode — without zeroing, bands appeared at the edges of the screen), rebuilding the video layout (`ForceVideoRelayout` — after changing the presenter, the DComp island draws using the old coordinates).
 

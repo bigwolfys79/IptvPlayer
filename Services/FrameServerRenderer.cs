@@ -159,7 +159,18 @@ namespace IptvPlayer.Services
             }
         }
 
-        public void Dispose() => Detach();
+        public void Dispose()
+        {
+            Detach();
+            _frameSurface?.Dispose();
+            _frameSurface = null;
+            _upscaledTarget?.Dispose();
+            _upscaledTarget = null;
+            _canvasDevice?.Dispose();
+            _canvasDevice = null;
+            _d3dDevice = null;
+            _nativeDevice = IntPtr.Zero;
+        }
 
         private void Panel_SizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e)
         {

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using IptvPlayer.Models;
 using Microsoft.Data.Sqlite;
@@ -25,6 +26,11 @@ public class VodResumeStore
     private static readonly string DbPath = Path.Combine(CacheDirectory, "iptvplayer_cache.db");
 
     private readonly ILogger<VodResumeStore> _logger;
+
+    // Записи сериализуются: SaveAllAsync вызывается fire-and-forget из
+    // CaptureVodPosition — параллельные вызовы упирались бы в блокировку
+    // записи SQLite и теряли бы сохранение с ошибкой "database is locked".
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
 
     public VodResumeStore(ILogger<VodResumeStore> logger)
     {
@@ -108,6 +114,7 @@ public class VodResumeStore
     /// <summary>Сохраняет весь текущий набор позиций (upsert) одной транзакцией.</summary>
     public async Task SaveAllAsync(IReadOnlyDictionary<string, VodResumePosition> positions)
     {
+        await _saveGate.WaitAsync();
         try
         {
             using var connection = new SqliteConnection($"Data Source={DbPath}");
@@ -170,6 +177,10 @@ public class VodResumeStore
         catch (Exception ex)
         {
             _logger.LogError(ex, "Не удалось сохранить позиции просмотра в SQLite.");
+        }
+        finally
+        {
+            _saveGate.Release();
         }
     }
 }
