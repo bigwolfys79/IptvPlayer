@@ -55,6 +55,8 @@ Layers of the right area are set by `Canvas.ZIndex`: video (1) → header/contro
 
 **Fullscreen mode** (`MainPage.FullScreen.cs` → `MainWindow.SetOsFullScreen`): OS presenter `AppWindowPresenterKind.FullScreen` stretches the window to fill the entire monitor (verified by measurements — the client area is exactly screen-sized); content wrapper is done manually: hiding the TitleBar row, collapsing channel list columns, zeroing out the decorative `Padding` of the video container (`VideoAreaBorder`, 12 px in windowed mode — without zeroing, bands appeared at the edges of the screen), rebuilding the video layout (`ForceVideoRelayout` — after changing the presenter, the DComp island draws using the old coordinates).
 
+**Window modes** (`MainWindow`): "always on top" (Ctrl+T, `SetAlwaysOnTop`) — `OverlappedPresenter.IsAlwaysOnTop` without resizing or hiding panels, unlike the mini-player. In fullscreen and mini-player the flag is not touched (the window is already on top); the state is session-only and not persisted to settings. Exiting fullscreen switches the presenter, creating a new `OverlappedPresenter` — the enabled flag is restored manually. The mini-player (`ToggleMiniPlayer`) remembers `_alwaysOnTopBeforeMini`: if the mode was enabled before minimizing, it stays on after returning to the regular window.
+
 **Themes (Light/Dark)**: all UI colors are ThemeResource brushes from the theme dictionaries in `App.xaml` (REC/live/archive accents, overlay scrims and texts `OverlayScrim*/OverlayFg*`) and from `ThemeDictionaries` in `HubPage.xaml`. The ContentDialog popup layer does not inherit the window root's `RequestedTheme` — therefore all dialogs are created only via `Controls/ThemedContentDialog`, which copies the root's `ActualTheme`. Icons built in code (`Controls/AppIcons`) are colored per the effective theme; `ApplyTheme` rebuilds them on theme change.
 
 **Overlays**: top header (channel name, current program + description, progress, archive/sleep timer indicators) and bottom control panel (record, pause, seek, VOD quality, volume, EPG, fullscreen) — in both windowed and fullscreen modes; they appear on mouse movement and hide after 3 seconds (`_overlayHideTimer`); in fullscreen, the cursor is hidden along with them (`CursorHider`, invisible `CursorGrid`).
@@ -115,7 +117,15 @@ HLS-timeshift is not searched on the fly, so seeking is a stream restart with a 
 
 **Application shutdown**: a subscription to `MainWindow.Closed` stops/releases the player and recordings and calls `Environment.Exit(0)` — otherwise the media pipeline would keep the process alive for several seconds.
 
-## 7. On-Disk Data
+## 7. Parental Control
+
+`Services/ParentalControlService` — pure static logic (covered by unit tests): when control is enabled (`ParentalControlEnabled`), channels of the selected groups (`ParentalControlBlockedGroups`, case-insensitive) are hidden from the list. The PIN is stored as PBKDF2-SHA256 (100,000 iterations, "salt:hash" in base64) — never plaintext; with no PIN set, control works as plain group hiding ("hide from guests").
+
+There are three unlock kinds: via the PIN dialog buttons (15/30/45/60 min or "until shutdown" — `ParentalControlUnlockedUntilUtc`, persisted to settings) and via **Enter** — unlocking only the requested channel "until switch" (`ParentalTempUnlockedChannel/Group`, not written to settings.json). The PIN dialog (`ShowParentalPinDialogAsync`, MainPage.Seek.cs, `ThemedContentDialog`) guards against double opening (`_pinDialogInProgress`); Enter with a correct PIN in the input field unlocks only that channel, durations remain on the buttons.
+
+Channel launch goes through `MainPageViewModel.EnsureChannelAllowedAsync`: the one-time "until switch" unlock is cleared on **any** subsequent channel launch (including auto-resume of the same channel — the PIN is asked again). The daily limit (`ParentalDailyLimitMinutes`) is checked first and is independent of the PIN: once exhausted, no channel starts until midnight. Watched time is accumulated by a one-second tick (`CheckDailyWatchLimit`, MainPage.Seek.cs) while the player is actually playing (not paused/stopped): `ParentalWatchedSeconds` with the date `ParentalWatchedDate` (local, reset at midnight via `DailyDateKey`). When the limit is exhausted during playback, playback stops and a dialog shows the time until reset (`TimeUntilReset`).
+
+## 8. On-Disk Data
 
 | What | Where |
 |---|---|
@@ -128,7 +138,7 @@ HLS-timeshift is not searched on the fly, so seeking is a stream restart with a 
 
 In MSIX mode (Debug), `%LocalAppData%` paths are virtualized into the package; in unpackaged mode (Release/Inno), they are used directly — the code works identically in both.
 
-## 8. Large Catalog Performance
+## 9. Large Catalog Performance
 
 Portal catalogs have 20k+ items; key decisions:
 - `FilterChannels` replaces `DisplayedChannels` entirely (one ItemsSource change instead of thousands of CollectionChanged events). Selection in lists uses **OneWay + SelectionChanged**: TwoWay binding was overwriting `SelectedChannel` to null when clearing the hidden view's ItemsSource (video is bound to `SelectedChannel.IsPlaying` and would disappear); after rebuilding, selection is restored to controls by MainPage via the FilterChanged event.
@@ -138,11 +148,11 @@ Portal catalogs have 20k+ items; key decisions:
 - Buffer: live — `ReadAheadSeconds` (15s / 32+ MB), VOD — separate `VodReadAheadSeconds` (4s / 8+ MB): a large buffer on slow CDN was keeping VOD stream startup at several seconds.
 - Memory optimization: `EPGEntry.Description` and `ChannelViewModel.CurrentProgram*` are nullable (~46 MB savings with 2000+ channels + 400k programs).
 
-## 9. Application Updates
+## 10. Application Updates
 
 Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): background check 2 minutes after startup (no more than once per day — `AppSettings.LastUpdateCheckUtc`), GitHub API parsing is the same as the manual button in "About". The downloaded installer is verified by SHA256 (`assets[].digest`, if the source provided it). User consent — ContentDialog; installation — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` run from the shell (UAC: Program Files), the application closes normally, and after the silent install it is relaunched (a separate `[Run]` entry with `Check: WizardSilent` in .iss — does not affect interactive installs). While recordings are in progress, installation is deferred until the `RecordingsChanged` event. "Later" in the update dialog defers installation until the app closes: the downloaded installer path is kept in `App.PendingUpdateSetupPath`, and on real exit (not to tray) `MainWindow` launches the silent install via `App.TryStartPendingUpdateInstall`. Any error is silent: the old version continues to work (Inno installs over it).
 
-## 10. Logging and DI
+## 11. Logging and DI
 
 **Serilog.** The static logger is configured first thing in the `App` constructor (before `InitializeComponent` — global exception handlers must already be able to write to the log): Debug output (always) + file sink with daily rolling. Classes receive `ILogger<T>` via constructor (source in the log = class name); the file log is toggled off at runtime via a `LoggingLevelSwitch` in settings.
 
@@ -150,7 +160,7 @@ Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAs
 
 **MVVM conventions.** Properties use manual `SetProperty` instead of `[ObservableProperty]` (the generator does not create WinRT projectors — MVVMTK0045, important for AOT/ABI); actions use `[RelayCommand]`; MainPage code-behind is split into partial files by zones.
 
-## 11. Partial File Split
+## 12. Partial File Split
 
 **MainPage** (3133 → 1328 lines):
 
