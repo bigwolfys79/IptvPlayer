@@ -74,6 +74,43 @@ public static class ParentalControlService
     public static void Lock(AppSettings settings)
     {
         settings.ParentalControlUnlockedUntilUtc = null;
+        ClearChannelUnlock(settings);
+    }
+
+    /// <summary>
+    /// Разблокировка только одного канала (PIN введён без выбора
+    /// длительности): до переключения на другой канал. Живёт в памяти
+    /// AppSettings сессии и на диск не пишется.
+    /// </summary>
+    public static void UnlockForChannel(AppSettings settings, string channelName, string? group)
+    {
+        settings.ParentalTempUnlockedChannel = channelName;
+        settings.ParentalTempUnlockedGroup = group?.Trim();
+    }
+
+    /// <summary>Снять разблокировку одного канала.</summary>
+    public static void ClearChannelUnlock(AppSettings settings)
+    {
+        settings.ParentalTempUnlockedChannel = null;
+        settings.ParentalTempUnlockedGroup = null;
+    }
+
+    /// <summary>
+    /// Доступен ли канал для запуска: группы не заблокированы глобально
+    /// либо канал разблокирован по PIN «до переключения» (UnlockForChannel
+    /// привязан к имени канала — при запуске другого канала доступ снимается
+    /// вызывающим кодом через ClearChannelUnlock).
+    /// </summary>
+    public static bool IsChannelAccessible(
+        AppSettings settings, string channelName, string? group, DateTime? utcNow = null)
+    {
+        if (!IsLocked(settings, utcNow) || !IsGroupBlocked(settings, group))
+        {
+            return true;
+        }
+
+        return string.Equals(settings.ParentalTempUnlockedChannel, channelName, StringComparison.Ordinal)
+            && string.Equals(settings.ParentalTempUnlockedGroup, group?.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Хэш PIN в виде «соль:хэш» (base64). PIN может быть пустым — вернёт null.</summary>

@@ -33,11 +33,13 @@ public class XmlTvService : IXmlTvService
     // title/desc, что и даёт основную экономию (не тратим время на текстовые
     // поля программ, которые всё равно отбросим).
     //
-    // DaysBack = 3 синхронизирован с окном EpgViewModel.BackwardSpan (72ч):
-    // с появлением timeshift-архива прошедшие передачи стали нужны не только
-    // для справки — по ним теперь можно кликнуть и запустить воспроизведение
-    // с начала, поэтому сутки "в прошлое" перестали хватать.
-    private const int DaysBack = 3;
+    // DaysBack задаётся настройкой «Глубина архива» (EpgArchiveDaysBack,
+    // 1/3/7 дней) и приходит параметром в LoadAsync; дефолт 3 синхронизирован
+    // с окном EpgViewModel.BackwardSpan (72ч): с появлением timeshift-архива
+    // прошедшие передачи стали нужны не только для справки — по ним теперь
+    // можно кликнуть и запустить воспроизведение с начала, поэтому сутки
+    // "в прошлое" перестали хватать.
+    private const int DefaultDaysBack = 3;
     private const int DaysAhead = 3;
 
     private readonly HttpClient _httpClient;
@@ -73,9 +75,12 @@ public class XmlTvService : IXmlTvService
         return client;
     }
 
-    public async Task<XmlTvLoadResult> LoadAsync(EPGSource source, TimeSpan? maxAge = null, CancellationToken ct = default)
+    public async Task<XmlTvLoadResult> LoadAsync(EPGSource source, TimeSpan? maxAge = null, int daysBack = DefaultDaysBack, CancellationToken ct = default)
     {
-        var cacheKey = $"xmltv:{source.Url}";
+        // Ключ кэша включает глубину архива: записи в кэше уже отфильтрованы
+        // по окну дат при парсинге, поэтому после смены настройки нужен
+        // новый кэш (старый остаётся на диске для отката настройки).
+        var cacheKey = $"xmltv:{source.Url}:{daysBack}";
 
         // Быстрый бинарный кэш (MemoryPack+Brotli).
         var cached = await EpgCacheStore.ReadAsync(cacheKey);
@@ -104,7 +109,7 @@ public class XmlTvService : IXmlTvService
         // морозила интерфейс на время парсинга большого XMLTV-файла.
         XmlTvLoadResult parsed;
         var now = DateTime.Now;
-        var windowStart = now.Date.AddDays(-DaysBack);
+        var windowStart = now.Date.AddDays(-Math.Max(0, daysBack));
         var windowEnd = now.AddDays(DaysAhead + 1);
         var dataSavedAtUtc = DateTime.UtcNow;
         await using (System.IO.Stream stream = await DownloadAsync(source.Url, ct))

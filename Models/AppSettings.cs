@@ -54,6 +54,14 @@ public class AppSettings
     public int EpgRefreshDays { get; set; } = 1;
 
     /// <summary>
+    /// Глубина архива EPG (дней назад): 1/3/7. Определяет окно парсинга
+    /// XMLTV — N дней в прошлое плюс всё вперёд. Влияет не на перекачку,
+    /// а на то, сколько прошедших передач остаётся в памяти
+    /// (см. XmlTvService.LoadAsync).
+    /// </summary>
+    public int EpgArchiveDaysBack { get; set; } = 3;
+
+    /// <summary>
     /// Последняя выбранная пользователем громкость (0..1). Раньше громкость
     /// жила только в памяти (MainPage._lastUserVolume) и после перезапуска
     /// приложения сбрасывалась к максимуму. Сохранение — с дебаунсом при
@@ -245,6 +253,17 @@ public class AppSettings
     public string? ParentalControlPinHash { get; set; }
     public List<string> ParentalControlBlockedGroups { get; set; } = new();
     public DateTime? ParentalControlUnlockedUntilUtc { get; set; }
+
+    /// <summary>
+    /// Разблокировка одного канала по PIN (без выбора длительности):
+    /// действует до переключения на другой канал. Только в памяти сессии —
+    /// в settings.json не пишется.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? ParentalTempUnlockedChannel { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? ParentalTempUnlockedGroup { get; set; }
 
     /// <summary>
     /// Дневной лимит просмотра (минут, 0 = без лимита). Действует при

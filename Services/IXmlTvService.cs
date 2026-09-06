@@ -43,6 +43,11 @@ public interface IXmlTvService
     /// берётся из дискового кэша без обращения к сети. TimeSpan.MaxValue —
     /// никогда не перекачивать автоматически. null — прежнее поведение с
     /// фиксированным 3-часовым TTL.
+    ///
+    /// daysBack — глубина архива из настроек (EpgArchiveDaysBack, 1/3/7):
+    /// сколько дней назад парсить передачи (вперёд — фиксированные DaysAhead
+    /// дней). Входит в ключ дискового кэша: при смене настройки источник
+    /// перекачивается, старый кэш остаётся для отката.
     /// </summary>
-    Task<XmlTvLoadResult> LoadAsync(EPGSource source, TimeSpan? maxAge = null, CancellationToken ct = default);
+    Task<XmlTvLoadResult> LoadAsync(EPGSource source, TimeSpan? maxAge = null, int daysBack = 3, CancellationToken ct = default);
 }

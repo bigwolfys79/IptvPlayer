@@ -2988,5 +2988,33 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
-</root>
+  <data name="Glubina_Arkhiva_Lbl" xml:space="preserve">
 
+    <value>Глубина архива</value>
+
+  </data>
+
+  <data name="Skolko_Dney_Nazad_Khranit_Peredachi_Lbl" xml:space="preserve">
+
+    <value>Сколько дней назад хранить передачи в программе. Вперёд показываются все доступные передачи.</value>
+
+  </data>
+
+  <data name="1_Den_Nazad" xml:space="preserve">
+
+    <value>1 день назад</value>
+
+  </data>
+
+  <data name="3_Dnya_Nazad" xml:space="preserve">
+
+    <value>3 дня назад</value>
+
+  </data>
+
+  <data name="7_Dney_Nazad" xml:space="preserve">
+
+    <value>7 дней назад</value>
+
+  </data>
+</root>

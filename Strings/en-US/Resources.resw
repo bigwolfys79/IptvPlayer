@@ -2988,5 +2988,33 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
-</root>
+  <data name="Glubina_Arkhiva_Lbl" xml:space="preserve">
 
+    <value>Archive depth</value>
+
+  </data>
+
+  <data name="Skolko_Dney_Nazad_Khranit_Peredachi_Lbl" xml:space="preserve">
+
+    <value>How many days back to keep programs in the EPG. All upcoming programs are always shown.</value>
+
+  </data>
+
+  <data name="1_Den_Nazad" xml:space="preserve">
+
+    <value>1 day back</value>
+
+  </data>
+
+  <data name="3_Dnya_Nazad" xml:space="preserve">
+
+    <value>3 days back</value>
+
+  </data>
+
+  <data name="7_Dney_Nazad" xml:space="preserve">
+
+    <value>7 days back</value>
+
+  </data>
+</root>

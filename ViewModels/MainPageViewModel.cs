@@ -563,7 +563,8 @@ public partial class MainPageViewModel : ObservableObject
 
     /// <summary>
     /// UI показывает диалог PIN (с выбором длительности отключения запроса)
-    /// и возвращает: null — отменено; 0 — «до выключения»; n>0 — минут.
+    /// и возвращает: null — отменено; -1 — только этот канал (до
+    /// переключения); 0 — «до выключения»; n>0 — минут.
     /// </summary>
     public event Func<ChannelViewModel, Task<int?>>? ParentalUnlockRequested;
 
@@ -588,8 +589,12 @@ public partial class MainPageViewModel : ObservableObject
             return false;
         }
 
-        if (!ParentalControlService.IsLocked(AppSettings) ||
-            !ParentalControlService.IsGroupBlocked(AppSettings, channel.Group))
+        // Разблокировка «до переключения» одноразовая: любой следующий запуск
+        // канала (даже того же самого — например, автопродолжение) сбрасывает
+        // её, и PIN запрашивается заново.
+        ParentalControlService.ClearChannelUnlock(AppSettings);
+
+        if (ParentalControlService.IsChannelAccessible(AppSettings, channel.Name, channel.Group))
         {
             return true;
         }
@@ -608,8 +613,18 @@ public partial class MainPageViewModel : ObservableObject
         }
 
         _logger.LogInformation(
-            "PIN принят: запрос отключается на {Minutes} мин, запуск канала {Channel}.",
-            result == 0 ? -1 : result, channel.Name);
+            "PIN принят: результат {Result}, запуск канала {Channel}.",
+            result switch { -1 => "только этот канал", 0 => "до выключения", var n => $"{n} мин" },
+            channel.Name);
+
+        if (result == -1)
+        {
+            // Разблокировка только этого канала — до переключения; в
+            // settings.json не пишется.
+            ParentalControlService.UnlockForChannel(AppSettings, channel.Name, channel.Group);
+            return true;
+        }
+
         ParentalControlService.Unlock(AppSettings, result == 0 ? null : result);
         SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
         return true;

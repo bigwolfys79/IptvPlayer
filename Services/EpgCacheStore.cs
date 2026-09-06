@@ -42,7 +42,7 @@ public static class EpgCacheStore
     /// Удаляет кэш-файлы осиротевших источников: после правки списка EPG
     /// источников старые .mpck.br (десятки мегабайт каждый) иначе остаются
     /// на диске навсегда. Вызывается при загрузке EPG; ключи — те же, что
-    /// в ReadAsync/WriteAsync (в XmlTvService это "xmltv:{url}").
+    /// в ReadAsync/WriteAsync (в XmlTvService это "xmltv:{url}:{daysBack}").
     /// Заодно подчищает легаси *.json от давно удалённого JSON-кэша EPG;
     /// других .json в этом каталоге нет.
     /// </summary>

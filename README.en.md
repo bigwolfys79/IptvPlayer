@@ -71,9 +71,10 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ### EPG and extras
 - EPG (XMLTV) with lazy loading (current program at startup, full list on click); current program title in the channel list wraps up to two lines
 - Multi-level EPG cache: downloaded feed, merged result and positions — startup takes a fraction of a second, network is touched once per refresh period (1/3/7 days)
+- EPG settings: reminders, refresh period and archive depth (1/3/7 days back); EPG sources are configured per playlist
 - Program reminders
 - Favorite channels
-- Parental control (PIN, daily watch limit)
+- Parental control (PIN, daily watch limit, per-channel unlock via Enter until channel switch)
 - Program recording (up to 3 parallel)
 - Scheduled recordings
 - Settings export/import (with encryption)

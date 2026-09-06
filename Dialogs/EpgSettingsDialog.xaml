@@ -6,36 +6,18 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- Быстрый доступ к разделу EPG полного SettingsDialog: источники
-         XMLTV, напоминания и периодичность обновления. Комбобоксы
-         наполняются в code-behind (LoadAsync) — элементы с Tag-значениями. -->
+    <!-- Быстрый доступ к разделу EPG полного SettingsDialog: напоминания,
+         периодичность обновления и глубина архива. Источники XMLTV здесь
+         не редактируются — они настраиваются для каждого плейлиста в
+         диалоге «Плейлист». Комбобоксы наполняются в code-behind
+         (LoadAsync) — элементы с Tag-значениями. -->
     <StackPanel Spacing="12" Width="480">
         <TextBlock x:Name="TitleText" x:Uid="Nastroyki_EPG" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="12">
 
-                <TextBlock x:Name="EpgSourcesHeader" x:Uid="Istochniki_EPG" FontSize="14" FontWeight="SemiBold"/>
-                <TextBlock x:Name="EpgSourcesHint"
-                           x:Uid="URL_Adresa_Istochnikov_EPG_XMLTV_Izmenennyy"
-                           FontSize="11"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           TextWrapping="Wrap"/>
-
-                <StackPanel x:Name="EpgSourcesContainer" Spacing="6"/>
-
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                    <TextBox x:Name="EpgUrlBox"
-                             Width="290"
-                             PlaceholderText="URL XMLTV"/>
-                    <Button x:Name="AddEpgSourceButton"
-                            x:Uid="Dobavit"
-                            Height="32"
-                            Padding="12,0"
-                            Click="AddEpgSourceButton_Click"/>
-                </StackPanel>
-
-                <TextBlock x:Name="RemindersHeader" x:Uid="Napominaniya_EPG" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="RemindersHeader" x:Uid="Napominaniya_EPG" FontSize="14" FontWeight="SemiBold"/>
                 <TextBlock x:Name="RemindersHint"
                            x:Uid="Za_Skolko_Minut_Do_Nachala_Peredachi"
                            FontSize="11"
@@ -50,6 +32,14 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextWrapping="Wrap"/>
                 <ComboBox x:Name="EpgRefreshCombo" HorizontalAlignment="Stretch"/>
+
+                <TextBlock x:Name="EpgArchiveHeader" x:Uid="Glubina_Arkhiva" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="EpgArchiveHint"
+                           x:Uid="Skolko_Dney_Nazad_Khranit_Peredachi"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+                <ComboBox x:Name="EpgArchiveCombo" HorizontalAlignment="Stretch"/>
             </StackPanel>
         </ScrollViewer>
 

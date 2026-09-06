@@ -558,7 +558,9 @@ namespace IptvPlayer.Services
                 EpgCacheStore.CleanupOrphans(
                     settings.EpgSources
                         .Concat(settings.Playlists.SelectMany(p => p.EpgSources))
-                        .Select(s => $"xmltv:{s.Url}")
+                        // Ключ источника включает глубину архива — см.
+                        // XmlTvService.LoadAsync (cacheKey).
+                        .Select(s => $"xmltv:{s.Url}:{settings.EpgArchiveDaysBack}")
                         .Concat(sourceSets)
                         .Distinct(StringComparer.Ordinal));
 
@@ -569,6 +571,10 @@ namespace IptvPlayer.Services
                 TimeSpan maxAge = settings.EpgRefreshDays > 0
                     ? TimeSpan.FromDays(settings.EpgRefreshDays)
                     : TimeSpan.MaxValue;
+
+                // Глубина архива из настроек (1/3/7 дней назад) — параметр
+                // парсинга XmlTvService (входит и в ключ дискового кэша).
+                int archiveDaysBack = settings.EpgArchiveDaysBack;
 
                 if (enabledSources.Count == 0)
                 {
@@ -618,7 +624,7 @@ namespace IptvPlayer.Services
                 {
                     try
                     {
-                        return await _xmlTvService.LoadAsync(source, maxAge, ct);
+                        return await _xmlTvService.LoadAsync(source, maxAge, archiveDaysBack, ct);
                     }
                     catch (System.OperationCanceledException) when (ct.IsCancellationRequested)
                     {

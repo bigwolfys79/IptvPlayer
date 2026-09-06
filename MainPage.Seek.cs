@@ -609,7 +609,9 @@ public sealed partial class MainPage : Page
         {
             if (ParentalControlService.VerifyPin(ViewModel.AppSettings, pinBox.Password))
             {
-                Serilog.Log.Information("PIN верен — отключение запроса на {Minutes} мин.", minutes);
+                Serilog.Log.Information(
+                    "PIN верен — режим разблокировки: {Mode}.",
+                    minutes == -1 ? "только этот канал" : minutes == 0 ? "до выключения" : $"{minutes} мин");
                 tcs.TrySetResult(minutes);
                 _pinDialog?.Hide();
             }
@@ -619,6 +621,16 @@ public sealed partial class MainPage : Page
                 errorText.Text = L.T("Nevernyy_PIN");
             }
         }
+
+        // Enter с корректным PIN — разблокировка только запрошенного канала
+        // (до переключения на другой); длительности остаются на кнопках.
+        pinBox.KeyDown += (s, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                TryUnlock(-1);
+            }
+        };
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing =8 };
         foreach (var (label, minutes) in new (string, int)[]
