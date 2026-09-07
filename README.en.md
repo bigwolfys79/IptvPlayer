@@ -6,7 +6,7 @@ This project is licensed under the **Prosperity Public License 3.0.0**.
 
 It is free for noncommercial and personal use, but commercial use is limited to a 30-day trial period. For more details, please see the [LICENSE](LICENSE) file.
 
-**A purchased license is activated offline, with no server:** in the expired-trial dialog, copy your Hardware ID (HWID) and send it to the developer; paste the received key into the same window (or import a `.lic` file). The key is RSA-2048 signed and bound to the HWID — it cannot be forged without the developer's private key.
+**A purchased license is activated offline, with no server:** the "License" menu item (before "About", also in the hub settings menu) shows the current status — personal use, a commercial license (who it is registered to and until when), or the remaining trial period. The activation button is right there: copy your Hardware ID (HWID), send it to the developer, and paste the received key into the dialog (or import a `.lic` file). Activation is available at any time — no need to wait for the trial to end. The key is RSA-2048 signed and bound to the HWID — it cannot be forged without the developer's private key.
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 

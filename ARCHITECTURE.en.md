@@ -111,7 +111,7 @@ HLS-timeshift is not searched on the fly, so seeking is a stream restart with a 
 3. **Fallback**: if FFmpeg couldn't open the URL — system `MediaSource.CreateFromUri`.
 4. **Diagnostics**: a snapshot of stream parameters is placed into `CurrentDiagnostics`, the stats overlay (Ctrl+J) adds live metrics on a one-second tick. `StreamService.DiagnoseStreamUrl` checks the URL on error (HTTP status, timeout, availability). To measure the real stream speed, `LocalStreamProxy` routes FFmpeg through a local TCP proxy on 127.0.0.1 (HLS playlists are rewritten to proxy routes) and counts bytes; enabled by a toggle in playback settings, off by default.
 5. **Audio normalization** — an FFmpeg audio filter per setting: `Dynamic` (dynaudnorm, boosts quiet channels, default) or `Loudness` (loudnorm, EBU R128 target); heavy filters may affect smoothness — the mode is logged on stream start.
-5. Player errors are logged with codes (`MediaPlayer.MediaFailed`); `OnMediaFailed` is async with diagnostics.
+6. Player errors are logged with codes (`MediaPlayer.MediaFailed`); `OnMediaFailed` is async with diagnostics.
 
 **Pause** — only archive and portal VOD (spacebar, `ToggleArchivePause`): live broadcast cannot be paused, this is a deliberate limitation. For VOD, the same toggle works without archive clocks. `MediaPlayerElement` visibility is not bound to `IsPlaying` (collapsing the element on pause blanked the last frame to a gray screen) — the frame stays frozen and playback resumes from it. A pause state change shows a popup "Paused / Playing" indicator: `PlaybackStateBadge` (inside the video area grid — centered on the video in both windowed and fullscreen modes) is fed from `UpdateArchivePauseButton` (MainPage.Seek.cs), the single point that knows the state; the first calculation after playback start does not raise the badge, stopping playback resets the remembered state.
 
@@ -162,33 +162,33 @@ Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAs
 
 ## 12. Partial File Split
 
-**MainPage** (3133 → 1328 lines):
+**MainPage** (3133 → 1374 lines):
 
 | File | Lines | Content |
 |---|---|---|
-| `MainPage.xaml.cs` | 1328 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.xaml.cs` | 1374 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
 | `MainPage.Portal.cs` | 264 | Portal API methods |
 | `MainPage.Settings.cs` | 104 | Settings dialogs |
 | `MainPage.Navigation.cs` | 375 | Playlist switching, navigation |
-| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
-| `MainPage.Seek.cs` | 660 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, PIN |
+| `MainPage.VideoControls.cs` | 554 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
+| `MainPage.Seek.cs` | 750 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, parental control (PIN dialog, daily watch limit) |
 | `MainPage.LocalVideo.cs` | 41 | Local video files: file picking, playback start |
 | `MainPage.FullScreen.cs` | 303 | Fullscreen mode |
-| `MainPage.Hotkeys.cs` | 388 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
+| `MainPage.Hotkeys.cs` | 394 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
 | `MainPage.Overlays.cs` | 450 | Overlays |
 | `MainPage.StatsOverlay.cs` | 213 | Statistics |
 
-**HubPage** (961 lines):
+**HubPage** (990 lines):
 
 | File | Lines | Content |
 |---|---|---|
-| `HubPage.xaml.cs` | 961 | Launch screen: greeting, cards, custom flyout menus, hotkey help (F1) |
+| `HubPage.xaml.cs` | 990 | Launch screen: greeting, cards, custom flyout menus, hotkey help (F1) |
 
-**MainPageViewModel** (1787 lines):
+**MainPageViewModel** (1873 lines):
 
 | File | Lines | Content |
 |---|---|---|
-| `MainPageViewModel.cs` | 941 | Initialization, filters, categories, EPG, SaveSettings |
+| `MainPageViewModel.cs` | 1017 | Initialization, filters, categories, EPG, SaveSettings, parental control (EnsureChannelAllowedAsync) |
 | `MainPageViewModel.PortalFilters.cs` | 275 | Portal API + portal filters |
 | `MainPageViewModel.Recording.cs` | 284 | Recording, reminders, favorites, archive |
-| `MainPageViewModel.VodResume.cs` | 287 | VOD resume, PlayChannelAsync (interactive) |
+| `MainPageViewModel.VodResume.cs` | 297 | VOD resume, PlayChannelAsync (interactive) |

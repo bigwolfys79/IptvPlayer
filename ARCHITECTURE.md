@@ -162,33 +162,33 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 ## 12. Разбиение на partial-файлы
 
-**MainPage** (3133 → 1329 строк):
+**MainPage** (3133 → 1374 строк):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `MainPage.xaml.cs` | 1328 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.xaml.cs` | 1374 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
 | `MainPage.Portal.cs` | 264 | Portal API методы |
 | `MainPage.Settings.cs` | 104 | Диалоги настроек |
 | `MainPage.Navigation.cs` | 375 | Переключение плейлистов, навигация |
-| `MainPage.VideoControls.cs` | 511 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
-| `MainPage.Seek.cs` | 660 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, PIN |
+| `MainPage.VideoControls.cs` | 554 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
+| `MainPage.Seek.cs` | 750 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, родительский контроль (PIN-диалог, дневной лимит) |
 | `MainPage.LocalVideo.cs` | 41 | Локальные видеофайлы: выбор файла, запуск |
 | `MainPage.FullScreen.cs` | 303 | Полноэкранный режим |
-| `MainPage.Hotkeys.cs` | 388 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
+| `MainPage.Hotkeys.cs` | 394 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
 | `MainPage.Overlays.cs` | 450 | Оверлеи |
 | `MainPage.StatsOverlay.cs` | 213 | Статистика |
 
-**HubPage** (961 строка):
+**HubPage** (990 строк):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `HubPage.xaml.cs` | 961 | Экран запуска: приветствие, карточки, кастомные flyout-меню, справка горячих клавиш (F1) |
+| `HubPage.xaml.cs` | 990 | Экран запуска: приветствие, карточки, кастомные flyout-меню, справка горячих клавиш (F1) |
 
-**MainPageViewModel** (1787 строк):
+**MainPageViewModel** (1873 строк):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `MainPageViewModel.cs` | 941 | Инициализация, фильтры, категории, EPG, SaveSettings |
+| `MainPageViewModel.cs` | 1017 | Инициализация, фильтры, категории, EPG, SaveSettings, родительский контроль (EnsureChannelAllowedAsync) |
 | `MainPageViewModel.PortalFilters.cs` | 275 | Portal API + фильтры портала |
 | `MainPageViewModel.Recording.cs` | 284 | Запись, напоминания, избранное, архив |
-| `MainPageViewModel.VodResume.cs` | 287 | VOD resume, PlayChannelAsync (interactive) |
+| `MainPageViewModel.VodResume.cs` | 297 | VOD resume, PlayChannelAsync (interactive) |
