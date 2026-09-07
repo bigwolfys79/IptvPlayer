@@ -135,7 +135,7 @@ public sealed partial class MainPage : Page
 
         _playlistLoadCts?.Cancel();
         _playlistLoadCts = new System.Threading.CancellationTokenSource();
-        var channels = await LoadPlaylistChannelsAsync(playlist, _playlistLoadCts.Token);
+        var channels = await LoadPlaylistChannelsWithOverlayAsync(playlist, _playlistLoadCts.Token);
 
         var channelId = 1;
         foreach (var channel in channels)

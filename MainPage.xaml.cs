@@ -871,7 +871,7 @@ public sealed partial class MainPage : Page
             if (_activePlaylist != null)
             {
                 ViewModel.AppSettings.ActivePlaylistId = _activePlaylist.Id;
-                initialChannels.AddRange(await LoadPlaylistChannelsAsync(_activePlaylist));
+                initialChannels.AddRange(await LoadPlaylistChannelsWithOverlayAsync(_activePlaylist));
             }
 
             // Id назначаются один раз для обоих путей появления каналов (скачанный

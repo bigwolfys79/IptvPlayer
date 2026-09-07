@@ -2468,6 +2468,17 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+  <data name="Zagruzka_Kataloga_Portala_Nazvanie" xml:space="preserve">
+
+    <value>Loading portal catalog "{0}"...</value>
+
+  </data>
+  <data name="Zagruzka_Pleylista_Nazvanie" xml:space="preserve">
+
+    <value>Loading playlist "{0}"...</value>
+
+  </data>
+
   <data name="Zakryt" xml:space="preserve">
 
     <value>Close</value>

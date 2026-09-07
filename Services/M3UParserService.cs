@@ -159,6 +159,10 @@ namespace IptvPlayer.Services
             content = content.TrimStart('\uFEFF');
 
             string? lastGroup = null;
+            // Группа последнего разобранного канала пришла из его собственного
+            // group-title, а не из «прилипшей» lastGroup — такой канал #EXTGRP
+            // не перекрывает.
+            var lastGroupFromTitle = false;
             var nextId = 1;
 
             using var reader = new StringReader(content);
@@ -179,18 +183,34 @@ namespace IptvPlayer.Services
 
                 if (ExtinfStartRegex.IsMatch(line))
                 {
-                    var channel = ParseExtinf(line, lastGroup, nextId);
+                    var channel = ParseExtinf(line, lastGroup, nextId, out var groupFromTitle);
+                    lastGroupFromTitle = groupFromTitle;
                     channels.Add(channel);
                     nextId++;
                     continue;
                 }
 
-                // #EXTGRP задаёт группу для канала(ов), у которых нет group-title —
-                // сохраняем как "текущую" группу до следующего #EXTGRP или конца файла.
+                // #EXTGRP задаёт группу каналу без group-title и встречается в двух
+                // стилях. VLC: директива стоит ПЕРЕД #EXTINF и действует на следующие
+                // каналы до следующего #EXTGRP. Провайдерский (goodstreem/lunexas и
+                // т.п.): директива стоит сразу ПОСЛЕ #EXTINF, перед URL, и относится
+                // именно к этому каналу. Во втором стиле нельзя ограничиться
+                // дозаполнением пустой группы: канал к этому моменту уже забрал
+                // «прилипшую» lastGroup предыдущего блока, и без перекрытия первый
+                // канал каждой новой группы оставался бы в чужой группе (например,
+                // первый канал «беларускія» после блока «взрослые»).
                 if (line.StartsWith("#EXTGRP", StringComparison.OrdinalIgnoreCase))
                 {
                     lastGroup = line["#EXTGRP".Length..].Trim().TrimStart(':').Trim();
-                    if (channels.Count > 0 && string.IsNullOrWhiteSpace(channels[^1].Group))
+                    if (channels.Count > 0 && string.IsNullOrEmpty(channels[^1].StreamUrl))
+                    {
+                        // Провайдерский стиль: #EXTINF уже разобран, URL ещё не встречался.
+                        if (!lastGroupFromTitle)
+                        {
+                            channels[^1].Group = string.IsNullOrWhiteSpace(lastGroup) ? null : lastGroup;
+                        }
+                    }
+                    else if (channels.Count > 0 && string.IsNullOrWhiteSpace(channels[^1].Group))
                     {
                         channels[^1].Group = lastGroup;
                     }
@@ -215,7 +235,7 @@ namespace IptvPlayer.Services
             return channels.Where(c => !string.IsNullOrWhiteSpace(c.StreamUrl)).ToList();
         }
 
-        private static ChannelViewModel ParseExtinf(string line, string? fallbackGroup, int index)
+        private static ChannelViewModel ParseExtinf(string line, string? fallbackGroup, int index, out bool groupFromTitle)
         {
             // Отрезаем "#EXTINF:-1" и берём оставшуюся часть строки.
             var attrStart = line.IndexOf(':');
@@ -229,7 +249,9 @@ namespace IptvPlayer.Services
 
             var tvgId = GetAttribute(attrsPart, "tvg-id");
             var logo = GetAttribute(attrsPart, "tvg-logo");
-            var group = GetAttribute(attrsPart, "group-title") ?? fallbackGroup;
+            var groupTitle = GetAttribute(attrsPart, "group-title");
+            groupFromTitle = groupTitle is not null;
+            var group = groupTitle ?? fallbackGroup;
 
             // Глубина архива передач: провайдеры пишут её по-разному —
             // lunexas/goodstreem использует tvg-rec="7", стандартный вариант

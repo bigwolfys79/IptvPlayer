@@ -2468,6 +2468,17 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
+  <data name="Zagruzka_Kataloga_Portala_Nazvanie" xml:space="preserve">
+
+    <value>Загрузка каталога портала «{0}»...</value>
+
+  </data>
+  <data name="Zagruzka_Pleylista_Nazvanie" xml:space="preserve">
+
+    <value>Загрузка плейлиста «{0}»...</value>
+
+  </data>
+
   <data name="Zakryt" xml:space="preserve">
 
     <value>Закрыть</value>

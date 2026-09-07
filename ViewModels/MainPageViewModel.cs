@@ -225,6 +225,27 @@ public partial class MainPageViewModel : ObservableObject
         set => SetProperty(ref _isFilterLoading, value);
     }
 
+    private bool _isPlaylistLoading;
+
+    /// <summary>
+    /// Идёт ли загрузка/перекачка плейлиста или каталога портала
+    /// (старт и переключение) — показывать оверлей с кольцом загрузки.
+    /// </summary>
+    public bool IsPlaylistLoading
+    {
+        get => _isPlaylistLoading;
+        set => SetProperty(ref _isPlaylistLoading, value);
+    }
+
+    private string _playlistLoadingText = "";
+
+    /// <summary>Текст оверлея загрузки: какой плейлист сейчас загружается.</summary>
+    public string PlaylistLoadingText
+    {
+        get => _playlistLoadingText;
+        set => SetProperty(ref _playlistLoadingText, value);
+    }
+
     private string _channelCountText = "Каналов: 0";
 
     public string ChannelCountText

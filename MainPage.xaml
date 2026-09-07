@@ -1378,5 +1378,24 @@
                        Foreground="#FFE8E8E8"
                        Text="—" />
         </Border>
+
+        <!-- Оверлей загрузки плейлиста/каталога портала: перекрывает весь контент
+             (переключение плейлиста останавливает воспроизведение, скрывать нечего),
+             ZIndex 50 — выше оверлеев плеера и статистики. Прогресс скачивания
+             M3U не приходит от сервера — показываем кольцо с именем плейлиста. -->
+        <Border Grid.ColumnSpan="3"
+                Canvas.ZIndex="50"
+                Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+                Visibility="{x:Bind ViewModel.IsPlaylistLoading, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16" MaxWidth="420">
+                <ProgressRing Width="48" Height="48"
+                              IsActive="{x:Bind ViewModel.IsPlaylistLoading, Mode=OneWay}" />
+                <TextBlock Text="{x:Bind ViewModel.PlaylistLoadingText, Mode=OneWay}"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           FontSize="15"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+        </Border>
     </ictrl:CursorGrid>
 </Page>

@@ -145,6 +145,41 @@ public sealed partial class MainPage : Page
         return result;
     }
 
+    /// <summary>
+    /// Загрузка каналов с оверлеем: пока идёт скачивание/разбор плейлиста или
+    /// каталога портала, интерфейс перекрывается кольцом загрузки с именем
+    /// источника (скачивание M3U может занимать десятки секунд, без оверлея
+    /// смена плейлиста выглядит «зависанием»). finally гарантирует снятие
+    /// оверлея и при исключении (fallback на просроченный кэш внутри).
+    /// Минимальное время показа: при загрузке из свежего кэша каналы готовы
+    /// за миллисекунды и текст оверлея не успеть прочитать — держим его
+    /// не менее двух секунд в любую сторону (включая возврат из хаба).
+    /// </summary>
+    private async Task<List<ChannelViewModel>> LoadPlaylistChannelsWithOverlayAsync(
+        PlaylistSource playlist, System.Threading.CancellationToken ct = default)
+    {
+        ViewModel.PlaylistLoadingText = string.Format(
+            L.T(playlist.IsPortal ? "Zagruzka_Kataloga_Portala_Nazvanie" : "Zagruzka_Pleylista_Nazvanie"),
+            playlist.Name);
+        ViewModel.IsPlaylistLoading = true;
+        var startedAt = Environment.TickCount64;
+        try
+        {
+            return await LoadPlaylistChannelsAsync(playlist, ct);
+        }
+        finally
+        {
+            var remainMs = MinOverlayDisplayMs - (Environment.TickCount64 - startedAt);
+            if (remainMs > 0)
+            {
+                await Task.Delay((int)remainMs, CancellationToken.None);
+            }
+            ViewModel.IsPlaylistLoading = false;
+        }
+    }
+
+    private const int MinOverlayDisplayMs = 2000;
+
     private static ChannelViewModel CachedToChannel(Models.CachedChannel cached) => new()
     {
         Name = cached.Name,

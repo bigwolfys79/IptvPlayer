@@ -75,6 +75,33 @@ public class M3UParserServiceTests
     }
 
     [Fact]
+    public void ParseContent_ExtgrpBetweenExtinfAndUrl_AppliesToThatChannel()
+    {
+        // Провайдерский стиль (goodstreem/lunexas): #EXTGRP стоит после #EXTINF.
+        // Первый канал новой группы не должен наследовать группу предыдущего блока.
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1,Взрослый канал\n#EXTGRP:взрослые\nhttp://example.com/1.m3u8\n" +
+            "#EXTINF:-1,Беларусь 24\n#EXTGRP:беларускія\nhttp://example.com/2.m3u8\n" +
+            "#EXTINF:-1,Беларусь 1\n#EXTGRP:беларускія\nhttp://example.com/3.m3u8\n";
+        var channels = CreateParser().ParseContent(content);
+
+        Assert.Equal(3, channels.Count);
+        Assert.Equal("взрослые", channels[0].Group);
+        Assert.Equal("беларускія", channels[1].Group);
+        Assert.Equal("http://example.com/2.m3u8", channels[1].StreamUrl);
+        Assert.Equal("беларускія", channels[2].Group);
+    }
+
+    [Fact]
+    public void ParseContent_ExtgrpBetweenExtinfAndUrl_DoesNotOverrideGroupTitle()
+    {
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1 group-title=\"Кино\",Канал\n#EXTGRP:Музыка\nhttp://example.com/1.m3u8\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Equal("Кино", ch.Group);
+    }
+
+    [Fact]
     public void ParseContent_EntryWithoutUrl_IsSkipped()
     {
         var content = "#EXTM3U\n#EXTINF:-1,Канал без URL\n#EXTINF:-1,Канал с URL\nhttp://example.com/2.m3u8\n";
