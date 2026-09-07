@@ -169,9 +169,6 @@ public class VideoPortalService : IVideoPortalService
     private readonly HttpClient _httpClient;
     private readonly ILogger<VideoPortalService> _logger;
 
-    // Кэш манифеста для избежания повторного запроса в LoadManifestInfoAsync.
-    // Ключ — URL источника, значение — (JsonDocument, timestamp).
-    // TTL 5 минут: манифест меняется редко, а двойной запрос — лишний сетевой I/O.
     private static readonly Dictionary<string, (string Json, DateTime LoadedAt)> _manifestCache = new();
     private static readonly object _manifestCacheLock = new();
     private static readonly TimeSpan ManifestCacheTtl = TimeSpan.FromMinutes(5);
@@ -213,7 +210,7 @@ public class VideoPortalService : IVideoPortalService
             return result;
         }
 
-        // Категории загружаются параллельно с ограничением параллелизма.
+
         var semaphore = new SemaphoreSlim(4);
         var categoryTasks = new List<Task>();
 
@@ -321,32 +318,13 @@ public class VideoPortalService : IVideoPortalService
         var key = NormalizeKey(source);
         var result = new List<PortalCatalogItem>();
 
-        // Согласно документации OttPlayer (genre.md §3 vs §5/§9),
-        // сервер различает ДВА режима запросов по составу полей:
-        //
-        //   • Категория (без фильтра):  {key, cmd:"flicks", fid:N, offset, limit}
-        //     — возвращает ВСЕ элементы категории.
-        //
-        //   • Фильтр:                    {key, filter:"on", genre?:G, years?:"Y", offset, limit}
-        //     — БЕЗ cmd и fid. Сервер использует сессионный контекст
-        //       (предыдущий flicks-запрос категории) и применяет фильтр.
-        //
-        // Раньше мы отправляли cmd+fid+filter в одном теле — сервер
-        // воспринимал это как запрос категории и молча игнорировал
-        // filter/genre/years. Лог подтверждал: при выборе жанра «ужасы»
-        // сервер возвращал те же 12938 элементов, что и без фильтра.
         string filterRequest;
         var hasYear = !string.IsNullOrEmpty(yearOrRange);
         var hasGenre = genreId.HasValue;
 
         if (hasGenre || hasYear)
         {
-            // Режим фильтра — тело без cmd и fid (документация §5/§9).
-            // Локальная переменная genreValue достаётся через GetValueOrDefault()
-            // — это безопасный доступ к Nullable<int> без предупреждения CS8629
-            // (GetValueOrDefault документированно возвращает default(int)=0,
-            // если HasValue=false, но мы используем genreValue только когда
-            // hasGenre=true, проверив это выше).
+
             var genreValue = genreId.GetValueOrDefault();
             var sb = new System.Text.StringBuilder("{");
             sb.Append($"\"key\":\"{key}\"");
@@ -364,9 +342,7 @@ public class VideoPortalService : IVideoPortalService
         }
         else
         {
-            // Фильтр не выбран — обычная загрузка категории (документация §3).
-            // Это, по сути, повтор того, что делает LoadCatalogAsync на старте,
-            // но только для одной выбранной категории fid.
+
             filterRequest = $"{{\"key\":\"{key}\",\"cmd\":\"flicks\",\"fid\":{fid},\"offset\":0,\"limit\":0}}";
         }
 
@@ -376,8 +352,6 @@ public class VideoPortalService : IVideoPortalService
             genreId?.ToString() ?? "-", yearOrRange ?? "-", fid,
             (hasGenre || hasYear) ? "filter" : "category");
 
-        // GetValueOrDefault безопасно достаёт значение из Nullable<int>;
-        // мы передаём его в GetGenreTitle только когда hasGenre=true.
         await LoadCategoryAsync(source, key, filterRequest, label,
             hasGenre ? GetGenreTitle(genreId.GetValueOrDefault()) : null, result, ct);
         return result;
@@ -386,8 +360,8 @@ public class VideoPortalService : IVideoPortalService
     private static string BuildFilterLabel(int? genreId, string? yearOrRange)
     {
         var parts = new List<string>();
-        // GetValueOrDefault безопасно достаёт значение из Nullable<int>
-        // без предупреждения CS8629 (используем только когда HasValue).
+
+
         if (genreId.HasValue) parts.Add(GetGenreTitle(genreId.GetValueOrDefault()));
         if (!string.IsNullOrEmpty(yearOrRange)) parts.Add(yearOrRange);
         return parts.Count > 0 ? string.Join(" ", parts) : "Все";
@@ -424,9 +398,7 @@ public class VideoPortalService : IVideoPortalService
         PlaylistSource source, string key, string requestJson, string categoryTitle,
         List<PortalGenreFilter> genres, List<PortalCatalogItem> result, CancellationToken ct)
     {
-        // Жанры загружаются параллельно — каждый жанр это отдельный HTTP-запрос.
-        // Результаты сначала собираются в per-genre списки, затем сливаются
-        // с дедупликацией по fid (один фильм может быть в нескольких жанрах).
+
         var semaphore = new SemaphoreSlim(4);
         var genreResults = new List<(string GenreTitle, List<PortalCatalogItem> Items)>();
 
@@ -460,7 +432,7 @@ public class VideoPortalService : IVideoPortalService
 
         var completedGenreResults = await Task.WhenAll(genreTasks);
 
-        // Сливаем результаты, подставляя жанр и собирая seenFids.
+
         var seenFids = new HashSet<int>();
         foreach (var genreResult in completedGenreResults)
         {
@@ -484,7 +456,7 @@ public class VideoPortalService : IVideoPortalService
             }
         }
 
-        // Загружаем все элементы без жанра (для дедупликации).
+
         var allGenreRequest = MergeKey(requestJson, key);
         var allGenreItems = new List<PortalCatalogItem>();
         await semaphore.WaitAsync(ct);
@@ -532,15 +504,6 @@ public class VideoPortalService : IVideoPortalService
         {
             var pageRequest = MergeKey(WithPaging(requestJson, offset, PageSize), key);
 
-            // OttPlayer-сервер иногда возвращает битый JSON на последней
-            // пустой странице пагинации — массив items открывается запятой
-            // без первого элемента: "items":[,{"type":"next",...}].
-            // System.Text.Json в этом случае бросает JsonReaderException,
-            // и без try/catch исключение пробрасывалось до самого верха
-            // (LoadFilteredFromServerAsync), теряя ВСЕ уже загруженные на
-            // предыдущих страницах элементы. Ловим здесь и выходим из
-            // пагинации, сохраняя накопленный результат — пользователь
-            // получит 427/435 мюзиклов вместо 0.
             JsonDocument response;
             try
             {
@@ -582,7 +545,7 @@ public class VideoPortalService : IVideoPortalService
 
                     if (string.Equals(type, "category", StringComparison.OrdinalIgnoreCase))
                     {
-                        continue; // Вложенные категории не замечены — на всякий случай.
+                        continue;
                     }
 
                     var name = GetString(item, "title");
@@ -591,8 +554,6 @@ public class VideoPortalService : IVideoPortalService
                         continue;
                     }
 
-                    // Жанров API портала не отдаёт (фильтры из manifest сервер
-                    // игнорирует), единственная классификация элемента — год.
                     var year = GetInt(item, "year");
                     if (year > 0)
                     {
@@ -627,7 +588,7 @@ public class VideoPortalService : IVideoPortalService
 
                 _logger.LogInformation(
                     "Портал: категория «{Category}» — загружено {Loaded}/{Total}.", categoryTitle, offset, total);
-            } // end using (response)
+            }
         }
 
         _logger.LogWarning(
@@ -649,8 +610,6 @@ public class VideoPortalService : IVideoPortalService
             PosterUrl = GetString(root, "img") ?? GetString(root, "imglr")
         };
 
-        // У сериала эпизоды — в items[] (type "stream" с готовым url); у фильма
-        // items нет — единственный поток лежит в корне ответа.
         if (FindArray(root, "items") is { } itemArray)
         {
             foreach (var item in itemArray.EnumerateArray())
@@ -715,8 +674,6 @@ public class VideoPortalService : IVideoPortalService
         }
     }
 
-    // ===================== Протокол =====================
-
     /// <summary>
     /// Ключ в коротком виде ("6ee2c415..."): пользователь мог вставить и
     /// полный формат "portal::[key:6ee2c415...]" — обёртку снимаем.
@@ -758,9 +715,6 @@ public class VideoPortalService : IVideoPortalService
                 return cmd.GetString()!.Trim() + ".json";
             }
 
-            // Запрос фильтра не содержит "cmd", но имеет "filter":"on".
-            // По документации OttPlayer это тоже идёт на flicks.json —
-            // сервер различает режимы по составу полей тела, а не по URL.
             if (doc.RootElement.TryGetProperty("filter", out var filter) &&
                 filter.ValueKind == JsonValueKind.String &&
                 string.Equals(filter.GetString(), "on", StringComparison.OrdinalIgnoreCase))
@@ -878,10 +832,7 @@ public class VideoPortalService : IVideoPortalService
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadAsStringAsync(ct);
-        // Полное тело ответа (манифест — тысячи символов фильтров) пишем
-        // только в Debug; в Information — сводка: размер и маскированное
-        // содержимое недоступно, лог остаётся компактным. Маскировка — как
-        // в запросе: в ответах бывают прямые ссылки с токенами доступа.
+
         _logger.LogInformation("Портал ← {Url}: получено {Bytes} байт.",
             SecretProtector.Mask(url), body.Length);
         _logger.LogDebug("Портал ← {Url}: {Body}", SecretProtector.Mask(url),
@@ -899,8 +850,6 @@ public class VideoPortalService : IVideoPortalService
 
         return $"{baseUrl}{endpoint}";
     }
-
-    // ===================== Мягкий разбор ответа =====================
 
     private static JsonElement? FindArray(JsonElement element, string name)
     {
@@ -941,8 +890,6 @@ public class VideoPortalService : IVideoPortalService
 
     private static string Truncate(string text) =>
         text.Length <= MaxLoggedChars ? text : text[..MaxLoggedChars] + "…(обрезано)";
-
-    // ===================== Парсинг жанров =====================
 
     private static List<PortalGenreFilter> ParseGenreFilters(JsonElement manifest)
     {
@@ -995,8 +942,6 @@ public class VideoPortalService : IVideoPortalService
         return genres;
     }
 
-    // ===================== Парсинг годов =====================
-
     /// <summary>
     /// Извлекает список годов/диапазонов из manifest.controls.filters,
     /// где filter.title == "Год". Каждый элемент описан как
@@ -1031,9 +976,6 @@ public class VideoPortalService : IVideoPortalService
                 var title = GetString(yearItem, "title");
                 if (string.IsNullOrWhiteSpace(title)) continue;
 
-                // YearsValue лежит в request.years; для этого фильтра он
-                // совпадает с title («2024» или «2021-2026»). Если поле
-                // вдруг отсутствует — используем title как запасной вариант.
                 string yearsValue = title;
                 var filterRequest = GetObjectAsJson(yearItem, "request");
                 if (filterRequest != null)

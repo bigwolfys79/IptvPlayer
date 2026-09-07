@@ -19,9 +19,6 @@ public static class L
     private static ResourceManager? _manager;
     private static ResourceContext? _context;
 
-    // MRT-lookup относительно дорог, а T() зовётся и из тикающих таймеров
-    // (StatsOverlay ~15 вызовов/с) — язык фиксируется на старте, поэтому
-    // результат кэшируется навсегда.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Cache = new();
 
     public static string Lang { get; private set; } = "ru";
@@ -43,8 +40,8 @@ public static class L
         }
         catch (System.Exception ex)
         {
-            // Нет resources.pri рядом с exe (кривая сборка/запуск из-под
-            // другой папки) — MRT недоступен, T() будет возвращать ключи.
+
+
             Serilog.Log.Warning(ex, "MRT-ресурсы недоступны, локализация отключена.");
             _manager = null;
             _context = null;

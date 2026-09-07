@@ -6,15 +6,12 @@ using Windows.Graphics;
 using IptvPlayer.Models;
 using IptvPlayer.Services;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
-
 namespace IptvPlayer;
 
 /// <summary>
-/// The application window. This hosts a Frame that displays pages. Add your
-/// UI and logic to MainPage.xaml / MainPage.xaml.cs instead of here so you
-/// can use Page features such as navigation events and the Loaded lifecycle.
+/// Окно приложения: хостит Frame со страницами. UI и логику добавлять
+/// в MainPage.xaml / MainPage.xaml.cs, а не сюда — тогда доступны события
+/// навигации и жизненный цикл Loaded, как у Page.
 /// </summary>
 public sealed partial class MainWindow : Window
 {
@@ -46,9 +43,6 @@ public sealed partial class MainWindow : Window
 
         AppWindow.SetIcon("Assets/AppIcon.ico");
 
-        // Крестик сворачивает в трей (продолжая играть звук) — реальный
-        // выход через меню иконки в трее. AppWindow.Closing — единственная
-        // точка, где закрытие можно отменить.
         AppWindow.Closing += (s, e) =>
         {
             bool closeToTray;
@@ -59,20 +53,17 @@ public sealed partial class MainWindow : Window
             }
             catch
             {
-                closeToTray = false; // настройки не прочитались — выходим честно.
+                closeToTray = false;
             }
 
             if (!App.AllowClose && closeToTray)
             {
                 e.Cancel = true;
                 AppWindow.Hide();
-                App.Tray?.Show(); // иконка в трее живёт только пока окно скрыто
+                App.Tray?.Show();
                 return;
             }
 
-            // Настоящий выход: если пользователь отложил установку обновления
-            // («Позже»), запускаем установщик — приложение сейчас закроется и
-            // освободит файлы для копирования.
             App.TryStartPendingUpdateInstall();
 
             MinimizeHook?.Dispose();
@@ -80,10 +71,6 @@ public sealed partial class MainWindow : Window
             App.Tray = null;
         };
 
-        // «Свернуть» прячет окно в трей (по настройке) — тогда в панели задач
-        // его нет, а иконка в трее, наоборот, появляется. OverlappedPresenter
-        // в этой версии Windows App SDK не имеет события состояния, поэтому
-        // перехватываем WM_SIZE через subclass оконной процедуры.
         MinimizeHook = new MinimizeToTrayHook(this, () =>
         {
             bool minimizeToTray;
@@ -94,7 +81,7 @@ public sealed partial class MainWindow : Window
             }
             catch
             {
-                minimizeToTray = false; // настройки не прочитались — обычное сворачивание.
+                minimizeToTray = false;
             }
 
             if (minimizeToTray)
@@ -104,13 +91,13 @@ public sealed partial class MainWindow : Window
             }
         });
 
-        // Иконка создаётся один раз на сессию: клик — показать, правый клик — меню.
+
         App.Tray ??= new Services.TrayIconService(
             System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"),
             ShowFromTray,
             ExitFromTray);
 
-        // Навигация перенесена в App.OnLaunched (HubPage или MainPage)
+
     }
 
     private bool _miniPlayer;
@@ -147,7 +134,7 @@ public sealed partial class MainWindow : Window
     {
         if (IsOsFullScreen || _miniPlayer)
         {
-            return; // в этих режимах окно уже поверх всего — не спорим с ними
+            return;
         }
 
         _alwaysOnTop = enable;
@@ -174,14 +161,14 @@ public sealed partial class MainWindow : Window
             _miniPlayer = true;
             _alwaysOnTopBeforeMini = _alwaysOnTop;
             (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = true;
-            // 16:9 + запас на рамку и строку заголовка.
+
             AppWindow.Resize(new Windows.Graphics.SizeInt32(480, 300));
         }
         else
         {
             _miniPlayer = false;
-            // Если «поверх всех окон» было включено до входа в мини-плеер,
-            // окно остаётся поверх всех и после выхода из него.
+
+
             (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = _alwaysOnTopBeforeMini;
             AppWindow.MoveAndResize(_preMiniPlacement);
         }
@@ -193,7 +180,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Show();
         Activate();
         (AppWindow.Presenter as OverlappedPresenter)?.Restore();
-        App.Tray?.Hide(); // окно снова видно — иконка в трее не нужна
+        App.Tray?.Hide();
     }
 
     /// <summary>Пункт «Выход» в трее — настоящее закрытие окна.</summary>
@@ -212,8 +199,6 @@ public sealed partial class MainWindow : Window
         AppTitleBar.Visibility = enable ? Visibility.Collapsed : Visibility.Visible;
         TitleBarRowDefinition.Height = enable ? new GridLength(0) : GridLength.Auto;
 
-        // Смена presenter'а создаёт новый OverlappedPresenter с настройками
-        // по умолчанию — возвращаем включённый режим «поверх всех окон».
         if (!enable && _alwaysOnTop)
         {
             (AppWindow.Presenter as OverlappedPresenter)!.IsAlwaysOnTop = true;
@@ -222,7 +207,7 @@ public sealed partial class MainWindow : Window
 
     /// <summary>
     /// Восстанавливает сохранённые позицию/размер окна (SettingsService —
-    /// синхронный файловый ввод-вывод, поэтому вызов до Activate() не тормозит
+    /// синхронный файловый ввод-вывод, поэтому вызов до Activate() не блокирует
     /// запуск и не блокирует поток). Координаты вписываются в рабочую область
     /// ближайшего монитора: если окно сохранено на отключённом мониторе, оно
     /// не окажется за экраном. Развёрнутое окно просто максимизируется.
@@ -231,9 +216,7 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            // Тот же singleton ISettingsService из DI-контейнера App, что и
-            // везде в приложении (раньше здесь создавался одноразовый
-            // new SettingsService()).
+
             var settingsService = App.Services.GetRequiredService<ISettingsService>();
             var settings = settingsService.LoadAsync().GetAwaiter().GetResult();
             var saved = settings.WindowPlacement;
@@ -261,14 +244,14 @@ public sealed partial class MainWindow : Window
         }
         catch
         {
-            // Битые/отсутствующие данные размещения — окно остаётся
-            // с размерами по умолчанию, это не должно ронять запуск.
+
+
         }
     }
 
     /// <summary>
     /// Текущее состояние окна для сохранения в настройках. null — если окно
-    /// свёрнуто (координаты свёрнутого окна бессмысленны).
+    /// свёрнуто (координаты свёрнутого окна недействительны).
     /// </summary>
     public WindowPlacement? CapturePlacement()
     {

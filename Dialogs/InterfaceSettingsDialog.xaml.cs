@@ -20,10 +20,6 @@ namespace IptvPlayer.Dialogs
         private readonly ISettingsService _settingsService;
         private readonly Action<string> _applyTheme;
 
-        // Контейнер-ContentDialog создаётся в ShowAsync; кнопки внутри
-        // UserControl закрывают его через эту ссылку (искать родителя по
-        // визуальному дереву нельзя — им оказывается ContentPresenter
-        // шаблона диалога, а не сам ContentDialog).
         private ContentDialog? _hostDialog;
 
         public InterfaceSettingsDialog(
@@ -40,8 +36,8 @@ namespace IptvPlayer.Dialogs
         public async Task ShowAsync(XamlRoot xamlRoot)
         {
             await LoadAsync();
-            // Заголовок показывает сам ContentDialog — внутренний TitleText
-            // не нужен, иначе заголовок читается дважды.
+
+
             TitleText.Visibility = Visibility.Collapsed;
 
             var dialog = new ThemedContentDialog
@@ -62,7 +58,7 @@ namespace IptvPlayer.Dialogs
             CancelButton.Content = L.T("Otmena_Lbl");
             SaveButton.Content = L.T("Sokhranit_Lbl");
 
-            // Язык: локализатор поддерживает ru/en.
+
             LanguageHeader.Text = L.T("YAzyk_Interfeysa_Lbl");
             LanguageHint.Text = L.T("Osnovnye_Teksty_Interfeysa_Perevodyatsya_Na_Letu_Lbl");
             LanguageCombo.Items.Clear();
@@ -70,7 +66,7 @@ namespace IptvPlayer.Dialogs
             LanguageCombo.Items.Add("English");
             LanguageCombo.SelectedIndex = L.IsRussian ? 0 : 1;
 
-            // Тема: применяется после сохранения.
+
             ThemeHeader.Text = L.T("Tema_Interfeysa_Lbl");
             ThemeHint.Text = L.T("Primenyaetsya_Srazu_Posle_Sokhraneniya_Bez_Perezapuska_Lbl");
             ThemeRadio.Items.Clear();
@@ -84,8 +80,6 @@ namespace IptvPlayer.Dialogs
                 _ => 2
             };
 
-            // Действие таймера сна по истечении: остановить воспроизведение,
-            // закрыть приложение или выключить компьютер (shutdown /s /t 0).
             SleepTimerHeader.Text = L.T("Taymer_Sna_Po_Istechenii_Lbl");
             SleepTimerHint.Text = L.T("Primenyaetsya_K_Uzhe_Vzvedennomu_Taymeru_Deystvie_Lbl");
             SleepTimerActionCombo.Items.Clear();
@@ -107,9 +101,6 @@ namespace IptvPlayer.Dialogs
                 SleepTimerActionCombo.SelectedIndex = 0;
             }
 
-            // Трей: иконка живёт в трее только пока окно скрыто. Кнопка
-            // «Свернуть» и крестик прячут окно в трей (звук продолжает
-            // играть); полный выход — через меню иконки.
             MinimizeToTrayToggle.Toggled -= MinimizeToTrayToggle_Toggled;
             MinimizeToTrayToggle.IsOn = settings.MinimizeToTray;
             MinimizeToTrayToggle.Header = L.T("Svorachivat_V_Trey_Pri_Svorachivanii");
@@ -126,8 +117,6 @@ namespace IptvPlayer.Dialogs
             CloseToTrayToggle.Toggled += CloseToTrayToggle_Toggled;
             CloseToTrayHint.Text = L.T("Krestik_Okna_Pryachet_Ego_V_Trey");
 
-            // Полуавтоматическое обновление: фоновая проверка при запуске,
-            // скачивание и диалог установки (без установки при записях).
             AutoUpdateToggle.Toggled -= AutoUpdateToggle_Toggled;
             AutoUpdateToggle.IsOn = settings.AutoUpdateEnabled;
             AutoUpdateToggle.Header = L.T("Proveryat_Obnovleniya_Avtomaticheski");
@@ -136,7 +125,7 @@ namespace IptvPlayer.Dialogs
             AutoUpdateToggle.Toggled += AutoUpdateToggle_Toggled;
             AutoUpdateHint.Text = L.T("Posle_Zapuska_Ne_Chashche_Raza_V");
 
-            // Главное меню (Hub Page): показывать при запуске.
+
             ShowHubOnStartupToggle.Toggled -= ShowHubOnStartupToggle_Toggled;
             ShowHubOnStartupToggle.IsOn = settings.ShowHubOnStartup;
             ShowHubOnStartupToggle.Header = "Показывать главное меню при запуске";
@@ -177,9 +166,7 @@ namespace IptvPlayer.Dialogs
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // Пишем в каноническую копию AppSettings, а не в загруженную при
-            // открытии диалога: избранное/напоминания могли измениться после
-            // открытия — устаревшая копия затёрла бы их.
+
             var appSettings = _viewModel.AppSettings;
 
             var theme = (ThemeRadio.SelectedItem as RadioButton)?.Tag as string;
@@ -197,10 +184,6 @@ namespace IptvPlayer.Dialogs
 
             await _settingsService.SaveAsync(appSettings);
 
-            // Тема применяется к окну немедленно — компетенция
-            // представления, поэтому MainPage передал колбэк. Язык
-            // применяется при следующем запуске (MRT фиксирует тексты
-            // при разборе XAML, на лету их не поменять).
             _applyTheme(theme);
 
             CloseDialog();

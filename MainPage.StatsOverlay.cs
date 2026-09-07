@@ -20,9 +20,6 @@ using IptvPlayer.Controls;
 using IptvPlayer.ViewModels;
 using Windows.System;
 using Windows.UI.Core;
-// Windows.Media.Playback.MediaPlayer конфликтует по имени с x:Name="MediaPlayer"
-// (MediaPlayerElement) в разметке, поэтому в коде тип всегда указывается
-// с полным неймспейсом: Windows.Media.Playback.MediaPlayer.
 
 namespace IptvPlayer;
 
@@ -32,18 +29,11 @@ namespace IptvPlayer;
 /// </summary>
 public sealed partial class MainPage
 {
-    // Простои воспроизведения за текущий канал: инкремент по
-    // BufferingStarted плеера (подписка в конструкторе), сброс при смене
-    // плеера. Показывается в последней строке оверлея.
+
     private int _bufferingStallCount;
 
-    // Начало просмотра текущего канала — для живой строки «Сессия»: она
-    // тикает каждую секунду и сразу видно, что оверлей обновляется (кодеки
-    // и буфер сами по себе меняются редко).
     private DateTime _channelSessionStartUtc = DateTime.UtcNow;
 
-    // Момент последнего BufferingStarted (для длительности буферизации
-    // в лог; null — сейчас не буферизуется).
     private DateTime? _bufferingStartedAtUtc;
 
     private void ToggleStatsOverlay() =>
@@ -142,9 +132,6 @@ public sealed partial class MainPage
             audio.Add($"{d.AudioBitrate / 1000} kbps");
         }
 
-        // Фактический декодер видео — как его выбрал FFmpegInteropX (в
-        // аппаратном режиме Automatic возможен откат на CPU) + статус
-        // аппаратного декодера на этой машине.
         var decoder = d.VideoDecoderEngine switch
         {
             FFmpegInteropX.DecoderEngine.FFmpegD3D11HardwareDecoder => "FFmpeg D3D11 (GPU)",
@@ -164,14 +151,7 @@ public sealed partial class MainPage
         sb.AppendLine(string.Format(L.T("Stat_VideoCodecs"), videoList));
         sb.AppendLine(string.Format(L.T("Stat_AudioCodecs"), audioList));
         sb.AppendLine(string.Format(L.T("Dekoder_0_Apparatnyy_1"), decoder, hw, decoder, hw));
-        // BufferingProgress сессии у живых MediaStreamSource-потоков всегда 0
-        // (реальный read-ahead буфер живёт внутри FFmpegInteropX и наружу не
-        // отдаётся) — «заполнение 0%» только сбивало с толку, показываем
-        // честное: глубину из настроек + счётчик простоев.
 
-        // Скорость потока: единственный честный источник — счётчик байт
-        // диагностического прокси (LocalStreamProxy, галка в настройках).
-        // Без прокси показываем подсказку вместо лживой оценки.
         var proxyBps = _streamService.ProxyMeasuredBitrate;
         var speedLine = proxyBps is > 0
             ? string.Format(L.T("Skorost_Potoka_0_Izm"), FormatBitrate((long)proxyBps), FormatBitrate((long)proxyBps))
@@ -181,12 +161,12 @@ public sealed partial class MainPage
         sb.AppendLine(speedLine);
         if (!string.IsNullOrEmpty(d.AudioFilter))
         {
-            // Тяжёлые аудиофильтры (loudnorm/EBU R128) заметно грузят CPU —
-            // показываем их присутствие для корреляции с подтормаживаниями.
+
+
             sb.AppendLine(string.Format(L.T("Stat_AudioFilter"), d.AudioFilter));
         }
 
-        // Живая строка: тикает каждую секунду — видно, что оверлей обновляется.
+
         var session = DateTime.UtcNow - _channelSessionStartUtc;
         sb.Append(string.Format(L.T("Sessiya_Kanala_0_1_2"), $"{(int)session.TotalHours:00}", $"{session.Minutes:00}", $"{session.Seconds:00}", $"{(int)session.TotalHours:00}", $"{session.Minutes:00}", $"{session.Seconds:00}"));
 

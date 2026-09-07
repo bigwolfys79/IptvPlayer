@@ -15,15 +15,15 @@ namespace IptvPlayer.Services
     /// а MediaPlayer.CopyFrameToVideoSurface требует готовую поверхность —
     /// поэтому девайс, текстура и обёртка делаются здесь через стандартные
     /// экспорты d3d11.dll: CreateDirect3D11DeviceFromDXGIBuffer и
-    /// CreateDirect3D11DeviceFromDXGIDevice. Текстура живёт на НАШЕМ девайсе,
+    /// CreateDirect3D11DeviceFromDXGIDevice. Текстура создана на собственном устройстве,
     /// из которого создаётся и CanvasDevice — Win2D требует совпадения
     /// девайса при CreateFromDirect3D11Surface.
     /// </summary>
     internal static unsafe class Direct3DInterop
     {
-        // IID_IDXGIDevice {54EC77FA-1377-44E6-8C32-88FD5F44C84C}
+
         private static readonly Guid IidIdxgiDevice = new("54EC77FA-1377-44E6-8C32-88FD5F44C84C");
-        // IID_IDXGISurface {CAFCB56C-6AC3-4889-BF47-9E23BBD260EC}
+
         private static readonly Guid IidIdxgiSurface = new("CAFCB56C-6AC3-4889-BF47-9E23BBD260EC");
 
         private const uint D3D11CreateDeviceBgraSupport = 0x20;
@@ -51,8 +51,8 @@ namespace IptvPlayer.Services
         /// </summary>
         public static (IntPtr NativeDevice, IDirect3DDevice Device) CreateDevice()
         {
-            // Уровни фич: 11.0 = 0xB000, 10.1 = 0xA100, 10.0 = 0xA000;
-            // driverType 1 = D3D_DRIVER_TYPE_HARDWARE.
+
+
             var fl = stackalloc uint[] { 0xb000, 0xa100, 0xa000 };
             int hr = D3D11CreateDevice(
                 IntPtr.Zero, 1, 0, D3D11CreateDeviceBgraSupport,
@@ -77,7 +77,7 @@ namespace IptvPlayer.Services
         /// </summary>
         public static IDirect3DSurface CreateBgraSurface(IntPtr nativeDevice, int width, int height)
         {
-            // ID3D11Device vtable: CreateTexture2D = слот 5 после IUnknown.
+
             var desc = new Texture2DDesc
             {
                 Width = (uint)width,
@@ -86,7 +86,7 @@ namespace IptvPlayer.Services
                 ArraySize = 1,
                 Format = DxgiFormatB8G8R8A8UNorm,
                 SampleDesc = new SampleDesc { Count = 1, Quality = 0 },
-                Usage = 0, // D3D11_USAGE_DEFAULT
+                Usage = 0,
                 BindFlags = D3D11BindRenderTarget | D3D11BindShaderResource,
                 CPUAccessFlags = 0,
                 MiscFlags = 0
@@ -133,8 +133,8 @@ namespace IptvPlayer.Services
             int hr = qi(unknown, &iid, &result);
             if (hr < 0)
             {
-                // E_NOINTERFACE здесь отображается как InvalidCastException —
-                // логируем исходный HRESULT для диагностики.
+
+
                 throw new COMException($"QueryInterface {{${iid}}} failed", hr);
             }
             return result;

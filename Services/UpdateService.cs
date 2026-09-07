@@ -92,7 +92,7 @@ public class UpdateService : IUpdateService
 
             if (root.TryGetProperty("tag_name", out var tag))
             {
-                // Формат GitHub API /releases/latest.
+
                 versionText = tag.GetString()?.TrimStart('v', 'V');
                 downloadUrl = null;
                 if (root.TryGetProperty("assets", out var assets) && assets.GetArrayLength() > 0)
@@ -114,7 +114,7 @@ public class UpdateService : IUpdateService
             }
             else
             {
-                // Простой формат {"version": "...", "url": "..."}.
+
                 versionText = root.TryGetProperty("version", out var v) ? v.GetString() : null;
                 downloadUrl = root.TryGetProperty("url", out var u) ? u.GetString() : null;
             }
@@ -131,7 +131,7 @@ public class UpdateService : IUpdateService
         }
         catch (Exception ex)
         {
-            // Проверка обновления не должна никак мешать работе — тихо в лог.
+
             _logger.LogInformation(ex, "Автопроверка обновления не удалась (сеть недоступна?) — пропускаем.");
             return null;
         }
@@ -148,8 +148,8 @@ public class UpdateService : IUpdateService
             await using (var source = await response.Content.ReadAsStreamAsync(ct))
             await using (var target = System.IO.File.Create(path))
             {
-                // CopyToAsync не умеет отчитывать прогресс — качаем чанками
-                // и сообщаем процент от Content-Length.
+
+
                 var buffer = new byte[81920];
                 long copied = 0;
                 int read;
@@ -158,7 +158,7 @@ public class UpdateService : IUpdateService
                 {
                     await target.WriteAsync(buffer.AsMemory(0, read), ct);
                     copied += read;
-                    // Не чаще ~5 раз в секунду — чаще только лишние диспатчи UI.
+
                     if (progress != null && totalBytes > 0 &&
                         (DateTimeOffset.UtcNow - lastReport).TotalMilliseconds >= 200)
                     {
@@ -173,8 +173,6 @@ public class UpdateService : IUpdateService
             }
         }
 
-        // Контрольная сумма: GitHub API отдаёт digest не для всех релизов —
-        // без суммы пропускаем (HTTPS), с суммой несовпадение = не устанавливать.
         if (update.Sha256 is { } expected)
         {
             string actual;
@@ -200,7 +198,7 @@ public class UpdateService : IUpdateService
     {
         _logger.LogInformation("Запуск тихой установки обновления: {Path}", setupPath);
 
-        // UseShellExecute — установщику нужен UAC-подъём (Program Files).
+
         var process = new System.Diagnostics.Process
         {
             StartInfo = new System.Diagnostics.ProcessStartInfo(setupPath)
@@ -216,8 +214,6 @@ public class UpdateService : IUpdateService
     {
         StartInstaller(setupPath);
 
-        // Полный выход приложения: освобождает файлы до того, как установщик
-        // дойдёт до копирования (Inno сам ждёт/повторяет при занятых файлах).
         MainWindow.Instance?.Close();
     }
 
@@ -225,13 +221,13 @@ public class UpdateService : IUpdateService
     {
         try
         {
-            // MSIX-сборка — версия пакета.
+
             var v = Windows.ApplicationModel.Package.Current.Id.Version;
             return new Version(v.Major, v.Minor, v.Build, v.Revision);
         }
         catch
         {
-            // Unpackaged (Inno Setup) — версия сборки.
+
             return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 9);
         }
     }

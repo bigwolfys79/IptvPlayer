@@ -39,12 +39,12 @@ namespace IptvPlayer.Services
         /// </summary>
         public static string? GetFilters(string? mode) => mode switch
         {
-            // Заметная резкость: amount 1.5 хорошо виден на SD и HD.
+
             Sharp => "unsharp=5:5:1.5:5:5:0.3",
-            // Чистка компресс-артефактов типичного IPTV-битрейта + резкость.
+
             Denoise => "hqdn3d=4:3:6:4.5,unsharp=5:5:1.0:5:5:0.3",
-            // SD-каналы (576i/480i): артефакты апскейла в эфире заметнее
-            // всего как «грязь» — чистим и вытягиваем резкость.
+
+
             SdUpscale => "hqdn3d=3:2:6:4,unsharp=5:5:1.8:5:5:0.4",
             _ => null
         };

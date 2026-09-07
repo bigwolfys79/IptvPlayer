@@ -12,7 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace IptvPlayer;
 
 /// <summary>
-/// Portal-related methods: catalog loading, cache management, episode picking.
+/// Методы портала: загрузка каталога, управление кэшем, выбор серий.
 /// </summary>
 public sealed partial class MainPage : Page
 {
@@ -22,7 +22,7 @@ public sealed partial class MainPage : Page
     /// </summary>
     internal static string DefaultPlaylistName(string url)
     {
-        // Локальный файл плейлиста — имя по файлу без расширения.
+
         if (System.IO.File.Exists(url))
         {
             return System.IO.Path.GetFileNameWithoutExtension(url);
@@ -46,7 +46,7 @@ public sealed partial class MainPage : Page
     /// Загружает каналы плейлиста при старте и при переключении: если кэш
     /// этого плейлиста свеж (PlaylistRefreshDays не истёк и формат актуален) —
     /// каналы берутся из кэша без скачивания; иначе M3U перекачивается и кэш
-    /// обновляется. При сбое скачивания отдаётся пусть и просроченный кэш —
+    /// обновляется. При сбое скачивания отдаётся просроченный кэш —
     /// переключение/запуск не должно оставлять пользователя без каналов.
     /// </summary>
     private async Task<List<ChannelViewModel>> LoadPlaylistChannelsAsync(
@@ -72,9 +72,6 @@ public sealed partial class MainPage : Page
                 "Плейлист {Playlist} взят из локального кэша (возраст {Age:F1} ч) — скачивание пропущено.",
                 playlist.Name, (DateTime.UtcNow - playlistCache.SavedAtUtc).TotalHours);
 
-            // Для портала: загружаем жанры/категории из manifest даже при
-            // использовании кэша — иначе комбобоксы фильтров пустые.
-            // Для M3U: очищаем портальные фильтры (могли остаться от предыдущего плейлиста).
             if (playlist.IsPortal)
             {
                 try
@@ -98,15 +95,15 @@ public sealed partial class MainPage : Page
 
         try
         {
-            // Портал-источник: вместо M3U — каталог видео-портала (manifest →
-            // категории → элементы). Локальный файл — только для M3U.
+
+
             List<ChannelViewModel> playlistChannels;
             if (playlist.IsPortal)
             {
                 var items = await _videoPortalService.LoadCatalogAsync(playlist, ct);
                 playlistChannels = items.Select(PortalItemToChannel).ToList();
 
-                // Загружаем жанры и категории из manifest для серверных фильтров.
+
                 try
                 {
                     var (genres, years, categories) = await _videoPortalService.LoadManifestInfoAsync(playlist, ct);
@@ -248,12 +245,12 @@ public sealed partial class MainPage : Page
     {
         if (refreshDays <= 0)
         {
-            return false; // "Никогда" — кэш всегда считается свежим
+            return false;
         }
 
         if (savedAtUtc == default)
         {
-            return true; // Нет метки — считаем просроченным
+            return true;
         }
 
         return (DateTime.UtcNow - savedAtUtc) >= TimeSpan.FromDays(refreshDays);

@@ -34,7 +34,7 @@ public interface IXmlTvService
     /// EPGEntry.ChannelId здесь — это id канала из XMLTV (&lt;channel id="..."&gt;),
     /// которое затем сопоставляется с ChannelViewModel.TvgId.
     ///
-    /// Раньше возвращал голый List&lt;EPGEntry&gt; — расширено до XmlTvLoadResult,
+    /// Раньше возвращал List&lt;EPGEntry&gt; без метаданных — расширено до XmlTvLoadResult,
     /// чтобы заодно прокинуть ChannelIcons (&lt;icon src&gt; из &lt;channel&gt;) без
     /// отдельного повторного прохода по тому же XML.
     ///

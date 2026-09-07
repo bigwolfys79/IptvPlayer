@@ -8,7 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace IptvPlayer;
 
 /// <summary>
-/// Settings dialog handlers.
+/// Обработчики диалогов настроек.
 /// </summary>
 public sealed partial class MainPage : Page
 {
@@ -69,7 +69,7 @@ public sealed partial class MainPage : Page
             SwitchPlaylistAsync);
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
 
-        // Список/имена плейлистов могли измениться в диалоге — обновляем подменю.
+
         UpdatePlaylistMenu();
     }
 
@@ -96,8 +96,8 @@ public sealed partial class MainPage : Page
 
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
     {
-        // Установка — тот же сценарий, что при автообновлении (OfferUpdateInstallAsync):
-        // согласие пользователя, откладывание при активных записях, тихая установка.
+
+
         var dialog = new Dialogs.AboutDialog(_updateService, OfferUpdateInstallAsync);
         await dialog.ShowAsync(((FrameworkElement)sender).XamlRoot);
     }

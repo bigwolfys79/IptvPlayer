@@ -11,13 +11,10 @@ using IptvPlayer.Models;
 using IptvPlayer.Services;
 using IptvPlayer.ViewModels;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more project templates, see: http://aka.ms/winui-project-info.
-
 namespace IptvPlayer;
 
 /// <summary>
-/// Provides application-specific behavior to supplement the default Application class.
+/// Дополняет стандартный класс Application поведением конкретного приложения.
 /// Здесь же composition root приложения: конфигурация Serilog (до всего, что
 /// может логировать) и DI-контейнер Microsoft.Extensions.DependencyInjection,
 /// из которого страницы резолвят сервисы и ViewModel'ы (см. Services).
@@ -28,7 +25,7 @@ public partial class App : Application
 
     /// <summary>
     /// Глобальный DI-контейнер. Заполняется в конструкторе App (до создания
-    /// окна) и живёт до конца процесса. Страницы/окна берут зависимости через
+    /// окна) и существует до завершения процесса. Страницы/окна берут зависимости через
     /// App.Services.GetRequiredService — WinUI не даёт внедрять их в
     /// конструкторы XAML-элементов, это стандартный для WinUI 3 паттерн.
     /// </summary>
@@ -56,7 +53,7 @@ public partial class App : Application
     /// <summary>
     /// Скачанный установщик обновления, отложенный пользователем («Позже» в
     /// диалоге обновления): запускается тихой установкой при настоящем
-    /// закрытии приложения. Файл живёт во временной папке, поэтому устанавливать
+    /// закрытии приложения. Файл размещается во временной папке, поэтому устанавливать
     /// можно только в той же сессии — иначе путь сбрасывается.
     /// </summary>
     public static string? PendingUpdateSetupPath;
@@ -96,28 +93,17 @@ public partial class App : Application
     /// <summary>Иконка в трее (null, пока не создана). Убирается при выходе.</summary>
     public static Services.TrayIconService? Tray { get; set; }
 
-    // Уровень "выше Fatal": ни одно событие Serilog через него не проходит —
-    // так выключается файловый лог без пересоздания логгера.
     private const LogEventLevel FileLoggingDisabledLevel = (LogEventLevel)100;
 
-    // Переключатель видит только файловый sink: вывод в Debug (окно Output
-    // под отладчиком) остаётся всегда, настройка управляет записью на диск.
     private static readonly LoggingLevelSwitch FileLogSwitch = new(LogEventLevel.Information);
 
     /// <summary>
-    /// Initializes the singleton application object.  This is the first line of authored code
-    /// executed, and as such is the logical equivalent of main() or WinMain().
+    /// Инициализирует singleton-объект приложения — первый выполняемый authored-код,
+    /// логический эквивалент main()/WinMain().
     /// </summary>
     public App()
     {
-        // Serilog конфигурируется ДО InitializeComponent и подписки на
-        // исключения: всё, что логируется дальше (включая краши на старте),
-        // уже попадает и в файл, и в Debug-вывод. Начальное состояние
-        // файлового лога берём из настроек — иначе при выключенной настройке
-        // каждый запуск создавал бы файл хотя бы ради пары стартовых строк.
-        // SettingsService читает локальный JSON синхронно (Task.FromResult),
-        // так что блокировки UI-потока здесь нет; контейнер ещё не построен,
-        // поэтому одноразовый экземпляр с NullLogger.
+
         AppSettings initialSettings;
         try
         {
@@ -128,9 +114,7 @@ public partial class App : Application
         {
             initialSettings = new AppSettings();
         }
-        // Язык применяется к MRT-контексту до InitializeComponent: x:Uid
-        // тексты фиксируются при разборе XAML, поэтому локализация целиком
-        // выбирается на старте (смена в настройках — после перезапуска).
+
         L.SetLanguage(initialSettings.Language);
         TempDiagnosticsEnabled = initialSettings.TempDiagnosticsEnabled;
         FileLogSwitch.MinimumLevel = initialSettings.FileLoggingEnabled
@@ -140,11 +124,11 @@ public partial class App : Application
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .Enrich.FromLogContext()
-            // Замена прежнего Debug.WriteLine в Services.Logger: видно в
-            // Output только под отладчиком, в Release компилируется в пустоту.
+
+
             .WriteTo.Debug(outputTemplate: OutputTemplate)
-            // Ежедневный роллинг + предел размера и срока: прежний ручной
-            // роллинг (5 МБ -> *.old) не ограничивал общее место на диске.
+
+
             .WriteTo.File(
                 Path.Combine(LogDirectory, "iptvplayer-.log"),
                 levelSwitch: FileLogSwitch,
@@ -162,30 +146,12 @@ public partial class App : Application
 
         InitializeComponent();
 
-        // Раньше необработанные исключения (например, из async void
-        // обработчиков кнопок) просто "глотались" рантаймом или ловились
-        // отладчиком на бесполезной генерируемой строке без деталей —
-        // в Output было видно только загрузку сборок, самой ошибки не было
-        // видно вообще. Теперь она гарантированно попадает в лог, даже без
-        // подключённого отладчика.
         UnhandledException += OnUnhandledException;
 
-        // UnhandledException выше ловит исключения, ТОЛЬКО если они долетели
-        // обратно до UI-потока. Исключение из настоящего фонового потока
-        // (например, из Task.Run или из продолжения, которое никто не
-        // заawait'ил) до него не долетает и валит процесс молча, без единой
-        // строчки в логе — это отдельный и вполне вероятный источник крашей,
-        // не связанных с логикой конкретной кнопки. Эти два хендлера —
-        // подстраховка именно для таких случаев: сам краш они не остановят
-        // (для AppDomain.UnhandledException это в принципе невозможно —
-        // после него процесс всё равно завершится), но успевают записать
-        // причину в файл до этого, чего раньше не было вообще.
         AppDomain.CurrentDomain.UnhandledException += OnAppDomainUnhandledException;
         System.Threading.Tasks.TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
     }
 
-    // Формат прежнего самописного логгера (Services.Logger), включая скобки
-    // [уровня] и [источника] — чтобы старые привычки grep по логу работали.
     private const string OutputTemplate =
         "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
 
@@ -217,21 +183,13 @@ public partial class App : Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        // ILogger<T> из Microsoft.Extensions.Logging поверх статически
-        // сконфигурированного Serilog: SourceContext = имя класса, уровень
-        // и форматы событий — общие с Log.* из статического контекста.
+
         services.AddLogging(logging =>
         {
             logging.ClearProviders();
             logging.AddSerilog(dispose: false);
         });
 
-        // Сервисы — singletons: приложение с одним окном, а ChannelRepository
-        // и EPGService — разделяемое состояние, которое и раньше существовало
-        // в одном экземпляре (создавалось вручную в MainPage и раздавалось
-        // дальше). Конкретные типы регистрируются отдельно от интерфейсов,
-        // потому что MainPage работает с ChannelRepository/EPGService как с
-        // конкретными типами.
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IXmlTvService, XmlTvService>();
         services.AddSingleton<LocalStreamProxy>();
@@ -246,8 +204,6 @@ public partial class App : Application
         services.AddSingleton<IEPGService>(sp => sp.GetRequiredService<EPGService>());
         services.AddSingleton<RecordingService>();
 
-        // ViewModel'ы — тоже singletons: MainPage создаётся один раз за
-        // сессию, а EpgViewModel держит состояние (список каналов, окно EPG).
         services.AddSingleton<EpgViewModel>();
         services.AddSingleton<PlayerViewModel>();
         services.AddSingleton<MainPageViewModel>();
@@ -255,13 +211,6 @@ public partial class App : Application
         services.AddSingleton<LocalVideoFileService>();
     }
 
-    // ===================== Страж зависания UI =====================
-
-    // Сердцебиение UI-потока: DispatcherTimer тикает только пока поток
-    // жив. Фоновый System.Threading.Timerwatchdog сравнивает счётчик:
-    // не менялся дольше 10 с — UI-поток заблокирован чем-то синхронным
-    // (было дважды: Windows закрывала приложение как «не отвечающее»,
-    // в логе при этом ни одной строчки — теперь вис будет виден).
     private long _uiHeartbeat;
     private System.Threading.Timer? _uiHangTimer;
     private DateTime _lastHeartbeatUtc = DateTime.UtcNow;
@@ -297,7 +246,7 @@ public partial class App : Application
             var staleSeconds = (DateTime.UtcNow - _lastHeartbeatUtc).TotalSeconds;
             if (staleSeconds >= 10)
             {
-                // Не спамим: одно объявление на эпизод + напоминание раз в 30 с.
+
                 if (!_hangAnnounced || staleSeconds % 30 < 3)
                 {
                     Log.Fatal("UI-поток НЕ ОТВЕЧАЕТ {Seconds:F0} с — зависание. " +
@@ -313,14 +262,10 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
-        // ВАЖНО: CloseAndFlush только в самом конце — раньше слепок дерева
-        // при LayoutCycle писался уже в закрытый логгер и терялся.
+
+
         Log.Error(e.Exception, "Необработанное исключение UI-потока (App.UnhandledException)");
 
-        // LayoutCycleException не называет виновника — снимаем слепок
-        // визуального дерева (имена + фактические размеры первых N узлов):
-        // по нему видно, какие панели были на экране и с какими размерами
-        // в момент цикла компоновки.
         if (e.Exception is Microsoft.UI.Xaml.LayoutCycleException && _window?.Content is FrameworkElement root)
         {
             try
@@ -366,10 +311,6 @@ public partial class App : Application
             }
         }
 
-        // Помечаем как обработанное, чтобы приложение не падало/не зависало
-        // молча — только пока включена «Временная диагностика» (меню
-        // шестерёнки → Диагностика). После подтверждения, что зависания
-        // починены, переключатель и этот код можно удалить.
         e.Handled = TempDiagnosticsEnabled;
         Serilog.Log.CloseAndFlush();
     }
@@ -401,8 +342,6 @@ public partial class App : Application
             {
                 mainWindow.ShowFromTray();
 
-                // Второй экземпляр был запущен открытием видеофайла —
-                // играем его в работающем приложении.
                 try
                 {
                     if (File.Exists(PendingVideoFilePath))
@@ -449,23 +388,16 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Invoked when the application is launched.
+    /// Вызывается при запуске приложения.
     /// </summary>
-    /// <param name="args">Details about the launch request and process.</param>
+    /// <param name="args">Сведения о запросе и процессе запуска.</param>
     protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        // === ЕДИНСТВЕННЫЙ ЭКЗЕМПЛЯР ===
-        // Повторный запуск (окно в трее — процесс жив) не создаёт второй
-        // экземпляр: активация переадресуется работающему, и он поднимает
-        // окно. Раньше параллельные экземпляры дрались за settings.json
-        // (IOException при сохранении, затем затирание настроек дефолтами).
-        // Проверка до всего остального: второй процесс завершается молча.
+
         var instance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey("IptvPlayer.Main");
         if (!instance.IsCurrent)
         {
-            // Если второй экземпляр запущен открытием видеофайла (ассоциация
-            // в проводнике) — передаём путь первому через pending-файл:
-            // RedirectActivationToAsync не переносит произвольные аргументы.
+
             var redirectedVideo = GetCommandLineVideoFile();
             if (redirectedVideo != null)
             {
@@ -500,32 +432,29 @@ public partial class App : Application
         }
         instance.Activated += OnInstanceActivated;
 
-        // Отладочные дампы запросов/ответов портала (portal_dump) писались
-        // прежними версиями и содержали прямые ссылки с токенами доступа —
-        // удаляем накопленное, дамп больше не ведётся.
         try
         {
             Directory.Delete(Path.Combine(LogDirectory, "..", "portal_dump"), recursive: true);
         }
         catch (Exception ex) when (ex is DirectoryNotFoundException or IOException or UnauthorizedAccessException)
         {
-            // Нет папки или файл занят — не препятствие для запуска.
+
         }
 
-        // === ПРОВЕРКА ЛИЦЕНЗИИ ДО СОЗДАНИЯ ОКНА ===
+
         var license = LicenseService.CheckLicense();
         Log.Information("OnLaunched: UsageType={Type}, DaysRemaining={Days}, IsExpired={Expired}",
             license.UsageType, license.DaysRemaining, license.IsExpired);
 
         if (license.IsExpired)
         {
-            // Минимальное окно только для показа диалога
+
             _window = new MainWindow();
             _window.Activate();
 
             var dialog = new Dialogs.LicenseExpiredDialog();
-            // Диалог содержит офлайн-активацию: пользователь может ввести
-            // подписанную лицензию прямо здесь, тогда запускаем приложение.
+
+
             var activated = await dialog.ShowAsync(_window.Content.XamlRoot, license.DaysRemaining);
 
             if (!activated)
@@ -544,12 +473,8 @@ public partial class App : Application
         _window.Activate();
         StartUiHangWatchdog();
 
-        // Синхронная выгрузка буферов Serilog при закрытии главного окна —
-        // чтобы последние события гарантированно попали в файл.
         _window.Closed += (_, _) => Log.CloseAndFlush();
 
-        // Навигация: Hub или MainPage (auto-resume). Запуск с видеофайлом
-        // (ассоциация в проводнике) имеет приоритет: сразу играем файл.
         if (_window is MainWindow mainWindow)
         {
             var launchVideoFile = GetCommandLineVideoFile();

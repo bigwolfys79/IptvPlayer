@@ -21,9 +21,6 @@ using IptvPlayer.Controls;
 using IptvPlayer.ViewModels;
 using Windows.System;
 using Windows.UI.Core;
-// Windows.Media.Playback.MediaPlayer конфликтует по имени с x:Name="MediaPlayer"
-// (MediaPlayerElement) в разметке, поэтому в коде тип всегда указывается
-// с полным неймспейсом: Windows.Media.Playback.MediaPlayer.
 
 namespace IptvPlayer;
 
@@ -33,9 +30,7 @@ namespace IptvPlayer;
 /// </summary>
 public sealed partial class MainPage
 {
-    // Отдельный Storyboard для оконного оверлея (у полноэкранного свой) —
-    // иначе переустановка цели анимации конфликтовала бы при быстрых
-    // переключениях показ/скрытие обоих оверлеев.
+
     private readonly Storyboard _windowedOverlayFadeStoryboard = new();
     private readonly DoubleAnimation _windowedOverlayFadeAnimation = new() { EnableDependentAnimation = true };
 
@@ -52,9 +47,6 @@ public sealed partial class MainPage
         _windowedOverlayFadeStoryboard.Stop();
         WindowedVideoOverlay.Visibility = Visibility.Visible;
 
-        // Верхняя шапка с названием канала — появляется мгновенно (без
-        // анимации), вместе с нижней панелью управления, и прячется
-        // вместе с ней по таймеру автоскрытия.
         WindowedTopOverlay.Visibility = Visibility.Visible;
         WindowedTopOverlay.Opacity = 1;
 
@@ -104,10 +96,6 @@ public sealed partial class MainPage
         WindowedTopOverlay.Visibility = Visibility.Collapsed;
     }
 
-    // Один переиспользуемый Storyboard для показа/скрытия оверлея: перед каждым
-    // запуском он останавливается (Stop не поднимает Completed), поэтому "старая"
-    // анимация скрытия не может внезапно схлопнуть оверлей уже после того, как
-    // его снова показали движением мыши.
     private readonly Storyboard _overlayFadeStoryboard = new();
     private readonly DoubleAnimation _overlayFadeAnimation = new() { EnableDependentAnimation = true };
 
@@ -118,39 +106,14 @@ public sealed partial class MainPage
     /// XAML) перед новым fade-in, и при частых PointerMoved (быстрое дёрганье
     /// мышью) это выглядело как мигание/скрытие-показ оверлея.
     /// </summary>
-    // Направление последнего fade для каждого оверлея. Раньше показ проверял
-    // Opacity >= 1, и во время fade-in (150 мс) каждое движение мыши вызывало
-    // новый Show: Storyboard.Stop() сбрасывал Opacity к базовому 0, анимация
-    // начиналась заново и не успевала завершиться, пока мышь движется —
-    // оверлей "появлялся" только после полной остановки мыши. Теперь если
-    // fade-in уже идёт (или завершился) — Show просто ничего не делает.
+
     private bool _fullScreenOverlayFadingIn;
     private bool _windowedOverlayFadingIn;
 
-    // Курсор для режима «не беспокоить» поверх видео: в fullscreen, пока
-    // показаны оверлеи, — обычная стрелка; когда оверлей автоскрылся, курсор
-    // убирается совсем, как в видеоплеерах. См. Controls/CursorGrid —
-    // ProtectedCursor (единственный вход в input-site WinUI: ShowCursor
-    // потокозависим и из UI-потока не действует, WM_SETCURSOR сайту не
-    // приходит) в этом SDK protected, поэтому корневой Grid страницы —
-    // наследник с публичными методами.
-    // Курсор скрыт: ProtectedCursor устанавливается на корневой CursorGrid
-    // (один раз), а CursorHider делает окно моста видео прозрачным для мыши.
-    // Логика «мелькания» (input-site переоценивает курсор) решена тем, что
-    // ProtectedCursor на корне действует на весь subtree без повторных установок.
-
-    // True во время «нуджа» (синтетический сдвиг мыши 2 px для применения
-    // ProtectedCursor): такие события не должны будить оверлей.
     private bool _suppressOverlayWake;
 
-    // True, пока курсор спрятан в fullscreen: в это время замораживается
-    // секундное обновление текста StatsOverlay (см. _archivePositionTimer) —
-    // под обновляющийся текст input-site переоценивал курсор и возвращал
-    // стрелку (мелькание).
     private bool _cursorHidden;
 
-    // Прозрачность мыши над видео-окном (DesktopChildSiteBridge) + опрос
-    // GetCursorPos для пробуждения.
     private Services.CursorHider? _cursorHider;
 
     /// <summary>
@@ -177,7 +140,7 @@ public sealed partial class MainPage
     {
         Serilog.Log.Debug("Cursor: WakeFromHiddenCursorByClick — возврат курсора (мышь прозрачна 400мс)");
         _cursorHidden = false;
-        _cursorHider?.Show(restoreMouse: false); // курсор да, мышь — нет
+        _cursorHider?.Show(restoreMouse: false);
         RootGrid.ShowCursorOverWindow();
         _ = DelayedOverlayShowAfterClickAsync();
     }
@@ -223,14 +186,14 @@ public sealed partial class MainPage
     {
         Serilog.Log.Debug("Cursor: DelayedOverlayShowAfterClickAsync — ожидание 400мс");
         await Task.Delay(400);
-        // Двойной клик успел выключить fullscreen — ничего не показываем.
+
         if (!_isFullScreen)
         {
             Serilog.Log.Debug("Cursor: DelayedOverlayShowAfterClick — fullscreen выключен, RestoreMouse");
             _cursorHider?.RestoreMouse();
             return;
         }
-        // Пользователь начал двигать мышь — оверлей уже показан обычным путём.
+
         if (FullScreenOverlay.Visibility == Visibility.Visible && _fullScreenOverlayFadingIn)
         {
             Serilog.Log.Debug("Cursor: DelayedOverlayShowAfterClick — оверлей уже видим, RestoreMouse");
@@ -249,7 +212,7 @@ public sealed partial class MainPage
     {
         Serilog.Log.Debug("Cursor.ShowCursorOverVideo: ProtectedCursor=null на CursorGrid (показ)");
         _cursorHidden = false;
-        _cursorHider?.Show(); // вернуть мышь над видео (снять прозрачность моста)
+        _cursorHider?.Show();
         RootGrid.ShowCursorOverWindow();
         SetProtectedCursor(MediaPlayer, null);
     }
@@ -261,9 +224,6 @@ public sealed partial class MainPage
         RootGrid.HideCursorOverWindow();
         _cursorHidden = true;
 
-        // CursorHider: окно моста видео делается прозрачным для мыши
-        // (WS_EX_TRANSPARENT) — hit-test проваливается к XAML-подложке,
-        // где ProtectedCursor на корне CursorGrid действует на subtree.
         if (_cursorHider == null && MainWindow.Instance != null)
         {
             _cursorHider = new Services.CursorHider(
@@ -276,9 +236,6 @@ public sealed partial class MainPage
         }
         _cursorHider?.Hide();
 
-        // Input-site применяет ProtectedCursor только при СЛЕДУЮЩЕМ событии
-        // указателя: нудж делается отложенно (~120 мс) и дважды (1 px вправо,
-        // затем 1 px назад — позиция не смещается).
         _ = NudgePointerDelayedAsync();
 
         Serilog.Log.Debug("Cursor: ProtectedCursor=null на ключевых элементах + отложенный нудж");
@@ -363,7 +320,7 @@ public sealed partial class MainPage
 
     private void ShowFullScreenOverlay()
     {
-        // EPG открыт — оверлей не показываем независимо от вызывающего кода
+
         if (ViewModel.IsEpgVisible)
         {
             Serilog.Log.Debug("Overlay.ShowFullScreen: EPG открыт — пропуск");

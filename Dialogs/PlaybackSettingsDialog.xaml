@@ -6,16 +6,12 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- Быстрый доступ к разделу воспроизведения полного SettingsDialog:
-         декодер, буфер, качество, аудио и видео-фильтры. Радиогруппы и
-         комбобоксы наполняются в code-behind (LoadAsync) с Tag-значениями. -->
     <StackPanel Spacing="12" Width="480">
         <TextBlock x:Name="TitleText" x:Uid="Nastroyki_Vosproizvedeniya" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="16">
 
-                <!-- Декодер -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="DecoderHeader" x:Uid="Dekodirovanie_Video" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="DecoderHint"
@@ -26,7 +22,6 @@
                     <RadioButtons x:Name="DecoderRadio"/>
                 </StackPanel>
 
-                <!-- Буфер -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="BufferHeader" x:Uid="Buferizatsiya" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="BufferHint"
@@ -40,8 +35,6 @@
                     <TextBlock x:Name="BufferValueText"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                    <!-- Буфер видеотеки (портал): отдельно от эфирного —
-                         короткий ради быстрого старта фильмов. -->
                     <TextBlock x:Name="VodBufferHeader" x:Uid="Bufer_Videoteki" FontSize="13" FontWeight="SemiBold" Margin="0,8,0,0"/>
                     <TextBlock x:Name="VodBufferHint"
                                FontSize="11"
@@ -55,7 +48,6 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
 
-                <!-- Качество -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="QualityHeader" x:Uid="Kachestvo_Video" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="QualityHint"
@@ -66,7 +58,6 @@
                     <ComboBox x:Name="QualityCombo" HorizontalAlignment="Stretch"/>
                 </StackPanel>
 
-                <!-- Аудио -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="AudioHeader" x:Uid="Zvuk" FontSize="14" FontWeight="SemiBold"/>
 
@@ -81,7 +72,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CancelButton"
                     x:Uid="Otmena"

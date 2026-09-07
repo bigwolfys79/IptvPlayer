@@ -67,8 +67,6 @@
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
-            <!-- Карточка раздела: подъём при наведении + градиентная подсветка.
-                 Цвета фона/рамок — тема-зависимые (выше). -->
             <Style x:Key="HubCard" TargetType="Button">
                 <Setter Property="Width" Value="280"/>
                 <Setter Property="Height" Value="220"/>
@@ -117,7 +115,6 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            <!-- Круглая иконка-кнопка (кнопка «Справка»): подсветка при наведении -->
             <Style x:Key="HubRoundButton" TargetType="Button">
                 <Setter Property="Width" Value="44"/>
                 <Setter Property="Height" Value="44"/>
@@ -206,7 +203,6 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-            <!-- Плейлисты: клавиша 1 -->
             <Button x:Name="PlaylistsButton" Grid.Column="0"
                     Click="PlaylistsButton_Click"
                     Style="{StaticResource HubCard}"
@@ -235,7 +231,6 @@
                 </StackPanel>
             </Button>
 
-            <!-- Портал: клавиша 2 -->
             <Button x:Name="PortalButton" Grid.Column="2"
                     Click="PortalButton_Click"
                     Style="{StaticResource HubCard}"
@@ -264,7 +259,6 @@
                 </StackPanel>
             </Button>
 
-            <!-- Настройки: клавиша 4 -->
             <Button x:Name="SettingsButton" Grid.Column="6"
                     Click="SettingsButton_Click"
                     Style="{StaticResource HubCard}"
@@ -293,7 +287,6 @@
                 </StackPanel>
             </Button>
 
-            <!-- Видео (локальные файлы): клавиша 3 -->
             <Button x:Name="VideoButton" Grid.Column="4"
                     Click="VideoButton_Click"
                     Style="{StaticResource HubCard}"
@@ -321,7 +314,6 @@
             </Button>
             </Grid>
 
-            <!-- Плашка «Продолжить просмотр» — последний недосмотренный VOD -->
             <Button x:Name="ContinueButton"
                     Visibility="Collapsed"
                     Click="ContinueButton_Click"
@@ -343,13 +335,11 @@
             </Button>
         </StackPanel>
 
-        <!-- Overlay для закрытия flyout: ловит нажатие любой кнопки мыши -->
         <Border x:Name="FlyoutOverlay" Background="Transparent"
                 Visibility="Collapsed" HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch" MinHeight="0" MinWidth="0"
                 PointerPressed="FlyoutOverlay_PointerPressed"/>
 
-        <!-- Кнопка «Справка» в правом нижнем углу: горячие клавиши приложения -->
         <Button x:Name="InfoButton"
                 Click="InfoButton_Click"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
@@ -363,7 +353,6 @@
                        Foreground="{ThemeResource HubFgSemiBrush}"/>
         </Button>
 
-        <!-- Кастомный flyout -->
         <Border x:Name="FlyoutBorder"
                 Background="{ThemeResource HubFlyoutBrush}"
                 BorderBrush="{ThemeResource HubFlyoutBorderBrush}"

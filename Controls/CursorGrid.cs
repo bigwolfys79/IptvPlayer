@@ -47,11 +47,11 @@ public sealed partial class CursorGrid : Grid
     {
         try
         {
-            // 32x32, моно-маски: AND=1 — пиксель курсора прозрачен. Все единицы
-            // в AND и нули в XOR дают полностью невидимый курсор.
+
+
             const int width = 32;
             const int height = 32;
-            const int bytesPerRow = width / 8; // 4 байта на строку моно-маски
+            const int bytesPerRow = width / 8;
             var and = new byte[bytesPerRow * height];
             var xor = new byte[bytesPerRow * height];
             for (var i = 0; i < and.Length; i++)
@@ -90,9 +90,7 @@ public sealed partial class CursorGrid : Grid
             return null;
         }
         const string classId = "Microsoft.UI.Input.InputCursor";
-        // Прямой P/Invoke RoGetActivationFactory возвращает E_INVALIDARG —
-        // берём фабрику штатным механизмом CsWinRT (он же используется для
-        // всех WinRT-активаций приложения) и кастуем к COM-интерфейсу.
+
         var interop = WinRT.ActivationFactory.Get(classId)
             .AsInterface<IInputCursorStaticsInterop>();
         Marshal.ThrowExceptionForHR(interop.CreateFromHCursor(hcursor, out var cursorAbi));
@@ -107,7 +105,7 @@ public sealed partial class CursorGrid : Grid
     [ComImport, Guid("ac6f5065-90c4-46ce-beb7-05e138e54117"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IInputCursorStaticsInterop
     {
-        // IInspectable unused methods
+
         void GetIids();
         void GetRuntimeClassName();
         void GetTrustLevel();

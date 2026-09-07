@@ -22,8 +22,6 @@
                    HorizontalAlignment="Center" TextAlignment="Center"
                    Foreground="{ThemeResource SystemAccentColor}"/>
 
-        <!-- Активация без сервера: пользователь присылает HWID, получает
-             подписанную лицензию (текстом или .lic-файлом). -->
         <StackPanel x:Name="KeyPanel" Spacing="8" Margin="0,8,0,0">
             <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>

@@ -10,14 +10,6 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <ResourceDictionary Source="Styles/HubPageStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-            <!-- Единая палитра приложения: акцентные цвета, которые раньше
-                 дублировались hex-значениями по всему XAML/коду (REC, эфир,
-                 архив, избранное, выделение канала, скримы оверлеев).
-                 Менять цветовую схему — только здесь. -->
-            <!-- Кисти оверлеев поверх видео: в тёмной теме — тёмный скрим с
-                 белыми иконками, в светлой — светлый скрим с тёмными.
-                 OverlayScrimDarkBrush (EPG-панель) в светлой теме тоже
-                 осветляется, иначе панель выделяется на фоне темы. -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="RecRedBrush" Color="#FFF53B3B"/>
@@ -57,10 +49,6 @@
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
-            <!-- Стиль кнопок видео-оверлеев (оконная панель и полноэкранная):
-                 прозрачный фон в покое, мягкая подсветка при наведении —
-                 стандартный дефолтный ховер плохо читается на скриме.
-                 Цвета подсветки — из темы (OverlayBtnHover/PressedBrush). -->
             <Style x:Key="OverlayButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{ThemeResource OverlayFgBrush}"/>
@@ -69,9 +57,6 @@
                 <Setter Property="CornerRadius" Value="6"/>
                 <Setter Property="UseSystemFocusVisuals" Value="True"/>
             </Style>
-            <!-- Ховер/нажатие — через VisualState стандартного шаблона не
-                 переопределить простым Setter'ом; делаем лёгкий переопределённый
-                 шаблон (контент + фон-индикатор). -->
             <ControlTemplate x:Key="OverlayButtonTemplate" TargetType="Button">
                 <Grid>
                     <VisualStateManager.VisualStateGroups>

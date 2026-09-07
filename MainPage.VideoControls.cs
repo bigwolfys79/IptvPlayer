@@ -14,7 +14,7 @@ using Microsoft.UI.Xaml.Media;
 namespace IptvPlayer;
 
 /// <summary>
-/// Volume, mute, video stretch, sleep timer, mini player, record buttons.
+/// Громкость, mute, растяжение видео, таймер сна, мини-плеер, кнопки записи.
 /// </summary>
 public sealed partial class MainPage : Page
 {
@@ -77,14 +77,12 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // ===================== Мьют =====================
-
     private void MuteButton_Click(object sender, RoutedEventArgs e) => Player.ToggleMute();
 
     /// <summary>
     /// Кнопки M в обеих панелях: иконка (динамик/динамик с крестом), подсказка
     /// и слайдеры (в mute показывают ноль — синхронизация программная и
-    /// LastUserVolume не затирает).
+    /// LastUserVolume не перезаписывается).
     /// </summary>
     private void UpdateMuteButtons()
     {
@@ -99,8 +97,6 @@ public sealed partial class MainPage : Page
 
         SyncVolumeSliders(Player.IsMuted ? 0.0 : Player.LastUserVolume ?? Player.Player?.Volume ?? 1.0);
     }
-
-    // ===================== Двойной клик / полноэкранный режим =====================
 
     /// <summary>
     /// Двойной клик по видео — переключение полноэкранного режима.
@@ -134,8 +130,6 @@ public sealed partial class MainPage : Page
         element is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase
             or Slider or ListView or ComboBox or TextBox or AutoSuggestBox;
 
-    // ===================== Режимы отображения видео =====================
-
     private void StretchButton_Click(object sender, RoutedEventArgs e) => CycleVideoStretch();
 
     /// <summary>Строковый режим настроек → Stretch медиаэлемента.</summary>
@@ -151,8 +145,8 @@ public sealed partial class MainPage : Page
     {
         var stretch = ParseStretch(ViewModel.AppSettings.VideoStretch);
         MediaPlayer.Stretch = stretch;
-        // При frame server-рендере кадр рисует FrameServerRenderer, режим
-        // применяем и там (иначе кнопка работает только на обычном пути).
+
+
         _frameServerRenderer.VideoStretchMode = stretch;
         UpdateStretchButtons();
     }
@@ -188,8 +182,6 @@ public sealed partial class MainPage : Page
         ToolTipService.SetToolTip(OverlayStretchButton, tooltip);
     }
 
-    // ===================== Улучшение картинки (апскейлер) =====================
-
     /// <summary>
     /// Перед открытием меню кнопки отмечаем текущий пресет: RadioMenuFlyoutItem
     /// не синхронизируется сам — группировка даёт только взаимоисключающий выбор.
@@ -217,8 +209,6 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // ===================== Рендер-апскейл (frame server, эксперимент) =====================
-
     /// <summary>
     /// Переключение рендер-пути frame server: плеер создаётся с флагом
     /// IsVideoFrameServerEnabled при открытии потока, поэтому смена режима
@@ -238,16 +228,11 @@ public sealed partial class MainPage : Page
 
         _logger.LogInformation("Рендер-апскейл (frame server): {State}.", enable ? "вкл" : "выкл");
 
-        // Перезапускаем текущий канал: флаг IsVideoFrameServerEnabled
-        // задаётся при создании плеера и в обе стороны требует
-        // пересоздания (PlayerChanged привяжет/отвяжет рендер сам).
         if (ViewModel.SelectedChannel is { } channel)
         {
             await ViewModel.PlayChannelAsync(channel);
         }
     }
-
-    // ===================== Таймер сна =====================
 
     private async void SleepTimerButton_Click(object sender, RoutedEventArgs e)
     {
@@ -385,8 +370,6 @@ public sealed partial class MainPage : Page
         OverlaySleepTimerText.Text = remainingText ?? string.Empty;
     }
 
-    // ===================== Поверх всех окон / мини-плеер =====================
-
     private bool _panelsHiddenForMini;
 
     /// <summary>
@@ -449,8 +432,8 @@ public sealed partial class MainPage : Page
         else if (!mini && _panelsHiddenForMini)
         {
             _panelsHiddenForMini = false;
-            // Локальный файл (карточка «Видео»): панель каналов скрыта
-            // навсегда — восстанавливать колонку нечего.
+
+
             if (_localVideoFile == null)
             {
                 ChannelListColumn.MinWidth = 240;
@@ -461,13 +444,9 @@ public sealed partial class MainPage : Page
             }
         }
 
-        // Смена размера окна с видео: DComp-остров может продолжать рисовать
-        // по старым координатам — пересобираем компоновку (как при fullscreen).
         ForceVideoRelayout();
         UpdateAlwaysOnTopButtons();
     }
-
-    // ===================== Избранные каналы =====================
 
     private void FavoriteButton_Click(object sender, RoutedEventArgs e)
     {
@@ -478,8 +457,6 @@ public sealed partial class MainPage : Page
 
         ViewModel.ToggleFavoriteCommand.Execute(channel);
     }
-
-    // ===================== Напоминания о передачах =====================
 
     private void ReminderButton_Click(object sender, RoutedEventArgs e)
     {
@@ -514,8 +491,6 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // ===================== Запись передач и каналов =====================
-
     private void ScheduleRecordButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: EPGEntry entry })
@@ -543,8 +518,6 @@ public sealed partial class MainPage : Page
             ? L.T("Ostanovit_Zapis")
             : L.T("Zapisat_Kanal_Lbl"));
     }
-
-    // ===================== Ошибка потока =====================
 
     private void ShowStreamError(string message)
     {

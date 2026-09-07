@@ -13,7 +13,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Шапка (всегда видна) -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="14">
             <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="12" Padding="14,8">
                 <TextBlock Text="IPTV" Foreground="White" FontWeight="Bold" FontSize="16"/>
@@ -25,7 +24,6 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Прокручиваемое тело (описание, компоненты, пути, статус) -->
         <ScrollViewer Grid.Row="1" MaxHeight="320" VerticalScrollBarVisibility="Auto"
                       Margin="0,6,0,0">
             <StackPanel Spacing="10">
@@ -49,8 +47,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Статус проверки/скачивания обновления — сразу под кнопками,
-             всегда виден без прокрутки тела диалога -->
         <StackPanel Grid.Row="2" Margin="0,10,0,0">
             <TextBlock x:Name="UpdateStatusText" FontSize="12" TextWrapping="Wrap"
                        Visibility="Collapsed"

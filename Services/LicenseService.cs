@@ -40,30 +40,21 @@ public static class LicenseService
     private const int TrialDays = 30;
     private const string TokenSeparator = "|";
 
-    // Ключи лицензий: реестр пользователя (HKLM недоступен на запись без
-    // админа, а активация происходит из запущенного приложения). Подделка
-    // значения бессмысленна — подпись проверяется заново при каждом
-    // запуске.
     private const string LicenseKeyValueName = "LicenseKey";
 
-    // Монотонное время для анти-отката: HKCU + DPAPI (CurrentUser).
+
     private const string LastSeenValueName = "LastSeenUtc";
     private const string UserRegPath = @"SOFTWARE\IptvPlayer";
 
     /// <summary>Допуск рассинхрона часов, прежде чем считать их откатом.</summary>
     private static readonly TimeSpan ClockSkewTolerance = TimeSpan.FromHours(1);
 
-    // HMAC-ключ: достаточно секретен для защиты от простой подмены.
-    // Извлечение из exe возможна, но это не антипиратская система —
-    // лишь защита от случайного изменения даты через реестр.
     private static readonly byte[] HmacKey = Encoding.UTF8.GetBytes(
         "IptvPlayer-Lic-2024-Salt-k7Xm9pQ2wL");
 
-    // Публичный ключ RSA (ToXmlString(false)); приватный — у разработчика.
+
     private const string PublicKeyXml =
         "<RSAKeyValue><Modulus>6Xu4JlI0aGBUZ07SIZ3Mon9wy9EvTV18GcL5f0OBQUWaVn5nZqG6/tk+Ms1HWdkxkRXMxiHWoouRplIIFnOJsASsyRr0RGH/R80nRQPbflzVV11N2D/tDp6wWuyiQ+gwzwOcamoE03Z2TI4r1JapiUpCz4qpH1JgTKoV1m5xOcrCMCTV+9SDb5rB52iRdZvhmBkxUPyiB6DB2LHrcOlvFg+12KY0SducDrUBJADA8t4qPBy3FbS5eeYjZ7Skwk1f46Rfure+soy0TrFBUtZCdznCpTfFkYZK6L9BsiA2wsphabq40xtfIYWxUvxPlEhIJIVz/bKbbWeH1Ng9ljyi8Q==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
-
-    // ===================== Публичный API =====================
 
     /// <summary>
     /// Проверяет лицензию при запуске. Вызывать ДО создания MainWindow.
@@ -72,7 +63,7 @@ public static class LicenseService
     {
         try
         {
-            // Активированная лицензия важнее trial-токена.
+
             var storedKey = ReadFirstAvailable(LicenseKeyValueName);
             if (!string.IsNullOrEmpty(storedKey))
             {
@@ -123,8 +114,6 @@ public static class LicenseService
                 };
             }
 
-            // Trial тоже не доверяет часам: монотонное время не даёт
-            // откатом даты бесконечно продлевать пробный период.
             var elapsed = (GetMonotonicNow() - token.InstallDate).Days;
             var remaining = Math.Max(0, TrialDays - elapsed);
 
@@ -165,8 +154,6 @@ public static class LicenseService
             return ActivationResult.Fail(ActivationError.Empty);
         }
 
-        // Пользователь может вставить текст с переводами строк/пробелами
-        // (например, ключ из .lic файла скопирован кусками) — склеиваем.
         var normalized = new string(
             licenseText.Where(c => !char.IsWhiteSpace(c)).ToArray());
 
@@ -176,7 +163,7 @@ public static class LicenseService
             return ActivationResult.Fail(ActivationError.InvalidSignature);
         }
 
-        // HWID-привязка: пустой hwid в лицензии = без привязки к машине.
+
         if (!string.IsNullOrEmpty(data.Hwid) &&
             !string.Equals(data.Hwid, GetHwidCode(), StringComparison.OrdinalIgnoreCase))
         {
@@ -214,7 +201,7 @@ public static class LicenseService
     {
         try
         {
-            // Формат: IPL1.payload.signature (base64url без padding).
+
             var parts = licenseText.Split('.', 3);
             if (parts.Length != 3 || parts[0] != "IPL1") return null;
 
@@ -253,8 +240,6 @@ public static class LicenseService
             return null;
         }
     }
-
-    // ===================== Монотонное время =====================
 
     /// <summary>
     /// Время с защитой от отката часов: если системное время меньше
@@ -316,8 +301,6 @@ public static class LicenseService
         }
     }
 
-    // ===================== Железо =====================
-
     private static byte[] ComputeHardwareHash()
     {
         var volumeSerial = GetVolumeSerial();
@@ -367,8 +350,6 @@ public static class LicenseService
         catch { }
         return "unknown";
     }
-
-    // ===================== Trial-токен (прежняя логика) =====================
 
     private static LicenseInfo CreateFirstRunToken()
     {
@@ -461,8 +442,6 @@ public static class LicenseService
         return Convert.ToBase64String(encrypted);
     }
 
-    // ===================== Реестр =====================
-
     private static string? ReadRegString(string valueName)
     {
         try
@@ -502,16 +481,12 @@ public static class LicenseService
         }
     }
 
-    // ===================== Утилиты =====================
-
     private static byte[] Base64UrlDecode(string s)
     {
         var base64 = s.Replace('-', '+').Replace('_', '/');
         return Convert.FromBase64String(base64.PadRight(
             base64.Length + (4 - base64.Length % 4) % 4, '='));
     }
-
-    // ===================== Модели =====================
 
     public sealed class LicenseData
     {

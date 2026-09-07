@@ -37,15 +37,6 @@ public partial class EpgViewModel : ObservableObject
         LoadEpgSourcesFromSettings();
     }
 
-    // Простые свойства — [ObservableProperty]. Свойства с приватными
-    // сеттерами и побочными эффектами (WindowStart, TimeScaleHours,
-    // IsLoading) ниже оставлены ручными: генератор делает сеттер публичным,
-    // а здесь важны инкапсуляция и логика внутри сеттера.
-    // Ручные INotifyPropertyChanged-свойства (SetProperty): сгенерированные
-    // [ObservableProperty] в WinUI-сценариях не создают WinRT-проекторов
-    // (MVVMTK0045). Ниже — простые версии; свойства с приватными сеттерами
-    // и побочными эффектами (WindowStart, TimeScaleHours, IsLoading) — в
-    // ручном стиле ещё ниже.
     private ObservableCollection<ChannelViewModel> _channels = new();
 
     public ObservableCollection<ChannelViewModel> Channels
@@ -148,15 +139,6 @@ public partial class EpgViewModel : ObservableObject
         }
     }
 
-    // LoadEPGAsync и RefreshEPGAsync могут перекрываться (первая настройка:
-    // фоновая загрузка из диалога настроек ещё идёт, а «Готово» с изменёнными
-    // источниками запускает Refresh поверх). Раньше каждый метод в finally
-    // безусловно писал IsLoading = false — завершившийся ПЕРВЫМ гасил
-    // индикатор, пока вторая операция ещё качала/разбирала XMLTV: полоса
-    // пропадала, а EPG появлялся только по завершении оставшейся операции
-    // (или не появлялся вовсе, если та падала и исключение глотал
-    // fire-and-forget). Счётчик гасит индикатор только когда не осталось
-    // ни одной активной операции.
     private int _activeLoadOperations;
 
     private void BeginLoadOperation()
@@ -188,8 +170,6 @@ public partial class EpgViewModel : ObservableObject
     /// </summary>
     public event EventHandler? EpgReloaded;
 
-
-
     private async void LoadEpgSourcesFromSettings()
     {
         try
@@ -198,7 +178,7 @@ public partial class EpgViewModel : ObservableObject
             var activeSources = settings.GetActiveEpgSources();
             var enabledSources = activeSources.Where(s => s.IsEnabled).ToList();
 
-            // Если нет включённых источников, но есть в настройках отключённые — включаем первый рабочий (epg.one)
+
             if (enabledSources.Count == 0 && activeSources.Count > 0)
             {
                 var fallback = activeSources.FirstOrDefault(s => s.Url.Contains("epg.one"));
@@ -255,12 +235,7 @@ public partial class EpgViewModel : ObservableObject
 
     public async Task LoadEPGAsync()
     {
-        // Раньше два перекрывающихся вызова (например, "Обновить EPG" ещё не
-        // закончился, а следом кликнули "Сегодня" и выбрали другой канал)
-        // могли одновременно попасть в SetChannels (Channels.Clear()/Add())
-        // и в foreach по Channels внутри RecalculateCurrentProgramsAsync —
-        // это InvalidOperationException "Collection was modified", который
-        // и приводил к зависанию/крэшу. Семафор сериализует такие вызовы.
+
         await _loadLock.WaitAsync();
         try
         {
@@ -309,9 +284,7 @@ public partial class EpgViewModel : ObservableObject
 
     public async Task LoadEPGForChannelAsync(int channelId)
     {
-        // Тот же семафор, что и в LoadEPGAsync — иначе клик по каналу во
-        // время ещё не завершённого Refresh/Today мог столкнуться с
-        // RecalculateCurrentProgramsAsync на EPGEntries того же канала.
+
         await _loadLock.WaitAsync();
         try
         {
@@ -364,19 +337,7 @@ public partial class EpgViewModel : ObservableObject
         BeginLoadOperation();
         try
         {
-            // _epgService.RefreshEPGAsync() скачивает и разбирает XMLTV по всем
-            // источникам — потенциально тяжёлая по CPU (парсинг XML) и по I/O
-            // работа. Раньше она выполнялась прямо в продолжении await на
-            // UI-потоке: пока метод не завершится, UI-поток занят и не может
-            // ни отрисовывать новые кадры видео в MediaPlayerElement, ни
-            // обрабатывать ввод — визуально это выглядит как "видео подвисло".
-            // Аудио при этом действительно продолжает идти, потому что
-            // декодирование и воспроизведение звука у MediaPlayer идёт на
-            // отдельном, не-UI потоке и от UI-потока не зависит.
-            // Переносим это на пул потоков через Task.Run — сам метод
-            // безопасен для вызова не с UI-потока, так как ничего не трогает
-            // напрямую в UI (ObservableCollection здесь не меняется —
-            // это делает LoadEPGAsync ниже, уже на UI-потоке).
+
             await Task.Run(() => _epgService.RefreshEPGAsync());
             await LoadEPGAsync();
         }
@@ -410,7 +371,7 @@ public partial class EpgViewModel : ObservableObject
     /// каналов при каждой загрузке/обновлении EPG.
     /// </summary>
     /// <summary>
-    /// Раньше цикл на все каналы (2065 штук) выполнялся одним синхронным
+    /// Раньше цикл по всем каналам плейлиста (~2000) выполнялся одним синхронным
     /// блоком: GetEPGEntriesAsync внутри не делает настоящего I/O (только
     /// Dictionary-lookup в памяти), поэтому await по нему почти всегда
     /// завершается синхронно, а в этом случае компилятор НЕ отдаёт
@@ -440,20 +401,14 @@ public partial class EpgViewModel : ObservableObject
 
         foreach (var channel in Channels)
         {
-            // Элементы портала (фильмы/сериалы) EPG не имеют: их списки
-            // остаются пустыми, а проход по 22k элементов VOD-плейлиста
-            // занимал секунды плотной работы.
+
             if (channel.IsPortalItem)
             {
                 continue;
             }
 
-            // Ленивая загрузка: берём только текущую передачу, не копируем
-            // все EPGEntries — экономия ~20 MB при 2000+ каналах.
             var current = await _epgService.GetCurrentProgramAsync(channel.Id);
 
-            // Без EPG в строке канала показываем «Программа недоступна»,
-            // а не пустоту.
             channel.CurrentProgramTitle = current?.ProgramName ?? NoProgramTitle;
             channel.CurrentProgramDescription = current?.Description ?? string.Empty;
             channel.CurrentEPGEntry = current;
@@ -463,8 +418,6 @@ public partial class EpgViewModel : ObservableObject
                 current.RefreshLiveProgress();
             }
 
-            // Полоса прогресса в строке канала течёт со временем — уведомляем
-            // каждый проход, даже если передача не сменилась.
             channel.RefreshCurrentProgramProgress();
 
             processed++;
@@ -488,8 +441,8 @@ public partial class EpgViewModel : ObservableObject
     {
         if (IsLoading)
         {
-            // Полная загрузка/обновление EPG идёт прямо сейчас — она сама
-            // всё пересчитает в конце (RecalculateCurrentProgramsAsync).
+
+
             return;
         }
 
@@ -498,8 +451,8 @@ public partial class EpgViewModel : ObservableObject
 
         foreach (var channel in Channels)
         {
-            // Элементы портала (фильмы/сериалы) EPG не имеют — в VOD-
-            // плейлистах их десятки тысяч, пропуск экономит проход таймера.
+
+
             if (channel.IsPortalItem)
             {
                 continue;
@@ -509,9 +462,7 @@ public partial class EpgViewModel : ObservableObject
 
             if (!string.Equals(channel.CurrentProgramTitle, current?.ProgramName ?? NoProgramTitle, StringComparison.Ordinal))
             {
-                // Снять признак с прежней текущей и поставить новой — чтобы
-                // подсветка и полоса прогресса в панели передач не врали
-                // при следующей отрисовке.
+
                 if (channel.CurrentEPGEntry != null)
                 {
                     channel.CurrentEPGEntry.IsCurrent = false;
@@ -526,9 +477,6 @@ public partial class EpgViewModel : ObservableObject
                 channel.CurrentEPGEntry = current;
             }
 
-            // Полосы прогресса (строка канала и карточка текущей передачи в
-            // EPG) привязаны к часам — обновляются каждые 30 с этим же
-            // таймером, даже когда текущая передача не менялась.
             channel.RefreshCurrentProgramProgress();
             current?.RefreshLiveProgress();
 
@@ -558,12 +506,6 @@ public partial class EpgViewModel : ObservableObject
             }
         }
     }
-
-    // ===================== Команды =====================
-    // Постраничная навигация PrevDay/NextDay/Today умерла после перехода со
-    // смены дней на сплошное 120-часовое окно (список просто скроллится) —
-    // команды и методы NavigateDate/NavigateToToday/_dayOffset/CurrentDate
-    // удалены как неиспользуемые. Осталась только принудительная перезагрузка.
 
     /// <summary>
     /// Принудительное обновление EPG (кнопка в пустом состоянии панели).

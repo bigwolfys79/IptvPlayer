@@ -14,12 +14,7 @@ namespace IptvPlayer.ViewModels;
 /// </summary>
 public partial class ChannelViewModel : ObservableObject
 {
-    // Все свойства — ручные (поле + SetProperty): сгенерированные
-    // [ObservableProperty] в WinUI-сценариях не создают WinRT-проекторов
-    // (предупреждение MVVMTK0045), а семантика уведомления та же.
-    // Раньше каждое писалось по ~12 строк вручную, и рассинхрон
-    // «поле/свойство/уведомление» был реальным источником багов;
-    // SetProperty сводит это к минимуму.
+
     private string _name = string.Empty;
 
     public string Name

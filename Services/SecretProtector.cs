@@ -50,8 +50,8 @@ public static class SecretProtector
         }
         catch (Exception)
         {
-            // Другой пользователь/ПК или повреждённая запись — ключ
-            // восстановить нельзя; возвращаем пустую строку вместо мусора.
+
+
             return string.Empty;
         }
     }
@@ -64,8 +64,6 @@ public static class SecretProtector
         "(username|password|token)=([^&\\s\"']+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    // Прямые ссылки на медиа (ответы портала на flick): содержат токены
-    // доступа в пути — пока живы, открывают фильм без пароля.
     private static readonly Regex MediaUrlRegex = new(
         "https?://[^\\s\"'\\\\]+\\.(?:m3u8|mp4|ts)[^\\s\"'\\\\]*",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);

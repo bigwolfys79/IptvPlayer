@@ -6,11 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- Быстрый доступ к разделу EPG полного SettingsDialog: напоминания,
-         периодичность обновления и глубина архива. Источники XMLTV здесь
-         не редактируются — они настраиваются для каждого плейлиста в
-         диалоге «Плейлист». Комбобоксы наполняются в code-behind
-         (LoadAsync) — элементы с Tag-значениями. -->
     <StackPanel Spacing="12" Width="480">
         <TextBlock x:Name="TitleText" x:Uid="Nastroyki_EPG" FontSize="20" FontWeight="SemiBold"/>
 
@@ -43,7 +38,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CancelButton"
                     x:Uid="Otmena"

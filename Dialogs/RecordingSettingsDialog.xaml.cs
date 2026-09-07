@@ -29,8 +29,8 @@ public sealed partial class RecordingSettingsDialog : UserControl
 
     public async Task ShowAsync(XamlRoot xamlRoot)
     {
-        // Идущие записи могут завершиться (-t), пока диалог открыт —
-        // пересобираем списки на каждое изменение состояния сервиса.
+
+
         _viewModel.Recording.RecordingsChanged += OnRecordingsChanged;
 
         var dialog = new ThemedContentDialog
@@ -53,7 +53,7 @@ public sealed partial class RecordingSettingsDialog : UserControl
         {
             return;
         }
-        // RecordingsChanged может прийти не с UI-потока (Exited процесса).
+
         DispatcherQueue.TryEnqueue(LoadSection);
     }
 
@@ -167,8 +167,8 @@ public sealed partial class RecordingSettingsDialog : UserControl
         {
             try
             {
-                // Папки может не быть (ввели путь руками) — создаём заранее,
-                // иначе ffmpeg молча не сможет начать запись.
+
+
                 System.IO.Directory.CreateDirectory(folder);
             }
             catch (Exception ex)

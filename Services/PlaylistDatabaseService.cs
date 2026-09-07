@@ -73,14 +73,14 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                 CREATE INDEX IF NOT EXISTS idx_channels_playlist ON channels(playlist_id);";
             cmd.ExecuteNonQuery();
 
-            // Миграция: добавить portal_key если нет
+
             try
             {
                 var altCmd = connection.CreateCommand();
                 altCmd.CommandText = "ALTER TABLE playlists ADD COLUMN portal_key TEXT";
                 altCmd.ExecuteNonQuery();
             }
-            catch { /* колонка уже есть */ }
+            catch {  }
         }
         catch (Exception ex)
         {
@@ -103,7 +103,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             await using var reader = await metaCmd.ExecuteReaderAsync();
             if (!await reader.ReadAsync())
             {
-                // Нет записи в SQLite — попробуем мигрировать из JSON.
+
                 var migrated = await TryMigrateFromJsonAsync(playlistId, connection);
                 if (migrated != null) return migrated;
                 return null;
@@ -167,7 +167,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
 
             await using var transaction = await connection.BeginTransactionAsync();
 
-            // Upsert playlist metadata.
+
             var metaCmd = connection.CreateCommand();
             metaCmd.CommandText =
                 "INSERT INTO playlists (id, format_version, saved_at_utc, portal_key) VALUES ($id, $ver, $date, $key) " +
@@ -178,13 +178,13 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             metaCmd.Parameters.AddWithValue("$key", (object?)cache.PortalKeyHash ?? DBNull.Value);
             await metaCmd.ExecuteNonQueryAsync();
 
-            // Delete old channels.
+
             var deleteCmd = connection.CreateCommand();
             deleteCmd.CommandText = "DELETE FROM channels WHERE playlist_id = $id";
             deleteCmd.Parameters.AddWithValue("$id", playlistId);
             await deleteCmd.ExecuteNonQueryAsync();
 
-            // Batch insert new channels (500 per batch).
+
             const int batchSize = 500;
             for (var offset = 0; offset < cache.Channels.Count; offset += batchSize)
             {
@@ -251,7 +251,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             ? null
             : Path.Combine(CacheDirectory, $"playlist_cache_{playlistId}.json");
 
-        // Попытка миграции из legacy-файла для плейлиста 1.
+
         if (playlistId == 1 && !File.Exists(path) && File.Exists(LegacyCacheFilePath))
         {
             path = LegacyCacheFilePath;
@@ -270,7 +270,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                 "Миграция кэша плейлиста {PlaylistId}: JSON → SQLite ({Count} каналов).",
                 playlistId, cache.Channels.Count);
 
-            // Сохраняем в SQLite через транзакцию.
+
             await using var transaction = await connection.BeginTransactionAsync();
 
             var metaCmd = connection.CreateCommand();
@@ -311,7 +311,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
 
             await transaction.CommitAsync();
 
-            // Удаляем JSON-файл после успешной миграции.
+
             File.Delete(path);
             _logger.LogInformation("JSON-кэш плейлиста {PlaylistId} удалён после миграции.", playlistId);
 

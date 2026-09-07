@@ -6,9 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- Родительский контроль: скрытие каналов выбранных групп за PIN с
-         временной разблокировкой. Пока контроль включён и заблокирован,
-         доступна только секция разблокировки; настройка — после ввода PIN. -->
     <StackPanel Spacing="12" Width="480">
         <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="12">
@@ -16,7 +13,6 @@
                 <TextBlock x:Name="StatusText" FontSize="13" TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
-                <!-- Секция разблокировки: видна, когда включено и заблокировано. -->
                 <StackPanel x:Name="UnlockPanel" Spacing="10" Visibility="Collapsed">
                     <PasswordBox x:Name="PinBox" PlaceholderText="PIN" Width="200" HorizontalAlignment="Left"/>
                     <TextBlock x:Name="UnlockHint" FontSize="11" TextWrapping="Wrap"
@@ -30,15 +26,12 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Секция настройки: доступна, когда выключено или разблокировано. -->
                 <StackPanel x:Name="EditPanel" Spacing="12">
                     <ToggleSwitch x:Name="EnabledToggle" HorizontalAlignment="Left"
                                   Toggled="EnabledToggle_Toggled"/>
                     <TextBlock x:Name="EnabledHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
-                    <!-- Дневной лимит просмотра: 0 = без ограничения. Правка
-                         доступна только в разблокированной секции (EditPanel). -->
                     <TextBlock x:Name="DailyLimitHeader" FontSize="14" FontWeight="SemiBold" Margin="0,8,0,0"/>
                     <TextBlock x:Name="DailyLimitHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>

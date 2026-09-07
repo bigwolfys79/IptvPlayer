@@ -22,13 +22,7 @@ namespace IptvPlayer.Services
     /// </summary>
     public class StreamService : IStreamService
     {
-        // FFmpegMediaSource обязан жить, пока жив созданный для него плеер:
-        // MediaStreamSource получает сэмплы колбэками из этого объекта, и без
-        // внешней ссылки GC собирал его посреди воспроизведения — картинка
-        // шла рывками, звук пропадал, затем MediaFailed DecodingError
-        // (0xC00D36B6) и крах процесса. ConditionalWeakTable держит значение
-        // ровно столько, сколько жив ключ-плеер: утечек нет, при смене
-        // канала (Dispose старого плеера) источник освобождается сам.
+
         private static readonly ConditionalWeakTable<MediaPlayer, FFmpegMediaSource> LiveSources = new();
 
         private readonly ILogger<StreamService> _logger;
@@ -53,25 +47,6 @@ namespace IptvPlayer.Services
             _proxy = proxy;
         }
 
-        // Цепочки нормализации громкости. Часть каналов в плейлисте
-        // кодируется в разы тише остальных (пример — BCU TruMotion HD),
-        // а MediaPlayer.Volume ограничен 100%: вытянуть такой канал можно
-        // только фильтром в графе FFmpeg, до системного микшера.
-        //  - dynaudnorm: динамически поднимает тихий звук (до m дБ усиления),
-        //    громкий почти не трогает. f — длина кадра в мс, g — кадры
-        //    сглаживания усиления: их произведение и есть буфер предпросмотра.
-        //    f=30:g=5 (150 мс) вместо f=300:g=15 (4.5 с) — незаметная задержка
-        //    и меньшая нагрузка; субъективно сглаживание то же;
-        //  - loudnorm: приводит любой канал к единой громкости EBU R128
-        //    (−16 LUFS) — тише становится и громкие каналы. Но он держит
-        //    буфер предпросмотра ~3 с: на живом эфире этих данных ещё нет,
-        //    звук отдаётся с запаздыванием и отстаёт от видео (asetpts не
-        //    помогает — данные не пришли, а не сдвинуты). Поэтому Loudness
-        //    разрешён только для потоков, доступных наперёд (VOD, файлы),
-        //    а на эфире подменяется облегчённым dynaudnorm. asetpts
-        //    пересчитывает PTS по счётчику выходных сэмплов, убирая
-        //    собственный сдвиг PTS loudnorm; aresample возвращает 48 кГц
-        //    (loudnorm внутри работает на 192 кГц).
         private static string? GetAudioFilters(string? mode, bool allowLoudness) => mode switch
         {
             "Dynamic" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
@@ -143,10 +118,7 @@ namespace IptvPlayer.Services
                     source.SetFFmpegVideoFilters(filters);
                 }
                 CurrentVideoFilter = filters;
-                // Readback: подтверждаем, что источник хранит именно наши
-                // фильтры (сам граф строится при следующем кадре; при ошибке
-                // сборки FFmpegInteropX молча откатывается к кадрам без
-                // фильтра — других подтверждений нет).
+
                 var readback = source.CurrentVideoStream is { } vs
                     ? source.GetFFmpegVideoFilters(vs)
                     : null;
@@ -175,9 +147,6 @@ namespace IptvPlayer.Services
             {
                 player = new MediaPlayer();
 
-                // Режим frame server (экспериментальный рендер-апскейл):
-                // медиа-движок ничего не рисует, кадры отдаёт событием.
-                // Должно быть выставлено ДО назначения Source.
                 player.IsVideoFrameServerEnabled = streamConfig.FrameServer;
             }
             catch (Exception ex)
@@ -189,37 +158,16 @@ namespace IptvPlayer.Services
             {
             var ffmpegConfig = new MediaSourceConfig();
 
-                // Режим декодирования из настроек (переключается в диалоге
-                // настроек): Hardware = GPU с автоматическим откатом на CPU
-                // (Automatic), Software = принудительно процессор. Неверное
-                // значение настроек трактуем как Software — рабочий по умолчанию.
                 ffmpegConfig.Video.VideoDecoderMode =
                     string.Equals(streamConfig.DecoderMode, "Hardware", StringComparison.OrdinalIgnoreCase)
                         ? VideoDecoderMode.Automatic
                         : VideoDecoderMode.ForceFFmpegSoftwareDecoder;
 
-                // DownmixAudioStreamsToStereo = false: НЕ сводим 5.1 в стерео
-                // силами FFmpeg. Его downmix-коэффициенты дают заметно более
-                // тихий звук, чем сведение аудиодвижком Windows, которое
-                // использовалось раньше (все многоканальные каналы стали
-                // тише). Многоканальный PCM уходит в Windows как есть —
-                // система сводит его сама, как в системном плеере.
                 ffmpegConfig.Audio.DownmixAudioStreamsToStereo = false;
 
-                // Локальный файл (карточка «Видео» на хабе): в канал идёт
-                // «сырой» путь диска (E:\видео\x.mpg) — протокол file: в
-                // FFmpeg не декодирует URL-проценты, кириллица ломается.
-                // Определяется заранее — нужен и для read-ahead, и для
-                // решения о loudnorm ниже. Read-ahead нужен только сети —
-                // с диска он лишь откладывает старт (плеер молча набивает
-                // буфер до порога).
                 var isLocalFile = streamUrl.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
                     || (streamUrl.Length >= 2 && streamUrl[1] == ':');
 
-                // Нормализация громкости (переключается в настройках):
-                // тихие каналы подтягиваются к общему уровню. Loudness
-                // (loudnorm, буфер ~3 с) разрешён только для VOD и локальных
-                // файлов — на живом эфире он даёт отставание звука от видео.
                 var allowLoudness = isVod || isLocalFile;
                 var audioNormalization = streamConfig.AudioNormalization;
                 if (audioNormalization == "Loudness" && !allowLoudness)
@@ -234,8 +182,6 @@ namespace IptvPlayer.Services
                     ffmpegConfig.Audio.FFmpegAudioFilters = normFilter;
                 }
 
-                // Улучшение картинки (кнопка «Качество картинки»): цепочка
-                // видео-фильтров FFmpeg при открытии потока.
                 var upscalerMode = VideoUpscaler.Normalize(streamConfig.VideoUpscaler);
                 var videoFilter = VideoUpscaler.GetFilters(upscalerMode);
                 if (!string.IsNullOrEmpty(videoFilter))
@@ -243,29 +189,15 @@ namespace IptvPlayer.Services
                     ffmpegConfig.Video.FFmpegVideoFilters = videoFilter;
                 }
 
-                // Упреждающая буферизация: провайдер отдаёт HLS сегментами по
-                // 10 секунд, каждый сегмент (~5.7 МБ) качается 1-1.5 с. Без
-                // буфера (по умолчанию он ВЫКЛЮЧЕН) плеер доигрывал сегмент и
-                // простаивал эту секунду на каждом стыке — заметное
-                // "подтормаживание каждые 10 секунд". Глубина буфера берётся
-                // из настроек (слайдер "Буфер видео"): больше — плавнее на
-                // нестабильной сети, но дальше от эфира. Размер подбирается с
-                // запасом под 4K-битрейт (~4 МБ/с) и не меньше 32 МБ.
                 var readAheadSeconds = Math.Clamp(streamConfig.ReadAheadSeconds, 5, 120);
                 var readAheadBytes = Math.Max(32 * 1024 * 1024, readAheadSeconds * 4 * 1024 * 1024);
                 if (isVod)
                 {
-                    // VOD (фильмы портала): эфирный буфер (15 с / 32+ МБ) на
-                    // медленном CDN VOD держал старт потока по несколько
-                    // секунд — плеер молча набивал буфер до порога. Здесь
-                    // отдельная, меньшая глубина, настраиваемая независимо
-                    // (VodReadAheadSeconds, слайдер «Буфер видеотеки»).
+
                     readAheadSeconds = Math.Clamp(streamConfig.VodReadAheadSeconds, 2, 15);
                     readAheadBytes = Math.Max(8 * 1024 * 1024, readAheadSeconds * 2 * 1024 * 1024);
                 }
 
-                // Read-ahead нужен только сети — с диска он лишь откладывает
-                // старт (плеер молча набивает буфер до порога).
                 ffmpegConfig.General.ReadAheadBufferEnabled = !isLocalFile;
                 if (!isLocalFile)
                 {
@@ -273,29 +205,13 @@ namespace IptvPlayer.Services
                     ffmpegConfig.General.ReadAheadBufferSize = readAheadBytes;
                 }
 
-                // HTTP-протокол FFmpeg: провайдер отдаёт сегменты попеременно
-                // с двух серверов, поэтому keepalive-переиспользование
-                // соединения ломается на КАЖДОМ сегменте ("keepalive request
-                // failed ... retrying with new connection") — это лишняя
-                // пауза перед каждым сегментом, а при медленном ретраите
-                // затыкается и воспроизведение. multiple_requests=0 — сразу
-                // новое соединение без обречённой попытки; reconnect* —
-                // авто-восстановление при обрывах сети.
                 ffmpegConfig.FFmpegOptions["multiple_requests"] = "0";
-                // http_persistent — опция именно HLS-демуксера: он сам
-                // включает keepalive для сегментов. Для VOD включаем
-                // persistent connections — сегменты идут с одного CDN-
-                // сервера, keepalive убирает оверхед TCP+TLS на каждом
-                // сегменте и даёт буферу время набиться.
+
                 ffmpegConfig.FFmpegOptions["http_persistent"] = isVod ? "1" : "0";
                 ffmpegConfig.FFmpegOptions["reconnect"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_streamed"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_delay_max"] = "7";
 
-                // Диагностический прокси (галка в настройках, по умолчанию
-                // выкл.): FFmpeg качает через 127.0.0.1-посредника, который
-                // считает байты — в Ctrl+J появляется реальная скорость.
-                // Не-http(s) схемы (udp/rtmp) прокси не поддерживает.
                 var actualUrl = streamUrl;
                 if (streamConfig.DiagnosticProxy
                     && (streamUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
@@ -334,8 +250,6 @@ namespace IptvPlayer.Services
                 _logger.LogWarning(ex, "FFmpeg не смог открыть поток {Url}, откат на системный плеер.", streamUrl);
                 player.Source = MediaSource.CreateFromUri(new Uri(streamUrl));
 
-                // Системный источник не отдаёт кодеки/декодер — оверлей
-                // статистики покажет только факт отката.
                 CurrentDiagnostics = new PlaybackDiagnostics { SystemSourceFallback = true };
             }
 
@@ -345,7 +259,7 @@ namespace IptvPlayer.Services
 
         /// <summary>
         /// Снимок параметров для оверлея статистики: берётся один раз при
-        /// открытии потока, чтобы потом не трогать живой FFmpegMediaSource
+        /// открытии потока, чтобы исключить обращения к активному FFmpegMediaSource
         /// (его время жизни привязано к плееру). CurrentVideoStream может
         /// быть ещё не выбран — тогда берётся первая дорожка.
         /// </summary>
@@ -379,7 +293,7 @@ namespace IptvPlayer.Services
             }
             catch (Exception ex)
             {
-                // Метаданные потока не критичны для воспроизведения.
+
                 Serilog.Log.Debug(ex, "Не удалось собрать метаданные потока — оверлей получит пустую диагностику.");
                 return new PlaybackDiagnostics();
             }
@@ -394,7 +308,7 @@ namespace IptvPlayer.Services
             if (string.IsNullOrWhiteSpace(streamUrl))
                 return L.T("Url_Potoka_Pust");
 
-            // Локальный файл (карточка «Видео») — сетевой диагноз неприменим.
+
             if (streamUrl.StartsWith("file:", StringComparison.OrdinalIgnoreCase) ||
                 (streamUrl.Length >= 2 && streamUrl[1] == ':'))
             {

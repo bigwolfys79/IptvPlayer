@@ -28,8 +28,6 @@ public sealed class ChannelHistory
             return;
         }
 
-        // Тот же канал подряд (перезапуск эфира, выход из архива) — не новое
-        // место в истории.
         if (_entries.Count > 0 &&
             ReferenceEquals(_entries[^1], channel))
         {

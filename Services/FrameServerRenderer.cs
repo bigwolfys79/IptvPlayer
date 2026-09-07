@@ -46,17 +46,17 @@ namespace IptvPlayer.Services
         private IntPtr _nativeDevice;
         private IDirect3DDevice? _d3dDevice;
 
-        // Текстура-приёмник кадра в разрешении потока.
+
         private IDirect3DSurface? _frameSurface;
         private int _frameWidth, _frameHeight;
 
-        // Промежуточная цель прохода 1 (размер окна).
+
         private CanvasRenderTarget? _upscaledTarget;
 
         private PixelShaderEffect? _upscaleEffect;
         private PixelShaderEffect? _sharpenEffect;
-        // FSR 1.0: EASU (апскейл) + RCAS (резкость) — основной шейдерный
-        // путь; при их отсутствии/ошибке — бикубик + CAS ниже.
+
+
         private PixelShaderEffect? _fsrEasuEffect;
         private PixelShaderEffect? _fsrRcasEffect;
         private bool _shaderPathBroken;
@@ -68,8 +68,6 @@ namespace IptvPlayer.Services
         private bool _loggedScaleInfo;
         private float _cachedDpi = 96f;
 
-        // Сила резкости прохода 2 (0..1). Позже — в настройки.
-        // Для RCAS 0.5 — заметный, 0.8 — агрессивный (почти максимум).
         private const float Sharpening = 0.80f;
 
         /// <summary>
@@ -180,13 +178,6 @@ namespace IptvPlayer.Services
             }
         }
 
-        // Без дебаунса: замеры показали, что создание свапчейна стоит 1–9 мс
-        // (даже 2560x1438), поэтому двойное создание при двух SizeChanged
-        // подряд дешевле, чем любая задержка пересоздания. Дебаунс 50 мс
-        // проверялся и убран: он добавлял 50 мс к ощущаемому развороту.
-        // Момент пересоздания свапчейна: для лога «первый кадр после
-        // пересоздания» — отделяет стоимость D3D-создания от ожидания
-        // первого кадра медиа-движка при объективной проверке разворота.
         private System.Diagnostics.Stopwatch? _recreatedAt;
 
         private void RecreateSwapChain()
@@ -212,7 +203,7 @@ namespace IptvPlayer.Services
                 _panel.SwapChain = new CanvasSwapChain(_canvasDevice, w, h, 60f,
                     DirectXPixelFormat.B8G8R8A8UIntNormalized, 2, CanvasAlphaMode.Ignore);
                 var createMs = sw.Elapsed.TotalMilliseconds;
-                _upscaledTarget = null; // пересоздаётся в Render под новый размер
+                _upscaledTarget = null;
                 _recreatedAt = System.Diagnostics.Stopwatch.StartNew();
                 _logger.LogInformation(
                     "FrameServerRenderer: свапчейн {W}x{H} (dpi {Dpi:F0}, scale {Scale:F2}) за {Ms:F0} мс.",
@@ -239,8 +230,8 @@ namespace IptvPlayer.Services
 
             if (Interlocked.Exchange(ref _drawing, 1) == 1)
             {
-                // Кадр уже рисуется — пропускаем: рисование медленнее доставки
-                // кадров, без пропуска очередь росла бы бесконечно.
+
+
                 return;
             }
 
@@ -250,7 +241,7 @@ namespace IptvPlayer.Services
             }
             catch (Exception ex)
             {
-                // Без лимита ошибка рендера сыпалась бы 30-60 раз в секунду.
+
                 if (_errorCount < 5)
                 {
                     _errorCount++;
@@ -278,8 +269,6 @@ namespace IptvPlayer.Services
                 return;
             }
 
-            // Приёмник кадра — в разрешении потока: масштабирование делаем
-            // сами шейдером, а не билинейно в CopyFrameToVideoSurface.
             var frameW = _streamWidth > 0 ? _streamWidth : w;
             var frameH = _streamHeight > 0 ? _streamHeight : h;
             if (_frameSurface is null || _frameWidth != frameW || _frameHeight != frameH)
@@ -288,17 +277,17 @@ namespace IptvPlayer.Services
                 _frameSurface = Direct3DInterop.CreateBgraSurface(_nativeDevice, frameW, frameH);
                 _frameWidth = frameW;
                 _frameHeight = frameH;
-                // Сообщаем медиа-движку размер приёмника.
+
                 sender.SetSurfaceSize(new Size(frameW, frameH));
             }
 
-            // Кадр: медиа-движок → наша текстура (GPU, 1:1 без масштаба).
+
             sender.CopyFrameToVideoSurface(_frameSurface);
 
             using var bitmap = CanvasBitmap.CreateFromDirect3D11Surface(
                 _canvasDevice, _frameSurface);
 
-            // Приоритет путей: FSR 1.0 → бикубик + CAS → линейный.
+
             var fsrReady = _fsrEasuEffect != null && _fsrRcasEffect != null;
             var bicubicReady = _upscaleEffect != null && _sharpenEffect != null;
             var shaderMode =
@@ -319,7 +308,7 @@ namespace IptvPlayer.Services
             }
             catch (Exception ex)
             {
-                // Однократный откат: шейдерный путь не работает на этом GPU.
+
                 _shaderPathBroken = true;
                 _logger.LogWarning(ex, "FrameServerRenderer: шейдерный путь отключён, откат на линейный.");
                 DrawDirect(swapChain, bitmap, w, h);
@@ -336,9 +325,6 @@ namespace IptvPlayer.Services
                     VideoStretchMode, _streamWidth, _streamHeight, w, h, dstW, dstH, sx, sy, shaderMode);
             }
 
-            // Первый кадр после пересоздания свапчейна: отделяет стоимость
-            // D3D-создания от ожидания кадра медиа-движка (диагностика
-            // ощущаемой задержки разворота в fullscreen).
             var recreated = _recreatedAt;
             if (recreated != null)
             {
@@ -353,9 +339,7 @@ namespace IptvPlayer.Services
             PixelShaderEffect upscale, PixelShaderEffect sharpen,
             int frameW, int frameH, int w, int h, bool fsr)
         {
-            // Коэффициент масштабирования по режиму VideoStretchMode:
-            // Uniform — вписать (min), UniformToFill — заполнить (max, края
-            // обрезаются), Fill — по каждой оси своя пропорция.
+
             var (scale, scaleX, scaleY) = ComputeScale(frameW, frameH, w, h);
             var dstW = Math.Max(1, (int)MathF.Round(frameW * scaleX));
             var dstH = Math.Max(1, (int)MathF.Round(frameH * scaleY));
@@ -365,23 +349,19 @@ namespace IptvPlayer.Services
             upscale.Source1 = bitmap;
             upscale.Properties["srcSize"] = new Vector2(frameW, frameH);
             upscale.Properties["dstSize"] = new Vector2(dstW, dstH);
-            // OneToOne: uv входа считается по обратной трансформации сцены —
-            // под Transform2D uv покрывает 0..1 независимо от масштаба.
+
+
             upscale.Source1Mapping = SamplerCoordinateMapping.OneToOne;
-            // Свою фильтрацию делает шейдер — сэмплер точечный, клип по краю.
+
             upscale.Source1Interpolation = CanvasImageInterpolation.NearestNeighbor;
             upscale.Source1BorderMode = EffectBorderMode.Hard;
 
-            // Выход шейдера по умолчанию имеет размер входа; масштабируем его
-            // ЕДИНЫМ коэффициентом до размера вписанного кадра (без растяжения).
             var stretch = new Transform2DEffect
             {
                 Source = upscale,
                 TransformMatrix = System.Numerics.Matrix3x2.CreateScale(scaleX, scaleY)
             };
 
-            // Проход 1: бикубический апскейл в промежуточную цель размером
-            // вписанного кадра (чёрные поля добавляются на шаге вывода).
             var dpi = _cachedDpi;
             if (_upscaledTarget is null ||
                 _upscaledTarget.SizeInPixels.Width != dstW ||
@@ -397,14 +377,11 @@ namespace IptvPlayer.Services
                 s1.DrawImage(stretch, new Vector2(0, 0));
             }
 
-            // Проход 2: адаптивная резкость (вход и выход одного размера,
-            // 1:1 — трансформация не нужна); кадр выводится по центру окна,
-            // свободное место остаётся чёрным (letterbox/pillarbox).
             sharpen.Source1 = _upscaledTarget;
             sharpen.Properties["dstSize"] = new Vector2(dstW, dstH);
             if (fsr)
             {
-                // RCAS: 0..1 → стопы затухания exp2(-lerp(8..0)).
+
                 sharpen.Properties["sharpness"] = Sharpening;
             }
             else
@@ -444,8 +421,8 @@ namespace IptvPlayer.Services
 
         private void DrawDirect(CanvasSwapChain swapChain, CanvasBitmap bitmap, int w, int h)
         {
-            // Откат без шейдеров: та же логика масштабирования по режиму,
-            // чтобы пропорции совпадали с шейдерным путём.
+
+
             var bw = (float)bitmap.Size.Width;
             var bh = (float)bitmap.Size.Height;
             var (_, sx, sy) = ComputeScale((int)bw, (int)bh, w, h);

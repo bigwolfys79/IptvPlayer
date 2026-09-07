@@ -66,10 +66,7 @@ public class SettingsService : ISettingsService
             }
             catch (Exception ex)
             {
-                // Битый/залоченный файл нельзя молча заменять дефолтами: так
-                // терялись все плейлисты и источники (затирание было замечено
-                // дважды за день). Сохраняем виновника с меткой — его можно
-                // разобрать вручную — и пробуем предыдущую сохранённую копию.
+
                 _logger.LogWarning(ex, "Не удалось загрузить настройки из {Path} — файл сохранён как *.corrupt, пробуем резервную копию.", SettingsPath);
                 TrySnapshotCorruptFile();
                 var restored = TryLoadBackup();
@@ -132,23 +129,16 @@ public class SettingsService : ISettingsService
                 var toSave = ProtectSecrets(settings);
                 var json = JsonSerializer.Serialize(toSave, JsonOptions);
 
-                // Атомарная запись: сначала во временный файл, затем замена.
-                // Прямая запись в settings.json при сбое процесса/блокировке
-                // другим экземпляром (приложение живёт в трее) оставляла
-                // битый JSON, который при следующем старте заменялся
-                // дефолтами — с потерей всех плейлистов.
                 var tempPath = SettingsPath + ".tmp";
                 await File.WriteAllTextAsync(tempPath, json).ConfigureAwait(false);
 
-                // Повторы: параллельный экземпляр (сворачивание в трей)
-                // может удерживать файл во время замены — даём ему время.
                 for (var attempt = 1; ; attempt++)
                 {
                     try
                     {
                         if (File.Exists(SettingsPath))
                         {
-                            // Прошлая успешная запись — страховка от порчи нового.
+
                             File.Copy(SettingsPath, SettingsPath + ".prev", overwrite: true);
                         }
                         File.Move(tempPath, SettingsPath, overwrite: true);

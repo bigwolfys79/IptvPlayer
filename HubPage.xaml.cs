@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -46,9 +46,6 @@ public sealed partial class HubPage : Page
         Loaded += HubPage_Loaded;
         Unloaded += HubPage_Unloaded;
 
-        // Esc закрывает flyout. Обработчик ProcessKeyboardAccelerators не
-        // создаёт подсказок с клавишей на элементе (в отличие от
-        // KeyboardAccelerator, который WinUI показывает как тултип).
         ProcessKeyboardAccelerators += HubPage_ProcessKeyboardAccelerators;
     }
 
@@ -63,9 +60,7 @@ public sealed partial class HubPage : Page
 
     private async void HubPage_Loaded(object sender, RoutedEventArgs e)
     {
-        // Повторный показ (возврат из MainPage по Esc): инициализация уже
-        // сделана, достаточно обновить приветствие и тултипы (язык мог
-        // измениться в настройках) и запустить остановленный таймер.
+
         if (_initialized)
         {
             UpdateLocalizedTexts();
@@ -80,8 +75,6 @@ public sealed partial class HubPage : Page
         {
             _settings = await _settingsService.LoadAsync();
 
-            // Первый запуск: нет ни одного источника — предлагаем добавить,
-            // вместо молчаливого переброса на MainPage.
             if (_settings.Playlists.Count == 0)
             {
                 await ShowWelcomeDialogAsync();
@@ -108,8 +101,6 @@ public sealed partial class HubPage : Page
                     var key = p.Key;
                     var episodeIndex = p.Value.EpisodeIndex;
 
-                    // Локальный файл (карточка «Видео»): ключ «file::путь» —
-                    // открывается как LocalVideoFile, а не через портал.
                     if (key.StartsWith(LocalFileKeyPrefix, StringComparison.Ordinal))
                     {
                         var path = key[LocalFileKeyPrefix.Length..];
@@ -151,10 +142,6 @@ public sealed partial class HubPage : Page
     {
         if (_settings == null) return;
 
-        // «Последний канал»: только среди обычных M3U-плейлистов — у порталов
-        // в LastWatchedChannel попадают и фильмы видеотеки, они в flyout
-        // плейлистов неуместны. Приоритет — активный плейлист, иначе первый
-        // с запомненным каналом.
         _lastWatchedPlaylist =
             _settings.Playlists.FirstOrDefault(p => !p.IsPortal && p.Id == _settings.ActivePlaylistId && !string.IsNullOrEmpty(p.LastWatchedChannel)) ??
             _settings.Playlists.FirstOrDefault(p => !p.IsPortal && !string.IsNullOrEmpty(p.LastWatchedChannel));
@@ -248,14 +235,12 @@ public sealed partial class HubPage : Page
             CloseFlyout();
     }
 
-    // ── Анимации (Storyboard, без циклов Task.Delay) ──────────────────────
-
     private async System.Threading.Tasks.Task AnimateIn()
     {
         MainPanel.Opacity = 0;
         MainPanel.Visibility = Visibility.Visible;
 
-        // Возврат в хаб: без вводной анимации, всё сразу в конечном состоянии.
+
         if (_introPlayed)
         {
             AccentLineTransform.ScaleX = 1;
@@ -270,14 +255,14 @@ public sealed partial class HubPage : Page
 
         ApplyGreetingShadow();
 
-        // Заголовок: плавное появление
+
         await RunStoryboard(new DoubleAnimation
         {
             From = 0, To = 1, Duration = TimeSpan.FromMilliseconds(200),
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         }, MainPanel, "Opacity");
 
-        // Все последующие анимации — параллельно: линия + карточки со сдвигом старта
+
         var sb = new Storyboard();
         AddAnimation(sb, AccentLineTransform, "ScaleX", 0, 1, 400, 250);
         AddCardAnimation(sb, PlaylistsTransform, -180, 0);
@@ -286,7 +271,7 @@ public sealed partial class HubPage : Page
         AddCardAnimation(sb, SettingsTransform, 180, 120);
         await RunStoryboard(sb);
 
-        // Плашка «Продолжить просмотр» — после карточек
+
         if (ContinueButton.Visibility == Visibility.Visible)
         {
             var fade = new Storyboard();
@@ -335,7 +320,7 @@ public sealed partial class HubPage : Page
         return tcs.Task;
     }
 
-    // Перегрузка для одной анимации на свойстве элемента (напр. Opacity).
+
     private static System.Threading.Tasks.Task RunStoryboard(DoubleAnimation anim,
         DependencyObject target, string property)
     {
@@ -364,9 +349,7 @@ public sealed partial class HubPage : Page
 
     private void SetupFlyoutShadow()
     {
-        // ThemeShadow не позволяет использовать предок элемента как
-        // приёмник (RootGrid — предок FlyoutBorder), поэтому применяем
-        // тень через Composition DropShadow API (отдельный SpriteVisual).
+
         try
         {
             var visual = ElementCompositionPreview.GetElementVisual(FlyoutBorder);
@@ -387,8 +370,6 @@ public sealed partial class HubPage : Page
             Serilog.Log.Warning(ex, "HubPage: Composition DropShadow не настроен, тень отключена");
         }
     }
-
-    // ── Приветствие первого запуска ───────────────────────────────────────
 
     private async System.Threading.Tasks.Task ShowWelcomeDialogAsync()
     {
@@ -416,11 +397,7 @@ public sealed partial class HubPage : Page
     private async System.Threading.Tasks.Task OpenPlaylistSettingsAsync()
     {
         var viewModel = App.Services.GetRequiredService<MainPageViewModel>();
-        // Сессия могла начаться с хаба — тогда MainPage не инициализировал
-        // вьюмодель, и AppSettings там пустая заготовка: любой диалог,
-        // сохраняющий её, стёр бы плейлисты из settings.json. Подставляем
-        // реальные настройки (LoadAsync отдаёт один и тот же закэшированный
-        // экземпляр, так что после MainPage это присваивание — no-op).
+
         viewModel.AppSettings = await _settingsService.LoadAsync();
         var m3uParser = App.Services.GetRequiredService<IM3UParserService>();
         var channelRepo = App.Services.GetRequiredService<IChannelRepository>();
@@ -429,20 +406,15 @@ public sealed partial class HubPage : Page
         var d = new Dialogs.PlaylistSettingsDialog(viewModel, _settingsService, m3uParser, channelRepo, cacheService, logger, _ => System.Threading.Tasks.Task.CompletedTask);
         await d.ShowAsync(Content.XamlRoot);
 
-        // Диалог мог добавить/удалить источники — перечитываем кэш настроек и
-        // производные данные (последний канал, плашка), чтобы flyout'ы хаба
-        // не показывали устаревший список до перезапуска.
         _settings = await _settingsService.LoadAsync();
         RefreshDerived();
     }
-
-    // ── Кастомный flyout ──────────────────────────────────────────────────
 
     private enum FlyoutType { Playlists, Portal, Settings }
 
     private void ShowCustomFlyout(FlyoutType type, FrameworkElement anchor)
     {
-        // Повторный клик по той же карточке закрывает flyout.
+
         if (_openFlyout == type)
         {
             CloseFlyout();
@@ -463,19 +435,16 @@ public sealed partial class HubPage : Page
             ? new Windows.Foundation.Size(XamlRoot.Size.Width, XamlRoot.Size.Height)
             : new Windows.Foundation.Size(1280, 800);
 
-        // Позиция кнопки относительно страницы
+
         var transform = anchor.TransformToVisual(null);
         var anchorTop = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
         var anchorBottom = transform.TransformPoint(new Windows.Foundation.Point(0, anchor.ActualHeight));
 
-        // Список может быть длиннее экрана («Недосмотренные» и т.п.) —
-        // ограничиваем высоту местом под карточкой (или над ней, если снизу
-        // мало) и даём прокрутку.
         var spaceBelow = windowSize.Height - 20 - anchorBottom.Y - 8;
         var spaceAbove = anchorTop.Y - 8 - 20;
         FlyoutScroll.MaxHeight = Math.Max(200, Math.Max(spaceBelow, spaceAbove));
 
-        // Измерение без показа: Measure + DesiredSize вместо трюка с Opacity=0.
+
         FlyoutBorder.Measure(new Windows.Foundation.Size(
             Math.Max(0, windowSize.Width - 32), Math.Max(0, windowSize.Height - 32)));
         double flyoutW = FlyoutBorder.DesiredSize.Width;
@@ -484,15 +453,15 @@ public sealed partial class HubPage : Page
         double left = anchorTop.X + (anchor.ActualWidth / 2) - (flyoutW / 2);
         double top = anchorBottom.Y + 8;
 
-        // Если не вмещается снизу — показываем над кнопкой
+
         if (top + flyoutH > windowSize.Height - 20)
             top = anchorTop.Y - flyoutH - 8;
 
-        // Если обрезается справа
+
         if (left + flyoutW > windowSize.Width - 20)
             left = windowSize.Width - flyoutW - 20;
 
-        // Если обрезается слева
+
         if (left < 20)
             left = 20;
 
@@ -537,7 +506,7 @@ public sealed partial class HubPage : Page
         }
         else
         {
-            // Несколько источников — выбор по имени; активный отмечен галочкой.
+
             foreach (var playlist in m3us)
             {
                 var captured = playlist;
@@ -586,8 +555,6 @@ public sealed partial class HubPage : Page
             }
         }
 
-        // Недосмотренные — только портал: локальные файлы (карточка «Видео»)
-        // в списке портала неуместны, они показываются плашкой «Продолжить».
         var portalResumeItems = _vodResumeItems.Where(i => i.LocalPath == null).ToList();
         if (portalResumeItems.Count > 0)
         {
@@ -623,27 +590,27 @@ public sealed partial class HubPage : Page
         {
             CloseFlyout();
             var viewModel = App.Services.GetRequiredService<MainPageViewModel>();
-            // Как в OpenPlaylistSettingsAsync: без этого диалог из хаба
-            // сохранил бы пустую заготовку AppSettings поверх настроек.
+
+
             viewModel.AppSettings = await _settingsService.LoadAsync();
             var d = new Dialogs.InterfaceSettingsDialog(viewModel, _settingsService, _ => { });
             await d.ShowAsync(Content.XamlRoot);
-            // Смена языка/темы — обновляем локализованные тексты хаба.
+
             UpdateLocalizedTexts();
         });
         AddFlyoutItem("\uE769", L.T("Vosproizvedenie_Lbl"), null, async (_, _) =>
         {
             CloseFlyout();
             var viewModel = App.Services.GetRequiredService<MainPageViewModel>();
-            // Как в OpenPlaylistSettingsAsync: без этого диалог из хаба
-            // сохранил бы пустую заготовку AppSettings поверх настроек.
+
+
             viewModel.AppSettings = await _settingsService.LoadAsync();
             var streamService = App.Services.GetRequiredService<IStreamService>();
             var d = new Dialogs.PlaybackSettingsDialog(viewModel, _settingsService, streamService);
             await d.ShowAsync(Content.XamlRoot);
         });
 
-        // Лицензия и «О программе» — те же диалоги, что в меню основного окна.
+
         AddFlyoutItem("\uEC4B", L.T("License_Dialog_Title"), null, async (_, _) =>
         {
             CloseFlyout();
@@ -679,7 +646,7 @@ public sealed partial class HubPage : Page
 
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
         {
-            // Откладываем до закрытия приложения — как в MainPage.
+
             App.PendingUpdateSetupPath = setupPath;
             return;
         }
@@ -787,8 +754,6 @@ public sealed partial class HubPage : Page
         });
     }
 
-    // ── Справка по горячим клавишам ───────────────────────────────────────
-
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
         ShowHotkeysDialog();
@@ -882,8 +847,6 @@ public sealed partial class HubPage : Page
         await dialog.ShowAsync();
     }
 
-    // ── Навигация ─────────────────────────────────────────────────────────
-
     private void PlaylistsButton_Click(object sender, RoutedEventArgs e)
     {
         ShowCustomFlyout(FlyoutType.Playlists, PlaylistsButton);
@@ -969,7 +932,7 @@ public sealed partial class HubPage : Page
     {
         var (title, rawTitle, episodeIndex, position, playlistId, localPath) = item;
 
-        // Локальный файл — играем напрямую, портал не нужен.
+
         if (localPath != null)
         {
             CloseFlyout();

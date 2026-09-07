@@ -20,9 +20,6 @@ using IptvPlayer.Controls;
 using IptvPlayer.ViewModels;
 using Windows.System;
 using Windows.UI.Core;
-// Windows.Media.Playback.MediaPlayer конфликтует по имени с x:Name="MediaPlayer"
-// (MediaPlayerElement) в разметке, поэтому в коде тип всегда указывается
-// с полным неймспейсом: Windows.Media.Playback.MediaPlayer.
 
 namespace IptvPlayer;
 
@@ -34,14 +31,11 @@ namespace IptvPlayer;
 /// </summary>
 public sealed partial class MainPage
 {
-    // ===================== Горячие клавиши =====================
 
-    // Ввод номера канала цифрами, как в телевизоре: до 4 цифр, коммит по
-    // Enter или таймауту 3 с, Backspace стирает последнюю, Esc отменяет.
     private string _channelNumberInput = string.Empty;
     private readonly DispatcherTimer _channelNumberInputTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
-    // Подписка горячих клавиш на корень XamlRoot (см. конструктор) — один раз.
+
     private bool _hotkeysAttached;
 
     /// <summary>
@@ -57,22 +51,20 @@ public sealed partial class MainPage
     /// </summary>
     private void OnPagePreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        // Открытый ContentDialog (настройки и др.) живёт в слое того же корня —
-        // его клавиши (стрелки по радиокнопкам, ввод в поля) не должны
-        // запускать горячие клавиши приложения.
+
         if (IsFocusedWithin(element => element is ContentDialog))
         {
             return;
         }
 
-        // Ctrl-комбинации работают и когда фокус уже в поле ввода.
+
         if (InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
                 .HasFlag(CoreVirtualKeyStates.Down))
         {
             switch (e.Key)
             {
                 case VirtualKey.F:
-                    // Фокус в поиск (в fullscreen поиска нет — панель свёрнута).
+
                     if (!_isFullScreen)
                     {
                         ChannelSearchBox.Focus(FocusState.Keyboard);
@@ -82,33 +74,31 @@ public sealed partial class MainPage
                     return;
 
                 case VirtualKey.J:
-                    // Оверлей статистики потока — как в VLC.
+
                     ToggleStatsOverlay();
                     e.Handled = true;
                     return;
 
                 case VirtualKey.M:
-                    // Мини-плеер: компактное окно поверх всех окон.
+
                     ToggleMiniPlayer();
                     e.Handled = true;
                     return;
 
                 case VirtualKey.T:
-                    // «Поверх всех окон» без смены размера (мини-плеер).
+
                     ToggleAlwaysOnTop();
                     e.Handled = true;
                     return;
             }
         }
 
-        // Набор текста (поиск) — остальные клавиши уходят в поле ввода.
+
         if (IsTextInputFocused())
         {
             return;
         }
 
-        // Идёт ввод номера канала: цифры, Enter, Backspace и Esc обслуживают
-        // его в первую очередь.
         if (_channelNumberInput.Length > 0)
         {
             switch (e.Key)
@@ -147,16 +137,14 @@ public sealed partial class MainPage
         switch (e.Key)
         {
             case VirtualKey.Back:
-                // «Предыдущий канал» — как кнопка «назад» пульта. Ввод номера
-                // канала и текстовые поля перехватили Backspace выше.
+
+
                 ViewModel.GoToPreviousChannelCommand.Execute(null);
                 e.Handled = true;
                 break;
 
             case VirtualKey.Space:
-                // Пауза живого эфира намеренно не поддерживается — как и кнопка
-                // паузы в панелях. Пробел работает на архиве и на VOD портала
-                // (VOD перематывается/паузится самим движком без рестарта).
+
                 if ((Player.IsArchivePlaying || Player.IsVodPlaying) && Player.Player != null)
                 {
                     ViewModel.ToggleArchivePauseCommand.Execute(null);
@@ -170,7 +158,7 @@ public sealed partial class MainPage
                 break;
 
             case VirtualKey.V:
-                // Режим отображения: вписать → растянуть → обрезать → …
+
                 CycleVideoStretch();
                 e.Handled = true;
                 break;
@@ -181,16 +169,14 @@ public sealed partial class MainPage
                 break;
 
             case VirtualKey.Escape:
-                // Сначала: возврат в Hub (если пришли из Hub)
+
                 if (_cameFromHub && Frame.CanGoBack)
                 {
                     Frame.GoBack();
                     e.Handled = true;
                     break;
                 }
-                // Esc в fullscreen сначала закрывает открытое EPG-окно
-                // (пока курсор над ним, оверлей с кнопками не показывается),
-                // повторное нажатие — выход из полноэкранного режима.
+
                 if (ViewModel.IsEpgVisible)
                 {
                     ViewModel.IsEpgVisible = false;
@@ -206,9 +192,7 @@ public sealed partial class MainPage
 
             case VirtualKey.PageUp or VirtualKey.Up
                 or VirtualKey.PageDown or VirtualKey.Down:
-                // Стрелки и PgUp/PgDn заняты у элементов, которые ими управляются
-                // (список каналов/передач, слайдер перемотки, комбобокс групп) —
-                // там каналы клавишами не переключаем.
+
                 if (IsNavigationControlFocused())
                 {
                     return;
@@ -223,7 +207,7 @@ public sealed partial class MainPage
     /// <summary>
     /// Переключение на соседний канал текущего (отфильтрованного) списка с
     /// заходом по кругу. В fullscreen заодно показывается полноэкранный оверлей
-    /// — название канала живёт в его шапке, без оверлея переключение вслепую.
+    /// — название канала отображается в его шапке, без оверлея переключение происходит без индикации канала.
     /// </summary>
     private void ZapToAdjacentChannel(int offset)
     {
@@ -236,8 +220,8 @@ public sealed partial class MainPage
         var index = ViewModel.SelectedChannel is { } current ? channels.IndexOf(current) : -1;
         if (index < 0)
         {
-            // Выбранный канал вне фильтра: шаг вперёд даёт первый, назад —
-            // последний (телевизорная семантика обхода по кругу).
+
+
             index = offset >= 0 ? -1 : 0;
         }
         var next = (index + offset + channels.Count) % channels.Count;
@@ -254,8 +238,6 @@ public sealed partial class MainPage
             _overlayHideTimer.Start();
         }
     }
-
-    // ===================== Ввод номера канала =====================
 
     private void HandleChannelNumberDigit(int digit)
     {
@@ -330,8 +312,6 @@ public sealed partial class MainPage
         }
         return -1;
     }
-
-    // ===================== Фокус и границы перехвата =====================
 
     /// <summary>Фокус в поле текстового ввода (поиск) — клавиши идут туда.</summary>
     private bool IsTextInputFocused() =>

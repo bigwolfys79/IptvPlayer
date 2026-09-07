@@ -21,8 +21,8 @@ public static class EpgTimelineScale
 
 /// <summary>
 /// Раньше конвертер просто возвращал TimeSpan.TotalSeconds без какого-либо
-/// масштаба — на 24-часовой шкале в пикселях это давало бессмысленные числа
-/// и по факту не работало. Теперь: X = (StartTime - WindowStart) * PixelsPerHour,
+/// масштаба — на 24-часовой шкале в пикселях это давало некорректные числа
+/// и фактически не работало. Теперь: X = (StartTime - WindowStart) * PixelsPerHour,
 /// привязывается к Canvas.Left программы на общей 120-часовой шкале
 /// [now-72h .. now+48h].
 /// </summary>

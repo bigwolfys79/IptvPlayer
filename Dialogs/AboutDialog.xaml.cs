@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using IptvPlayer.Services;
 using Microsoft.UI.Xaml;
@@ -59,8 +59,6 @@ public sealed partial class AboutDialog : UserControl
             string.Format(L.T("Nastroyki_I_Kesh_0_IptvPlayer"), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)) + "\n" +
             string.Format(L.T("Log_0"), App.LogDirectory, App.LogDirectory);
 
-        // Каждый показ диалога начинается заново: прежний результат проверки
-        // внутри одного запуска приложения уже неактуален.
         _update = null;
         CheckUpdateButton.Content = L.T("Proverit_Obnovleniya");
         UpdateStatusText.Visibility = Visibility.Collapsed;
@@ -85,7 +83,7 @@ public sealed partial class AboutDialog : UserControl
         }
         catch
         {
-            // Unpackaged-сборка (Inno Setup) — берём версию сборки.
+
             return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0";
         }
     }
@@ -149,8 +147,6 @@ public sealed partial class AboutDialog : UserControl
 
             UpdateStatusText.Text = string.Format(L.T("Ustanovshchik_Versii_0_Skachan"), _update.Version, _update.Version);
 
-            // Дальше идёт другой ContentDialog («Установить сейчас?»), а два
-            // одновременно открытыми быть не могут; даём этому закрыться.
             _hostDialog?.Hide();
             await Task.Delay(50);
 

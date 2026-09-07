@@ -138,8 +138,6 @@ public class ParentalControlServiceTests
             ParentalControlService.HashPin("1234"));
     }
 
-    // ===================== Дневной лимит просмотра =====================
-
     private static readonly DateTime Day = new(2026, 9, 4, 15, 0, 0);
 
     [Fact]
@@ -186,7 +184,7 @@ public class ParentalControlServiceTests
     [Fact]
     public void DailyLimit_ResetDoesNotExtendBeyondLimit()
     {
-        // После достижения лимита счётчик не «перескакивает» при чтении.
+
         var s = Settings();
         s.ParentalDailyLimitMinutes = 30;
         ParentalControlService.AddWatchedSeconds(s, 30 * 60, Day);
@@ -208,7 +206,7 @@ public class ParentalControlServiceTests
         s.ParentalDailyLimitMinutes = 60;
         ParentalControlService.AddWatchedSeconds(s, 59, Day);
         Assert.False(ParentalControlService.IsDailyLimitReached(s, Day));
-        // Осталась 59 мин 1 с непросмотренных — показываем как 60 мин.
+
         Assert.Equal(60, ParentalControlService.GetRemainingMinutes(s, Day));
     }
 

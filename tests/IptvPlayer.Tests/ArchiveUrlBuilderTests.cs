@@ -28,7 +28,7 @@ public class ArchiveUrlBuilderTests
         Assert.Contains("utc=", url);
         Assert.Contains("lutc=", url);
 
-        // utc — epoch-секунды начала передачи в локальном времени.
+
         var expectedUtc = new DateTimeOffset(programStart).ToUnixTimeSeconds();
         Assert.Contains($"utc={expectedUtc}", url);
     }

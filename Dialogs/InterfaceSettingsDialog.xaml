@@ -6,16 +6,12 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- Быстрый доступ к разделу интерфейса полного SettingsDialog: язык,
-         тема и действие таймера сна. Комбобоксы и радиогруппы наполняются
-         в code-behind (LoadAsync) с Tag-значениями. -->
     <StackPanel Spacing="12" Width="480">
         <TextBlock x:Name="TitleText" x:Uid="Nastroyki_Interfeysa" FontSize="20" FontWeight="SemiBold"/>
 
         <ScrollViewer MaxHeight="440" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="12" Spacing="16">
 
-                <!-- Язык -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="LanguageHeader" x:Uid="YAzyk_Interfeysa" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="LanguageHint"
@@ -26,7 +22,6 @@
                     <ComboBox x:Name="LanguageCombo" MinWidth="180" HorizontalAlignment="Left"/>
                 </StackPanel>
 
-                <!-- Тема -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="ThemeHeader" x:Uid="Tema_Interfeysa" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="ThemeHint"
@@ -37,7 +32,6 @@
                     <RadioButtons x:Name="ThemeRadio"/>
                 </StackPanel>
 
-                <!-- Таймер сна -->
                 <StackPanel Spacing="8">
                     <TextBlock x:Name="SleepTimerHeader" x:Uid="Taymer_Sna_Po_Istechenii" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="SleepTimerHint"
@@ -48,7 +42,6 @@
                     <ComboBox x:Name="SleepTimerActionCombo" HorizontalAlignment="Stretch"/>
                 </StackPanel>
 
-                <!-- Трей -->
                 <StackPanel Spacing="8">
                     <ToggleSwitch x:Name="MinimizeToTrayToggle" HorizontalAlignment="Left"/>
                     <TextBlock x:Name="MinimizeToTrayHint" FontSize="11" TextWrapping="Wrap"
@@ -58,14 +51,12 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
 
-                <!-- Обновления -->
                 <StackPanel Spacing="8">
                     <ToggleSwitch x:Name="AutoUpdateToggle" HorizontalAlignment="Left" Toggled="AutoUpdateToggle_Toggled"/>
                     <TextBlock x:Name="AutoUpdateHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
 
-                <!-- Главное меню (Hub Page) -->
                 <StackPanel Spacing="8">
                     <ToggleSwitch x:Name="ShowHubOnStartupToggle" HorizontalAlignment="Left"/>
                     <TextBlock x:Name="ShowHubOnStartupHint" FontSize="11" TextWrapping="Wrap"
@@ -75,7 +66,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CancelButton"
                     x:Uid="Otmena"

@@ -12,7 +12,7 @@ namespace IptvPlayer.Controls;
 /// Fluent Icons / MDL2. Причины ухода от глифов: «точка записи» (E7C8) на
 /// части машин была неотличима от чёрного квадрата, а FontIcon без явного
 /// семейства на Windows 10 вообще рисовал квадратики. Фигуры выглядят
-/// одинаково на любой Windows и красятся явно.
+/// одинаково на любой Windows и окрашиваются явно.
 /// Статичные иконки (настройки, EPG, громкость и пр.) нарисованы прямо
 /// в MainPage.xaml — здесь только то, что пересобирается из кода.
 /// </summary>
@@ -67,8 +67,8 @@ public static class AppIcons
     /// <summary>Треугольник воспроизведения ▶ (продолжение архива).</summary>
     public static Microsoft.UI.Xaml.Shapes.Path Play(double size = 16)
     {
-        // Треугольник строится программно: Geometry.Parse в WinRT нет,
-        // а трёх точек достаточно без XamlReader.
+
+
         var figure = new PathFigure { StartPoint = new Windows.Foundation.Point(4, 2), IsClosed = true };
         figure.Segments.Add(new LineSegment { Point = new Windows.Foundation.Point(13, 8) });
         figure.Segments.Add(new LineSegment { Point = new Windows.Foundation.Point(4, 14) });

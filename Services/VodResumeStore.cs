@@ -27,9 +27,6 @@ public class VodResumeStore
 
     private readonly ILogger<VodResumeStore> _logger;
 
-    // Записи сериализуются: SaveAllAsync вызывается fire-and-forget из
-    // CaptureVodPosition — параллельные вызовы упирались бы в блокировку
-    // записи SQLite и теряли бы сохранение с ошибкой "database is locked".
     private readonly SemaphoreSlim _saveGate = new(1, 1);
 
     public VodResumeStore(ILogger<VodResumeStore> logger)
@@ -58,7 +55,7 @@ public class VodResumeStore
                 );";
             cmd.ExecuteNonQuery();
 
-            // Миграция: добавляем portal_playlist_id если таблица уже существует без него.
+
             try
             {
                 using var alter = connection.CreateCommand();
@@ -67,7 +64,7 @@ public class VodResumeStore
             }
             catch (SqliteException)
             {
-                // Колонка уже существует — нормально.
+
             }
         }
         catch (Exception ex)
@@ -149,7 +146,7 @@ public class VodResumeStore
                 }
             }
 
-            // Удаляем записи, исчезнувшие из словаря (прунинг во ViewModel).
+
             var keys = positions.Keys.ToArray();
             var delete = connection.CreateCommand();
             delete.Transaction = (SqliteTransaction)transaction;

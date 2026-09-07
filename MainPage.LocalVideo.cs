@@ -24,9 +24,6 @@ public sealed partial class MainPage
             var channel = LocalVideoFileService.CreateChannel(file);
             ViewModel.SelectedChannel = channel;
 
-            // Если файл уже смотрели и он не досмотрен до конца — предлагаем
-            // продолжить (тот же диалог, что у VOD портала). Позиция хранится
-            // под ключом «file::путь», отдельно от портала.
             var resume = await ViewModel.OfferLocalFileResumeAsync(file.Path, file.Title);
 
             await Player.StartPlaybackAsync(channel, channel.StreamUrl!, archiveEntry: null,

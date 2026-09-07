@@ -16,8 +16,8 @@ public sealed partial class ThemedContentDialog : ContentDialog
     {
         if (MainWindow.Instance?.Content is FrameworkElement root)
         {
-            // ActualTheme — уже разрешённые Light/Dark даже когда у корня
-            // стоит Default (системная тема).
+
+
             RequestedTheme = root.ActualTheme;
         }
     }

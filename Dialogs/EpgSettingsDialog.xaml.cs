@@ -24,10 +24,6 @@ namespace IptvPlayer.Dialogs
 
         private int _initialArchiveDaysBack;
 
-        // Контейнер-ContentDialog создаётся в ShowAsync; кнопки внутри
-        // UserControl закрывают его через эту ссылку (искать родителя по
-        // визуальному дереву нельзя — им оказывается ContentPresenter
-        // шаблона диалога, а не сам ContentDialog).
         private ContentDialog? _hostDialog;
 
         public EpgSettingsDialog(MainPageViewModel viewModel, ISettingsService settingsService)
@@ -40,8 +36,8 @@ namespace IptvPlayer.Dialogs
         public async Task ShowAsync(XamlRoot xamlRoot)
         {
             await LoadAsync();
-            // Заголовок показывает сам ContentDialog — внутренний TitleText
-            // не нужен, иначе «Настройки EPG» читается дважды.
+
+
             TitleText.Visibility = Visibility.Collapsed;
 
             var dialog = new ThemedContentDialog
@@ -68,7 +64,7 @@ namespace IptvPlayer.Dialogs
             CancelButton.Content = L.T("Otmena_Lbl");
             SaveButton.Content = L.T("Sokhranit_Lbl");
 
-            // Напоминания: за 1/5/10/15/30 минут до начала передачи.
+
             ReminderMinutesCombo.Items.Clear();
             foreach (var minutes in new[] { 1, 5, 10, 15, 30 })
             {
@@ -87,7 +83,7 @@ namespace IptvPlayer.Dialogs
                 ReminderMinutesCombo.SelectedIndex = 1;
             }
 
-            // Периодичность обновления EPG при запуске: 1/3/7 дней или вручную.
+
             EpgRefreshCombo.Items.Clear();
             foreach (var (label, days) in new[]
                      {
@@ -108,7 +104,7 @@ namespace IptvPlayer.Dialogs
                 EpgRefreshCombo.SelectedIndex = 0;
             }
 
-            // Глубина архива: сколько дней назад хранить передачи.
+
             EpgArchiveCombo.Items.Clear();
             foreach (var (label, days) in new[]
                      {
@@ -125,15 +121,15 @@ namespace IptvPlayer.Dialogs
             }
             if (EpgArchiveCombo.SelectedIndex < 0)
             {
-                EpgArchiveCombo.SelectedIndex = 1; // 3 дня — значение по умолчанию.
+                EpgArchiveCombo.SelectedIndex = 1;
             }
             _initialArchiveDaysBack = settings.EpgArchiveDaysBack;
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // Пишем в каноническую копию AppSettings: напоминания и плейлист
-            // могли измениться, пока диалог был открыт.
+
+
             var appSettings = _viewModel.AppSettings;
 
             if (ReminderMinutesCombo.SelectedItem is ComboBoxItem { Tag: int reminderMinutes })
@@ -153,10 +149,7 @@ namespace IptvPlayer.Dialogs
 
             if (appSettings.EpgArchiveDaysBack != _initialArchiveDaysBack)
             {
-                // Кэш источников спарсен со старым окном (фильтр по датам
-                // применён при парсинге) — без перезагрузки новая глубина
-                // не подхватится. Fire-and-forget: диалог закрывается сразу,
-                // перекачка идёт фоном.
+
                 _initialArchiveDaysBack = appSettings.EpgArchiveDaysBack;
                 _ = RefreshEpgInBackgroundAsync();
             }
@@ -172,8 +165,8 @@ namespace IptvPlayer.Dialogs
             }
             catch
             {
-                // RefreshEPGAsync логирует ошибку сама и ретбросит исключение;
-                // здесь ретбросить некому (fire-and-forget) — просто гасим.
+
+
             }
         }
 

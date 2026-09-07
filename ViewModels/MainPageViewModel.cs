@@ -31,9 +31,6 @@ public partial class MainPageViewModel : ObservableObject
     private readonly Dictionary<string, VodResumePosition> _vodResumePositions = new();
     private readonly ILogger<MainPageViewModel> _logger;
 
-    // Все свойства ниже — ручные (поле + SetProperty) вместо [ObservableProperty]:
-    // сгенерированные генератором в WinUI-сценариях не создают WinRT-проекторов
-    // (предупреждение MVVMTK0045), а семантика INotifyPropertyChanged та же.
     private EpgViewModel _epgViewModel;
 
     public EpgViewModel EpgViewModel
@@ -178,8 +175,6 @@ public partial class MainPageViewModel : ObservableObject
 
     public Visibility IsYearFilterVisible => Years.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
 
-    // ===================== Тип контента видео-портала =====================
-
     private static string AllContentTypesOption => L.T("Vse_Tipy");
 
     private string _selectedContentType = AllContentTypesOption;
@@ -269,8 +264,6 @@ public partial class MainPageViewModel : ObservableObject
     /// </summary>
     public AppSettings AppSettings { get; set; } = new();
 
-    // ===================== Таймер сна =====================
-
     private DateTime? _sleepTimerEndTime;
 
     /// <summary>Время срабатывания таймера сна (UTC) или null, если не активен.</summary>
@@ -341,8 +334,6 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
-    // ===================== События =====================
-
     /// <summary>Сменилось состояние записи — обновить кнопки в панелях.</summary>
     public event EventHandler? RecordingChanged;
 
@@ -386,22 +377,14 @@ public partial class MainPageViewModel : ObservableObject
         _logger = logger;
         Player = player;
         Recording = recording;
-        _selectedChannel = new ChannelViewModel(); // избегаем null для x:Bind путей
+        _selectedChannel = new ChannelViewModel();
 
-        // Старт/фinish любой записи (в т.ч. самозавершение по -t) обновляет
-        // состояние кнопок: IsRecording = «ТЕКУЩИЙ канал пишется», а не «хоть
-        // что-то пишется» — записей теперь может быть несколько.
         Recording.RecordingsChanged += (s, e) =>
         {
             IsRecording = Recording.IsRecordingStream(SelectedChannel?.StreamUrl);
             RecordingChanged?.Invoke(this, EventArgs.Empty);
         };
 
-        // После (пере)загрузки EPG пересобираем DisplayedChannels — обновлённые
-        // иконки и текущие передачи гарантированно перерисовываются, даже если
-        // PropertyChanged пришёл из фонового потока и привязка его не получила.
-        // Выбранный канал восстанавливаем: Clear() внутри FilterChannels
-        // сбрасывает SelectedItem ListView в null.
         _epgViewModel.EpgReloaded += (_, _) =>
         {
             var selected = SelectedChannel;
@@ -410,11 +393,6 @@ public partial class MainPageViewModel : ObservableObject
         };
     }
 
-    // ===================== Автоматические реакции на смену свойств =====================
-
-    // Поиск по каталогу портала — это тысячи элементов: пересборка списка
-    // (FilterChannels + сгруппированный оверлей) на каждый символ намертво
-    // вешала UI. Фильтруем один раз, когда пользователь перестал печатать.
     private System.Threading.CancellationTokenSource? _searchDebounceCts;
 
     private void OnSearchQueryChanged(string value)
@@ -488,9 +466,6 @@ public partial class MainPageViewModel : ObservableObject
         _portalSeasonGroups = null;
     }
 
-    // ===================== Сезоны портала =====================
-    // Сезоны сериала — отдельные элементы каталога («Название. Сезон N» /
-    // «Сезон N-M»); группировка по базовому названию даёт комбобокс сезона.
     private Dictionary<string, List<ChannelViewModel>>? _portalSeasonGroups;
 
     /// <summary>
@@ -580,7 +555,7 @@ public partial class MainPageViewModel : ObservableObject
     /// контроля (или истечения временной разблокировки): если выбранная
     /// группа оказалась скрыта — сбрасываем на «Все группы».
     /// </summary>
-    // ===================== Родительский контроль =====================
+
 
     /// <summary>
     /// UI показывает диалог PIN (с выбором длительности отключения запроса)
@@ -600,8 +575,8 @@ public partial class MainPageViewModel : ObservableObject
     /// </summary>
     private async Task<bool> EnsureChannelAllowedAsync(ChannelViewModel channel)
     {
-        // Дневной лимит просмотра: исчерпан — запуск запрещён до полуночи
-        // (независимо от PIN: разблокировка групп снимает скрытие, но не лимит).
+
+
         if (ParentalControlService.IsDailyLimitReached(AppSettings, DateTime.Now))
         {
             _logger.LogInformation(
@@ -610,9 +585,6 @@ public partial class MainPageViewModel : ObservableObject
             return false;
         }
 
-        // Разблокировка «до переключения» одноразовая: любой следующий запуск
-        // канала (даже того же самого — например, автопродолжение) сбрасывает
-        // её, и PIN запрашивается заново.
         ParentalControlService.ClearChannelUnlock(AppSettings);
 
         if (ParentalControlService.IsChannelAccessible(AppSettings, channel.Name, channel.Group))
@@ -623,14 +595,14 @@ public partial class MainPageViewModel : ObservableObject
         var handler = ParentalUnlockRequested;
         if (handler == null)
         {
-            return false; // некому спросить PIN — не запускаем.
+            return false;
         }
 
         var result = await handler(channel);
         if (result == null)
         {
             _logger.LogInformation("Ввод PIN отменён — канал {Channel} не запущен.", channel.Name);
-            return false; // отменено/неверный PIN.
+            return false;
         }
 
         _logger.LogInformation(
@@ -640,8 +612,8 @@ public partial class MainPageViewModel : ObservableObject
 
         if (result == -1)
         {
-            // Разблокировка только этого канала — до переключения; в
-            // settings.json не пишется.
+
+
             ParentalControlService.UnlockForChannel(AppSettings, channel.Name, channel.Group);
             return true;
         }
@@ -650,8 +622,6 @@ public partial class MainPageViewModel : ObservableObject
         SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
         return true;
     }
-
-    // ===================== Дневной лимит просмотра =====================
 
     /// <summary>Лимит исчерпан во время просмотра — остановить воспроизведение.</summary>
     public event EventHandler? DailyLimitReached;
@@ -697,12 +667,10 @@ public partial class MainPageViewModel : ObservableObject
         }
         else if (!reached)
         {
-            // Лимит снят (смена настроек) или наступил новый день — снова можно объявлять.
+
             _dailyLimitAnnounced = false;
         }
     }
-
-    // ===================== Фильтрация каналов =====================
 
     /// <summary>
     /// Пересчитывает DisplayedChannels с учётом текста поиска, выбранного типа
@@ -722,21 +690,11 @@ public partial class MainPageViewModel : ObservableObject
 
         if (_isPortalSource)
         {
-            // Портал: фильтрацию по типу контента/жанру/году выполняет САМ
-            // сервер в LoadFilteredFromServerAsync → LoadFilteredAsync.
-            // Раньше здесь дополнительно фильтровали по fid из PortalRequest
-            // каждого элемента, но это flick-идентификатор (12345), а не fid
-            // категории (1/2/3...). Сравнение 12345 == 2 всегда ложно, и
-            // список превращался в пустой. Аналогично с жанром/годом:
-            // сервер уже отфильтровал, дублирующий клиентский фильтр
-            // лишь отсекал элементы с незаполненным полем (например, у
-            // части элементов нет year — они бы выпали).
-            // Сейчас доверяем серверу: клиент фильтрует только по строке
-            // поиска (это единственный фильтр, не имеющий серверного аналога).
+
         }
         else
         {
-            // M3U: фильтр по группе + жанру + году целиком на клиенте.
+
             var selectedGroup = SelectedGroup;
             if (!string.IsNullOrEmpty(selectedGroup) && selectedGroup == FavoritesOption)
             {
@@ -770,16 +728,11 @@ public partial class MainPageViewModel : ObservableObject
             }
         }
 
-        // Избранные — наверху списка; порядок остальных — как в источнике.
+
         filtered = filtered.OrderByDescending(c => c.IsFavorite);
 
         var selected = SelectedChannel;
 
-        // Замена коллекции целиком: одна смена ItemsSource вместо тысяч
-        // событий CollectionChanged — на каталоге в 20k+ элементов это
-        // главное, что держало UI при пересборке. Выделение в контролах
-        // восстанавливает MainPage по событию FilterChanged (OneWay-привязка
-        // выделения не перепушит сама — SelectedChannel не меняется).
         DisplayedChannels = new ObservableCollection<ChannelViewModel>(filtered);
 
         if (selected != null && SelectedChannel == null && DisplayedChannels.Contains(selected))
@@ -815,9 +768,6 @@ public partial class MainPageViewModel : ObservableObject
             ? previouslySelected
             : AllGroupsOption;
 
-        // Для портальных источников Genres уже заполнен из manifest в
-        // SetPortalInfo — у каталога жанр не проставлен, и rebuild из
-        // Channels обнулил бы список и скрыл комбобокс. Только M3U.
         if (!_isPortalSource)
         {
             var genres = Channels
@@ -835,7 +785,7 @@ public partial class MainPageViewModel : ObservableObject
                 Genres.Add(genre);
             }
 
-            // При серверной загрузке фильтра не сбрасываем выбранные жанр/год.
+
             if (!_isLoadingFiltered)
             {
                 SelectedGenre = AllGenresOption;
@@ -848,9 +798,6 @@ public partial class MainPageViewModel : ObservableObject
 
         OnPropertyChanged(nameof(IsGenreFilterVisible));
 
-        // Для портальных источников Years уже заполнен из manifest в
-        // SetPortalInfo — rebuild из Channels обнулил бы список и скрыл
-        // комбобокс. Только M3U.
         if (!_isPortalSource)
         {
             var years = Channels
@@ -885,13 +832,9 @@ public partial class MainPageViewModel : ObservableObject
         ChannelCountText = string.Format(L.T("Kanalov_0"), Channels.Count, Channels.Count);
     }
 
-    // ===================== Выбор и воспроизведение канала =====================
-
     /// <summary>История просмотра для кнопки/клавиши «предыдущий канал».</summary>
     public ChannelHistory ChannelHistory { get; } = new();
 
-    // Переход по истории не должен записывать покидаемый канал в историю
-    // снова — иначе «назад» ходил бы по кругу между двумя каналами.
     private bool _navigatingBack;
 
     [RelayCommand]
@@ -926,7 +869,7 @@ public partial class MainPageViewModel : ObservableObject
             return;
         }
 
-        // Запоминаем покидаемый канал как «предыдущий» для кнопки «назад».
+
         if (!_navigatingBack &&
             Player.CurrentPlayerChannelId is int previousId &&
             previousId != channel.Id &&
@@ -935,8 +878,6 @@ public partial class MainPageViewModel : ObservableObject
             ChannelHistory.Record(previous);
         }
 
-        // Повторный клик по каналу, когда играет его архив, должен вернуть
-        // прямой эфир, а не застрять в ветке "тот же канал — пауза/резюм".
         if (Player.CurrentPlayerChannelId != null &&
             (Player.CurrentPlayerChannelId != channel.Id || Player.IsArchivePlaying))
         {
@@ -945,9 +886,6 @@ public partial class MainPageViewModel : ObservableObject
 
         SelectedChannel = channel;
 
-        // Запоминаем последний смотренный канал для автопродолжения
-        // при следующем запуске (дебаунс в code-behind не даёт писать файл на каждый клик).
-        // Пишем в активный плейлист — у каждого плейлиста своё автопродолжение.
         var activePlaylist = AppSettings.Playlists.FirstOrDefault(p => p.Id == AppSettings.ActivePlaylistId);
         if (activePlaylist != null)
         {
@@ -956,15 +894,13 @@ public partial class MainPageViewModel : ObservableObject
         AppSettings.LastWatchedChannel = channel.Name;
         SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
 
-        // Канал заигрывает сразу по выбору — без отдельного нажатия "Воспроизвести".
+
         await PlayChannelAsync(channel);
 
         await EpgViewModel.LoadEPGForChannelAsync(channel.Id);
         ApplyReminderFlags();
         ScrollToProgramRequested?.Invoke(this, EventArgs.Empty);
     }
-
-    // ===================== Архивная передача =====================
 
     /// <summary>
     /// Клик по передаче в списке EPG: уже начавшаяся передача запускается в архиве
@@ -994,7 +930,7 @@ public partial class MainPageViewModel : ObservableObject
         var archiveUrl = ArchiveUrlBuilder.BuildUrl(channel.StreamUrl, entry.StartTime);
         await Player.StartPlaybackAsync(channel, archiveUrl, entry);
 
-        // Запустили архив — EPG-оверлей больше не нужен и только перекрывает видео.
+
         if (IsEpgVisible)
         {
             IsEpgVisible = false;
@@ -1009,8 +945,6 @@ public partial class MainPageViewModel : ObservableObject
     public async Task<bool> PlayChannelAsync(ChannelViewModel channel)
         => await PlayChannelAsync(channel, interactive: true);
 
-    // ===================== EPG =====================
-
     /// <summary>Показ/скрытие EPG-оверлея.</summary>
     [RelayCommand]
     private void ToggleEpg()
@@ -1019,15 +953,13 @@ public partial class MainPageViewModel : ObservableObject
         EpgVisibilityChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    // ===================== Сохранение настроек =====================
-
     /// <summary>Непосредственное сохранение канонической копии настроек.</summary>
     public async Task SaveSettingsAsync()
     {
         try
         {
-            // ConfigureAwait(false): Closed-хук окна вызывает SaveSettingsAsync
-            // через GetResult на UI-потоке — продолжение на Dispatcher дедлочит.
+
+
             await _settingsService.SaveAsync(AppSettings).ConfigureAwait(false);
         }
         catch (Exception ex)

@@ -13,7 +13,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace IptvPlayer;
 
 /// <summary>
-/// Navigation and playlist switching logic.
+/// Логика навигации и переключения плейлистов.
 /// </summary>
 public sealed partial class MainPage : Page
 {
@@ -127,7 +127,7 @@ public sealed partial class MainPage : Page
         ViewModel.AppSettings.ActivePlaylistId = playlist.Id;
         await _settingsService.SaveAsync(ViewModel.AppSettings);
 
-        // Сбрасываем серверные фильтры при смене плейлиста.
+
         if (!playlist.IsPortal)
         {
             ViewModel.ClearPortalInfo();
@@ -151,7 +151,7 @@ public sealed partial class MainPage : Page
 
         ViewModel.Channels = new ObservableCollection<ChannelViewModel>(channels);
 
-        // Избранное глобальное (по имени канала) — переживает переключение.
+
         if (ViewModel.AppSettings.FavoriteChannels.Count > 0)
         {
             var favorites = new HashSet<string>(ViewModel.AppSettings.FavoriteChannels, StringComparer.OrdinalIgnoreCase);
@@ -174,9 +174,6 @@ public sealed partial class MainPage : Page
 
         UpdatePlaylistMenu();
 
-        // EPG у каждого плейлиста свой (источники XMLTV в PlaylistSource):
-        // после смены набора каналов программы перечитываются с источников
-        // нового плейлиста фоном, без очистки дискового кэша общего фида.
         _ = LoadEpgAfterPlaylistSwitchAsync();
     }
 
@@ -202,8 +199,8 @@ public sealed partial class MainPage : Page
     {
         try
         {
-            // Родительский контроль: автопродолжение заблокированной группы
-            // тоже требует PIN — тихо включать такой канал нельзя.
+
+
             if (!await ViewModel.CanPlayChannelAsync(channel))
             {
                 return;
@@ -243,8 +240,6 @@ public sealed partial class MainPage : Page
                     return;
                 }
 
-                // Если есть прямая ссылка из каталога — играем её сразу
-                // (как делает PlayChannelAsync), без flick-запроса.
                 if (!string.IsNullOrWhiteSpace(channel.StreamUrl))
                 {
                     var catalogResume = ViewModel.GetSavedVodPosition(title, episodeIndex);

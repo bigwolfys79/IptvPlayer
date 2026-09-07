@@ -24,8 +24,6 @@ public sealed partial class ParentalControlDialog : UserControl
 
     private ContentDialog? _hostDialog;
 
-    // Список групп перестраивается в LoadSection; галочки мутируют
-    // AppSettings.ParentalControlBlockedGroups напрямую.
     private bool _loadingSection;
 
     public ParentalControlDialog(
@@ -69,7 +67,7 @@ public sealed partial class ParentalControlDialog : UserControl
                 ? string.Format(L.T("Parental_StatusOn"), blockedCount) + " " + pinNote
                 : L.T("Vyklyuchen");
 
-            // Заблокировано → только секция разблокировки с PIN.
+
             var needUnlock = Settings.ParentalControlEnabled && locked;
             UnlockPanel.Visibility = needUnlock ? Visibility.Visible : Visibility.Collapsed;
             EditPanel.Visibility = needUnlock ? Visibility.Collapsed : Visibility.Visible;
@@ -119,7 +117,7 @@ public sealed partial class ParentalControlDialog : UserControl
             .OrderBy(g => g, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        // «Взрослые» группы — наверх, их ищут в первую очередь.
+
         groups = groups
             .OrderByDescending(ParentalControlService.LooksLikeAdultGroup)
             .ToList();
@@ -131,7 +129,7 @@ public sealed partial class ParentalControlDialog : UserControl
             {
                 Content = groupName,
                 IsChecked = ParentalControlService.IsGroupBlocked(Settings, groupName),
-                // Выглядит подсказкой, что группу нашёл автоподбор.
+
                 FontWeight = ParentalControlService.LooksLikeAdultGroup(groupName)
                     ? Microsoft.UI.Text.FontWeights.SemiBold
                     : Microsoft.UI.Text.FontWeights.Normal
@@ -173,7 +171,7 @@ public sealed partial class ParentalControlDialog : UserControl
             return;
         }
 
-        // NumberBox может выдать NaN при вводе мусора — трактуем как 0.
+
         var value = double.IsNaN(args.NewValue) ? 0 : (int)Math.Clamp(args.NewValue, 0, 1440);
         if (value == Settings.ParentalDailyLimitMinutes)
         {
@@ -181,8 +179,8 @@ public sealed partial class ParentalControlDialog : UserControl
         }
 
         Settings.ParentalDailyLimitMinutes = value;
-        // Смена лимита — то же защищённое действие, что и правка списка/PIN:
-        // секция доступна только после разблокировки.
+
+
         await _settingsService.SaveAsync(Settings);
         _logger.LogInformation("Дневной лимит просмотра: {Minutes} мин.", value);
         UpdateDailyLimitRemaining();
@@ -220,7 +218,7 @@ public sealed partial class ParentalControlDialog : UserControl
         if (EnabledToggle.IsOn &&
             Settings.ParentalControlBlockedGroups.Count == 0)
         {
-            // Автопредложение: отмечаем «взрослые» группы плейлиста.
+
             var suggested = ParentalControlService.SuggestBlockedGroups(
                 _viewModel.Channels.Select(c => c.Group));
             Settings.ParentalControlBlockedGroups = suggested;
@@ -271,8 +269,6 @@ public sealed partial class ParentalControlDialog : UserControl
             return;
         }
 
-        // Смена PIN требует знать старый, если он установлен (секция и так
-        // доступна только после разблокировки, но лишний барьер не мешает).
         if (!string.IsNullOrEmpty(Settings.ParentalControlPinHash) &&
             !ParentalControlService.VerifyPin(Settings, PinBox.Password))
         {

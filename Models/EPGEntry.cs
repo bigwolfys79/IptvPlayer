@@ -37,8 +37,8 @@ public partial class EPGEntry : INotifyPropertyChanged
     private bool _isCurrent;
 
     /// <summary>
-    /// Whether this programme is the one currently airing on its channel.
-    /// Set by EpgViewModel when determining the current programme.
+    /// Идёт ли эта передача сейчас в эфире на своём канале.
+    /// Выставляется EpgViewModel при определении текущей передачи.
     /// INPC-свойство (а не авто-свойство): подсветка карточки и полоса
     /// прогресса текущей передачи в EPG-списке переключаются на лету,
     /// когда минутный таймер переносит IsCurrent на новую передачу —
@@ -135,7 +135,7 @@ public partial class EPGEntry : INotifyPropertyChanged
     [MemoryPackIgnore]
     public bool CanPlayArchive => StartTime <= DateTime.Now;
 
-    // UI helper properties
+
     [MemoryPackIgnore]
     public string Title => ProgramName;
 

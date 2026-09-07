@@ -40,7 +40,7 @@ public class ChannelHistoryTests
     [Fact]
     public void Record_SameChannelAfterAnother_IsRecordedAgain()
     {
-        // А → Б → А: «назад» должен вернуть Б, затем А.
+
         var history = new ChannelHistory();
         var a = Channel(1, "Первый");
         var b = Channel(2, "НТВ");
@@ -74,7 +74,7 @@ public class ChannelHistoryTests
         }
 
         Assert.Equal(ChannelHistory.MaxEntries, history.Entries.Count);
-        // Самый старый вытеснен — до первого канала «назад» не дойти.
+
         while (history.CanGoBack)
         {
             Assert.NotSame(first, history.Pop());

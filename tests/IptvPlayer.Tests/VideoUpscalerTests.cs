@@ -37,9 +37,7 @@ public class VideoUpscalerTests
     [Fact]
     public void GetFilters_AllModes_PreserveFrameSize()
     {
-        // Разрешение выхода в FFmpegInteropX зафиксировано дескриптором
-        // потока — фильтры с изменением размера (scale, xbr и т.п.)
-        // безусловно сжимаются обратно и не имеют эффекта.
+
         foreach (var mode in VideoUpscaler.AllModes)
         {
             var filters = VideoUpscaler.GetFilters(mode);

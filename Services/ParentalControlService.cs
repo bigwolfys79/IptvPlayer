@@ -18,8 +18,8 @@ namespace IptvPlayer.Services;
 /// </summary>
 public static class ParentalControlService
 {
-    // Ключевые слова «взрослых» групп: автопредложение при включении —
-    // группы, чьё имя содержит одно из слов (регистронезависимо).
+
+
     private static readonly string[] AdultGroupKeywords =
     {
         "18+", "xxx", "adult", "эротик", "для взрослых", "порн", "erotica", "porn", "hustler", "brazzers", "playboy"
@@ -132,7 +132,7 @@ public static class ParentalControlService
     {
         if (string.IsNullOrEmpty(settings.ParentalControlPinHash))
         {
-            return true; // PIN не установлен — защита от отключения не нужна.
+            return true;
         }
 
         if (string.IsNullOrEmpty(pin))
@@ -172,8 +172,6 @@ public static class ParentalControlService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
-
-    // ===================== Дневной лимит просмотра =====================
 
     /// <summary>Ключ дня для счётчика просмотра (локальная дата).</summary>
     public static string DailyDateKey(DateTime localNow) => localNow.ToString("yyyy-MM-dd");

@@ -7,7 +7,6 @@
 
         <TextBlock x:Name="TitleText" x:Uid="Diagnostika" FontSize="20" FontWeight="SemiBold"/>
 
-        <!-- Подсказка сбоку от переключателя: [toggle] [hint] -->
         <Grid ColumnSpacing="16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="180"/>

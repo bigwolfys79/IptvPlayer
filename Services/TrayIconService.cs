@@ -13,7 +13,7 @@ namespace IptvPlayer.Services;
 /// </summary>
 public sealed class TrayIconService : IDisposable
 {
-    private const uint WM_TRAYICON = 0x8000; // WM_APP
+    private const uint WM_TRAYICON = 0x8000;
     private const uint WM_LBUTTONUP = 0x0202;
     private const uint WM_RBUTTONUP = 0x0205;
 
@@ -24,7 +24,7 @@ public sealed class TrayIconService : IDisposable
     private IntPtr _hmenu = IntPtr.Zero;
     private bool _disposed;
 
-    // Возврат в UI-поток приложения (окно создано на UI-потоке).
+
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcher;
     private readonly Action _show;
     private readonly Action _exit;
@@ -35,8 +35,8 @@ public sealed class TrayIconService : IDisposable
         _show = show;
         _exit = exit;
 
-        // 32x32 из файла; LR_DEFAULTSIZE обязательна при cx=cy=0.
-        _icon = LoadImage(IntPtr.Zero, iconPath, 1 /*IMAGE_ICON*/, 0, 0, 0x10 | 0x40 /*LR_LOADFROMFILE|LR_DEFAULTSIZE*/);
+
+        _icon = LoadImage(IntPtr.Zero, iconPath, 1 , 0, 0, 0x10 | 0x40 );
         if (_icon == IntPtr.Zero)
         {
             Serilog.Log.Warning("Трей: не удалось загрузить иконку {Path}.", iconPath);
@@ -45,7 +45,7 @@ public sealed class TrayIconService : IDisposable
         var closed = new ManualResetEvent(false);
         _messageThread = new Thread(() =>
         {
-            Current = this; // HwndProc выполняется на этом потоке.
+            Current = this;
             _window = CreateMessageWindow();
             closed.Set();
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
@@ -67,7 +67,7 @@ public sealed class TrayIconService : IDisposable
             lpszClassName = "IptvPlayerTray"
         };
         _classAtom = RegisterClass(ref wc);
-        var hwnd = CreateWindowEx(0, "IptvPlayerTray", "", 0, 0, 0, 0, 0, -3 /*HWND_MESSAGE*/, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        var hwnd = CreateWindowEx(0, "IptvPlayerTray", "", 0, 0, 0, 0, 0, -3 , IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
         return hwnd;
     }
 
@@ -87,7 +87,7 @@ public sealed class TrayIconService : IDisposable
             {
                 return;
             }
-            NotifyTray(0x0 /*NIM_ADD*/);
+            NotifyTray(0x0 );
             _addedToTray = true;
         }
     }
@@ -101,7 +101,7 @@ public sealed class TrayIconService : IDisposable
             {
                 return;
             }
-            NotifyTray(0x2 /*NIM_DELETE*/);
+            NotifyTray(0x2 );
             _addedToTray = false;
         }
     }
@@ -113,7 +113,7 @@ public sealed class TrayIconService : IDisposable
             cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>(),
             hWnd = _window,
             uID = 1,
-            uFlags = 0x2 /*NIF_MESSAGE*/ | 0x1 /*NIF_ICON*/ | 0x4 /*NIF_TIP*/,
+            uFlags = 0x2  | 0x1  | 0x4 ,
             uCallbackMessage = WM_TRAYICON,
             hIcon = _icon,
             szTip = "IptvPlayer"
@@ -158,14 +158,14 @@ public sealed class TrayIconService : IDisposable
 
     private void ShowContextMenu()
     {
-        // Нативное popup-меню в координатах курсора; commands 100/101.
+
         _hmenu = CreatePopupMenu();
         AppendMenu(_hmenu, 0, 100, L.T("Pokazat"));
         AppendMenu(_hmenu, 0, 101, L.T("Vykhod"));
 
         GetCursorPos(out var pt);
         SetForegroundWindow(_window);
-        var cmd = TrackPopupMenu(_hmenu, 0x0182 /*TPM_RETURNCMD|TPM_NONOTIFY*/, pt.X, pt.Y, 0, _window, IntPtr.Zero);
+        var cmd = TrackPopupMenu(_hmenu, 0x0182 , pt.X, pt.Y, 0, _window, IntPtr.Zero);
         DestroyMenu(_hmenu);
         _hmenu = IntPtr.Zero;
 
@@ -195,16 +195,14 @@ public sealed class TrayIconService : IDisposable
                 hWnd = _window,
                 uID = 1
             };
-            Shell_NotifyIcon(0x2 /*NIM_DELETE*/, ref data);
-            PostMessage(_window, 0x0012 /*WM_QUIT*/, IntPtr.Zero, IntPtr.Zero);
+            Shell_NotifyIcon(0x2 , ref data);
+            PostMessage(_window, 0x0012 , IntPtr.Zero, IntPtr.Zero);
         }
         catch
         {
-            // Уборка при выходе — best-effort.
+
         }
     }
-
-    // ===================== Win32 =====================
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct WNDCLASS
@@ -233,8 +231,6 @@ public sealed class TrayIconService : IDisposable
         public int ptY;
     }
 
-    // Полная современная разметка NOTIFYICONDATAW: без корректного cbSize
-    // (первое поле) Shell_NotifyIcon молча отклоняет вызов.
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct NOTIFYICONDATAW
     {
@@ -250,7 +246,7 @@ public sealed class TrayIconService : IDisposable
         public uint dwStateMask;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
         public string szInfo;
-        public uint uVersion; // union с uTimeout — оба 4 байта.
+        public uint uVersion;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
         public string szInfoTitle;
         public uint dwInfoFlags;

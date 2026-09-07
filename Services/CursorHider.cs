@@ -44,8 +44,8 @@ public sealed class CursorHider : IDisposable
         _wheel = wheel;
         var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         _dispatcher = dispatcher;
-        // Хук колеса: пока мост прозрачен, WM_MOUSEWHEEL до XAML не доходит —
-        // ловим низкоуровневым хуком (ставится только на время скрытия).
+
+
         _mouseHookProc = LowLevelMouseHook;
         if (dispatcher != null)
         {
@@ -55,13 +55,9 @@ public sealed class CursorHider : IDisposable
             {
                 var now = DateTime.UtcNow;
 
-                // После первого клика следим за вторым (окно двойного щелчка)
-                // даже после выхода из скрытого состояния: клик «сквозь»
-                // прозрачный мост до XAML не доходит, DoubleTapped XAML не
-                // соберётся — распознаём пару сами.
                 if (!_hidden && now >= _clickWatchUntil)
                 {
-                    _timer?.Stop(); // наблюдение закончено — глушим опрос
+                    _timer?.Stop();
                     return;
                 }
 
@@ -71,23 +67,21 @@ public sealed class CursorHider : IDisposable
 
                 if (_hidden)
                 {
-                    // Указатель фактически над XAML-окнами нашего потока (мост
-                    // прозрачен), поэтому SetCursor(NULL) действует и перекрывает
-                    // «хвостовые» курсоры элементов (слайдеры, сплиттеры).
+
                     SetCursor(IntPtr.Zero);
 
                     if (newPress)
                     {
                         if ((now - _lastClickUtc).TotalMilliseconds <= 500)
                         {
-                            // Второй быстрый клик — двойной щелчок по видео.
+
                             _lastClickUtc = DateTime.MinValue;
                             _clickWatchUntil = DateTime.MinValue;
                             _wakeByDoubleClick();
                             return;
                         }
                         _lastClickUtc = now;
-                        // Смотрим второй клик ~500 мс даже после пробуждения.
+
                         _clickWatchUntil = now.AddMilliseconds(600);
                         _wakeByClick();
                         return;
@@ -95,7 +89,7 @@ public sealed class CursorHider : IDisposable
                 }
                 else if (newPress)
                 {
-                    // Второй клик в окне наблюдения после пробуждения.
+
                     if ((now - _lastClickUtc).TotalMilliseconds <= 500)
                     {
                         _lastClickUtc = DateTime.MinValue;
@@ -124,7 +118,7 @@ public sealed class CursorHider : IDisposable
         }
     }
 
-    // Читается из таймера — volatile.
+
     private static volatile bool _hidden;
 
     /// <summary>Спрятать курсор над видео (idempotent).</summary>
@@ -133,7 +127,7 @@ public sealed class CursorHider : IDisposable
         _hidden = true;
         InstallMouseHook();
 
-        // Окно моста могло пересоздаться (смена канала/режима) — пересобираем.
+
         foreach (var old in _bridges)
         {
             ClearTransparent(old);
@@ -185,13 +179,11 @@ public sealed class CursorHider : IDisposable
                 ClearTransparent(bridge);
             }
         }
-        // При restoreMouse=false таймер НЕ останавливаем: идёт наблюдение
-        // за вторым кликом двойного щелчка (_clickWatchUntil).
+
+
         Serilog.Log.Debug("CursorHider: показ (мышь {Mouse})",
             restoreMouse ? "восстановлена" : "ещё прозрачна");
     }
-
-    // ===================== Хук колеса мыши =====================
 
     private IntPtr _mouseHook;
 
@@ -278,8 +270,6 @@ public sealed class CursorHider : IDisposable
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
-
-    // ===================== Win32: LL mouse hook =====================
 
     private const int WH_MOUSE_LL = 14;
 

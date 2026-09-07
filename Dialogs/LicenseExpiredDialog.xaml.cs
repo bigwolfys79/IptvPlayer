@@ -49,7 +49,7 @@ public sealed partial class LicenseExpiredDialog : UserControl
         }
         else if (manageMode)
         {
-            // Принудительный вызов: строки про истёкший триал здесь не к месту.
+
             DaysText.Visibility = Visibility.Collapsed;
         }
         else
@@ -58,7 +58,7 @@ public sealed partial class LicenseExpiredDialog : UserControl
             DaysText.Text = L.T("License_TrialExpired_FullMessage");
         }
 
-        // === Офлайн-активация ===
+
         HwidLabel.Text = L.T("License_HardwareId");
         HwidText.Text = LicenseService.GetHwidCode();
         CopyHwidButton.Click += OnCopyHwidClick;
@@ -169,7 +169,7 @@ public sealed partial class LicenseExpiredDialog : UserControl
         }
         catch (COMException ex)
         {
-            // Буфер обмена может быть занят другим процессом — не падаем.
+
             Serilog.Log.Warning(ex, "Не удалось скопировать HWID в буфер обмена.");
         }
         catch (Exception ex)

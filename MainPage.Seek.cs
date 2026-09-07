@@ -14,16 +14,14 @@ using Microsoft.UI.Xaml.Media.Animation;
 namespace IptvPlayer;
 
 /// <summary>
-/// VOD seek, archive seek, archive banner, EPG visibility, fullscreen buttons,
-/// parental PIN dialog, and EPG scroll.
+/// Перемотка VOD и архива, баннер архива, видимость EPG, кнопки полного экрана,
+/// PIN-диалог родительского контроля и прокрутка EPG.
 /// </summary>
 public sealed partial class MainPage : Page
 {
     private void UpdateArchivePauseButton()
     {
-        // Пауза доступна и в архиве, и в VOD (ToggleArchivePause работает
-        // в обоих режимах), а «В эфир» и архивный seek-таймлайн — только
-        // в архиве: VOD перематывается своей VodSeekPanel.
+
         var isPauseAvailable = (Player.IsArchivePlaying || Player.IsVodPlaying) && Player.Player != null;
         var isArchiveActive = Player.IsArchivePlaying && Player.Player != null;
         OverlayPauseButton.Visibility = isPauseAvailable ? Visibility.Visible : Visibility.Collapsed;
@@ -31,10 +29,6 @@ public sealed partial class MainPage : Page
         OverlayBackToLiveButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
         VideoOverlayBackToLiveButton.Visibility = isArchiveActive ? Visibility.Visible : Visibility.Collapsed;
 
-        // Канал паузы: у SelectedChannel приоритет — у каналов портала и
-        // локальных файлов Id не уникален (все нули), поиск по Id в списке
-        // вернул бы первый попавшийся канал с чужим IsPlaying. Локальный файл
-        // (карточка «Видео») в списке вообще не состоит.
         var channel = ViewModel.SelectedChannel is { } selected &&
                       Player.CurrentPlayerChannelId == selected.Id
             ? selected
@@ -61,8 +55,6 @@ public sealed partial class MainPage : Page
         ShowPlaybackStateBadge(isPauseAvailable, isPaused);
     }
 
-    // Состояние паузы на предыдущем вызове UpdateArchivePauseButton:
-    // null — воспроизведения нет (старт/остановка), индикатор не показываем.
     private bool? _lastBadgeState;
     private DispatcherQueueTimer? _badgeHideTimer;
 
@@ -70,7 +62,7 @@ public sealed partial class MainPage : Page
     {
         if (!isPauseAvailable)
         {
-            // Плеер остановился — следующая пауза снова получает индикатор.
+
             _lastBadgeState = null;
             return;
         }
@@ -84,7 +76,7 @@ public sealed partial class MainPage : Page
         _lastBadgeState = isPaused;
         if (isFirstState)
         {
-            // Первый расчёт после старта воспроизведения — не событие паузы.
+
             return;
         }
 
@@ -143,8 +135,6 @@ public sealed partial class MainPage : Page
 
         UpdateArchivePauseButton();
     }
-
-    // ===================== VOD Quality =====================
 
     private void UpdateVodQualityButtons()
     {
@@ -209,8 +199,6 @@ public sealed partial class MainPage : Page
             await Player.SwitchVodQualityAsync(quality);
         }
     }
-
-    // ===================== VOD Season/Episode =====================
 
     private bool _updatingVodCombos;
 
@@ -320,8 +308,6 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // ===================== VOD Seek =====================
-
     private bool _updatingVodSeekBarValue;
     private Slider? _activeVodSlider;
 
@@ -399,8 +385,6 @@ public sealed partial class MainPage : Page
         _activeVodSlider = null;
         Player.SeekVod(target);
     }
-
-    // ===================== Archive Seek =====================
 
     private void UpdateArchiveSeekBar()
     {
@@ -483,8 +467,6 @@ public sealed partial class MainPage : Page
         _ = Player.SeekArchiveAsync(target);
     }
 
-    // ===================== EPG visibility =====================
-
     private void ApplyEpgVisibility()
     {
         var visible = ViewModel.IsEpgVisible;
@@ -510,8 +492,6 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // Канал, у которого сейчас подписаны EPGEntries.CollectionChanged:
-    // пересоздаётся при каждом выборе канала.
     private ChannelViewModel? _epgEmptyStateChannel;
 
     /// <summary>
@@ -521,9 +501,7 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void UpdateEpgEmptyState()
     {
-        // Подписка на заполнение EPGEntries выбранного канала: коллекция
-        // наполняется фоном после выбора канала, поэтому одного вызова при
-        // смене канала недостаточно.
+
         var channel = ViewModel.SelectedChannel;
         if (!ReferenceEquals(channel, _epgEmptyStateChannel))
         {
@@ -557,8 +535,6 @@ public sealed partial class MainPage : Page
         ApplyEpgVisibility();
     }
 
-    // ===================== Fullscreen buttons =====================
-
     private void FullScreenButton_Click(object sender, RoutedEventArgs e)
     {        SetFullScreenMode(!_isFullScreen);
     }
@@ -567,8 +543,6 @@ public sealed partial class MainPage : Page
     {
         SetFullScreenMode(false);
     }
-
-    // ===================== Parental PIN dialog =====================
 
     private Task<int?>? _pinDialogInProgress;
 
@@ -622,8 +596,6 @@ public sealed partial class MainPage : Page
             }
         }
 
-        // Enter с корректным PIN — разблокировка только запрошенного канала
-        // (до переключения на другой); длительности остаются на кнопках.
         pinBox.KeyDown += (s, e) =>
         {
             if (e.Key == Windows.System.VirtualKey.Enter)
@@ -673,8 +645,6 @@ public sealed partial class MainPage : Page
         return await tcs.Task;
     }
 
-    // ===================== Дневной лимит просмотра =====================
-
     /// <summary>
     /// Секундный тик: считает просмотренное время, когда плеер реально
     /// играет (не пауза и не остановка). Само накопление и события — в VM.
@@ -710,8 +680,6 @@ public sealed partial class MainPage : Page
     }
 
     private ContentDialog? _pinDialog;
-
-    // ===================== EPG scroll =====================
 
     private async Task ScrollToCurrentProgramAsync()
     {

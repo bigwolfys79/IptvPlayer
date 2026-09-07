@@ -8,10 +8,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- Управление плейлистами: список источников (активный отмечен, кнопка
-         «Активировать» переключает список каналов), добавление нового
-         (имя необязательное — по умолчанию хост URL) и удаление.
-         Частота обновления — общая на все плейлисты. -->
     <StackPanel Spacing="12" Width="480">
         <TextBlock x:Name="TitleText" x:Uid="Pleylist" FontSize="20" FontWeight="SemiBold"/>
 
@@ -44,7 +40,6 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <!-- Обычный вид: имя + URL. -->
                                     <StackPanel Grid.Column="0" Spacing="2"
                                                 Visibility="{x:Bind ViewVisibility}">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -54,10 +49,7 @@
                                             <TextBlock Text="{x:Bind Playlist.Name}" FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
-                                        <!-- URL плейлиста в списке не показываем:
-                                             ссылка с ключом портала — секрет. -->
                                     </StackPanel>
-                                    <!-- Режим переименования: поле имени + сохранение. -->
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6"
                                                 Visibility="{x:Bind EditVisibility}">
                                         <TextBox x:Name="NameEditBox" Width="260" KeyDown="NameEditBox_KeyDown"/>
@@ -90,9 +82,6 @@
                                         </Button>
                                 </Grid>
 
-                                <!-- Источники EPG этого плейлиста (раскрывается кнопкой EPG):
-                                     чекбокс — использовать, корзина — удалить (с подтверждением
-                                     в отдельном окне), снизу добавление по «+». -->
                                 <StackPanel Spacing="6" Margin="0,8,0,0"
                                             Visibility="{x:Bind EpgSectionVisibility}">
                                     <ItemsControl ItemsSource="{x:Bind Playlist.EpgSources}">
@@ -136,7 +125,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Статус действий над плейлистами — рядом со списком. -->
                 <TextBlock x:Name="PlaylistStatusText"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
@@ -152,7 +140,6 @@
                 <TextBox x:Name="PlaylistUrlBox"
                          x:Uid="URL_Pleylista_M3U_M3U8"
                          HorizontalAlignment="Stretch"/>
-                <!-- Поле ключа — только для типа «Видео-портал». -->
                 <TextBox x:Name="PortalKeyBox"
                          x:Uid="Klyuch_Portala"
                          HorizontalAlignment="Stretch"
@@ -176,9 +163,6 @@
                            TextWrapping="Wrap"/>
                 <ComboBox x:Name="PlaylistRefreshCombo" HorizontalAlignment="Stretch"/>
 
-                <!-- Экспорт/импорт настроек: перенос между машинами (секреты в
-                     settings.json зашифрованы DPAPI и копированием не
-                     переносятся); файл экспорта защищён паролем. -->
                 <TextBlock x:Name="TransferHeader" x:Uid="Perenos_Nastroek" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button x:Name="ExportSettingsButton"
@@ -192,7 +176,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
             <Button x:Name="CloseButton"
                     x:Uid="Gotovo"

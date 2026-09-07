@@ -64,14 +64,14 @@ public sealed partial class LicenseStatusDialog : UserControl
                     : L.T("License_Expiry_Lifetime"));
             if (license.IsExpired)
             {
-                // Истекла — активация снова актуальна: показываем кнопку.
+
                 StatusText.Text += Environment.NewLine + L.T("License_Status_Expired");
                 ShowActivateButton();
             }
             return;
         }
 
-        // Коммерческий триал: идёт или уже истёк.
+
         StatusHeader.Text = L.T("License_Status_Trial_Header");
         StatusText.Text = license.DaysRemaining > 0
             ? string.Format(L.T("License_DaysRemaining_0"), license.DaysRemaining)
@@ -89,15 +89,13 @@ public sealed partial class LicenseStatusDialog : UserControl
     {
         if (_xamlRoot == null) return;
 
-        // Два ContentDialog одновременно открытыми быть не могут — закрываем
-        // свой и даём ему закрыться, затем показываем диалог активации.
         _hostDialog?.Hide();
         await Task.Delay(50);
 
         var activation = new LicenseExpiredDialog();
         await activation.ShowAsync(_xamlRoot, manageMode: true);
 
-        // После активации показываем обновлённый статус заново.
+
         await ShowAsync(_xamlRoot);
     }
 }

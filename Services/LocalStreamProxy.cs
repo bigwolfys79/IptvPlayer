@@ -21,7 +21,7 @@ namespace IptvPlayer.Services;
 /// Сервер — минималистичный TCP (а не HttpListener): HttpListener требует
 /// urlacl-резервирование (netsh, админ), а FFmpeg шлёт простые GET без
 /// фич вроде chunked-запросов. HLS-плейлисты (m3u8) перезаписываются:
-/// каждый URI (варианты, сегменты, ключи) заворачивается в маршрут
+/// каждый URI (варианты, сегменты, ключи) оборачивается в маршрут
 /// прокси с абсолютным upstream-URL, поэтому FFmpeg остаётся на 127.0.0.1
 /// на всём дереве плейлиста.
 ///
@@ -47,9 +47,7 @@ public sealed class LocalStreamProxy : IDisposable
     {
         _http = new HttpClient(new SocketsHttpHandler
         {
-            // Без автоматической распаковки: считаем байты как есть, и
-            // провайдер не должен отдавать gzip-контент, который мы не
-            // попросили.
+
             AutomaticDecompression = DecompressionMethods.None,
             UseCookies = false,
         })
@@ -71,7 +69,7 @@ public sealed class LocalStreamProxy : IDisposable
     {
         if (!IsRunning && !TryStart())
         {
-            return upstreamUrl; // не запустился — работаем напрямую
+            return upstreamUrl;
         }
 
         return _baseUrl + "/p/" + Encode(upstreamUrl) + ExtensionOf(upstreamUrl);
@@ -123,10 +121,6 @@ public sealed class LocalStreamProxy : IDisposable
                 return null;
             }
 
-            // Активных соединений нет (пауза между HLS-сегментами, канал
-            // остановлен) — замер замораживаем на последнем значении: окно
-            // не пополняем и не чистим, нуля и null в паузе не показываем.
-            // Если данных ещё не было вовсе — null (подсказка в оверлее).
             var seconds = _sampleClock.Elapsed.TotalSeconds;
             _sampleClock.Restart();
             var delta = _totalBytes - _lastSampleBytes;
@@ -156,14 +150,12 @@ public sealed class LocalStreamProxy : IDisposable
         }
     }
 
-    // ===================== сервер =====================
-
     private bool TryStart()
     {
         try
         {
-            // Свободный порт: короткий TcpListener(0) — HttpListener не
-            // умеет автопорт, а urlacl не требует только TCP.
+
+
             int port;
             var probe = new TcpListener(IPAddress.Loopback, 0);
             probe.Start();
@@ -202,7 +194,7 @@ public sealed class LocalStreamProxy : IDisposable
             }
             catch (Exception)
             {
-                continue; // слушатель умер — цикл завершится ниже
+                continue;
             }
 
             if (ct.IsCancellationRequested)
@@ -252,8 +244,6 @@ public sealed class LocalStreamProxy : IDisposable
                 using var response = await _http.SendAsync(
                     request, HttpCompletionOption.ResponseHeadersRead, ct);
 
-                // Плейлист перезаписываем (URI → маршруты прокси), остальное
-                // (сегменты, TS) — чистое копирование с подсчётом байт.
                 var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
                 var isPlaylist = contentType.Contains("mpegurl", StringComparison.OrdinalIgnoreCase)
                     || upstreamBase.AbsolutePath.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase)
@@ -270,7 +260,7 @@ public sealed class LocalStreamProxy : IDisposable
             }
             catch (Exception)
             {
-                // Обрыв соединения FFmpeg-ом при смене канала — штатный путь.
+
             }
             finally
             {
@@ -324,9 +314,7 @@ public sealed class LocalStreamProxy : IDisposable
 
     private static void CopyRequestHeaders(Dictionary<string, string> headers, HttpRequestMessage request)
     {
-        // Идентичность клиента передаём один-в-один (провайдеры проверяют
-        // User-Agent/Referer), но без сжатия — счётчик должен видеть байты
-        // как есть. Host и hop-by-hop не переносим.
+
         foreach (var (name, value) in headers)
         {
             if (name.Equals("host", StringComparison.OrdinalIgnoreCase)
@@ -377,7 +365,7 @@ public sealed class LocalStreamProxy : IDisposable
     }
 
     /// <summary>
-    /// URI в каждой строке плейлиста заворачивается в маршрут прокси:
+    /// URI в каждой строке плейлиста оборачивается в маршрут прокси:
     /// относительные сначала разрешаются против upstream-базы. Строки-
     /// теги с URI="..." (ключи шифрования, media) переписываются тоже.
     /// </summary>
@@ -395,7 +383,7 @@ public sealed class LocalStreamProxy : IDisposable
             }
             else if (line[0] == '#')
             {
-                // #EXT-X-KEY:...URI="..." | #EXT-X-MAP:...URI="..."
+
                 var uriPos = line.IndexOf("URI=\"", StringComparison.OrdinalIgnoreCase);
                 if (uriPos >= 0)
                 {
@@ -445,7 +433,7 @@ public sealed class LocalStreamProxy : IDisposable
         {
             if (name.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
             {
-                continue; // отдаём телом до закрытия — FFmpeg это понимает
+                continue;
             }
 
             head.Append(name).Append(": ").Append(string.Join(", ", values)).Append("\r\n");
@@ -455,7 +443,7 @@ public sealed class LocalStreamProxy : IDisposable
         {
             if (name.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
             {
-                continue; // пишем своё/закрытием — рассинхрона быть не должно
+                continue;
             }
 
             head.Append(name).Append(": ").Append(string.Join(", ", values)).Append("\r\n");
@@ -502,8 +490,6 @@ public sealed class LocalStreamProxy : IDisposable
 
     private void Count(int bytes) => Count((long)bytes);
 
-    // ===================== кодирование маршрута =====================
-
     private static string Encode(string url) =>
         Convert.ToBase64String(Encoding.UTF8.GetBytes(url))
             .Replace('+', '-').Replace('/', '_').TrimEnd('=');
@@ -518,8 +504,8 @@ public sealed class LocalStreamProxy : IDisposable
         try
         {
             var rest = path[3..];
-            // Хвост-расширение (для HLS-демуксера FFmpeg) отрезаем: в
-            // base64url-алфавите точки нет, первая '.' — начало хвоста.
+
+
             var dot = rest.IndexOf('.');
             var b64 = (dot < 0 ? rest : rest[..dot]).Replace('-', '+').Replace('_', '/');
             switch (b64.Length % 4)
@@ -545,7 +531,7 @@ public sealed class LocalStreamProxy : IDisposable
         }
         catch (Exception)
         {
-            // best-effort
+
         }
 
         _http.Dispose();

@@ -45,11 +45,11 @@ public class SettingsTransferService
     /// </summary>
     public async Task ExportAsync(AppSettings settings, string path, string password)
     {
-        // Копия: вычищаем машинно-зависимое, не трогая живые настройки.
+
         var snapshot = JsonSerializer.Deserialize<AppSettings>(
             JsonSerializer.Serialize(settings))!;
         StripMachineSpecific(snapshot);
-        snapshot.ActivePlaylistId = 0; // активность не переносим, выберется при импорте
+        snapshot.ActivePlaylistId = 0;
 
         var plain = JsonSerializer.SerializeToUtf8Bytes(snapshot);
 
@@ -149,8 +149,6 @@ public class SettingsTransferService
                 current.RecordingsFolder
             };
 
-            // Полная замена через сериализацию: у AppSettings десяток полей,
-            // копировать по одному — рассинхрон при любом добавлении.
             var replaced = JsonSerializer.Deserialize<AppSettings>(
                 JsonSerializer.Serialize(imported))!;
             replaced.ScheduledRecordings = machineKept.ScheduledRecordings;
@@ -169,14 +167,14 @@ public class SettingsTransferService
             return current.Playlists.Count;
         }
 
-        // PlaylistsOnly: добавляем с новыми Id, не трогая текущие списки.
+
         var nextId = current.Playlists.Count == 0
             ? 1
             : current.Playlists.Max(p => p.Id) + 1;
         var added = 0;
         foreach (var playlist in imported.Playlists)
         {
-            // Дубликат по URL (и типу для порталов) пропускаем.
+
             if (current.Playlists.Any(p =>
                     p.Type == playlist.Type &&
                     string.Equals(p.Url, playlist.Url, StringComparison.OrdinalIgnoreCase)))

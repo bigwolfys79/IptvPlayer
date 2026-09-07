@@ -33,10 +33,7 @@ public static class EpgSourceMerger
 
         foreach (var sourceResult in sourceResults)
         {
-            // Тот же принцип приоритета, что и для программ ниже:
-            // источники обрабатываются в порядке списка настроек,
-            // TryAdd оставляет иконку от первого источника, где она
-            // нашлась для этого id.
+
             foreach (var (channelId, iconUrl) in sourceResult.ChannelIcons)
             {
                 iconsByChannelId.TryAdd(channelId, iconUrl);
@@ -50,10 +47,6 @@ public static class EpgSourceMerger
                     byChannel[entry.ChannelId] = list;
                 }
 
-                // Источники обрабатываются в порядке списка настроек, поэтому
-                // "list" на этот момент содержит программы более приоритетных
-                // источников. Если новая программа пересекается по времени с
-                // уже принятой — отбрасываем её как менее приоритетную.
                 var overlapsExisting = list.Any(existing =>
                     entry.StartTime < existing.EndTime && existing.StartTime < entry.EndTime);
 
@@ -131,13 +124,6 @@ public static class EpgSourceMerger
 
         var result = new Dictionary<string, List<EPGEntry>>(StringComparer.OrdinalIgnoreCase);
 
-        // Раньше на каждую группу дублей писалась отдельная строка лога:
-        // только в ru-источнике epg.one каналов с дублями по качеству
-        // ~250, и на КАЖДОЙ загрузке EPG лог заполнялся сотнями строк,
-        // в которых тонули настоящие ошибки. Теперь собираем статистику
-        // и пишем две агрегированные строки после цикла. Подробности
-        // (какой именно id выбран для какого имени) при отладке легко
-        // вернуть временно.
         var qualityDupCount = 0;
         var ambiguousNames = new List<string>();
 
@@ -156,11 +142,7 @@ public static class EpgSourceMerger
 
             if (keepQualifiersKeys.Count == 1)
             {
-                // Различие только в качестве — не выбрасываем имя целиком,
-                // а выбираем один id: сначала у кого реально есть программы
-                // (защита на случай, если у одного из дублей расписание
-                // почему-то пустое/устаревшее), при равенстве — более
-                // высокое качество.
+
                 var chosen = group
                     .OrderByDescending(g => g.Entries.Count)
                     .ThenByDescending(g => EpgNameNormalizer.GetQualityRank(g.RawName))
@@ -171,15 +153,7 @@ public static class EpgSourceMerger
             }
             else
             {
-                // Раньше такие имена ВЫБРАСЫВАЛИСЬ из индекса целиком — и все
-                // плейлистные каналы с этим названием (например "8 канал",
-                // "аист", "ннтв", "360") оставались вообще без EPG, хотя
-                // кандидатов в XMLTV было два-три. Отсутствие расписания
-                // хуже, чем расписание одного из кандидатов: выбираем
-                // детерминированно лучшего (максимум программ, затем
-                // качество) — те же критерии, что и у чисто качественных
-                // дублей выше. Имя попадает в отдельный список, чтобы в
-                // сводке было видно, где сопоставление эвристическое.
+
                 var chosen = group
                     .OrderByDescending(g => g.Entries.Count)
                     .ThenByDescending(g => EpgNameNormalizer.GetQualityRank(g.RawName))
@@ -201,8 +175,8 @@ public static class EpgSourceMerger
 
         if (ambiguousNames.Count > 0)
         {
-            // Сортировка — чтобы список был стабильным между запусками и
-            // его можно было сравнивать глазами/диффом.
+
+
             ambiguousNames.Sort(StringComparer.OrdinalIgnoreCase);
             logger.LogWarning(
                 "Индекс имён: {Count} нормализованных имён соответствуют нескольким разным " +
@@ -212,14 +186,6 @@ public static class EpgSourceMerger
                 ambiguousNames.Count, string.Join(", ", ambiguousNames.Select(n => $"\"{n}\"")));
         }
 
-        // Дополнительные ключи без брендового префикса "Tviksel ":
-        // "Tviksel Кино 2 HD" даёт ключ "кино 2", по которому находят
-        // себя "Кинозал 2" (после алиаса кинозал->кино) и другие
-        // варианты написания. Регистрируем ТОЛЬКО если такой ключ ещё
-        // не занят прямым именем — иначе брендовый дубль вытеснил бы
-        // настоящий канал ("Tviksel Детское кино" не должен подменять
-        // "Детское кино"). Побочный эффект отсутствует: сами
-        // Tviksel-каналы продолжают находиться по своим полным ключам.
         var brandAliasAdds = new List<(string AltKey, List<EPGEntry> Entries)>();
         foreach (var (key, entries) in result)
         {

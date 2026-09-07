@@ -130,9 +130,6 @@ public sealed class RecordingService
             var safe = SanitizeFileName(fileNameBase);
             var path = Path.Combine(dir, $"{safe} {DateTime.Now:yyyy-MM-dd HHmmss}.ts");
 
-            // -nostdin убран: stdin перенаправлен, и аккуратная остановка
-            // идёт посылкой 'q' (ffmpeg допишет заголовки TS и выйдет сам),
-            // Kill остаётся запасным вариантом.
             var args = "-hide_banner -loglevel error -y " +
                        $"-i \"{streamUrl}\" -c copy -f mpegts \"{path}\"";
             if (durationSec is > 0)
@@ -169,7 +166,7 @@ public sealed class RecordingService
                 _active[info.Id] = (process, info);
             }
 
-            // Стоки обязаны вычитываться, иначе заполненный пайп блокирует ffmpeg.
+
             process.ErrorDataReceived += (s, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data)) _logger.LogInformation("ffmpeg: {Line}", e.Data);
@@ -216,7 +213,7 @@ public sealed class RecordingService
             _active.Remove(id);
         }
 
-        // Ожидание выхода ffmpeg (до 3 с) — в фоне, UI не замирает.
+
         System.Threading.Tasks.Task.Run(() => TryStopProcess(process));
 
         RecordingsChanged?.Invoke(this, EventArgs.Empty);

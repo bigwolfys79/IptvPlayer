@@ -6,13 +6,13 @@ using Windows.UI;
 namespace IptvPlayer.Converters;
 
 /// <summary>
-/// Converts a "IsLive" bool into a brush for the channel-list live indicator:
-/// green when the channel is live, gray otherwise.
+/// Преобразует bool IsLive в кисть индикатора эфира в списке каналов:
+/// зелёная — канал в эфире, иначе серая.
 /// </summary>
 public partial class BoolToLiveColorConverter : IValueConverter
 {
-    private static readonly SolidColorBrush LiveBrush = new(Color.FromArgb(255, 76, 175, 80));   // green
-    private static readonly SolidColorBrush OfflineBrush = new(Color.FromArgb(255, 158, 158, 158)); // gray
+    private static readonly SolidColorBrush LiveBrush = new(Color.FromArgb(255, 76, 175, 80));
+    private static readonly SolidColorBrush OfflineBrush = new(Color.FromArgb(255, 158, 158, 158));
 
     public object Convert(object value, Type targetType, object parameter, string language)
     {

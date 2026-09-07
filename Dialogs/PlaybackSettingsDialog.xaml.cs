@@ -25,10 +25,6 @@ namespace IptvPlayer.Dialogs
         private readonly ISettingsService _settingsService;
         private readonly IStreamService _streamService;
 
-        // Контейнер-ContentDialog создаётся в ShowAsync; кнопки внутри
-        // UserControl закрывают его через эту ссылку (искать родителя по
-        // визуальному дереву нельзя — им оказывается ContentPresenter
-        // шаблона диалога, а не сам ContentDialog).
         private ContentDialog? _hostDialog;
 
         public PlaybackSettingsDialog(
@@ -41,10 +37,6 @@ namespace IptvPlayer.Dialogs
             _streamService = streamService;
             InitializeComponent();
 
-            // Подписка здесь, а не в XAML: при разборе XAML установка
-            // Minimum="5" принудительно меняет Value (0 → 5), и ValueChanged
-            // стреляет ещё внутри InitializeComponent — до создания подписи
-            // BufferValueText ниже по разметке (NRE, диалог не открывался).
             BufferSlider.ValueChanged += BufferSlider_ValueChanged;
             VodBufferSlider.ValueChanged += BufferSlider_ValueChanged;
         }
@@ -52,8 +44,8 @@ namespace IptvPlayer.Dialogs
         public async Task ShowAsync(XamlRoot xamlRoot)
         {
             await LoadAsync();
-            // Заголовок показывает сам ContentDialog — внутренний TitleText
-            // не нужен, иначе «Настройки воспроизведения» читается дважды.
+
+
             TitleText.Visibility = Visibility.Collapsed;
 
             var dialog = new ThemedContentDialog
@@ -74,7 +66,7 @@ namespace IptvPlayer.Dialogs
             CancelButton.Content = L.T("Otmena_Lbl");
             SaveButton.Content = L.T("Sokhranit_Lbl");
 
-            // Декодер: аппаратный (с откатом на процессор) или программный.
+
             DecoderHeader.Text = L.T("Dekodirovanie_Video_Lbl");
             DecoderHint.Text = L.T("Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala_Lbl");
             DecoderRadio.Items.Clear();
@@ -95,7 +87,7 @@ namespace IptvPlayer.Dialogs
             DecoderRadio.SelectedIndex =
                 string.Equals(settings.DecoderMode, "Hardware", StringComparison.OrdinalIgnoreCase) ? 0 : 1;
 
-            // Буфер видео.
+
             BufferHeader.Text = L.T("Bufer_TV_Kanalov_Pryamoy_Efir");
             BufferHint.Text = L.T("Glubina_Bufera_Dlya_TV_Kanalov_Pryamogo");
             BufferSlider.Value = Math.Clamp(settings.ReadAheadSeconds, 5, 60);
@@ -104,7 +96,7 @@ namespace IptvPlayer.Dialogs
             VodBufferSlider.Value = Math.Clamp(settings.VodReadAheadSeconds, 2, 15);
             UpdateBufferLabel();
 
-            // Качество видео.
+
             QualityHeader.Text = L.T("Kachestvo_Video_Lbl");
             QualityHint.Text = L.T("Maksimalnoe_Kachestvo_Potoka_Ili_Ogranichenie_Razresheniya_Lbl");
             QualityCombo.Items.Clear();
@@ -128,9 +120,6 @@ namespace IptvPlayer.Dialogs
                 QualityCombo.SelectedIndex = 0;
             }
 
-            // Нормализация громкости: часть каналов кодируется в разы тише
-            // остальных, а слайдер громкости ограничен 100% — тихие каналы
-            // вытягиваются FFmpeg-фильтром до общей громкости.
             AudioHeader.Text = L.T("Zvuk_Lbl");
             AudioNormHeader.Text = L.T("Normalizatsiya_Gromkosti_Lbl");
             AudioNormHint.Text = L.T("Podtyagivaet_Tikhie_Kanaly_K_Obshchemu_Urovnyu_Lbl");
@@ -172,9 +161,7 @@ namespace IptvPlayer.Dialogs
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // Пишем в каноническую копию AppSettings, а не в загруженную при
-            // открытии диалога: избранное/напоминания могли измениться после
-            // открытия — устаревшая копия затёрла бы их.
+
             var appSettings = _viewModel.AppSettings;
 
             if (DecoderRadio.SelectedIndex >= 0)
@@ -200,11 +187,6 @@ namespace IptvPlayer.Dialogs
 
             await _settingsService.SaveAsync(appSettings);
 
-            // Переключение аудио фильтров слышно сразу — фильтры заменяются
-            // в графе играющего канала, без пересоздания плеера. Следующие
-            // каналы получат их ещё при создании (StreamService.CreatePlayerAsync).
-            // Loudness разрешён только для VOD/файлов: на живом эфире
-            // StreamService сам подменит его на Dynamic.
             _streamService.ApplyAudioFilters(_viewModel.Player.Player, audioNorm,
                 _viewModel.Player.IsVodPlaying);
 

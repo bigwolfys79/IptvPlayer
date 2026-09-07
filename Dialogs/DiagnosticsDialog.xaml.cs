@@ -22,9 +22,7 @@ namespace IptvPlayer.Dialogs
     /// </summary>
     public sealed partial class DiagnosticsDialog : UserControl
     {
-        // Предоставляется MainPage: переключение оверлея статистики
-        // живёт в представлении (SetStatsOverlayVisible), прокидывать
-        // его сюда целиком не нужно.
+
         private readonly Action<bool> _setStatsOverlay;
         private readonly Action _saveSettingsDebounced;
 
@@ -41,8 +39,6 @@ namespace IptvPlayer.Dialogs
         {
             TitleText.Text = L.T("Diagnostika_Lbl");
 
-            // Подписки после выставления IsOn — Toggled не должен стрелять
-            // при инициализации.
             StatsToggle.IsOn = statsVisible;
             ProxyToggle.IsOn = settings.DiagnosticStreamProxy;
             FileLogToggle.IsOn = settings.FileLoggingEnabled;
@@ -52,8 +48,6 @@ namespace IptvPlayer.Dialogs
             FileLogToggle.Toggled += FileLogToggle_Toggled;
             TempDiagToggle.Toggled += TempDiagToggle_Toggled;
 
-            // Header через код: x:Uid-ключи ToggleSwitch требуют суффикса
-            // .Header, а у нас ключи-фразы уже существуют для меню.
             StatsToggle.Header = L.T("Statistika_Potoka");
             ProxyToggle.Header = L.T("Diagnosticheskiy_Proksi");
             FileLogToggle.Header = L.T("Faylovyy_Log");
@@ -73,8 +67,6 @@ namespace IptvPlayer.Dialogs
             return _hostDialog.ShowAsync().AsTask();
         }
 
-        // Кнопка Primary у ContentDialog обязательна для закрытия по Esc,
-        // но настоящая кнопка — наша «Закрыть»; прячем пустую.
         private void StatsToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _setStatsOverlay(StatsToggle.IsOn);

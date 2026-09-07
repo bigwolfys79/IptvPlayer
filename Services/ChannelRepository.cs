@@ -9,9 +9,6 @@ namespace IptvPlayer.Services
     {
         private readonly List<ChannelViewModel> _channels = new();
 
-        // Никаких демо-каналов по умолчанию — список наполняется только
-        // из добавленных пользователем плейлистов/каналов.
-
         public Task<List<ChannelViewModel>> GetAllChannelsAsync()
         {
             return Task.FromResult(new List<ChannelViewModel>(_channels));

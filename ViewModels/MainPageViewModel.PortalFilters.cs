@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace IptvPlayer.ViewModels;
 
 /// <summary>
-/// Portal filter logic: server-side genre/year/type filtering for video portal.
+/// Логика фильтров портала: серверная фильтрация видео-портала по жанру/году/типу.
 /// </summary>
 public partial class MainPageViewModel
 {

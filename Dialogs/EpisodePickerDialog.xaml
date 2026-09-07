@@ -8,8 +8,6 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
-    <!-- Выбор серии сериала портала: шапка с постером/описанием и
-         виртуализованный список эпизодов (их могут быть сотни). -->
     <StackPanel Width="520" MaxHeight="640" Spacing="12">
         <StackPanel x:Name="HeaderPanel" Orientation="Horizontal" Spacing="12">
             <Image x:Name="PosterImage" Width="92" Height="138" Stretch="UniformToFill"
@@ -25,8 +23,6 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- Сезон — соседние карточки каталога («Название. Сезон N»); серия —
-             список выбранного сезона (подгружается flick'ом при смене). -->
         <StackPanel x:Name="SeasonPanel" Orientation="Horizontal" Spacing="8">
             <TextBlock x:Name="SeasonLabel" x:Uid="Sezon" FontSize="13" VerticalAlignment="Center"/>
             <ComboBox x:Name="SeasonCombo" MinWidth="160" SelectionChanged="SeasonCombo_SelectionChanged"/>

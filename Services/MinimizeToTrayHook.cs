@@ -18,7 +18,7 @@ public sealed class MinimizeToTrayHook : IDisposable
     private readonly IntPtr _hwnd;
     private readonly Action _onMinimized;
 
-    // Держим delegate в поле: SetWindowSubclass хранит только указатель.
+
     private readonly SubclassProc _proc;
 
     public MinimizeToTrayHook(Microsoft.UI.Xaml.Window window, Action onMinimized)
@@ -26,7 +26,7 @@ public sealed class MinimizeToTrayHook : IDisposable
         _hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         _onMinimized = onMinimized;
         _proc = WndProc;
-        SetWindowSubclass(_hwnd, _proc, 0x49505456 /* 'IPTV' */, IntPtr.Zero);
+        SetWindowSubclass(_hwnd, _proc, 0x49505456 , IntPtr.Zero);
     }
 
     private IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam, nuint idSubclass, IntPtr refData)

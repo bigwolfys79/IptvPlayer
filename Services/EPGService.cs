@@ -29,11 +29,7 @@ namespace IptvPlayer.Services
     /// </summary>
     public class EPGService : IEPGService
     {
-        // Включается переключателем «Временная диагностика» (меню
-        // шестерёнки → Диагностика): лог на каждый канал в
-        // GetEPGEntriesAsync. По умолчанию выключено — файловый sink
-        // писал на каждый вызов и тормозил загрузку; LogMatchSummaryAsync
-        // даёт агрегированную сводку по всем каналам сразу после загрузки.
+
         private static bool LogPerChannelDiagnostics => App.TempDiagnosticsEnabled;
 
         private readonly IChannelRepository _channelRepository;
@@ -43,33 +39,14 @@ namespace IptvPlayer.Services
 
         private Dictionary<string, List<EPGEntry>> _entriesByChannelId = new(StringComparer.OrdinalIgnoreCase);
 
-        // Индекс "нормализованное имя канала -> программы", резервный путь
-        // сопоставления для каналов без tvg-id (см. класс-комментарий выше).
         private Dictionary<string, List<EPGEntry>> _entriesByNormalizedName = new(StringComparer.OrdinalIgnoreCase);
 
-        // Логотипы из <icon src> самих XMLTV-источников — резервный источник
-        // ChannelViewModel.LogoUrl для каналов без tvg-logo в плейлисте (см.
-        // ApplyMissingLogosAsync). Сопоставление только по надёжному tvg-id,
-        // без резервного пути по имени — цена ошибки в лого низкая, но не
-        // настолько, чтобы рисковать неточным сопоставлением по имени.
         private Dictionary<string, string> _iconsByChannelId = new(StringComparer.OrdinalIgnoreCase);
 
-        // Таблица "имя канала -> tvg-id" (Assets/epg-name-map.json), собранная
-        // сервисом epg.one/setup-playlist из ЭТОГО ЖЕ плейлиста (провайдер
-        // lunexas/Edem). Плейлист сам tvg-id не содержит (2065 из 2065 каналов
-        // без него), но имена в таблице и в плейлисте совпадают практически
-        // 1:1 — таблица даёт надёжный путь сопоставления по tvg-id для 2041
-        // из 2065 каналов, включая ПРАВИЛЬНЫЕ таймшфт-расписания ("Первый
-        // канал +2" имеет собственный tvg-id, а не расписание базового
-        // канала со сдвигом). Строгий ключ сохраняет таймшифт-суффикс, мягкий
-        // (короткое базовое имя) — резерв для вариантов написания.
         private Dictionary<string, string> _tvgIdByStrictName = new(StringComparer.OrdinalIgnoreCase);
         private Dictionary<string, string> _tvgIdByLenientName = new(StringComparer.OrdinalIgnoreCase);
         private bool _nameMapLoadAttempted;
 
-        // Имена свойств — ровно как в Assets/epg-name-map.json (маленькими
-        // буквами): System.Text.Json по умолчанию чувствителен к регистру, и
-        // без этих атрибутов файл молча разбирается в 0 записей.
         private sealed class NameMapEntry
         {
             [JsonPropertyName("n")]
@@ -88,55 +65,19 @@ namespace IptvPlayer.Services
             public List<NameMapEntry> Entries { get; set; } = new();
         }
 
-        // tvg-id -> URL логотипа из той же таблицы (tvg-logo от epg.one):
-        // резерв, если у канала в загруженном XMLTV нет своего <icon src>.
         private Dictionary<string, string> _logoByTvgId = new(StringComparer.OrdinalIgnoreCase);
 
         private bool _epgLoaded;
         private DateTime _lastSuccessfulLoad = DateTime.MinValue;
         private readonly TimeSpan _minReloadInterval = TimeSpan.FromMinutes(5);
 
-        // Сообщение "Пропуск перезагрузки EPG" пишется один раз на эпизод
-        // пропуска, а не на каждый вызов: RecalculateCurrentProgramsAsync и
-        // минутный таймер зовут EnsureEpgLoadedAsync по разу на КАЖДЫЙ канал
-        // (2000+ вызовов), раздувая лог на мегабайты и топя в нём ошибки.
         private bool _skipLogged;
 
-        // Раньше _epgLoaded читался/писался без какой-либо защиты от гонки —
-        // если несколько вызовов GetEPGEntriesAsync (например, из
-        // RecalculateCurrentProgramsAsync, которая теперь отдаёт управление в
-        // UI через Task.Yield() между пачками каналов) попадали в
-        // EnsureEpgLoadedAsync ПОКА первый вызов ещё не дошёл до
-        // "_epgLoaded = true" (а это занимает 16-25 секунд реального скачивания
-        // XMLTV), каждый такой вызов видел _epgLoaded == false и запускал
-        // СВОЮ полную загрузку заново — отсюда несколько параллельных
-        // скачиваний одних и тех же источников (видно в логе: russia3.xml
-        // загружался 3 раза подряд) и как следствие таймауты/SocketException
-        // на источниках под такой нагрузкой. Семафор _loadLock в EpgViewModel
-        // от этого не защищал — он сериализует только LoadEPGAsync/
-        // LoadEPGForChannelAsync МЕЖДУ СОБОЙ, а не вызовы EnsureEpgLoadedAsync
-        // изнутри одного и того же прохода. Теперь конкурентные вызовы не
-        // запускают новую загрузку, а ждут ту же самую, что уже в процессе.
         private Task? _loadingTask;
         private readonly object _loadingTaskGate = new();
 
-        // Токен отмены идущей загрузки: перекачка EPG при переключении
-        // плейлиста / принудительном «Обновить» отменяет старую (её источники
-        // уже не актуальны), а не гоняется с ней за сеть и дисковый кэш.
         private System.Threading.CancellationTokenSource _loadCts = new();
 
-        // ApplyMissingLogosAsync мутирует ChannelViewModel.LogoUrl — объекты,
-        // на которые подписаны x:Bind-привязки списка каналов. При RefreshEPGAsync
-        // вся загрузка сервиса идёт в Task.Run (пул потоков), и уведомления
-        // INotifyPropertyChanged приходили НЕ с UI-потока: компилированные
-        // x:Bind сами вызовы не маршализируют, часть обновлений терялась
-        // (логотипы не появлялись до пересборки списка), а попытка обновить
-        // зависимый элемент с фонового потока оборачивалась RPC_E_WRONG_THREAD.
-        // Исключение глоталось fire-and-forget вызовом из диалога настроек —
-        // LoadEPGAsync после него уже не выполнялся: индикатор гас, а программы
-        // так и не появлялись до перезапуска приложения. Захватываем
-        // DispatcherQueue UI-потока (EPGService создаётся на нём в MainPage);
-        // вне UI-контекста (тесты) остаётся null и мутации идут инлайн.
         private readonly DispatcherQueue? _uiDispatcher;
 
         public EPGService(
@@ -152,21 +93,6 @@ namespace IptvPlayer.Services
             _uiDispatcher = DispatcherQueue.GetForCurrentThread();
         }
 
-        // Раньше список каналов кэшировался в дисковом кэше под ключом
-        // "channels" — но GetAllChannelsAsync() и так копирует только
-        // List<>, а не объекты внутри (см. ChannelRepository), так что кэш
-        // не экономил ничего измеримого. Хуже того: если между запусками
-        // приложения кэш успел сохраниться, а первым вызовом после рестарта
-        // оказывался именно GetChannelsAsync() (до того как
-        // ChannelRepository наполнится из плейлиста), он возвращал
-        // задесериализованные с диска ОБЪЕКТЫ прошлой сессии, а не текущие
-        // из ChannelRepository. Дальше в приложении существуют два
-        // непересекающихся набора ChannelViewModel — мутации (например
-        // ApplyMissingLogosAsync, обновление IsPlaying/EPGEntries) в
-        // "живые" объекты репозитория такой UI не увидит. Отдаём список
-        // репозитория напрямую — так GetChannelsAsync() и любой другой код,
-        // работающий с _channelRepository, всегда смотрят на одни и те же
-        // инстансы, независимо от порядка вызовов при старте.
         public Task<List<ChannelViewModel>> GetChannelsAsync()
         {
             return _channelRepository.GetAllChannelsAsync();
@@ -176,10 +102,6 @@ namespace IptvPlayer.Services
         {
             await EnsureEpgLoadedAsync();
 
-            // Локальный видеофайл (карточка «Видео») — Id = -1, его нет и не
-            // должно быть в ChannelRepository: EPG для файла с диска не
-            // существует. Без выхода здесь каждый выбор карточки сыпал
-            // предупреждение «Канал с id=-1 не найден».
             if (channelId < 0)
             {
                 return new List<EPGEntry>();
@@ -188,11 +110,7 @@ namespace IptvPlayer.Services
             var channel = await _channelRepository.GetChannelByIdAsync(channelId);
             if (channel == null)
             {
-                // Раньше это было тихим "return empty" — при разрыве между
-                // ChannelRepository и списком каналов, который видит UI (см.
-                // разбор бага в MainPage.InitializeAsync), выглядело так,
-                // будто у канала просто нет программ, хотя на самом деле
-                // самого канала не существовало в репозитории вовсе.
+
                 if (LogPerChannelDiagnostics)
                 {
                     _logger.LogWarning(
@@ -202,8 +120,6 @@ namespace IptvPlayer.Services
                 return new List<EPGEntry>();
             }
 
-            // Фильмы/сериалы портала EPG не имеют: без этой проверки каждый
-            // клик по элементу VOD-плейлиста гонял три поиска по словарям.
             if (channel.IsPortalItem)
             {
                 return new List<EPGEntry>();
@@ -236,9 +152,7 @@ namespace IptvPlayer.Services
                     return new List<EPGEntry>();
 
                 case MatchMethod.Name:
-                    // Не ошибка, а особенность плейлиста (нет tvg-id) — но полезно
-                    // видеть в логе, что сопоставление прошло по резервному пути,
-                    // а не по надёжному tvg-id, на случай если оно окажется неточным.
+
                     if (LogPerChannelDiagnostics)
                     {
                         _logger.LogInformation(
@@ -278,12 +192,6 @@ namespace IptvPlayer.Services
             EpgCacheStore.ClearAll();
             _epgLoaded = false;
 
-            // Если прямо сейчас идёт фоновая загрузка — она стартовала со СТАРЫМ
-            // набором источников, и EnsureEpgLoadedAsync(force:true) просто
-            // присоединилась бы к ней (возвратила бы её Task из _loadingTask):
-            // новые источники не скачались бы до перезапуска приложения, а список
-            // каналов после "Готово" оставался без иконок и текущей передачи.
-            // Дожидаемся идущую загрузку и запускаем новую принудительную.
             Task? inFlight;
             lock (_loadingTaskGate)
             {
@@ -298,8 +206,8 @@ namespace IptvPlayer.Services
                 }
                 catch
                 {
-                    // Причина уже залогирована внутри DoEnsureEpgLoadedAsync —
-                    // принудительная загрузка ниже выполнится в любом случае.
+
+
                 }
                 _loadCts.Dispose();
                 _loadCts = new System.Threading.CancellationTokenSource();
@@ -319,9 +227,6 @@ namespace IptvPlayer.Services
         {
             _epgLoaded = false;
 
-            // Дожидаемся идущую загрузку (со старым набором источников), как
-            // в RefreshEPGAsync, — иначе EnsureEpgLoadedAsync(force:true)
-            // присоединится к ней и новые источники не подхватятся.
             Task? inFlight;
             lock (_loadingTaskGate)
             {
@@ -336,7 +241,7 @@ namespace IptvPlayer.Services
                 }
                 catch
                 {
-                    // Причина уже залогирована внутри DoEnsureEpgLoadedAsync.
+
                 }
                 _loadCts.Dispose();
                 _loadCts = new System.Threading.CancellationTokenSource();
@@ -363,10 +268,7 @@ namespace IptvPlayer.Services
         /// </summary>
         private (List<EPGEntry> Entries, MatchMethod Method) MatchChannel(ChannelViewModel channel)
         {
-            // Возвращаем ссылку на исходный List без копирования (бывший ToList()).
-            // Это безопасно: словари заполняются один раз при загрузке EPG и не
-            // мутируются; вызывающий код (GetEPGEntriesAsync/RefreshCurrentProgramsLightAsync)
-            // читает список, не меняя его. Экономия: 2065 аллокаций List<> каждые 30 сек.
+
             if (!string.IsNullOrWhiteSpace(channel.TvgId) &&
                 _entriesByChannelId.TryGetValue(channel.TvgId, out var byId))
             {
@@ -430,9 +332,6 @@ namespace IptvPlayer.Services
                     return;
                 }
 
-                // Мягкий ключ: несколько raw-имён схлопываются в один (срезаны
-                // таймшифт/HD/orig) — оставляем id самого КОРОТКОГО raw-имени:
-                // это базовый вариант канала ("Первый канал", а не "+2"/"+4").
                 var lenientRawLength = new Dictionary<string, int>();
                 foreach (var entry in doc.Entries)
                 {
@@ -497,9 +396,7 @@ namespace IptvPlayer.Services
             {
                 if (_loadingTask != null)
                 {
-                    // Загрузка уже идёт (запущена другим конкурентным вызовом) —
-                    // присоединяемся к ней вместо того, чтобы качать источники
-                    // ещё раз параллельно.
+
                     return _loadingTask;
                 }
 
@@ -530,26 +427,14 @@ namespace IptvPlayer.Services
             var ct = _loadCts.Token;
             try
             {
-                // Таблица "имя -> tvg-id" нужна уже для первого сопоставления,
-                // грузим до источников (файл локальный, ~120 КБ).
+
+
                 LoadTvgIdNameMap();
 
                 var settings = await _settingsService.LoadAsync().ConfigureAwait(false);
                 var enabledSources = settings.GetActiveEpgSources()
                     .Where(s => s.IsEnabled).ToList();
 
-                // Кэш-файлы удалённых из настроек источников (по 30 МБ на
-                // XMLTV) больше не нужны — чистим раз при загрузке EPG.
-                // Ключ обязан совпадать с cacheKey в XmlTvService.LoadAsync,
-                // иначе живые файлы посчитаются осиротевшими.
-                // ВАЖНО: живые ключи — из ВСЕХ источников (глобальных и всех
-                // плейлистов), а не только активного плейлиста. У каждого
-                // плейлиста свой набор источников EPG, и раньше чистка по
-                // активному плейлисту удаляла кэш источников других
-                // плейлистов — каждый запуск/переключение плейлиста заново
-                // скачивал и заново парсил их XMLTV.
-                // Ключи слитого EPG тоже живые: чистка не должна удалять
-                // кэш слияния действующих наборов источников.
                 var sourceSets = new[] { settings.EpgSources }
                     .Concat(settings.Playlists.Select(p => p.EpgSources))
                     .Select(set => set.Where(s => s.IsEnabled).Select(s => s.Url).ToArray())
@@ -558,22 +443,16 @@ namespace IptvPlayer.Services
                 EpgCacheStore.CleanupOrphans(
                     settings.EpgSources
                         .Concat(settings.Playlists.SelectMany(p => p.EpgSources))
-                        // Ключ источника включает глубину архива — см.
-                        // XmlTvService.LoadAsync (cacheKey).
+
+
                         .Select(s => $"xmltv:{s.Url}:{settings.EpgArchiveDaysBack}")
                         .Concat(sourceSets)
                         .Distinct(StringComparer.Ordinal));
 
-                // Периодичность обновления EPG из настроек (1/3/7 дней):
-                // пока кэш источника младше maxAge, XmlTvService берёт его с
-                // диска без сети. 0 = "только вручную" — MaxValue, явный
-                // "Обновить EPG" всё равно перекачает (он чистит кэш целиком).
                 TimeSpan maxAge = settings.EpgRefreshDays > 0
                     ? TimeSpan.FromDays(settings.EpgRefreshDays)
                     : TimeSpan.MaxValue;
 
-                // Глубина архива из настроек (1/3/7 дней назад) — параметр
-                // парсинга XmlTvService (входит и в ключ дискового кэша).
                 int archiveDaysBack = settings.EpgArchiveDaysBack;
 
                 if (enabledSources.Count == 0)
@@ -588,20 +467,12 @@ namespace IptvPlayer.Services
                     }
                     else
                     {
-                        // Портал без назначенных источников — это норма, а не
-                        // проблема: EPG VOD-каталогу не нужен (см.
-                        // AppSettings.GetActiveEpgSources).
+
                         _logger.LogInformation(
                             "EPG не загружается: у активного плейлиста нет источников EPG.");
                     }
                 }
 
-                // Быстрый путь: кэш слитого EPG. Если набор источников
-                // (URL в порядке приоритета) и момент скачивания каждого
-                // не изменились, а периодичность обновления ещё не истекла —
-                // пропускаем и чтение кэшей источников, и слияние: читаем
-                // один файл и только достраиваем индекс имён (миллисекунды).
-                // Экономит секунды CPU на каждом запуске с большим XMLTV.
                 if (enabledSources.Count > 0 &&
                     await TryLoadMergedCacheAsync(enabledSources, maxAge).ConfigureAwait(false))
                 {
@@ -610,16 +481,6 @@ namespace IptvPlayer.Services
                     return;
                 }
 
-                // Скачивание/парсинг источников — async (XmlTvService сам
-                // уводит парсинг в пул потоков). А вот дальнейшее слияние —
-                // проверка пересечений по времени для каждой программы,
-                // сортировка ~400к записей, построение индекса имён — чистая
-                // CPU-работа, которая раньше шла в продолжении await прямо на
-                // UI-потоке и морозила интерфейс при старте. Выносим одним
-                // куском в пул потоков (EpgSourceMerger.Merge).
-                // Источники загружаются параллельно — каждый XmlTvService.LoadAsync
-                // сам кэширует по TTL, а CPU-ёмкий парсинг идёт в Task.Run внутри.
-                // При 2+ фидах это даёт x2 ускорение вместо последовательной загрузки.
                 var loadTasks = enabledSources.Select(async source =>
                 {
                     try
@@ -643,12 +504,6 @@ namespace IptvPlayer.Services
 
                 var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger)).ConfigureAwait(false);
 
-                // Слияние выполнено — сохраняем результат для быстрого пути
-                // следующих запусков (ключ — набор источников и метки их
-                // скачивания; запись в фоне, старт не ждёт диска). Только если
-                // удались ВСЕ источники: при провале хотя бы одного набор
-                // неполон, а недавний провал не стоит кэшировать. Результаты
-                // идут в порядке enabledSources (loadTasks строился по нему).
                 if (sourceResults.Count == enabledSources.Count)
                 {
                     var urls = enabledSources.Select(s => s.Url).ToArray();
@@ -677,24 +532,13 @@ namespace IptvPlayer.Services
                     "проверьте, что ChannelViewModel.TvgId совпадает с channel id в вашем XMLTV-файле.",
                     enabledSources.Count, byChannel.Count, totalEntries);
 
-                // Подставляем логотип из XMLTV каналам без tvg-logo — до сводки
-                // по сопоставлению, чтобы не задерживать её, если репозиторий
-                // окажется недоступен (ApplyMissingLogosAsync сама логирует
-                // и глотает свою ошибку, не мешая остальной загрузке).
                 await ApplyMissingLogosAsync().ConfigureAwait(false);
 
-                // Сводка сопоставления M3U-плейлиста и XMLTV (с учётом резервного
-                // сопоставления по имени) — без этого расхождение было видно только
-                // по одному предупреждению на канал при клике на него. Здесь же сразу
-                // после загрузки XMLTV считаем итог по ВСЕМ каналам разом.
                 await LogMatchSummaryAsync().ConfigureAwait(false);
             }
             finally
             {
-                // Обязательно очищаем ссылку на завершённый Task — иначе
-                // следующий реальный вызов EnsureEpgLoadedAsync (после
-                // истечения _minReloadInterval или через force) навсегда
-                // получал бы уже завершённый Task вместо запуска новой загрузки.
+
                 lock (_loadingTaskGate)
                 {
                     _loadingTask = null;
@@ -741,11 +585,6 @@ namespace IptvPlayer.Services
                 }
             }
 
-            // Индекс имён не хранится — достраиваем из ByChannel (мс).
-            // Словари пересобираем в регистронезависимые: MemoryPack
-            // восстанавливает Dictionary с дефолтным (чувствительным к
-            // регистру) компаратором, а поиск каналов по tvg-id в полном
-            // пути регистр игнорирует.
             var byChannel = new Dictionary<string, List<Models.EPGEntry>>(
                 cached.ByChannel, StringComparer.OrdinalIgnoreCase);
             var icons = new Dictionary<string, string>(
@@ -783,9 +622,7 @@ namespace IptvPlayer.Services
         /// </summary>
         private async Task ApplyMissingLogosAsync()
         {
-            // Раньше здесь был ранний выход только по _iconsByChannelId == 0:
-            // если XMLTV-источник не отдаёт <icon>, логотипы из таблицы epg.one
-            // (tvg-logo) вообще не рассматривались.
+
             if (_iconsByChannelId.Count == 0 && _logoByTvgId.Count == 0)
             {
                 return;
@@ -804,11 +641,6 @@ namespace IptvPlayer.Services
 
             var fills = new List<(ChannelViewModel Channel, string IconUrl)>();
 
-            // Подбор кандидатов — regex-нормализация ~22k имён: чистая CPU-
-            // работа, ранее шла в продолжении await на UI-потоке и морозила
-            // интерфейс (фриз при входе в fullscreen совпадал по времени с
-            // этими диагностиками). Уводим в пул потоков; мутации каналов
-            // остаются на UI-потоке (ApplyFills).
             var sw = System.Diagnostics.Stopwatch.StartNew();
             await Task.Run(() =>
             {
@@ -819,17 +651,11 @@ namespace IptvPlayer.Services
                         continue;
                     }
 
-                    // Элементы портала пропускают и нормализацию имён: у фильмов
-                    // «Её личный ад (2026)» и т.п. совпадений с TV-каналами нет,
-                    // а регулярки по 22k названий — заметная лишняя работа.
                     if (channel.IsPortalItem)
                     {
                         continue;
                     }
 
-                    // Кандидаты tvg-id: собственный из плейлиста, затем строгий и
-                    // мягкий ключи таблицы (плейлист tvg-id не содержит, поэтому
-                    // раньше этот метод не срабатывал ни для одного канала).
                     var strictKey = EpgNameNormalizer.NormalizePreservingTimeshift(channel.Name);
                     var lenientKey = EpgNameNormalizer.Normalize(channel.Name);
                     if (!_tvgIdByStrictName.TryGetValue(strictKey, out var strictId))
@@ -855,8 +681,6 @@ namespace IptvPlayer.Services
                             continue;
                         }
 
-                        // Приоритет — иконка из самого XMLTV; если источник её не
-                        // отдаёт, берём tvg-logo из таблицы epg.one.
                         if (_iconsByChannelId.TryGetValue(id, out var iconUrl) ||
                             _logoByTvgId.TryGetValue(id, out iconUrl))
                         {
@@ -879,9 +703,6 @@ namespace IptvPlayer.Services
             {
                 var filled = 0;
 
-                // Один dispatcher-элемент на ЧАНК: 2041 запись LogoUrl одним
-                // куском = 2041 x:Bind-обновление за один проход UI (фриз).
-                // По ~150 на элемент работа размазывается по кадрам.
                 const int ChunkSize = 150;
                 var index = 0;
 
@@ -891,9 +712,7 @@ namespace IptvPlayer.Services
                     for (; index < end; index++)
                     {
                         var (channel, iconUrl) = fills[index];
-                        // Повторная проверка: между подбором кандидатов (на
-                        // пуле потоков) и применением логотип канала могли
-                        // заполнить другим путём.
+
                         if (string.IsNullOrWhiteSpace(channel.LogoUrl))
                         {
                             channel.LogoUrl = iconUrl;
@@ -961,17 +780,12 @@ namespace IptvPlayer.Services
             var matchedByName = 0;
             var unmatched = new List<string>();
 
-            // Сводка по ~22k каналов — тоже чистая CPU-работа: как и подбор
-            // логотипов, ранее выполнялась в продолжении на UI-потоке.
             var sw = System.Diagnostics.Stopwatch.StartNew();
             await Task.Run(() =>
             {
                 foreach (var channel in channels)
                 {
-                    // Элементы портала (фильмы/сериалы) с XMLTV не сопоставляются
-                    // в принципе: в VOD-плейлисте 22k таких — раньше все гонялись
-                    // через 3 поиска по словарям на каждый (в логе это были
-                    // «не сопоставлено вообще 21963»).
+
                     if (channel.IsPortalItem)
                     {
                         continue;

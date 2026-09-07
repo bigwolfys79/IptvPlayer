@@ -42,7 +42,7 @@ public class M3UParserServiceTests
     [Theory]
     [InlineData("tvg-rec=\"7\"", 7)]
     [InlineData("catchup-days=\"3\"", 3)]
-    [InlineData("catchup=\"default\"", 1)] // без числа — минимальный архив
+    [InlineData("catchup=\"default\"", 1)]
     public void ParseContent_ArchiveDepth_ReadsAllProviderVariants(string attr, int expectedDays)
     {
         var content = $"#EXTM3U\n#EXTINF:-1 {attr},Канал\nhttp://example.com/1.m3u8\n";
@@ -77,8 +77,8 @@ public class M3UParserServiceTests
     [Fact]
     public void ParseContent_ExtgrpBetweenExtinfAndUrl_AppliesToThatChannel()
     {
-        // Провайдерский стиль (goodstreem/lunexas): #EXTGRP стоит после #EXTINF.
-        // Первый канал новой группы не должен наследовать группу предыдущего блока.
+
+
         var content = "#EXTM3U\n" +
             "#EXTINF:-1,Взрослый канал\n#EXTGRP:взрослые\nhttp://example.com/1.m3u8\n" +
             "#EXTINF:-1,Беларусь 24\n#EXTGRP:беларускія\nhttp://example.com/2.m3u8\n" +

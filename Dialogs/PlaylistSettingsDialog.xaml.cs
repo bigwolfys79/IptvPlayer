@@ -61,16 +61,12 @@ namespace IptvPlayer.Dialogs
         private readonly ILogger<PlaylistSettingsDialog> _logger;
         private readonly Func<PlaylistSource, Task> _switchPlaylist;
 
-        // Контейнер-ContentDialog создаётся в ShowAsync; кнопки внутри
-        // UserControl закрывают его через эту ссылку (искать родителя по
-        // визуальному дереву нельзя — им оказывается ContentPresenter
-        // шаблона диалога, а не сам ContentDialog).
         private ContentDialog? _hostDialog;
 
-        // Плейлист, у которого открыто поле переименования (одновременно — один).
+
         private PlaylistSource? _renamingPlaylist;
 
-        // Плейлист с раскрытой секцией источников EPG (одновременно — один).
+
         private PlaylistSource? _epgExpandedPlaylist;
 
         public ObservableCollection<PlaylistListItem> PlaylistItems { get; } = new();
@@ -96,8 +92,8 @@ namespace IptvPlayer.Dialogs
         public async Task ShowAsync(XamlRoot xamlRoot)
         {
             await LoadAsync();
-            // Заголовок показывает сам ContentDialog — внутренний TitleText
-            // не нужен, иначе «Плейлист» читается дважды.
+
+
             TitleText.Visibility = Visibility.Collapsed;
 
             var dialog = new ThemedContentDialog
@@ -143,8 +139,6 @@ namespace IptvPlayer.Dialogs
 
             RebuildPlaylistItems();
 
-            // Периодичность обновления плейлистов: 1/3/7 дней или «никогда»
-            // (только при добавлении источника).
             PlaylistRefreshCombo.Items.Clear();
             foreach (var (label, days) in new[]
                      {
@@ -192,9 +186,6 @@ namespace IptvPlayer.Dialogs
             _renamingPlaylist = ReferenceEquals(_renamingPlaylist, item.Playlist) ? null : item.Playlist;
             RebuildPlaylistItems();
 
-            // Фокус в поле имени после пересборки: FindName ищет внутри шаблона
-            // последнего созданного элемента — поле есть только у редактируемой
-            // карточки, поэтому имя уникально в пределах диалога.
             if (_renamingPlaylist != null && PlaylistsList.FindName("NameEditBox") is TextBox box)
             {
                 box.Text = _renamingPlaylist.Name;
@@ -203,11 +194,9 @@ namespace IptvPlayer.Dialogs
             }
         }
 
-        // ===================== Источники EPG плейлиста =====================
-
         /// <summary>
         /// Источник EPG, с которым работает обработчик: сам EPGSource (чекбокс/
-        /// удаление в строке) и владеющий плейлист. ВАЖНО: строка живёт во
+        /// удаление в строке) и владеющий плейлист. ВАЖНО: строка существует в
         /// вложенном ItemsControl, её контейнер-ContentPresenter не является
         /// логическим потомком карточки — подъём по node.Parent обрывается на
         /// null и владелец не находится. Поднимаемся по ВИЗУАЛЬНОМУ дереву:
@@ -248,7 +237,7 @@ namespace IptvPlayer.Dialogs
                 return;
             }
 
-            // Поле URL — сосед кнопки «+» по строке добавления.
+
             var box = (sender as FrameworkElement)?.Parent is StackPanel row
                 ? row.Children.OfType<TextBox>().FirstOrDefault()
                 : null;
@@ -336,8 +325,8 @@ namespace IptvPlayer.Dialogs
 
         private async void SavePlaylistNameButton_Click(object sender, RoutedEventArgs e)
         {
-            // Поле ввода — сосед кнопки ✓ по панели редактирования карточки
-            // (имена внутри DataTemplate не видны через FindName страницы).
+
+
             var box = (sender as FrameworkElement)?.Parent is StackPanel panel
                 ? panel.Children.OfType<TextBox>().FirstOrDefault()
                 : null;
@@ -398,9 +387,7 @@ namespace IptvPlayer.Dialogs
             var portalKey = PortalKeyBox.Text.Trim();
             if (isPortal)
             {
-                // Строка портала часто поставляется комбинированной:
-                // "portal::[key:KEY]https://host/api/v1/" — её вставляют в поле
-                // URL целиком. Вычленяем ключ и URL из неё.
+
                 var match = System.Text.RegularExpressions.Regex.Match(
                     url,
                     @"^portal::\[key:([^\]]+)\]\s*(https?://.+)$",
@@ -446,9 +433,7 @@ namespace IptvPlayer.Dialogs
 
         private async void AddPlaylistFileButton_Click(object sender, RoutedEventArgs e)
         {
-            // Пикеры WinUI 3 требуют HWND-владельца (InitializeWithWindow),
-            // иначе PickSingleFileAsync падает с «Invalid window handle»
-            // (особенно в unpackaged-сборке) — как в экспорте/импорте настроек.
+
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
             picker.FileTypeFilter.Add(".m3u");
             picker.FileTypeFilter.Add(".m3u8");
@@ -461,7 +446,7 @@ namespace IptvPlayer.Dialogs
             var file = await picker.PickSingleFileAsync();
             if (file == null)
             {
-                return; // Пользователь отменил выбор.
+                return;
             }
 
             await AddPlaylistAsync(file.Path);
@@ -497,11 +482,6 @@ namespace IptvPlayer.Dialogs
                     PortalKey = isPortal ? portalKey : null
                 };
 
-                // Первый плейлист активируется сразу — это сценарий первого
-                // запуска: до этого момента список каналов пуст, и диалог
-                // должен привести приложение в рабочее состояние без лишних
-                // кликов. Первый показ нового плейлиста — скачивание (кэша
-                // этого плейлиста ещё нет), SwitchPlaylistAsync сделает всё сам.
                 if (_viewModel.AppSettings.Playlists.Count == 0)
                 {
                     _viewModel.AppSettings.ActivePlaylistId = playlist.Id;
@@ -549,8 +529,6 @@ namespace IptvPlayer.Dialogs
                 return;
             }
 
-            // Подтверждение отдельным окном: плейлист удаляется безвозвратно
-            // (вместе с локальным кэшем), случайный клик недопустим.
             var confirmed = await ConfirmAsync(
                 L.T("Udalit_Lbl"),
                 string.Format(L.T("Udalit_Pleylist_Vopros_0"), item.Playlist.Name),
@@ -570,14 +548,14 @@ namespace IptvPlayer.Dialogs
                 var next = _viewModel.AppSettings.Playlists.FirstOrDefault();
                 if (next != null)
                 {
-                    // Плейлистов ещё несколько — переключаем список каналов на
-                    // первый оставшийся.
+
+
                     await _switchPlaylist(next);
                 }
                 else
                 {
-                    // Удалён единственный плейлист — остаёмся без каналов, как
-                    // после «Сбросить»: чистим список и репозиторий.
+
+
                     _viewModel.AppSettings.ActivePlaylistId = 0;
                     _viewModel.Player.Stop();
                     _viewModel.SelectedChannel = null;
@@ -603,7 +581,7 @@ namespace IptvPlayer.Dialogs
 
         private async void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            // Частота обновления — по «Готово», как раньше по «Сохранить».
+
             if (PlaylistRefreshCombo.SelectedItem is ComboBoxItem { Tag: int refreshDays })
             {
                 _viewModel.AppSettings.PlaylistRefreshDays = refreshDays;
@@ -612,8 +590,6 @@ namespace IptvPlayer.Dialogs
             await _settingsService.SaveAsync(_viewModel.AppSettings);
             _hostDialog?.Hide();
         }
-
-        // ===================== Экспорт / импорт настроек =====================
 
         private readonly Services.SettingsTransferService _transferService = new();
 
@@ -626,9 +602,7 @@ namespace IptvPlayer.Dialogs
         /// </summary>
         private async Task<string?> PromptPasswordAsync(string title, string hint, bool confirm)
         {
-            // XamlRoot берём ДО Hide: после скрытия хост-диалога этот
-            // UserControl выгружается из дерева и его XamlRoot становится
-            // null — ContentDialog без XamlRoot падает COMException'ом.
+
             var root = _hostDialog?.XamlRoot ?? XamlRoot;
             await HideHostAsync();
 
@@ -700,9 +674,7 @@ namespace IptvPlayer.Dialogs
         /// </summary>
         private async Task<bool> ConfirmAsync(string title, string message, string confirmLabel)
         {
-            // XamlRoot берём ДО Hide: после скрытия хост-диалога этот
-            // UserControl выгружается из дерева и его XamlRoot становится
-            // null — ContentDialog без XamlRoot падает COMException'ом.
+
             var root = _hostDialog?.XamlRoot ?? XamlRoot;
             await HideHostAsync();
 
@@ -754,8 +726,8 @@ namespace IptvPlayer.Dialogs
             }
             catch (Exception ex)
             {
-                // До выбора файла исключения улетали в App.UnhandledException
-                // и выглядели для пользователя как «кнопка не работает».
+
+
                 _logger.LogError(ex, "Экспорт настроек: сбой до открытия пикера.");
                 await ShowTransferErrorAsync(string.Format(L.T("Ne_Udalos_Otkryt_Dialog_Eksporta_0"), ex.Message, ex.Message));
             }
@@ -768,8 +740,8 @@ namespace IptvPlayer.Dialogs
                 SuggestedFileName = $"iptvplayer-settings-{DateTime.Now:yyyyMMdd}",
                 SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary
             };
-            // Расширение с одной точкой: WinRT-пикеры отвергают составные
-            // расширения вроде ".iptvplayer.json" (ArgumentException).
+
+
             picker.FileTypeChoices.Add(
                 "IptvPlayer export (*.iptvplayer)",
                 new System.Collections.Generic.List<string> { ".iptvplayer" });
@@ -782,7 +754,7 @@ namespace IptvPlayer.Dialogs
             var file = await picker.PickSaveFileAsync();
             if (file == null)
             {
-                return; // Отмена выбора файла.
+                return;
             }
 
             var password = await PromptPasswordAsync(
@@ -826,9 +798,9 @@ namespace IptvPlayer.Dialogs
         private async Task ImportSettingsAsync()
         {
             var picker = new Windows.Storage.Pickers.FileOpenPicker();
-            // Составное расширение ".iptvplayer.json" пикер не принимает.
+
             picker.FileTypeFilter.Add(".iptvplayer");
-            // Файл мог быть переименован вручную — пустим и .json.
+
             picker.FileTypeFilter.Add(".json");
             if (App.MainWindow is { } window)
             {
@@ -839,7 +811,7 @@ namespace IptvPlayer.Dialogs
             var file = await picker.PickSingleFileAsync();
             if (file == null)
             {
-                return; // Отмена выбора файла.
+                return;
             }
 
             var password = await PromptPasswordAsync(
@@ -871,7 +843,7 @@ namespace IptvPlayer.Dialogs
                 return;
             }
 
-            // Хост уже скрыт PromptPasswordAsync; XamlRoot хоста ещё жив.
+
             var modeDialog = new ThemedContentDialog
             {
                 XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
@@ -897,8 +869,6 @@ namespace IptvPlayer.Dialogs
 
             await _settingsService.SaveAsync(_viewModel.AppSettings);
 
-            // После «заменить всё» активный плейлист новый — переключаем
-            // список каналов; при «добавить» текущий не трогаем.
             if (mode == Services.SettingsTransferService.ImportMode.ReplaceAll &&
                 _viewModel.AppSettings.Playlists.FirstOrDefault() is { } active)
             {

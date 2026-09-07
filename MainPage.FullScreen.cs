@@ -20,9 +20,6 @@ using IptvPlayer.Controls;
 using IptvPlayer.ViewModels;
 using Windows.System;
 using Windows.UI.Core;
-// Windows.Media.Playback.MediaPlayer конфликтует по имени с x:Name="MediaPlayer"
-// (MediaPlayerElement) в разметке, поэтому в коде тип всегда указывается
-// с полным неймспейсом: Windows.Media.Playback.MediaPlayer.
 
 namespace IptvPlayer;
 
@@ -44,36 +41,22 @@ public sealed partial class MainPage
         _isFullScreen = enable;
         Serilog.Log.Information("FullScreen: {Action}", enable ? "вход в полноэкранный режим" : "выход из полноэкранного режима");
 
-        // Диагностика отставания видео при смене фулскрина: замеряем шаги до
-        // момента, когда панель видео получит новый размер (в лог рендерера
-        // придёт «свапчейн ...»). Временно.
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var swTotal = System.Diagnostics.Stopwatch.StartNew();
 
-        // Presenter переключается первым и в отеле от остальной логики:
-        // если что-то ниже бросит исключение, окно всё равно развернётся.
         MainWindow.Instance?.SetOsFullScreen(enable);
         Serilog.Log.Information("FullScreen-DIAG: presenter {Ms:F0} мс", sw.Elapsed.TotalMilliseconds);
 
-        // Смена presenter'а иногда оставляет видео-остров со смещённой
-        // компоновкой (видео рисуется не там, где элемент): пересобираем
-        // компоновку плеера принудительно. MediaPlayer один и тот же —
-        // воспроизведение не прерывается, только мгновенная перерисовка.
         ForceVideoRelayout();
 
         sw.Restart();
         if (enable)
         {
-            // Запоминаем, была ли EPG открыта, чтобы вернуть как было при выходе.
+
             _wasEpgVisibleBeforeFullScreen = ViewModel.IsEpgVisible;
             ViewModel.IsEpgVisible = false;
             ApplyEpgVisibility();
 
-            // MinWidth на колонке иначе перебивает Width=0 ниже — колонка
-            // физически не может стать уже минимума, пока не снимем
-            // ограничение, и левая панель остаётся видна. Перед сворачиванием
-            // запоминаем текущую ширину (в т.ч. выбранную сплиттером), чтобы
-            // вернуть её при выходе из fullscreen.
             if (ChannelListColumn.ActualWidth > 0)
             {
                 _channelListExpandedWidth = ChannelListColumn.ActualWidth;
@@ -82,9 +65,6 @@ public sealed partial class MainPage
             ChannelListColumn.Width = new GridLength(0);
             SplitterColumn.Width = new GridLength(0);
 
-            // Локальный файл (карточка «Видео»): списка каналов нет и в
-            // полноэкранном оверлее — скрываем панель и схлопываем её
-            // колонку (иначе шапка/нижняя панель обрезаются на 320 px).
             OverlayChannelsPanel.Visibility = _localVideoFile == null
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -92,33 +72,21 @@ public sealed partial class MainPage
                 ? new GridLength(320)
                 : new GridLength(0);
 
-            // Оконный оверлей поверх видео больше не нужен — в fullscreen
-            // все органы управления в полноэкранном оверлее.
             HideWindowedVideoOverlay(immediate: true);
             WindowedTopOverlay.Visibility = Visibility.Collapsed;
 
-            // VideoAreaBorder в оконном режиме держит Padding=12 вокруг
-            // видео (декоративная рамка) — в fullscreen он давал полосы
-            // ~3 мм по краям экрана. Убираем, при выходе возвращаем.
             VideoAreaBorder.Padding = new Thickness(0);
 
-            // Оверлей статистики уезжает правее списка каналов (320 px) и
-            // НИЖЕ шапки с названием канала — раньше висел поверх неё.
             StatsOverlay.Margin = new Thickness(344, 100, 0, 0);
 
-            // Слайдеры громкости обоих оверлеев показывают текущую громкость.
+
             SyncVolumeSliders(Player.Player?.Volume ?? Player.LastUserVolume ?? 1.0);
 
             Serilog.Log.Information("FullScreen-DIAG: колонки/оверлеи {Ms:F0} мс", sw.Elapsed.TotalMilliseconds);
 
-            // ItemsSource оверлейного списка забинден на ViewModel.DisplayedChannels
-            // (MainPage.xaml) — ручная пересборка при входе в fullscreen не нужна.
             _lastOverlayPointerPosition = new Windows.Foundation.Point(-1, -1);
             ShowFullScreenOverlay();
-            // ItemsSource оверлейного списка забинден на ViewModel.DisplayedChannels
-            // (MainPage.xaml) — ручная пересборка при входе в fullscreen не нужна.
 
-            // БИСЕКЦИЯ, шаг 2: входной нудж включён (проверяем связку).
             _ = NudgePointerDelayedAsync();
 
             _ = ScrollOverlayChannelIntoViewAsync();
@@ -128,8 +96,8 @@ public sealed partial class MainPage
         }
         else
         {
-            // Локальный файл (карточка «Видео»): панель каналов скрыта
-            // навсегда — восстанавливать колонку нечего.
+
+
             if (_localVideoFile == null)
             {
                 ChannelListColumn.MinWidth = 280;
@@ -139,7 +107,7 @@ public sealed partial class MainPage
             ViewModel.IsEpgVisible = _wasEpgVisibleBeforeFullScreen;
             ApplyEpgVisibility();
 
-            // Возврат декоративной рамки вокруг видео (убрана в fullscreen).
+
             VideoAreaBorder.Padding = new Thickness(12);
 
             StatsOverlay.Margin = new Thickness(12, 60, 0, 0);
@@ -169,11 +137,7 @@ public sealed partial class MainPage
     /// кнопки плеера, EPG, выход) и сбрасывает таймер автоскрытия. Вне
     /// fullscreen-режима не делает ничего.
     /// </summary>
-    // Последняя обработанная позиция указателя в fullscreen-режиме. Нужна, чтобы
-    // отличать настоящее движение мыши от "синтетических" PointerMoved, которые
-    // WinUI генерирует с той же самой координатой, когда под неподвижным курсором
-    // появляется/исчезает элемент (в нашем случае — сам FullScreenOverlay). Без
-    // этой проверки показ/скрытие оверлея зацикливались сами на себя.
+
     private Windows.Foundation.Point _lastOverlayPointerPosition = new(-1, -1);
 
     private void RootGrid_PointerMoved(object sender, PointerRoutedEventArgs e)
@@ -183,10 +147,7 @@ public sealed partial class MainPage
             return;
         }
         var position = e.GetCurrentPoint(RootGrid).Position;
-        // <= 1 px: нулевые «синтетические» PointerMoved от появления/исчезания
-        // элементов под курсором плюс наш собственный нудж 1 px из
-        // HideCursorOverVideo (применение ProtectedCursor требует события
-        // указателя) не должны будить оверлей и возвращать курсор.
+
         if (Math.Abs(position.X - _lastOverlayPointerPosition.X) <= 1 &&
             Math.Abs(position.Y - _lastOverlayPointerPosition.Y) <= 1)
         {
@@ -194,9 +155,6 @@ public sealed partial class MainPage
         }
         _lastOverlayPointerPosition = position;
 
-        // EPG-панель видна — полноэкранный оверлей не показываем
-        // независимо от позиции курсора. Скрим (EpgScrimBorder) покрывает
-        // весь экран, клик по нему закрывает EPG.
         if (EpgPanelBorder.Visibility == Visibility.Visible)
         {
             if (FullScreenOverlay.Visibility == Visibility.Visible)
@@ -250,8 +208,8 @@ public sealed partial class MainPage
     /// </summary>
     private void RootGrid_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        // EPG-оверлей覆盖 весь экран (скрим + панель): колесо над ним
-        // прокручивает список передач, а не меняет громкость.
+
+
         if (EpgPanelBorder.Visibility == Visibility.Visible)
         {
             Serilog.Log.Debug("Wheel: EPG visible — BLOCKED");
@@ -274,8 +232,6 @@ public sealed partial class MainPage
             return;
         }
 
-        // При беззвучном режиме колесо считает от нуля: первое деление вверх
-        // даёт 5% и снимает mute (как в привычных плеерах).
         var current = Player.IsMuted ? 0.0 : Player.LastUserVolume ?? Player.Player?.Volume ?? 1.0;
         var target = Math.Clamp(current + (wheel > 0 ? 0.05 : -0.05), 0.0, 1.0);
         if (Math.Abs(target - current) < 0.001)

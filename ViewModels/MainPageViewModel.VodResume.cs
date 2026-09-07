@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace IptvPlayer.ViewModels;
 
 /// <summary>
-/// VOD resume positions and portal playback (PlayChannelAsync interactive).
+/// Позиции возобновления VOD и портальное воспроизведение (интерактивный PlayChannelAsync).
 /// </summary>
 public partial class MainPageViewModel
 {
@@ -131,9 +131,6 @@ public partial class MainPageViewModel
             return;
         }
 
-        // Локальный файл хранится под ключом «file::путь» и без привязки к
-        // порталу (PortalPlaylistId=null) — иначе он попадал в плашку
-        // «Продолжить» портала и его нельзя было корректно открыть.
         var isLocalFile = channel.IsLocalFile && !string.IsNullOrWhiteSpace(channel.StreamUrl);
         var key = isLocalFile
             ? LocalFileResumeKey(channel.StreamUrl!)

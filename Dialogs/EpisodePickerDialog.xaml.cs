@@ -97,7 +97,7 @@ public sealed partial class EpisodePickerDialog : UserControl
         PlayFirstButton.Content = L.T("Smotret_S_Pervoy_Lbl");
         SeasonLabel.Text = L.T("Sezon_Lbl");
 
-        // Комбобокс сезона — только когда сезонов в каталоге больше одного.
+
         SeasonPanel.Visibility = Seasons.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         if (Seasons.Count > 1)
         {
@@ -159,9 +159,6 @@ public sealed partial class EpisodePickerDialog : UserControl
             return;
         }
 
-        // Серии выбранного сезона — отдельный flick-запрос (шапка сериала в
-        // диалоге остаётся от исходной карточки, они различаются только
-        // списком эпизодов).
         CurrentSeason = season;
         SeasonLoading.Visibility = Visibility.Visible;
         try

@@ -6,7 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- Записи: идущие и запланированные (стоп/отмена), папка сохранения. -->
     <StackPanel Spacing="12" Width="480">
         <ScrollViewer MaxHeight="480" VerticalScrollBarVisibility="Auto">
             <StackPanel Padding="4" Spacing="12">
@@ -27,7 +26,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Кнопки вне ScrollViewer: видны всегда, не уезжают при прокрутке. -->
         <StackPanel Orientation="Horizontal" Spacing="12">
             <Button x:Name="OpenFolderButton" Click="OpenFolderButton_Click"/>
             <Button x:Name="SaveButton" Height="36" Padding="16,0"
