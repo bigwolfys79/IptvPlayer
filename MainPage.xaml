@@ -279,71 +279,8 @@
               Grid.Column="2"
               PointerMoved="VideoArea_PointerMoved">
 
-            <Border x:Name="WindowedTopOverlay"
-                    Canvas.ZIndex="2"
-                    VerticalAlignment="Top"
-                    Background="{ThemeResource OverlayScrimBrush}"
-                    Padding="16,0,16,10"
-                    Visibility="Collapsed">
-                <StackPanel>
-                <Grid MinHeight="44">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}"
-                                   Foreground="{ThemeResource OverlayFgBrush}" FontSize="14" FontWeight="SemiBold"
-                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" />
-                        <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramTitle, Mode=OneWay}"
-                                   Foreground="{ThemeResource OverlayFgSoftBrush}" FontSize="13"
-                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-                        <StackPanel x:Name="WindowedSleepTimerPanel" Orientation="Horizontal" Spacing="5"
-                                    VerticalAlignment="Center" Visibility="Collapsed">
-                            <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
-                                  Width="13" Height="13" Stretch="Uniform" Fill="{ThemeResource SleepLavenderBrush}" />
-                            <TextBlock x:Name="WindowedSleepTimerText"
-                                       Foreground="{ThemeResource SleepLavenderBrush}" FontSize="12" FontWeight="SemiBold"
-                                       VerticalAlignment="Center" />
-                            <Button x:Name="WindowedSleepTimerCancelButton"
-                                    Width="20" Height="20" Padding="0"
-                                    Background="Transparent" BorderThickness="0"
-                                    Click="SleepTimerCancelButton_Click"
-                                    x:Uid="Otmenit_Taymer">
-                                <Path Data="M4,4 L12,12 M12,4 L4,12"
-                                      Width="10" Height="10" Stretch="Uniform"
-                                      Stroke="{ThemeResource SleepLavenderBrush}" StrokeThickness="1.5" />
-                            </Button>
-                        </StackPanel>
-                        <StackPanel x:Name="WindowedArchiveIndicator" Orientation="Horizontal" Spacing="6"
-                                    VerticalAlignment="Center" Visibility="Collapsed">
-                            <Grid Width="13" Height="13">
-                                <Ellipse Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
-                                <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
-                            </Grid>
-                            <TextBlock x:Name="WindowedArchiveText"
-                                       Foreground="{ThemeResource ArchiveAmberBrush}" FontSize="12" FontWeight="SemiBold"
-                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
-                    <ProgressBar Value="{x:Bind ViewModel.SelectedChannel.CurrentProgramProgress, Mode=OneWay}"
-                                 Maximum="1" Minimum="0"
-                                 VerticalAlignment="Bottom" Margin="0,4,0,4"
-                                 Height="3" CornerRadius="1.5,1.5,0,0" Padding="0"
-                                 Foreground="{ThemeResource LiveGreenBrush}" />
-                    <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
-                               Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
-                               TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
-                               Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
-                    <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
-                               Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
-                               TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
-                               Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
-                </StackPanel>
-            </Border>
+
+
 
 
 
@@ -371,6 +308,73 @@
                     <canvas:CanvasSwapChainPanel x:Name="FrameServerPanel"
                                                  Grid.Row="0"
                                                  Visibility="Collapsed" />
+
+                    <Border x:Name="WindowedTopOverlay"
+                            Grid.Row="0"
+                            Canvas.ZIndex="2"
+                            VerticalAlignment="Top"
+                            Background="{ThemeResource OverlayScrimBrush}"
+                            Padding="16,0,16,10"
+                            Visibility="Collapsed">
+                        <StackPanel>
+                            <Grid MinHeight="44">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Name, Mode=OneWay}"
+                                               Foreground="{ThemeResource OverlayFgBrush}" FontSize="14" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="280" />
+                                    <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramTitle, Mode=OneWay}"
+                                               Foreground="{ThemeResource OverlayFgSoftBrush}" FontSize="13"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                                    <StackPanel x:Name="WindowedSleepTimerPanel" Orientation="Horizontal" Spacing="5"
+                                                VerticalAlignment="Center" Visibility="Collapsed">
+                                        <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
+                                              Width="13" Height="13" Stretch="Uniform" Fill="{ThemeResource SleepLavenderBrush}" />
+                                        <TextBlock x:Name="WindowedSleepTimerText"
+                                                   Foreground="{ThemeResource SleepLavenderBrush}" FontSize="12" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
+                                        <Button x:Name="WindowedSleepTimerCancelButton"
+                                                Width="20" Height="20" Padding="0"
+                                                Background="Transparent" BorderThickness="0"
+                                                Click="SleepTimerCancelButton_Click"
+                                                x:Uid="Otmenit_Taymer">
+                                            <Path Data="M4,4 L12,12 M12,4 L4,12"
+                                                  Width="10" Height="10" Stretch="Uniform"
+                                                  Stroke="{ThemeResource SleepLavenderBrush}" StrokeThickness="1.5" />
+                                        </Button>
+                                    </StackPanel>
+                                    <StackPanel x:Name="WindowedArchiveIndicator" Orientation="Horizontal" Spacing="6"
+                                                VerticalAlignment="Center" Visibility="Collapsed">
+                                        <Grid Width="13" Height="13">
+                                            <Ellipse Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
+                                            <Path Data="M6.5,3.6 V6.5 L8.7,7.9" Stroke="{ThemeResource ArchiveAmberBrush}" StrokeThickness="1.4" />
+                                        </Grid>
+                                        <TextBlock x:Name="WindowedArchiveText"
+                                                   Foreground="{ThemeResource ArchiveAmberBrush}" FontSize="12" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                            <ProgressBar Value="{x:Bind ViewModel.SelectedChannel.CurrentProgramProgress, Mode=OneWay}"
+                                         Maximum="1" Minimum="0"
+                                         VerticalAlignment="Bottom" Margin="0,4,0,4"
+                                         Height="3" CornerRadius="1.5,1.5,0,0" Padding="0"
+                                         Foreground="{ThemeResource LiveGreenBrush}" />
+                            <TextBlock Text="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay}"
+                                       Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
+                                       TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
+                                       Visibility="{x:Bind ViewModel.SelectedChannel.Description, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
+                            <TextBlock Text="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay}"
+                                       Foreground="{ThemeResource OverlayFgFaintBrush}" FontSize="12"
+                                       TextWrapping="Wrap" MaxLines="4" TextTrimming="CharacterEllipsis"
+                                       Visibility="{x:Bind ViewModel.SelectedChannel.CurrentProgramDescription, Mode=OneWay, Converter={StaticResource StringToVisConverter}}" />
+                        </StackPanel>
+                    </Border>
 
                     <Border x:Name="PlaybackStateBadge"
                             Grid.Row="0"

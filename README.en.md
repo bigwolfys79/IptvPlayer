@@ -31,6 +31,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Hardware (GPU) and software (CPU) decoding modes
 - Predictive buffering (15 s / 32 MB)
 - Video display modes: fit / stretch / crop
+- Render upscale (experimental): D3D11 Video Processor (RTX VSR / Intel VSR when supported by the driver), FSR 1.0, bicubic — with automatic fallback
 - Audio normalization: Dynamic (boost quiet channels) / Loudness (EBU R128)
 - Real stream speed measurement via the diagnostics proxy (playback settings)
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder

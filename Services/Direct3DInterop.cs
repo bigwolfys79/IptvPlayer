@@ -27,6 +27,7 @@ namespace IptvPlayer.Services
         private static readonly Guid IidIdxgiSurface = new("CAFCB56C-6AC3-4889-BF47-9E23BBD260EC");
 
         private const uint D3D11CreateDeviceBgraSupport = 0x20;
+        private const uint D3D11CreateDeviceVideoSupport = 0x800;
         private const int DxgiFormatB8G8R8A8UNorm = 87;
         private const uint D3D11BindRenderTarget = 0x20;
         private const uint D3D11BindShaderResource = 0x8;
@@ -55,7 +56,7 @@ namespace IptvPlayer.Services
 
             var fl = stackalloc uint[] { 0xb000, 0xa100, 0xa000 };
             int hr = D3D11CreateDevice(
-                IntPtr.Zero, 1, 0, D3D11CreateDeviceBgraSupport,
+                IntPtr.Zero, 1, 0, D3D11CreateDeviceBgraSupport | D3D11CreateDeviceVideoSupport,
                 (IntPtr)fl, 3, 7, out var device, IntPtr.Zero, out var context);
             Marshal.ThrowExceptionForHR(hr);
             _ = context;
@@ -77,6 +78,18 @@ namespace IptvPlayer.Services
         /// </summary>
         public static IDirect3DSurface CreateBgraSurface(IntPtr nativeDevice, int width, int height)
         {
+            return CreateSurface(nativeDevice, width, height, DxgiFormatB8G8R8A8UNorm);
+        }
+
+        /// <summary>
+        /// Создаёт текстуру заданного DXGI-формата (87 = BGRA8, 103 = NV12) —
+        /// приёмник кадра для CopyFrameToVideoSurface. NV12 — нативный формат
+        /// frame server: копирование без конверсии, и только NV12-вход даёт
+        /// драйверу NVIDIA подставить RTX VSR в VideoProcessorBlt.
+        /// Bind-флаги соответствуют требованиям CreateVideoProcessorInputView.
+        /// </summary>
+        public static IDirect3DSurface CreateSurface(IntPtr nativeDevice, int width, int height, int dxgiFormat)
+        {
 
             var desc = new Texture2DDesc
             {
@@ -84,7 +97,7 @@ namespace IptvPlayer.Services
                 Height = (uint)height,
                 MipLevels = 1,
                 ArraySize = 1,
-                Format = DxgiFormatB8G8R8A8UNorm,
+                Format = dxgiFormat,
                 SampleDesc = new SampleDesc { Count = 1, Quality = 0 },
                 Usage = 0,
                 BindFlags = D3D11BindRenderTarget | D3D11BindShaderResource,

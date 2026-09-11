@@ -49,6 +49,7 @@ namespace IptvPlayer.Services
 
         private IDirect3DSurface? _frameSurface;
         private int _frameWidth, _frameHeight;
+        private bool _frameIsNv12;
 
 
         private CanvasRenderTarget? _upscaledTarget;
@@ -60,6 +61,8 @@ namespace IptvPlayer.Services
         private PixelShaderEffect? _fsrEasuEffect;
         private PixelShaderEffect? _fsrRcasEffect;
         private bool _shaderPathBroken;
+
+        private FrameServerVideoProcessor? _videoProcessor;
 
         private MediaPlayer? _player;
         private CanvasSwapChainPanel? _panel;
@@ -97,6 +100,7 @@ namespace IptvPlayer.Services
             {
                 (_nativeDevice, _d3dDevice) = Direct3DInterop.CreateDevice();
                 _canvasDevice = CanvasDevice.CreateFromDirect3D11Device(_d3dDevice);
+                _videoProcessor = FrameServerVideoProcessor.TryCreate(_nativeDevice, _logger);
                 _fsrEasuEffect = LoadEffect("FsrEasu.cso");
                 _fsrRcasEffect = LoadEffect("FsrRcas.cso");
                 _upscaleEffect = LoadEffect("Upscale.cso");
@@ -160,6 +164,8 @@ namespace IptvPlayer.Services
         public void Dispose()
         {
             Detach();
+            _videoProcessor?.Dispose();
+            _videoProcessor = null;
             _frameSurface?.Dispose();
             _frameSurface = null;
             _upscaledTarget?.Dispose();
@@ -269,30 +275,115 @@ namespace IptvPlayer.Services
                 return;
             }
 
-            var frameW = _streamWidth > 0 ? _streamWidth : w;
-            var frameH = _streamHeight > 0 ? _streamHeight : h;
-            if (_frameSurface is null || _frameWidth != frameW || _frameHeight != frameH)
+            // Размер кадра — NaturalVideoWidth/Height сессии: фактическое
+            // отображаемое разрешение (учитывает SAR и поворот), обновляется
+            // при смене потока без пересоздания плеера. Размеры из диагностики
+            // Attach бывают нулевыми или пиксельными — тогда приёмник получал
+            // чужие пропорции, и растяжение/кроп считались неверно.
+            var session = sender.PlaybackSession;
+            var frameW = 0;
+            var frameH = 0;
+            if (session != null)
+            {
+                frameW = (int)session.NaturalVideoWidth;
+                frameH = (int)session.NaturalVideoHeight;
+            }
+            if (frameW <= 0)
+            {
+                frameW = _streamWidth > 0 ? _streamWidth : w;
+            }
+            if (frameH <= 0)
+            {
+                frameH = _streamHeight > 0 ? _streamHeight : h;
+            }
+
+            // Видеопроцессорный путь принимает кадр в NV12 (нативный формат
+            // frame server и обязательное условие подстановки RTX VSR драйвером),
+            // шейдерный путь Win2D требует BGRA. NV12 требует чётные размеры.
+            var wantNv12 = _videoProcessor is not null;
+            if (wantNv12 && ((frameW & 1) != 0 || (frameH & 1) != 0))
+            {
+                frameW += frameW & 1;
+                frameH += frameH & 1;
+            }
+            if (_frameSurface is null || _frameWidth != frameW || _frameHeight != frameH ||
+                _frameIsNv12 != wantNv12)
             {
                 _frameSurface?.Dispose();
-                _frameSurface = Direct3DInterop.CreateBgraSurface(_nativeDevice, frameW, frameH);
+                const int DxgiFormatNv12 = 103;
+                const int DxgiFormatBgra = 87;
+                _frameSurface = wantNv12
+                    ? Direct3DInterop.CreateSurface(_nativeDevice, frameW, frameH, DxgiFormatNv12)
+                    : Direct3DInterop.CreateSurface(_nativeDevice, frameW, frameH, DxgiFormatBgra);
                 _frameWidth = frameW;
                 _frameHeight = frameH;
+                _frameIsNv12 = wantNv12;
+                _logger.LogInformation(
+                    "FrameServerRenderer: приёмник кадра {Format} {W}x{H}.",
+                    wantNv12 ? "NV12" : "BGRA", frameW, frameH);
 
                 sender.SetSurfaceSize(new Size(frameW, frameH));
             }
 
-
-            sender.CopyFrameToVideoSurface(_frameSurface);
-
-            using var bitmap = CanvasBitmap.CreateFromDirect3D11Surface(
-                _canvasDevice, _frameSurface);
-
+            try
+            {
+                sender.CopyFrameToVideoSurface(_frameSurface);
+            }
+            catch (Exception ex) when (_frameIsNv12)
+            {
+                // NV12-приёмник не поддержан окружением — отключаем
+                // видеопроцессорный путь, следующий кадр придёт в BGRA.
+                _logger.LogWarning(ex,
+                    "FrameServerRenderer: копирование кадра в NV12 не удалось, откат на BGRA (шейдерный путь).");
+                _videoProcessor?.Dispose();
+                _videoProcessor = null;
+                _frameSurface?.Dispose();
+                _frameSurface = null;
+                return;
+            }
 
             var fsrReady = _fsrEasuEffect != null && _fsrRcasEffect != null;
             var bicubicReady = _upscaleEffect != null && _sharpenEffect != null;
             var shaderMode =
                 !_shaderPathBroken && fsrReady ? "FSR 1.0 (EASU+RCAS)" :
                 !_shaderPathBroken && bicubicReady ? "бикубический + резкость" : null;
+
+            var (scale, scaleX, scaleY) = ComputeScale(frameW, frameH, w, h);
+            var dstW = Math.Max(1, (int)MathF.Round(frameW * scaleX));
+            var dstH = Math.Max(1, (int)MathF.Round(frameH * scaleY));
+            var offsetX = (w - dstW) / 2;
+            var offsetY = (h - dstH) / 2;
+
+            if (_videoProcessor is not null && shaderMode is not null)
+            {
+                if (_videoProcessor.TryRender(_canvasDevice!, swapChain, _frameSurface,
+                        frameW, frameH, w, h, dstW, dstH, offsetX, offsetY, _nativeDevice))
+                {
+                    if (!_loggedScaleInfo && _streamWidth > 0)
+                    {
+                        _loggedScaleInfo = true;
+                        _logger.LogInformation(
+                            "Рендер-апскейл ({Mode}): поток {SW}x{SH} → окно {W}x{H}, выведено {DW}x{DH} (×{SX:F2};{SY:F2}), {ShaderPath}.",
+                            VideoStretchMode, _streamWidth, _streamHeight, w, h, dstW, dstH, scaleX, scaleY,
+                            FrameServerVideoProcessor.ModeName);
+                    }
+                    return;
+                }
+
+                // Неудача TryRender: путь отключён внутри — снимаем и
+                // видеопроцессор, чтобы приёмник кадра пересоздался в BGRA
+                // (Win2D NV12 не читает). Иначе — цикл пересозданий NV12.
+                _videoProcessor?.Dispose();
+                _videoProcessor = null;
+                _frameSurface?.Dispose();
+                _frameSurface = null;
+                _loggedScaleInfo = false;
+                return;
+            }
+
+            using var bitmap = CanvasBitmap.CreateFromDirect3D11Surface(
+                _canvasDevice, _frameSurface);
+
             if (shaderMode is null)
             {
                 DrawDirect(swapChain, bitmap, w, h);
@@ -317,12 +408,9 @@ namespace IptvPlayer.Services
             if (!_loggedScaleInfo && _streamWidth > 0)
             {
                 _loggedScaleInfo = true;
-                var (_, sx, sy) = ComputeScale(_streamWidth, _streamHeight, w, h);
-                var dstW = Math.Max(1, (int)Math.Round(_streamWidth * sx));
-                var dstH = Math.Max(1, (int)Math.Round(_streamHeight * sy));
                 _logger.LogInformation(
                     "Рендер-апскейл ({Mode}): поток {SW}x{SH} → окно {W}x{H}, выведено {DW}x{DH} (×{SX:F2};{SY:F2}), {ShaderPath}.",
-                    VideoStretchMode, _streamWidth, _streamHeight, w, h, dstW, dstH, sx, sy, shaderMode);
+                    VideoStretchMode, _streamWidth, _streamHeight, w, h, dstW, dstH, scaleX, scaleY, shaderMode);
             }
 
             var recreated = _recreatedAt;

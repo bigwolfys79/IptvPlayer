@@ -85,27 +85,105 @@ public class XmlTvService : IXmlTvService
             };
         }
 
-        XmlTvLoadResult parsed;
+        // Протухший кэш при разрешённом обновлении отдаём сразу
+        // (stale-while-revalidate): окно парсинга — дни назад + дни вперёд, так
+        // что вчерашний кэш всё ещё покрывает текущие часы, и список каналов
+        // получает программу передач без ожидания перекачки. Без этого при
+        // наступившем сроке обновления EPG весь запуск висел бы без программы
+        // передач, а сбой сети оставлял EPG пустым до ручного обновления.
+        if (cached != null && maxAge is { } limit && limit != TimeSpan.MaxValue)
+        {
+            var staleSavedAt = GetSavedAtUtc(cached);
+            _logger.LogInformation(
+                "Источник {Url}: кэш протух (возраст {Age:F1} ч при лимите {Limit:F0} дн.) — отдаётся сразу, перекачка в фоне.",
+                source.Url, (DateTime.UtcNow - staleSavedAt).TotalHours, limit.TotalDays);
+            StartBackgroundRefresh(source, cacheKey, daysBack);
+            return new XmlTvLoadResult
+            {
+                Entries = cached.Entries,
+                ChannelIcons = cached.ChannelIcons,
+                DataSavedAtUtc = staleSavedAt
+            };
+        }
+
+        var parsed = await DownloadAndParseAsync(source.Url, daysBack, ct);
+
+        await EpgCacheStore.WriteAsync(cacheKey, new CachedXmlTv
+        {
+            Entries = parsed.Entries,
+            ChannelIcons = parsed.ChannelIcons,
+            SavedAtUtc = parsed.DataSavedAtUtc,
+            ExpiresAt = DateTime.UtcNow.Add(CacheTtl)
+        });
+
+        return parsed;
+    }
+
+    /// <summary>
+    /// Ключи источников с идущей фоновой перекачкой: за сессию LoadAsync для
+    /// одного источника вызывается несколько раз (повторные загрузки EPG,
+    /// переключения плейлистов), без защиты каждая запускала бы своё
+    /// параллельное скачивание большого XMLTV.
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _backgroundRefreshes = new(StringComparer.Ordinal);
+
+    private void StartBackgroundRefresh(EPGSource source, string cacheKey, int daysBack)
+    {
+        if (!_backgroundRefreshes.TryAdd(cacheKey, 0))
+        {
+            return;
+        }
+
+        // Свой CTS: токен вызывающего (_loadCts.Token в EPGService) пересоздаётся
+        // и диспонится при refresh-циклах — удерживать его в фоновой задаче нельзя.
+        _ = Task.Run(async () =>
+        {
+            var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(5));
+            try
+            {
+                var parsed = await DownloadAndParseAsync(source.Url, daysBack, cts.Token);
+                await EpgCacheStore.WriteAsync(cacheKey, new CachedXmlTv
+                {
+                    Entries = parsed.Entries,
+                    ChannelIcons = parsed.ChannelIcons,
+                    SavedAtUtc = parsed.DataSavedAtUtc,
+                    ExpiresAt = DateTime.UtcNow.Add(CacheTtl)
+                });
+                _logger.LogInformation(
+                    "Источник {Url}: фоновая перекачка завершена, распарсено программ: {Programs}.",
+                    source.Url, parsed.Entries.Count);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Источник {Url}: фоновая перекачка отменена (таймаут).", source.Url);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Источник {Url}: фоновая перекачка не удалась — кэш обновится при следующем запуске.", source.Url);
+            }
+            finally
+            {
+                cts.Dispose();
+                _backgroundRefreshes.TryRemove(cacheKey, out _);
+            }
+        });
+    }
+
+    private async Task<XmlTvLoadResult> DownloadAndParseAsync(string url, int daysBack, CancellationToken ct)
+    {
         var now = DateTime.Now;
         var windowStart = now.Date.AddDays(-Math.Max(0, daysBack));
         var windowEnd = now.AddDays(DaysAhead + 1);
         var dataSavedAtUtc = DateTime.UtcNow;
-        await using (System.IO.Stream stream = await DownloadAsync(source.Url, ct))
+        XmlTvLoadResult parsed;
+        await using (System.IO.Stream stream = await DownloadAsync(url, ct))
         {
             parsed = await Task.Run(() => ParseXmlTv(stream, windowStart, windowEnd), ct);
         }
 
         _logger.LogInformation(
             "Источник {Url}: распарсено программ: {Programs}, иконок каналов: {Icons}.",
-            source.Url, parsed.Entries.Count, parsed.ChannelIcons.Count);
-
-        await EpgCacheStore.WriteAsync(cacheKey, new CachedXmlTv
-        {
-            Entries = parsed.Entries,
-            ChannelIcons = parsed.ChannelIcons,
-            SavedAtUtc = dataSavedAtUtc,
-            ExpiresAt = DateTime.UtcNow.Add(CacheTtl)
-        });
+            url, parsed.Entries.Count, parsed.ChannelIcons.Count);
 
         return new XmlTvLoadResult
         {
