@@ -11,6 +11,7 @@ namespace IptvPlayer.Services
     public record PlaybackConfig(
         string? DecoderMode,
         string? AudioNormalization,
+        int AudioVolumeBoost,
         int ReadAheadSeconds,
         int VodReadAheadSeconds,
         bool DiagnosticProxy = false,
@@ -28,12 +29,12 @@ namespace IptvPlayer.Services
         double? ProxyMeasuredBitrate { get; }
 
         /// <summary>
-        /// Применяет нормализацию громкости к уже играющему плееру
-        /// (переключение режима в настройках). allowLoudness=false —
+        /// Применяет нормализацию громкости и усиление к уже играющему
+        /// плееру (переключение режима в настройках). allowLoudness=false —
         /// режим Loudness подменяется Dynamic: буфер loudnorm ~3 с
         /// на живом эфире даёт отставание звука от видео.
         /// </summary>
-        void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false);
+        void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false, int boostPercent = 100);
 
         /// <summary>
         /// Применяет пресет улучшения картинки к уже играющему плееру

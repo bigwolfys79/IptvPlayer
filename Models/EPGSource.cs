@@ -1,3 +1,5 @@
+using System;
+
 namespace IptvPlayer.Models;
 
 /// <summary>
@@ -10,4 +12,16 @@ public class EPGSource
 {
     public string Url { get; set; } = string.Empty;
     public bool IsEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Текст последней ошибки загрузки источника (сеть, не XMLTV и т.п.).
+    /// Null — после последней попытки ошибок не было.
+    /// </summary>
+    public string? LastError { get; set; }
+
+    /// <summary>
+    /// Момент последней успешной загрузки и разбора источника. Null —
+    /// источник ещё ни разу не загружался успешно.
+    /// </summary>
+    public DateTimeOffset? LastSuccessAt { get; set; }
 }

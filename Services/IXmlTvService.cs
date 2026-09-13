@@ -50,4 +50,19 @@ public interface IXmlTvService
     /// перекачивается, старый кэш остаётся для отката.
     /// </summary>
     Task<XmlTvLoadResult> LoadAsync(EPGSource source, TimeSpan? maxAge = null, int daysBack = 3, CancellationToken ct = default);
+
+    /// <summary>
+    /// Событие завершения реальной загрузки источника из сети (не из кэша):
+    /// url, признак успеха и текст ошибки. EPGService подписывается и
+    /// пишет статус в настройки для показа в диалоге плейлистов.
+    /// </summary>
+    event Action<string, bool, string?>? SourceLoadFinished;
+
+    /// <summary>
+    /// Проверка источника при добавлении: скачивает начало ответа (до 64 КБ),
+    /// распаковывает gzip по магическим байтам и проверяет признаки XMLTV
+    /// (&lt;tv&gt;, &lt;channel&gt;, DOCTYPE tv). Null — источник валиден,
+    /// иначе — готовый к показу текст ошибки.
+    /// </summary>
+    Task<string?> ValidateEpgSourceAsync(string url, CancellationToken ct = default);
 }

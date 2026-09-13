@@ -3028,4 +3028,72 @@ Serilog (логирование), Inno Setup (установщик)</value>
     <value>7 дней назад</value>
 
   </data>
+  <data name="Usilenie_Gromkosti.Text" xml:space="preserve">
+    <value>Усиление громкости</value>
+  </data>
+
+  <data name="Usilenie_Gromkosti_Lbl" xml:space="preserve">
+    <value>Усиление громкости</value>
+  </data>
+
+  <data name="Podnimaet_Gromkost_Vyshe_100_Pt.Text" xml:space="preserve">
+    <value>Поднимает громкость выше 100% — для очень тихих каналов. Применяется к играющему каналу сразу.</value>
+  </data>
+
+  <data name="Podnimaet_Gromkost_Vyshe_100_Pt_Lbl" xml:space="preserve">
+    <value>Поднимает громкость выше 100% — для очень тихих каналов. Применяется к играющему каналу сразу.</value>
+  </data>
+
+  <data name="Bez_Usileniya" xml:space="preserve">
+    <value>Без усиления</value>
+  </data>
+  <data name="Gromkost_0_Pt" xml:space="preserve">
+    <value>Громкость: {0}</value>
+  </data>
+
+  <data name="Zvuk_Vklyuchen" xml:space="preserve">
+    <value>Звук включён</value>
+  </data>
+
+  <data name="Taymer_Sna_Ustanovlen_0" xml:space="preserve">
+    <value>Таймер сна: {0} мин</value>
+  </data>
+
+  <data name="Taymer_Sna_Otklyuchen" xml:space="preserve">
+    <value>Таймер сна отключён</value>
+  </data>
+  <data name="Istochnik_EPG_Uzhe_Dobavlen" xml:space="preserve">
+    <value>Этот источник уже добавлен</value>
+  </data>
+
+  <data name="Proverka_Istochnika_EPG" xml:space="preserve">
+    <value>Проверка источника EPG…</value>
+  </data>
+
+  <data name="Epg_Istochnik_Dobavlen_0" xml:space="preserve">
+    <value>Источник EPG добавлен: {0}</value>
+  </data>
+
+  <data name="Epg_Istochnik_Uspeh_0" xml:space="preserve">
+    <value>Последняя успешная загрузка: {0:dd.MM HH:mm}</value>
+  </data>
+
+  <data name="Epg_Proverka_Status_0" xml:space="preserve">
+    <value>Сервер ответил ошибкой HTTP {0}</value>
+  </data>
+
+  <data name="Epg_Proverka_Ne_XMLTV" xml:space="preserve">
+    <value>Ответ не похож на XMLTV-файл (нет &lt;tv&gt; или &lt;channel&gt;)</value>
+  </data>
+
+  <data name="Epg_Proverka_Taymaut" xml:space="preserve">
+    <value>Источник не ответил за отведённое время</value>
+  </data>
+
+  <data name="Epg_Proverka_Oshibka_0" xml:space="preserve">
+    <value>Не удалось скачать источник: {0}</value>
+  </data>
+  <data name="Epg_Istochnik_Oshibka_0" xml:space="preserve">
+    <value>Ошибка источника EPG: {0}</value>
+  </data>
 </root>

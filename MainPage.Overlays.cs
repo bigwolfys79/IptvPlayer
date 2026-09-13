@@ -318,6 +318,65 @@ public sealed partial class MainPage
         Serilog.Log.Debug("Cursor: нудж dx={Dx}, SendInput={Sent}", dx, sent);
     }
 
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _actionToastHideTimer;
+
+    /// <summary>
+    /// Короткое подтверждение действия внизу по центру видео (громкость,
+    /// mute, таймер сна): текст + авто-скрытие через 2,2 с, fade по Opacity.
+    /// Показывается в обеих поверхностях — оконной и полноэкранной.
+    /// </summary>
+    private void ShowActionToast(string message)
+    {
+        ActionToastText.Text = message;
+        OverlayActionToastText.Text = message;
+
+        var storyboard = new Storyboard();
+        foreach (var target in new[] { ActionToast, OverlayActionToast })
+        {
+            var animation = new DoubleAnimation
+            {
+                To = 1,
+                Duration = new Duration(TimeSpan.FromMilliseconds(150)),
+                EasingFunction = new QuadraticEase()
+            };
+            Storyboard.SetTarget(animation, target);
+            Storyboard.SetTargetProperty(animation, "Opacity");
+            storyboard.Children.Add(animation);
+        }
+        storyboard.Begin();
+
+        if (_actionToastHideTimer is not { } timer)
+        {
+            timer = DispatcherQueue.CreateTimer();
+            _actionToastHideTimer = timer;
+        }
+        timer.Stop();
+        timer.Interval = TimeSpan.FromMilliseconds(2200);
+        timer.Tick -= ActionToastHideTimer_Tick;
+        timer.Tick += ActionToastHideTimer_Tick;
+        timer.Start();
+    }
+
+    private void ActionToastHideTimer_Tick(object? sender, object e)
+    {
+        _actionToastHideTimer?.Stop();
+
+        var storyboard = new Storyboard();
+        foreach (var target in new[] { ActionToast, OverlayActionToast })
+        {
+            var animation = new DoubleAnimation
+            {
+                To = 0,
+                Duration = new Duration(TimeSpan.FromMilliseconds(250)),
+                EasingFunction = new QuadraticEase()
+            };
+            Storyboard.SetTarget(animation, target);
+            Storyboard.SetTargetProperty(animation, "Opacity");
+            storyboard.Children.Add(animation);
+        }
+        storyboard.Begin();
+    }
+
     private void ShowFullScreenOverlay()
     {
 

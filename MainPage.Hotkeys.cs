@@ -154,6 +154,7 @@ public sealed partial class MainPage
 
             case VirtualKey.M:
                 Player.ToggleMute();
+                ShowActionToast(L.T(Player.IsMuted ? "Bez_Zvuka_M_Lbl" : "Zvuk_Vklyuchen"));
                 e.Handled = true;
                 break;
 

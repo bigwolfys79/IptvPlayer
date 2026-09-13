@@ -359,6 +359,7 @@ public partial class PlayerViewModel : ObservableObject
             var streamConfig = new PlaybackConfig(
                 streamSettings.DecoderMode,
                 streamSettings.AudioNormalization,
+                streamSettings.AudioVolumeBoost,
                 streamSettings.ReadAheadSeconds,
                 streamSettings.VodReadAheadSeconds,
                 streamSettings.DiagnosticStreamProxy,

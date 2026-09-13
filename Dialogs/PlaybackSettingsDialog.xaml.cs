@@ -146,6 +146,26 @@ namespace IptvPlayer.Dialogs
                 "Loudness" => 2,
                 _ => 1
             };
+
+            BoostHeader.Text = L.T("Usilenie_Gromkosti_Lbl");
+            BoostHint.Text = L.T("Podnimaet_Gromkost_Vyshe_100_Pt_Lbl");
+            BoostCombo.Items.Clear();
+            foreach (var percent in new[] { 100, 125, 150, 200 })
+            {
+                BoostCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = percent == 100 ? L.T("Bez_Usileniya") : $"{percent} %",
+                    Tag = percent
+                });
+                if (percent == Math.Clamp(settings.AudioVolumeBoost, 100, 200))
+                {
+                    BoostCombo.SelectedIndex = BoostCombo.Items.Count - 1;
+                }
+            }
+            if (BoostCombo.SelectedIndex < 0)
+            {
+                BoostCombo.SelectedIndex = 0;
+            }
         }
 
         private void BufferSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -185,10 +205,17 @@ namespace IptvPlayer.Dialogs
                 appSettings.AudioNormalization = audioNorm;
             }
 
+            var boost = 100;
+            if (BoostCombo.SelectedItem is ComboBoxItem { Tag: int boostPercent })
+            {
+                boost = boostPercent;
+            }
+            appSettings.AudioVolumeBoost = boost;
+
             await _settingsService.SaveAsync(appSettings);
 
             _streamService.ApplyAudioFilters(_viewModel.Player.Player, audioNorm,
-                _viewModel.Player.IsVodPlaying);
+                _viewModel.Player.IsVodPlaying, boost);
 
             CloseDialog();
         }

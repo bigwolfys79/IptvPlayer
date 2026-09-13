@@ -16,6 +16,12 @@ public interface IPlaylistCacheService
 
     /// <summary>Удаляет кэш плейлиста — при удалении плейлиста из настроек.</summary>
     Task DeleteAsync(int playlistId);
+
+    /// <summary>Все выученные соответствия «канал XMLTV → канал плейлиста».</summary>
+    Task<List<PlaylistDatabaseService.EpgAlias>> GetEpgAliasesAsync();
+
+    /// <summary>Перезаписывает пакет выученных соответствий (по ключу имени XMLTV).</summary>
+    Task UpsertEpgAliasesAsync(IReadOnlyList<PlaylistDatabaseService.EpgAlias> aliases);
 }
 
 /// <summary>
@@ -70,7 +76,14 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                     year INTEGER DEFAULT 0,
                     genre TEXT
                 );
-                CREATE INDEX IF NOT EXISTS idx_channels_playlist ON channels(playlist_id);";
+                CREATE INDEX IF NOT EXISTS idx_channels_playlist ON channels(playlist_id);
+                CREATE TABLE IF NOT EXISTS epg_aliases (
+                    key TEXT PRIMARY KEY,
+                    xmltv_id TEXT NOT NULL,
+                    xmltv_name TEXT NOT NULL,
+                    stream_url TEXT NOT NULL,
+                    created_at_utc TEXT NOT NULL
+                );";
             cmd.ExecuteNonQuery();
 
 
@@ -354,6 +367,85 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         catch (JsonException)
         {
             return portalRequest;
+        }
+    }
+
+    /// <summary>
+    /// Выученное соответствие «канал XMLTV → канал плейлиста»: ключ — мягко
+    /// нормализованное display-name канала XMLTV (EpgNameNormalizer.Normalize),
+    /// значение — id канала в XMLTV и StreamUrl нашего канала. Пишется только
+    /// для однозначных совпадений при обновлении EPG (см. EPGService),
+    /// применяется в MatchChannel после tvg-id и до таблицы имя-&gt;tvg-id.
+    /// </summary>
+    public sealed record EpgAlias(string Key, string XmlTvId, string StreamUrl);
+
+    public async Task<List<EpgAlias>> GetEpgAliasesAsync()
+    {
+        var result = new List<EpgAlias>();
+        try
+        {
+            using var connection = new SqliteConnection($"Data Source={DbPath}");
+            await connection.OpenAsync();
+
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT key, xmltv_id, stream_url FROM epg_aliases";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result.Add(new EpgAlias(reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось прочитать таблицу EPG-псевдонимов.");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Пакетно перезаписывает псевдонимы (INSERT OR REPLACE): повторно
+    /// выученное имя канала XMLTV указывает на новый канал плейлиста.
+    /// </summary>
+    public async Task UpsertEpgAliasesAsync(IReadOnlyList<EpgAlias> aliases)
+    {
+        if (aliases.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using var connection = new SqliteConnection($"Data Source={DbPath}");
+            await connection.OpenAsync();
+            await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync();
+
+            var cmd = connection.CreateCommand();
+            cmd.Transaction = transaction;
+            cmd.CommandText = @"
+                INSERT OR REPLACE INTO epg_aliases(key, xmltv_id, xmltv_name, stream_url, created_at_utc)
+                VALUES ($key, $xmltvId, $name, $streamUrl, $now)";
+            var keyParam = cmd.Parameters.Add("$key", SqliteType.Text);
+            var idParam = cmd.Parameters.Add("$xmltvId", SqliteType.Text);
+            var nameParam = cmd.Parameters.Add("$name", SqliteType.Text);
+            var urlParam = cmd.Parameters.Add("$streamUrl", SqliteType.Text);
+            var nowParam = cmd.Parameters.Add("$now", SqliteType.Text);
+
+            foreach (var alias in aliases)
+            {
+                keyParam.Value = alias.Key;
+                idParam.Value = alias.XmlTvId;
+                nameParam.Value = alias.Key;
+                urlParam.Value = alias.StreamUrl;
+                nowParam.Value = DateTime.UtcNow.ToString("O");
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось сохранить EPG-псевдонимы ({Count} шт.).", aliases.Count);
         }
     }
 }

@@ -403,7 +403,8 @@ public sealed partial class HubPage : Page
         var channelRepo = App.Services.GetRequiredService<IChannelRepository>();
         var cacheService = App.Services.GetRequiredService<IPlaylistCacheService>();
         var logger = App.Services.GetRequiredService<ILogger<Dialogs.PlaylistSettingsDialog>>();
-        var d = new Dialogs.PlaylistSettingsDialog(viewModel, _settingsService, m3uParser, channelRepo, cacheService, logger, _ => System.Threading.Tasks.Task.CompletedTask);
+        var xmlTv = App.Services.GetRequiredService<IXmlTvService>();
+        var d = new Dialogs.PlaylistSettingsDialog(viewModel, _settingsService, m3uParser, channelRepo, cacheService, logger, _ => System.Threading.Tasks.Task.CompletedTask, xmlTv);
         await d.ShowAsync(Content.XamlRoot);
 
         _settings = await _settingsService.LoadAsync();

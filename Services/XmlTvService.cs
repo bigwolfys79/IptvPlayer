@@ -30,6 +30,8 @@ public class XmlTvService : IXmlTvService
     private readonly HttpClient _httpClient;
     private readonly ILogger<XmlTvService> _logger;
 
+    public event Action<string, bool, string?>? SourceLoadFinished;
+
     public XmlTvService(
         ILogger<XmlTvService> logger,
         HttpClient? httpClient = null)
@@ -107,6 +109,7 @@ public class XmlTvService : IXmlTvService
         }
 
         var parsed = await DownloadAndParseAsync(source.Url, daysBack, ct);
+        SourceLoadFinished?.Invoke(source.Url, true, null);
 
         await EpgCacheStore.WriteAsync(cacheKey, new CachedXmlTv
         {
@@ -152,6 +155,7 @@ public class XmlTvService : IXmlTvService
                 _logger.LogInformation(
                     "Источник {Url}: фоновая перекачка завершена, распарсено программ: {Programs}.",
                     source.Url, parsed.Entries.Count);
+                SourceLoadFinished?.Invoke(source.Url, true, null);
             }
             catch (OperationCanceledException)
             {
@@ -160,6 +164,7 @@ public class XmlTvService : IXmlTvService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Источник {Url}: фоновая перекачка не удалась — кэш обновится при следующем запуске.", source.Url);
+                SourceLoadFinished?.Invoke(source.Url, false, ex.Message);
             }
             finally
             {
@@ -167,6 +172,71 @@ public class XmlTvService : IXmlTvService
                 _backgroundRefreshes.TryRemove(cacheKey, out _);
             }
         });
+    }
+
+    /// <summary>
+    /// Проверка источника при добавлении в диалоге «Плейлисты»: читает начало
+    /// ответа (до 64 КБ), распаковывает gzip по магическим байтам (та же
+    /// логика, что в DownloadAsync) и ищет признаки XMLTV в начале документа.
+    /// Возвращает null при успехе или человекочитаемый текст ошибки.
+    /// </summary>
+    public async Task<string?> ValidateEpgSourceAsync(string url, CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await _httpClient.GetAsync(
+                url, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                return string.Format(L.T("Epg_Proverka_Status_0"), (int)response.StatusCode);
+            }
+
+            var raw = await response.Content.ReadAsStreamAsync(ct);
+            var head = new MemoryStream();
+            var buffer = new byte[64 * 1024];
+            int read;
+            while (head.Length < buffer.Length &&
+                   (read = await raw.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+            {
+                head.Write(buffer, 0, read);
+            }
+
+            var bytes = head.GetBuffer();
+            var isGzip = head.Length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B;
+            string content;
+            if (isGzip)
+            {
+                head.Position = 0;
+                var decompressed = new MemoryStream();
+                await using (var gzip = new GZipStream(head, CompressionMode.Decompress))
+                {
+                    await gzip.CopyToAsync(decompressed, ct);
+                }
+                content = System.Text.Encoding.UTF8.GetString(
+                    decompressed.GetBuffer(), 0, (int)Math.Min(decompressed.Length, 64 * 1024));
+            }
+            else
+            {
+                content = System.Text.Encoding.UTF8.GetString(bytes, 0, (int)head.Length);
+            }
+
+            if (content.Contains("<tv", StringComparison.OrdinalIgnoreCase) ||
+                content.Contains("<channel", StringComparison.OrdinalIgnoreCase) ||
+                content.Contains("<!DOCTYPE tv", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return L.T("Epg_Proverka_Ne_XMLTV");
+        }
+        catch (OperationCanceledException)
+        {
+            return L.T("Epg_Proverka_Taymaut");
+        }
+        catch (Exception ex)
+        {
+            return string.Format(L.T("Epg_Proverka_Oshibka_0"), ex.Message);
+        }
     }
 
     private async Task<XmlTvLoadResult> DownloadAndParseAsync(string url, int daysBack, CancellationToken ct)
