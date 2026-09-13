@@ -47,23 +47,35 @@ namespace IptvPlayer.Services
             _proxy = proxy;
         }
 
-        private static string? GetAudioFilters(string? mode, bool allowLoudness) => mode switch
+        internal static string? GetAudioFilters(string? mode, bool allowLoudness, int boostPercent = 100)
         {
-            "Dynamic" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
-            "Loudness" when allowLoudness =>
-                "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,asetpts=N/SR/TB",
-            "Loudness" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
-            _ => null
-        };
+            var baseFilter = mode switch
+            {
+                "Dynamic" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
+                "Loudness" when allowLoudness =>
+                    "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,asetpts=N/SR/TB",
+                "Loudness" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
+                _ => null
+            };
+
+            if (boostPercent > 100)
+            {
+                var gain = (boostPercent / 100.0).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                var boostFilter = $"volume={gain}";
+                return string.IsNullOrEmpty(baseFilter) ? boostFilter : $"{baseFilter},{boostFilter}";
+            }
+
+            return baseFilter;
+        }
 
         /// <summary>
-        /// Применяет нормализацию громкости к уже играющему плееру
-        /// (переключение режима в настройках). Для плееров без FFmpeg-
+        /// Применяет нормализацию громкости и усиление к уже играющему
+        /// плееру (переключение режима в настройках). Для плееров без FFmpeg-
         /// источника (системный откат) — тихо ничего не делает.
         /// allowLoudness=false (живой эфир) — Loudness подменяется Dynamic:
         /// буфер loudnorm ~3 с на эфире даёт отставание звука от видео.
         /// </summary>
-        public void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false)
+        public void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false, int boostPercent = 100)
         {
             if (player is null || !LiveSources.TryGetValue(player, out var source))
             {
@@ -72,7 +84,7 @@ namespace IptvPlayer.Services
 
             try
             {
-                var filters = GetAudioFilters(mode, allowLoudness);
+                var filters = GetAudioFilters(mode, allowLoudness, boostPercent);
                 if (string.IsNullOrEmpty(filters))
                 {
                     source.ClearFFmpegAudioFilters();
@@ -176,7 +188,9 @@ namespace IptvPlayer.Services
                         "Loudness на живом эфире отстаёт от видео (~3 с буфера loudnorm) — применён Dynamic.");
                     audioNormalization = "Dynamic";
                 }
-                var normFilter = GetAudioFilters(audioNormalization, allowLoudness);
+                var normFilter = GetAudioFilters(
+                    audioNormalization, allowLoudness,
+                    Math.Clamp(streamConfig.AudioVolumeBoost, 100, 200));
                 if (!string.IsNullOrEmpty(normFilter))
                 {
                     ffmpegConfig.Audio.FFmpegAudioFilters = normFilter;

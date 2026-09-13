@@ -78,7 +78,8 @@ namespace IptvPlayer.Dialogs
             IChannelRepository channelRepository,
             IPlaylistCacheService playlistCacheService,
             ILogger<PlaylistSettingsDialog> logger,
-            Func<PlaylistSource, Task> switchPlaylist)
+            Func<PlaylistSource, Task> switchPlaylist,
+            IXmlTvService xmlTvService)
         {
             _viewModel = viewModel;
             _settingsService = settingsService;
@@ -86,8 +87,11 @@ namespace IptvPlayer.Dialogs
             _playlistCacheService = playlistCacheService;
             _logger = logger;
             _switchPlaylist = switchPlaylist;
+            _xmlTvService = xmlTvService;
             InitializeComponent();
         }
+
+        private readonly IXmlTvService _xmlTvService;
 
         public async Task ShowAsync(XamlRoot xamlRoot)
         {
@@ -241,16 +245,7 @@ namespace IptvPlayer.Dialogs
             var box = (sender as FrameworkElement)?.Parent is StackPanel row
                 ? row.Children.OfType<TextBox>().FirstOrDefault()
                 : null;
-            var url = box?.Text?.Trim();
-            if (string.IsNullOrEmpty(url))
-            {
-                SetPlaylistStatus(L.T("Vvedite_URL_Istochnika_EPG"));
-                return;
-            }
-
-            item.Playlist.EpgSources.Add(new EPGSource { Url = url, IsEnabled = true });
-            box!.Text = string.Empty;
-            await PlaylistEpgSourcesChangedAsync(item.Playlist);
+            await AddEpgSourceAsync(item.Playlist, box?.Text?.Trim(), box);
         }
 
         private async void PlaylistEpgUrlBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
@@ -259,10 +254,70 @@ namespace IptvPlayer.Dialogs
                 sender is TextBox { Text: { Length: > 0 } } box &&
                 box.DataContext is PlaylistListItem item)
             {
-                item.Playlist.EpgSources.Add(new EPGSource { Url = box.Text.Trim(), IsEnabled = true });
-                box!.Text = string.Empty;
-                await PlaylistEpgSourcesChangedAsync(item.Playlist);
+                await AddEpgSourceAsync(item.Playlist, box.Text.Trim(), box);
                 e.Handled = true;
+            }
+        }
+
+        /// <summary>
+        /// Добавляет источник EPG после проверки: URL дедуплицируется,
+        /// источник проверяется загрузкой начала ответа (gzip/XMLTV) — битый
+        /// не добавляется, ошибка показывается в строке статуса.
+        /// </summary>
+        private async Task AddEpgSourceAsync(PlaylistSource playlist, string? url, TextBox? box)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
+                SetPlaylistStatus(L.T("Vvedite_URL_Istochnika_EPG"));
+                return;
+            }
+
+            if (playlist.EpgSources.Any(s => string.Equals(s.Url, url, StringComparison.OrdinalIgnoreCase)))
+            {
+                SetPlaylistStatus(L.T("Istochnik_EPG_Uzhe_Dobavlen"));
+                return;
+            }
+
+            SetPlaylistStatus(L.T("Proverka_Istochnika_EPG"));
+            var error = await _xmlTvService.ValidateEpgSourceAsync(url);
+            if (error != null)
+            {
+                SetPlaylistStatus(string.Format(L.T("Epg_Istochnik_Oshibka_0"), error));
+                return;
+            }
+
+            playlist.EpgSources.Add(new EPGSource { Url = url, IsEnabled = true });
+            if (box != null)
+            {
+                box.Text = string.Empty;
+            }
+            SetPlaylistStatus(string.Format(L.T("Epg_Istochnik_Dobavlen_0"), url));
+            await PlaylistEpgSourcesChangedAsync(playlist);
+        }
+
+        /// <summary>
+        /// Строка статуса под источником EPG: последняя ошибка (если есть) или
+        /// дата последней успешной загрузки. Заполняется из кода, потому что
+        /// форматирование даты и выбор текста не выражаются обычным x:Bind.
+        /// </summary>
+        private void EpgSourceStatusText_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is not TextBlock text || text.DataContext is not EPGSource source)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(source.LastError))
+            {
+                text.Text = "⚠ " + string.Format(L.T("Epg_Istochnik_Oshibka_0"), source.LastError);
+            }
+            else if (source.LastSuccessAt is { } ok)
+            {
+                text.Text = "✓ " + string.Format(L.T("Epg_Istochnik_Uspeh_0"), ok.LocalDateTime);
+            }
+            else
+            {
+                text.Text = string.Empty;
             }
         }
 

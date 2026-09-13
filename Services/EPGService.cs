@@ -35,6 +35,7 @@ namespace IptvPlayer.Services
         private readonly IChannelRepository _channelRepository;
         private readonly ISettingsService _settingsService;
         private readonly IXmlTvService _xmlTvService;
+        private readonly IPlaylistCacheService _playlistCacheService;
         private readonly ILogger<EPGService> _logger;
 
         private Dictionary<string, List<EPGEntry>> _entriesByChannelId = new(StringComparer.OrdinalIgnoreCase);
@@ -84,13 +85,68 @@ namespace IptvPlayer.Services
             IChannelRepository channelRepository,
             ISettingsService settingsService,
             IXmlTvService xmlTvService,
+            IPlaylistCacheService playlistCacheService,
             ILogger<EPGService> logger)
         {
             _channelRepository = channelRepository;
             _settingsService = settingsService;
             _xmlTvService = xmlTvService;
+            _playlistCacheService = playlistCacheService;
             _logger = logger;
             _uiDispatcher = DispatcherQueue.GetForCurrentThread();
+            _xmlTvService.SourceLoadFinished += OnSourceLoadFinished;
+        }
+
+        private readonly System.Threading.SemaphoreSlim _statusUpdateGate = new(1, 1);
+
+        /// <summary>
+        /// Записывает результат реальной загрузки источника (сеть, не кэш) в
+        /// статусные поля EPGSource всех копий этого URL (глобальные источники
+        /// и у каждого плейлиста) и сохраняет настройки. Сериализуется через
+        /// семафор: события фоновой перекачки и основного пути не должны
+        /// пересекаться на мутации одних и тех же объектов.
+        /// </summary>
+        private async void OnSourceLoadFinished(string url, bool success, string? error)
+        {
+            try
+            {
+                await _statusUpdateGate.WaitAsync().ConfigureAwait(false);
+                var settings = await _settingsService.LoadAsync().ConfigureAwait(false);
+                var changed = false;
+
+                foreach (var source in settings.EpgSources
+                             .Concat(settings.Playlists.SelectMany(p => p.EpgSources))
+                             .Where(s => string.Equals(s.Url, url, StringComparison.Ordinal)))
+                {
+                    if (success)
+                    {
+                        if (source.LastError != null || source.LastSuccessAt is null)
+                        {
+                            source.LastError = null;
+                            source.LastSuccessAt = DateTimeOffset.Now;
+                            changed = true;
+                        }
+                    }
+                    else if (!string.Equals(source.LastError, error, StringComparison.Ordinal))
+                    {
+                        source.LastError = error;
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                {
+                    await _settingsService.SaveAsync(settings).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось записать статус EPG-источника {Url}.", SecretProtector.Mask(url));
+            }
+            finally
+            {
+                _statusUpdateGate.Release();
+            }
         }
 
         public Task<List<ChannelViewModel>> GetChannelsAsync()
@@ -254,16 +310,26 @@ namespace IptvPlayer.Services
         {
             None,
             TvgId,
+            Alias,
             NameMap,
             Name
         }
 
         /// <summary>
+        /// Выученные псевдонимы: StreamUrl нашего канала → id канала в XMLTV.
+        /// Заполняется LoadEpgAliasesAsync после каждой загрузки EPG,
+        /// применяется в MatchChannel между tvg-id и таблицей имя-&gt;tvg-id.
+        /// </summary>
+        private Dictionary<string, string> _epgChannelIdByStreamUrl = new(StringComparer.Ordinal);
+
+        /// <summary>
         /// Порядок путей — от самого надёжного к самому приблизительному:
         /// 1) точное совпадение TvgId из плейлиста с id канала в XMLTV;
-        /// 2) таблица "имя -> tvg-id" от epg.one (строгий ключ с таймшифтом,
+        /// 2) выученный псевдоним (соответствие, запомненное при прошлом
+        ///    успешном обновлении EPG для однозначных совпадений);
+        /// 3) таблица "имя -> tvg-id" от epg.one (строгий ключ с таймшифтом,
         ///    затем мягкий) — надёжна тем, что собрана из этого же плейлиста;
-        /// 3) индекс нормализованных имён XMLTV (срезаем HD/таймшифт/коды
+        /// 4) индекс нормализованных имён XMLTV (срезаем HD/таймшифт/коды
         ///    стран и сравниваем то, что осталось).
         /// </summary>
         private (List<EPGEntry> Entries, MatchMethod Method) MatchChannel(ChannelViewModel channel)
@@ -273,6 +339,13 @@ namespace IptvPlayer.Services
                 _entriesByChannelId.TryGetValue(channel.TvgId, out var byId))
             {
                 return (byId, MatchMethod.TvgId);
+            }
+
+            if (!string.IsNullOrEmpty(channel.StreamUrl) &&
+                _epgChannelIdByStreamUrl.TryGetValue(channel.StreamUrl, out var aliasedId) &&
+                _entriesByChannelId.TryGetValue(aliasedId, out var aliasedEntries))
+            {
+                return (aliasedEntries, MatchMethod.Alias);
             }
 
             var strictKey = EpgNameNormalizer.NormalizePreservingTimeshift(channel.Name);
@@ -476,6 +549,7 @@ namespace IptvPlayer.Services
                 if (enabledSources.Count > 0 &&
                     await TryLoadMergedCacheAsync(enabledSources, maxAge).ConfigureAwait(false))
                 {
+                    await LoadEpgAliasesAsync().ConfigureAwait(false);
                     await ApplyMissingLogosAsync().ConfigureAwait(false);
                     await LogMatchSummaryAsync().ConfigureAwait(false);
                     return;
@@ -495,6 +569,7 @@ namespace IptvPlayer.Services
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Источник EPG недоступен/битый: {Url}", SecretProtector.Mask(source.Url));
+                        OnSourceLoadFinished(source.Url, false, ex.Message);
                         return (XmlTvLoadResult?)null;
                     }
                 }).ToList();
@@ -533,6 +608,8 @@ namespace IptvPlayer.Services
                     enabledSources.Count, byChannel.Count, totalEntries);
 
                 await ApplyMissingLogosAsync().ConfigureAwait(false);
+
+                await LoadEpgAliasesAsync().ConfigureAwait(false);
 
                 await LogMatchSummaryAsync().ConfigureAwait(false);
             }
@@ -756,6 +833,34 @@ namespace IptvPlayer.Services
             }
         }
 
+        /// <summary>
+        /// Читает выученные псевдонимы из кэш-БД и оставляет только те, чей
+        /// xmltv-id реально присутствует в загруженных источниках: при смене
+        /// EPG-файла старые соответствия не должны указывать мимо.
+        /// </summary>
+        private async Task LoadEpgAliasesAsync()
+        {
+            var aliases = await _playlistCacheService.GetEpgAliasesAsync().ConfigureAwait(false);
+            if (aliases.Count == 0)
+            {
+                return;
+            }
+
+            var map = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var alias in aliases)
+            {
+                if (_entriesByChannelId.ContainsKey(alias.XmlTvId))
+                {
+                    map[alias.StreamUrl] = alias.XmlTvId;
+                }
+            }
+
+            _epgChannelIdByStreamUrl = map;
+            _logger.LogInformation(
+                "EPG-псевдонимы: в БД {Total}, применимо к текущим источникам {Usable}.",
+                aliases.Count, map.Count);
+        }
+
         private async Task LogMatchSummaryAsync()
         {
             List<ChannelViewModel> channels;
@@ -776,9 +881,11 @@ namespace IptvPlayer.Services
 
             var withoutTvgId = channels.Count(c => string.IsNullOrWhiteSpace(c.TvgId));
             var matchedById = 0;
+            var matchedByAlias = 0;
             var matchedByMap = 0;
             var matchedByName = 0;
             var unmatched = new List<string>();
+            var learned = new List<PlaylistDatabaseService.EpgAlias>();
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
             await Task.Run(() =>
@@ -791,24 +898,37 @@ namespace IptvPlayer.Services
                         continue;
                     }
 
-                    var (_, method) = MatchChannel(channel);
+                    var (entries, method) = MatchChannel(channel);
                     switch (method)
                     {
                         case MatchMethod.TvgId:
                             matchedById++;
                             break;
+                        case MatchMethod.Alias:
+                            matchedByAlias++;
+                            break;
                         case MatchMethod.NameMap:
                             matchedByMap++;
+                            TryLearnAlias(learned, channel, entries);
                             break;
                         case MatchMethod.Name:
                             matchedByName++;
-                            break;
-                        default:
+                            TryLearnAlias(learned, channel, entries);
+                            break;                        default:
                             unmatched.Add(channel.Name);
                             break;
                     }
                 }
             });
+
+            if (learned.Count > 0)
+            {
+                await _playlistCacheService.UpsertEpgAliasesAsync(learned).ConfigureAwait(false);
+                _logger.LogInformation(
+                    "Выучено новых EPG-псевдонимов: {Learned} (перезаписывается существующий ключ).",
+                    learned.Count);
+            }
+
             _logger.LogInformation(
                 "Сводка сопоставления: {Count} каналов за {Ms:F0} мс (вне UI-потока).",
                 channels.Count, sw.Elapsed.TotalMilliseconds);
@@ -818,15 +938,54 @@ namespace IptvPlayer.Services
 
             _logger.LogInformation(
                 "Сопоставление плейлиста с XMLTV: каналов всего {Total}, без tvg-id {WithoutTvgId}, " +
-                "сопоставлено по tvg-id {ById}, по таблице имя->tvg-id {ByMap}, " +
+                "сопоставлено по tvg-id {ById}, по выученным псевдонимам {ByAlias}, " +
+                "по таблице имя->tvg-id {ByMap}, " +
                 "по названию (резервный путь) {ByName}, не сопоставлено вообще {Unmatched}. {UnmatchedSample}{IdSample}",
-                channels.Count, withoutTvgId, matchedById, matchedByMap, matchedByName, unmatched.Count,
+                channels.Count, withoutTvgId, matchedById, matchedByAlias, matchedByMap, matchedByName, unmatched.Count,
                 unmatchedSample.Count > 0
                     ? $"Примеры несопоставленных каналов: {string.Join(", ", unmatchedSample.Select(n => $"\"{n}\""))}. "
                     : string.Empty,
                 sampleXmlTvIds.Count > 0
                     ? $"Примеры id, которые реально встречаются в загруженном XMLTV: {string.Join(", ", sampleXmlTvIds.Select(id => $"\"{id}\""))}."
                     : "В загруженном XMLTV вообще нет ни одного id каналов.");
+        }
+
+        /// <summary>
+        /// Запоминает однозначное соответствие «имя канала XMLTV → наш канал»:
+        /// только совпадения через таблицу имя-&gt;tvg-id или уникальное
+        /// совпадение по нормализованному имени, имя не короче 2 символов и
+        /// канал с http(s)-адресом (для локальных файлов и порталов
+        /// соответствия не запоминаются).
+        /// Ключ — мягко нормализованное display-name из XMLTV. Уже известное
+        /// неизменённое соответствие не перезаписывается.
+        /// </summary>
+        private void TryLearnAlias(
+            List<PlaylistDatabaseService.EpgAlias> learned,
+            ChannelViewModel channel,
+            List<EPGEntry> entries)
+        {
+            if (string.IsNullOrEmpty(channel.StreamUrl) ||
+                (!channel.StreamUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                 !channel.StreamUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) ||
+                entries.Count == 0)
+            {
+                return;
+            }
+
+            var first = entries[0];
+            if (_epgChannelIdByStreamUrl.TryGetValue(channel.StreamUrl, out var knownId) &&
+                string.Equals(knownId, first.ChannelId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var key = EpgNameNormalizer.Normalize(first.ChannelName);
+            if (key.Length < 2)
+            {
+                return;
+            }
+
+            learned.Add(new PlaylistDatabaseService.EpgAlias(key, first.ChannelId, channel.StreamUrl));
         }
     }
 }

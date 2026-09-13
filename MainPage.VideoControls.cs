@@ -42,6 +42,8 @@ public sealed partial class MainPage : Page
 
         SyncVolumeSliders(value);
 
+        ShowActionToast(string.Format(L.T("Gromkost_0_Pt"), $"{value:P0}"));
+
         _volumeSaveDebounceTimer.Stop();
         _volumeSaveDebounceTimer.Start();
     }
@@ -77,7 +79,11 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void MuteButton_Click(object sender, RoutedEventArgs e) => Player.ToggleMute();
+    private void MuteButton_Click(object sender, RoutedEventArgs e)
+    {
+        Player.ToggleMute();
+        ShowActionToast(L.T(Player.IsMuted ? "Bez_Zvuka_M_Lbl" : "Zvuk_Vklyuchen"));
+    }
 
     /// <summary>
     /// Кнопки M в обеих панелях: иконка (динамик/динамик с крестом), подсказка
@@ -315,10 +321,12 @@ public sealed partial class MainPage : Page
             if (selectedMinutes > 0)
             {
                 ViewModel.StartSleepTimer(selectedMinutes);
+                ShowActionToast(string.Format(L.T("Taymer_Sna_Ustanovlen_0"), selectedMinutes));
             }
             else if (ViewModel.IsSleepTimerActive && selectedMinutes == 0)
             {
                 ViewModel.StopSleepTimer();
+                ShowActionToast(L.T("Taymer_Sna_Otklyuchen"));
             }
         };
 
@@ -329,6 +337,7 @@ public sealed partial class MainPage : Page
     private void SleepTimerCancelButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.StopSleepTimer();
+        ShowActionToast(L.T("Taymer_Sna_Otklyuchen"));
         UpdateSleepTimerDisplays();
     }
 

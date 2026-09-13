@@ -66,7 +66,8 @@ public sealed partial class MainPage : Page
             _channelRepository,
             _playlistCacheService,
             App.Services.GetRequiredService<ILogger<Dialogs.PlaylistSettingsDialog>>(),
-            SwitchPlaylistAsync);
+            SwitchPlaylistAsync,
+            App.Services.GetRequiredService<Services.IXmlTvService>());
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
 
 

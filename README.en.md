@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.19.2
+- **Version:** 1.20.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -33,6 +33,8 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Video display modes: fit / stretch / crop
 - Render upscale (experimental): D3D11 Video Processor (RTX VSR / Intel VSR when supported by the driver), FSR 1.0, bicubic — with automatic fallback
 - Audio normalization: Dynamic (boost quiet channels) / Loudness (EBU R128)
+- Volume boost up to 200% (FFmpeg volume on top of normalization — for very quiet channels)
+- Action confirmation toasts at the bottom center of the video: volume, mute, sleep timer
 - Real stream speed measurement via the diagnostics proxy (playback settings)
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
 - Hotkeys: digits (channel number), Enter (confirm), Backspace (previous channel), arrows/PgUp/PgDn (adjacent channel), Space (pause for archive and VOD), M (mute), V (display mode), F/F11 (fullscreen), Esc (back/exit), Ctrl+F (search), Ctrl+J (stream stats), Ctrl+M (mini-player), Ctrl+T (always on top); full help — F1
@@ -73,6 +75,8 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - EPG (XMLTV) with lazy loading (current program at startup, full list on click); current program title in the channel list wraps up to two lines
 - Multi-level EPG cache: downloaded feed, merged result and positions — startup takes a fraction of a second, network is touched once per refresh period (1/3/7 days); when the refresh period is due, the program guide is shown immediately from the stale cache while the re-download runs in the background
 - EPG settings: reminders, refresh period and archive depth (1/3/7 days back); EPG sources are configured per playlist
+- EPG source validation on add (head-of-feed download, gzip, XMLTV checks) and per-source status: last successful load or error text
+- Learned channel aliases: unambiguous "XMLTV name → playlist channel" matches are memorized and reused on subsequent EPG refreshes, even when the channel cannot be matched by tvg-id or name tables
 - Program reminders
 - Favorite channels
 - Parental control (PIN, daily watch limit, per-channel unlock via Enter until channel switch)

@@ -68,6 +68,14 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
                     <RadioButtons x:Name="AudioNormRadio"/>
+
+                    <TextBlock x:Name="BoostHeader" x:Uid="Usilenie_Gromkosti" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="BoostHint"
+                               x:Uid="Podnimaet_Gromkost_Vyshe_100_Pt"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <ComboBox x:Name="BoostCombo" HorizontalAlignment="Left" MinWidth="160"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

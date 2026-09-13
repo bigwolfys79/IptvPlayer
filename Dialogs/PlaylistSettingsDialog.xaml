@@ -87,24 +87,32 @@
                                     <ItemsControl ItemsSource="{x:Bind Playlist.EpgSources}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="models:EPGSource">
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <CheckBox IsChecked="{x:Bind IsEnabled, Mode=TwoWay}"
-                                                              VerticalAlignment="Center"
-                                                              Checked="PlaylistEpgSource_CheckedChanged"
-                                                              Unchecked="PlaylistEpgSource_CheckedChanged"
-                                                              x:Uid="Ispolzovat_Istochnik"/>
-                                                    <TextBlock Text="{x:Bind Url}" FontSize="11" Width="260"
-                                                               VerticalAlignment="Center"
+                                                <StackPanel Spacing="2" Margin="0,0,0,4">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                        <CheckBox IsChecked="{x:Bind IsEnabled, Mode=TwoWay}"
+                                                                  VerticalAlignment="Center"
+                                                                  Checked="PlaylistEpgSource_CheckedChanged"
+                                                                  Unchecked="PlaylistEpgSource_CheckedChanged"
+                                                                  x:Uid="Ispolzovat_Istochnik"/>
+                                                        <TextBlock Text="{x:Bind Url}" FontSize="11" Width="260"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <Button Width="32" Height="32"
+                                                                Padding="0"
+                                                                VerticalAlignment="Center"
+                                                                HorizontalAlignment="Stretch"
+                                                                x:Uid="Udalit_Istochnik"
+                                                                Click="PlaylistEpgSourceRemoveButton_Click">
+                                                            <FontIcon Glyph="&#xE74D;" FontSize="12"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                    <TextBlock FontSize="10"
+                                                               Margin="30,0,0,0"
+                                                               TextWrapping="Wrap"
+                                                               MaxLines="2"
                                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                               TextTrimming="CharacterEllipsis"/>
-                                                    <Button Width="32" Height="32"
-                                                            Padding="0"
-                                                            VerticalAlignment="Center"
-                                                            HorizontalAlignment="Stretch"
-                                                            x:Uid="Udalit_Istochnik"
-                                                            Click="PlaylistEpgSourceRemoveButton_Click">
-                                                        <FontIcon Glyph="&#xE74D;" FontSize="12"/>
-                                                    </Button>
+                                                               Loaded="EpgSourceStatusText_Loaded"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

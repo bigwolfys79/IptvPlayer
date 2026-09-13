@@ -3028,4 +3028,72 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>7 days back</value>
 
   </data>
+  <data name="Usilenie_Gromkosti.Text" xml:space="preserve">
+    <value>Volume boost</value>
+  </data>
+
+  <data name="Usilenie_Gromkosti_Lbl" xml:space="preserve">
+    <value>Volume boost</value>
+  </data>
+
+  <data name="Podnimaet_Gromkost_Vyshe_100_Pt.Text" xml:space="preserve">
+    <value>Raises volume above 100% — for very quiet channels. Applied to the playing channel immediately.</value>
+  </data>
+
+  <data name="Podnimaet_Gromkost_Vyshe_100_Pt_Lbl" xml:space="preserve">
+    <value>Raises volume above 100% — for very quiet channels. Applied to the playing channel immediately.</value>
+  </data>
+
+  <data name="Bez_Usileniya" xml:space="preserve">
+    <value>No boost</value>
+  </data>
+  <data name="Gromkost_0_Pt" xml:space="preserve">
+    <value>Volume: {0}</value>
+  </data>
+
+  <data name="Zvuk_Vklyuchen" xml:space="preserve">
+    <value>Sound on</value>
+  </data>
+
+  <data name="Taymer_Sna_Ustanovlen_0" xml:space="preserve">
+    <value>Sleep timer: {0} min</value>
+  </data>
+
+  <data name="Taymer_Sna_Otklyuchen" xml:space="preserve">
+    <value>Sleep timer off</value>
+  </data>
+  <data name="Istochnik_EPG_Uzhe_Dobavlen" xml:space="preserve">
+    <value>This source is already added</value>
+  </data>
+
+  <data name="Proverka_Istochnika_EPG" xml:space="preserve">
+    <value>Validating EPG source…</value>
+  </data>
+
+  <data name="Epg_Istochnik_Dobavlen_0" xml:space="preserve">
+    <value>EPG source added: {0}</value>
+  </data>
+
+  <data name="Epg_Istochnik_Uspeh_0" xml:space="preserve">
+    <value>Last successful load: {0:dd.MM HH:mm}</value>
+  </data>
+
+  <data name="Epg_Proverka_Status_0" xml:space="preserve">
+    <value>Server returned HTTP {0}</value>
+  </data>
+
+  <data name="Epg_Proverka_Ne_XMLTV" xml:space="preserve">
+    <value>Response does not look like an XMLTV file (no &lt;tv&gt; or &lt;channel&gt;)</value>
+  </data>
+
+  <data name="Epg_Proverka_Taymaut" xml:space="preserve">
+    <value>Source did not respond in time</value>
+  </data>
+
+  <data name="Epg_Proverka_Oshibka_0" xml:space="preserve">
+    <value>Failed to download source: {0}</value>
+  </data>
+  <data name="Epg_Istochnik_Oshibka_0" xml:space="preserve">
+    <value>EPG source error: {0}</value>
+  </data>
 </root>
