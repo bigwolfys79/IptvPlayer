@@ -62,6 +62,18 @@ public static class ParentalControlService
         return settings.ParentalControlBlockedGroups.Contains(groupName.Trim(), StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Требуется ли подтверждение PIN для действия над каналом заблокированной
+    /// группы (перенос, удаление, восстановление): контроль включён, PIN
+    /// задан, группа заблокирована и нет активной разблокировки.
+    /// </summary>
+    public static bool IsPinRequiredForGroup(AppSettings settings, string? groupName, DateTime? utcNow = null)
+    {
+        return IsLocked(settings, utcNow)
+            && !string.IsNullOrEmpty(settings.ParentalControlPinHash)
+            && IsGroupBlocked(settings, groupName);
+    }
+
     /// <summary>Временная разблокировка на N минут; null — до выключения.</summary>
     public static void Unlock(AppSettings settings, int? minutes)
     {

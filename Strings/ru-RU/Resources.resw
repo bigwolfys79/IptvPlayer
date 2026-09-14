@@ -3096,4 +3096,70 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Epg_Istochnik_Oshibka_0" xml:space="preserve">
     <value>Ошибка источника EPG: {0}</value>
   </data>
+  <data name="Perenesti_V_Gruppu" xml:space="preserve">
+    <value>Переместить в группу…</value>
+  </data>
+  <data name="Udalit_Kanal_Iz_Spiska" xml:space="preserve">
+    <value>Удалить канал из списка</value>
+  </data>
+  <data name="Vosstanovlenie_Kanalov" xml:space="preserve">
+    <value>Восстановление каналов</value>
+  </data>
+  <data name="Vosstanovlenie_Kanalov_Hint" xml:space="preserve">
+    <value>Скрытые и перенесённые каналы возвращаются к исходному виду из плейлиста после восстановления.</value>
+  </data>
+  <data name="Vosstanovit_Udalennye_Kanaly" xml:space="preserve">
+    <value>Восстановить удалённые и перемещённые каналы</value>
+  </data>
+  <data name="Vosstanovit_Udalennye_Kanaly_Lbl" xml:space="preserve">
+    <value>Восстановление каналов</value>
+  </data>
+  <data name="Vyberite_Gruppu" xml:space="preserve">
+    <value>Выберите существующую группу или введите имя новой:</value>
+  </data>
+  <data name="Perenesti" xml:space="preserve">
+    <value>Переместить</value>
+  </data>
+  <data name="Kanal_Perenesen_V_Gruppu" xml:space="preserve">
+    <value>Канал «{0}» перемещён в группу «{1}»</value>
+  </data>
+  <data name="Kanal_Udalen_Iz_Spiska" xml:space="preserve">
+    <value>Канал «{0}» удалён из списка</value>
+  </data>
+  <data name="Udalit_Kanal_Podtverzhdenie" xml:space="preserve">
+    <value>Удалить канал «{0}» из списка? Вернуть можно через настройки плейлиста.</value>
+  </data>
+  <data name="Pravka_Kanal_Udalen" xml:space="preserve">
+    <value>удалён из списка</value>
+  </data>
+  <data name="Pravka_Kanal_Perenesen" xml:space="preserve">
+    <value>перемещён: {0} → {1}</value>
+  </data>
+  <data name="Net_Aktivnogo_Pleylista" xml:space="preserve">
+    <value>Нет активного плейлиста.</value>
+  </data>
+  <data name="Net_Udalennyh_Ili_Perenesennyh" xml:space="preserve">
+    <value>Нет удалённых или перемещённых каналов.</value>
+  </data>
+  <data name="Vosstanovit_Vybrannye" xml:space="preserve">
+    <value>Восстановить выбранное</value>
+  </data>
+  <data name="Ochistit_Vse" xml:space="preserve">
+    <value>Очистить всё</value>
+  </data>
+  <data name="Vosstanovleno_Kanalov_0" xml:space="preserve">
+    <value>Восстановлено правок: {0}. Перезагружаю плейлист…</value>
+  </data>
+  <data name="Vse_Pravki_Ochishcheny" xml:space="preserve">
+    <value>Все правки очищены. Перезагружаю плейлист…</value>
+  </data>
+  <data name="Roditelskiy_Kontrol_Lbl" xml:space="preserve">
+    <value>Родительский контроль</value>
+  </data>
+  <data name="Otmena_Lbl" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="Vvod_Pin_Pole" xml:space="preserve">
+    <value>PIN</value>
+  </data>
 </root>

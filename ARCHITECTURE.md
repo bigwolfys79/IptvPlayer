@@ -19,7 +19,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): эфир / архив (timesh
 
 Ключевые классы:
 - `HubPage` — экран запуска с карточками «Плейлисты», «Портал», «Настройки».
-- `MainPage` (+ partial-файлы `MainPage.FullScreen/Hotkeys/LocalVideo/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — весь UI и оверлеи.
+- `MainPage` (+ partial-файлы `MainPage.ChannelOverrides/FullScreen/Hotkeys/LocalVideo/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — весь UI и оверлеи.
 - `MainPageViewModel` (+ partial-файлы `MainPageViewModel.PortalFilters/Recording/VodResume.cs`) — логика списка каналов, фильтрация, запись, VOD resume.
 - `EpgViewModel` — EPG: загрузка, ленивая загрузка по каналу, текущая передача.
 - `PlayerViewModel` — управление плеером (FFmpegInteropX), архив, VOD.
@@ -131,12 +131,16 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 Запуск канала проходит через `MainPageViewModel.EnsureChannelAllowedAsync`: одноразовая разблокировка «до переключения» сбрасывается при **любом** следующем запуске канала (включая автопродолжение того же канала — PIN запрашивается заново). Дневной лимит (`ParentalDailyLimitMinutes`) проверяется первым и от PIN не зависит: исчерпан — канал не запустится до полуночи. Просмотренное время копится секундным тиком (`CheckDailyWatchLimit`, MainPage.Seek.cs), когда плеер реально играет (не пауза/остановка): `ParentalWatchedSeconds` с датой `ParentalWatchedDate` (локальная, сброс в полночь по `DailyDateKey`). При исчерпании во время просмотра воспроизведение останавливается, показывается диалог с временем до сброса (`TimeUntilReset`).
 
-## 8. Данные на диске
+## 8. Правки каналов (перенос/удаление)
+
+Пользовательские правки каналов поверх плейлиста: перенос в другую группу и удаление из списка (контекстное меню по правому клику, шаблон `ChannelItemTemplate` и постерный вид; обработчики — MainPage.ChannelOverrides.cs). Хранятся в таблице `channel_overrides` кэш-БД (`PlaylistDatabaseService`, ключ `playlist_id + stream_url`, снимки `tvg_id`/имени для fallback) — переживают перекачку m3u, т.к. таблица channels при сохранении кэша перезаписывается целиком. Применяются после каждой загрузки плейлиста (`ChannelOverrideMatcher.Apply`, вызов из `InitializeAsync`/`ApplyPlaylistAsync`): матчинг по `stream_url` → `tvg-id` → нормализованному имени (`EpgNameNormalizer`); несовпадение — запись-сирота остаётся до восстановления. Восстановление — кнопка в диалоге настроек плейлиста (список правок с чекбоксами, восстановление выбранных или очистка всех, затем перезагрузка активного плейлиста `ReloadActivePlaylistAsync`). Действия над каналами заблокированных групп (перенос, удаление, открытие экрана восстановления с такими правками) требуют PIN — `ParentalControlService.IsPinRequiredForGroup` (контрол включён + PIN задан + группа заблокирована + нет активной разблокировки).
+
+## 9. Данные на диске
 
 | Что | Где |
 |---|---|
 | Настройки (источники, порталы, периодичности, громкость, декодер, избранное) | `%LocalAppData%\IptvPlayer\settings.json` (запись атомарная, через `.tmp`; прошлые версии — `settings.json.prev`, битые — `*.corrupt-*`) |
-| Кэш каналов/каталога и выученные EPG-псевдонимы (SQLite, общий файл на все плейлисты; старые JSON-кэши `playlist_cache_{id}.json` мигрируются в него разово) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
+| Кэш каналов/каталога, выученные EPG-псевдонимы и правки каналов (SQLite, общий файл на все плейлисты; старые JSON-кэши `playlist_cache_{id}.json` мигрируются в него разово) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
 | Кэш разобранных XMLTV-источников и слитого EPG (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
 | Записи (ffmpeg, MPEG-TS без перекодирования) | «Видео\IptvPlayer» или настроенная папка |
 | Лог (Serilog, ежедневный роллинг, 14 дней) | `%LocalAppData%\IptvPlayer\logs\` |
@@ -144,7 +148,7 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 В MSIX-режиме (Debug) пути `%LocalAppData%` виртуализуются в пакет; в unpackaged-режиме (Release/Inno) используются напрямую — код одинаково работает в обоих.
 
-## 9. Производительность больших каталогов
+## 10. Производительность больших каталогов
 
 Каталог портала — 20k+ элементов; ключевые решения:
 - `FilterChannels` заменяет `DisplayedChannels` целиком (одна смена ItemsSource вместо тысяч CollectionChanged). Выделение в списках — **OneWay + SelectionChanged**: TwoWay-привязка затирала `SelectedChannel` в null при очистке ItemsSource скрытого вида (видео привязано к `SelectedChannel.IsPlaying` и пропадало); после пересборки выделение в контролы возвращает MainPage по событию FilterChanged.
@@ -154,11 +158,11 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 - Буфер: эфир — `ReadAheadSeconds` (15 с / 32+ МБ), VOD — отдельный `VodReadAheadSeconds` (4 с / 8+ МБ): большой буфер на медленном CDN VOD держал старт потока несколько секунд.
 - Оптимизация памяти: `EPGEntry.Description` и `ChannelViewModel.CurrentProgram*` — nullable (~46 MB экономии при 2000+ каналах + 400k передач).
 
-## 10. Обновление приложения
+## 11. Обновление приложения
 
 Полуавтоматическое обновление (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): фоновая проверка через 2 мин после старта (не чаще раза в сутки — `AppSettings.LastUpdateCheckUtc`), разбор GitHub API тот же, что у ручной кнопки в «О программе». Скачанный установщик проверяется по SHA256 (`assets[].digest`, если источник отдал). Согласие пользователя — ContentDialog; установка — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` от имени оболочки (UAC: Program Files), приложение закрывается штатно, а после тихой установки запускается снова (отдельная запись `[Run]` с `Check: WizardSilent` в .iss — интерактивную установку не затрагивает). Пока идут записи, установка откладывается до события `RecordingsChanged`. «Позже» в диалоге обновления откладывает установку до закрытия приложения: путь скачанного установщика хранится в `App.PendingUpdateSetupPath`, а `MainWindow` при настоящем выходе (не в трей) запускает тихую установку через `App.TryStartPendingUpdateInstall`. Любая ошибка — тихая: старая версия продолжает работать (Inno ставит поверх).
 
-## 11. Логирование и DI
+## 12. Логирование и DI
 
 **Serilog.** Статический логгер настраивается первым делом в конструкторе `App` (до `InitializeComponent` — глобальные обработчики исключений уже должны писать в лог): Debug-вывод (всегда) + файловый sink с ежедневным роллингом. Классы получают `ILogger<T>` конструктором (источник в логе = имя класса); файловый лог выключается тумблером в настройках на лету через `LoggingLevelSwitch`.
 
@@ -166,23 +170,24 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 **MVVM-договорённости.** Свойства — ручные `SetProperty` вместо `[ObservableProperty]` (генератор не создаёт WinRT-проекторов — MVVMTK0045, важно для AOT/ABI); действия — `[RelayCommand]`; code-behind MainPage разбит на partial-файлы по зонам.
 
-## 12. Разбиение на partial-файлы
+## 13. Разбиение на partial-файлы
 
 **MainPage** (3133 → 1374 строк):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `MainPage.xaml.cs` | 1374 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
-| `MainPage.Portal.cs` | 264 | Portal API методы |
-| `MainPage.Settings.cs` | 104 | Диалоги настроек |
-| `MainPage.Navigation.cs` | 375 | Переключение плейлистов, навигация |
-| `MainPage.VideoControls.cs` | 554 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
-| `MainPage.Seek.cs` | 750 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, родительский контроль (PIN-диалог, дневной лимит) |
-| `MainPage.LocalVideo.cs` | 41 | Локальные видеофайлы: выбор файла, запуск |
-| `MainPage.FullScreen.cs` | 303 | Полноэкранный режим |
-| `MainPage.Hotkeys.cs` | 394 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
-| `MainPage.Overlays.cs` | 450 | Оверлеи |
-| `MainPage.StatsOverlay.cs` | 213 | Статистика |
+| `MainPage.xaml.cs` | 1109 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.Portal.cs` | 296 | Portal API методы |
+| `MainPage.Settings.cs` | 106 | Диалоги настроек |
+| `MainPage.Navigation.cs` | 383 | Переключение плейлистов, навигация |
+| `MainPage.VideoControls.cs` | 536 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
+| `MainPage.ChannelOverrides.cs` | 257 | Правки каналов: перенос/удаление, применение overrides, PIN-подтверждение |
+| `MainPage.Seek.cs` | 718 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, родительский контроль (PIN-диалог, дневной лимит) |
+| `MainPage.LocalVideo.cs` | 38 | Локальные видеофайлы: выбор файла, запуск |
+| `MainPage.FullScreen.cs` | 259 | Полноэкранный режим |
+| `MainPage.Hotkeys.cs` | 375 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
+| `MainPage.Overlays.cs` | 466 | Оверлеи |
+| `MainPage.StatsOverlay.cs` | 193 | Статистика |
 
 **HubPage** (990 строк):
 

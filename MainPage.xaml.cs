@@ -693,6 +693,7 @@ public sealed partial class MainPage : Page
             {
                 ViewModel.AppSettings.ActivePlaylistId = _activePlaylist.Id;
                 initialChannels.AddRange(await LoadPlaylistChannelsWithOverlayAsync(_activePlaylist));
+                initialChannels = await ApplyChannelOverridesAsync(initialChannels);
             }
 
             await _channelRepository.Clear();

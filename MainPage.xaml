@@ -31,6 +31,20 @@
             <Grid Padding="12,8" ColumnSpacing="12"
                   ToolTipService.ToolTip="{x:Bind Description, Mode=OneWay}"
                   ToolTipService.Placement="Mouse">
+                <Grid.ContextFlyout>
+                    <MenuFlyout Opening="ChannelContextMenu_Opening">
+                        <MenuFlyoutItem Click="ChannelMoveMenuItem_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE8DE;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                        <MenuFlyoutItem Click="ChannelDeleteMenuItem_Click">
+                            <MenuFlyoutItem.Icon>
+                                <FontIcon Glyph="&#xE74D;" />
+                            </MenuFlyoutItem.Icon>
+                        </MenuFlyoutItem>
+                    </MenuFlyout>
+                </Grid.ContextFlyout>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -243,6 +257,20 @@
                             <StackPanel Width="140" Spacing="4" Padding="4"
                                         ToolTipService.ToolTip="{x:Bind Description, Mode=OneWay}"
                                         ToolTipService.Placement="Mouse">
+                                <StackPanel.ContextFlyout>
+                                    <MenuFlyout Opening="ChannelContextMenu_Opening">
+                                        <MenuFlyoutItem Click="ChannelMoveMenuItem_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE8DE;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Click="ChannelDeleteMenuItem_Click">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE74D;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </StackPanel.ContextFlyout>
                                 <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                         CornerRadius="6" Height="200">
                                     <Image Source="{x:Bind LogoUrl, Converter={StaticResource StringToImageConverter}, ConverterParameter=200, Mode=OneWay}"

@@ -114,6 +114,18 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        await ApplyPlaylistAsync(playlist);
+    }
+
+    /// <summary>
+    /// Перезагружает активный плейлист без переключения (например, после
+    /// восстановления удалённых каналов): повторяет полную цепочку загрузки.
+    /// </summary>
+    public Task ReloadActivePlaylistAsync() =>
+        _activePlaylist is { } playlist ? ApplyPlaylistAsync(playlist) : Task.CompletedTask;
+
+    private async Task ApplyPlaylistAsync(PlaylistSource playlist)
+    {
         try
         {
             ViewModel.Player.Stop();
@@ -136,6 +148,7 @@ public sealed partial class MainPage : Page
         _playlistLoadCts?.Cancel();
         _playlistLoadCts = new System.Threading.CancellationTokenSource();
         var channels = await LoadPlaylistChannelsWithOverlayAsync(playlist, _playlistLoadCts.Token);
+        channels = await ApplyChannelOverridesAsync(channels);
 
         var channelId = 1;
         foreach (var channel in channels)

@@ -3096,4 +3096,70 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Epg_Istochnik_Oshibka_0" xml:space="preserve">
     <value>EPG source error: {0}</value>
   </data>
+  <data name="Perenesti_V_Gruppu" xml:space="preserve">
+    <value>Move to group…</value>
+  </data>
+  <data name="Udalit_Kanal_Iz_Spiska" xml:space="preserve">
+    <value>Remove channel from list</value>
+  </data>
+  <data name="Vosstanovlenie_Kanalov" xml:space="preserve">
+    <value>Channel restoration</value>
+  </data>
+  <data name="Vosstanovlenie_Kanalov_Hint" xml:space="preserve">
+    <value>Hidden and moved channels return to their original playlist state after restoration.</value>
+  </data>
+  <data name="Vosstanovit_Udalennye_Kanaly" xml:space="preserve">
+    <value>Restore removed and moved channels</value>
+  </data>
+  <data name="Vosstanovit_Udalennye_Kanaly_Lbl" xml:space="preserve">
+    <value>Restore channels</value>
+  </data>
+  <data name="Vyberite_Gruppu" xml:space="preserve">
+    <value>Pick an existing group or type a new one:</value>
+  </data>
+  <data name="Perenesti" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="Kanal_Perenesen_V_Gruppu" xml:space="preserve">
+    <value>Channel "{0}" moved to group "{1}"</value>
+  </data>
+  <data name="Kanal_Udalen_Iz_Spiska" xml:space="preserve">
+    <value>Channel "{0}" removed from the list</value>
+  </data>
+  <data name="Udalit_Kanal_Podtverzhdenie" xml:space="preserve">
+    <value>Remove channel "{0}" from the list? You can restore it via playlist settings.</value>
+  </data>
+  <data name="Pravka_Kanal_Udalen" xml:space="preserve">
+    <value>removed from the list</value>
+  </data>
+  <data name="Pravka_Kanal_Perenesen" xml:space="preserve">
+    <value>moved: {0} → {1}</value>
+  </data>
+  <data name="Net_Aktivnogo_Pleylista" xml:space="preserve">
+    <value>No active playlist.</value>
+  </data>
+  <data name="Net_Udalennyh_Ili_Perenesennyh" xml:space="preserve">
+    <value>No removed or moved channels.</value>
+  </data>
+  <data name="Vosstanovit_Vybrannye" xml:space="preserve">
+    <value>Restore selected</value>
+  </data>
+  <data name="Ochistit_Vse" xml:space="preserve">
+    <value>Clear all</value>
+  </data>
+  <data name="Vosstanovleno_Kanalov_0" xml:space="preserve">
+    <value>Restored entries: {0}. Reloading playlist…</value>
+  </data>
+  <data name="Vse_Pravki_Ochishcheny" xml:space="preserve">
+    <value>All overrides cleared. Reloading playlist…</value>
+  </data>
+  <data name="Roditelskiy_Kontrol_Lbl" xml:space="preserve">
+    <value>Parental control</value>
+  </data>
+  <data name="Otmena_Lbl" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Vvod_Pin_Pole" xml:space="preserve">
+    <value>PIN</value>
+  </data>
 </root>

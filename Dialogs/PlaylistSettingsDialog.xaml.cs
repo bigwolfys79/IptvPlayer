@@ -79,7 +79,8 @@ namespace IptvPlayer.Dialogs
             IPlaylistCacheService playlistCacheService,
             ILogger<PlaylistSettingsDialog> logger,
             Func<PlaylistSource, Task> switchPlaylist,
-            IXmlTvService xmlTvService)
+            IXmlTvService xmlTvService,
+            Func<Task>? reloadActivePlaylist = null)
         {
             _viewModel = viewModel;
             _settingsService = settingsService;
@@ -88,8 +89,11 @@ namespace IptvPlayer.Dialogs
             _logger = logger;
             _switchPlaylist = switchPlaylist;
             _xmlTvService = xmlTvService;
+            _reloadActivePlaylist = reloadActivePlaylist;
             InitializeComponent();
         }
+
+        private readonly Func<Task>? _reloadActivePlaylist;
 
         private readonly IXmlTvService _xmlTvService;
 
@@ -128,6 +132,9 @@ namespace IptvPlayer.Dialogs
             PlaylistRefreshHint.Text = L.T("Kak_Chasto_Pri_Zapuske_Perekachivat_Aktivnyy_Lbl");
             CloseButton.Content = L.T("Gotovo_Lbl");
             TransferHeader.Text = L.T("Perenos_Nastroek_Lbl");
+            RestoreHeader.Text = L.T("Vosstanovlenie_Kanalov");
+            RestoreHint.Text = L.T("Vosstanovlenie_Kanalov_Hint");
+            RestoreChannelsButton.Content = L.T("Vosstanovit_Udalennye_Kanaly");
             ExportSettingsButton.Content = L.T("Eksportirovat_Lbl");
             ImportSettingsButton.Content = L.T("Importirovat_Lbl");
 
@@ -632,6 +639,144 @@ namespace IptvPlayer.Dialogs
         {
             PlaylistStatusText.Text = text;
             PlaylistStatusText.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>Строка списка правок каналов: чекбокс выбора + описание действия.</summary>
+        public class ChannelOverrideListItem
+        {
+            public PlaylistDatabaseService.ChannelOverride Override { get; set; } = null!;
+
+            public string ChannelName => Override.ChannelName;
+
+            public string ActionText => Override.IsDeleted
+                ? L.T("Pravka_Kanal_Udalen")
+                : string.Format(L.T("Pravka_Kanal_Perenesen"), Override.OriginalGroup ?? "—", Override.NewGroup ?? "—");
+
+            public bool IsChecked { get; set; } = true;
+        }
+
+        /// <summary>
+        /// Восстановление удалённых/перемещённых каналов активного плейлиста:
+        /// список правок с чекбоксами, восстановление выбранных (удаление записи
+        /// → канал вернётся при перезагрузке плейлиста) или очистка всех.
+        /// Для правок каналов заблокированных групп запрашивается PIN.
+        /// </summary>
+        private async void RestoreChannelsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var playlist = _viewModel.AppSettings.Playlists
+                .FirstOrDefault(p => p.Id == _viewModel.AppSettings.ActivePlaylistId);
+            if (playlist == null)
+            {
+                SetPlaylistStatus(L.T("Net_Aktivnogo_Pleylista"));
+                return;
+            }
+
+            var overrides = await _playlistCacheService.GetChannelOverridesAsync(playlist.Id);
+            if (overrides.Count == 0)
+            {
+                SetPlaylistStatus(L.T("Net_Udalennyh_Ili_Perenesennyh"));
+                return;
+            }
+
+            if (overrides.Any(o => ParentalControlService.IsPinRequiredForGroup(
+                    _viewModel.AppSettings, o.OriginalGroup ?? o.NewGroup)))
+            {
+                await HideHostAsync();
+                var pinDialog = new ThemedContentDialog
+                {
+                    XamlRoot = _hostDialog?.XamlRoot ?? XamlRoot,
+                    Title = L.T("Roditelskiy_Kontrol_Lbl"),
+                    Content = new PasswordBox { PlaceholderText = L.T("Vvod_Pin_Pole"), Width = 280 },
+                    PrimaryButtonText = L.T("OK"),
+                    CloseButtonText = L.T("Otmena_Lbl")
+                };
+                var pinResult = await pinDialog.ShowAsync();
+                var pin = (pinDialog.Content as PasswordBox)?.Password;
+                if (pinResult != ContentDialogResult.Primary ||
+                    !ParentalControlService.VerifyPin(_viewModel.AppSettings, pin))
+                {
+                    _ = ReshowHostAsync();
+                    SetPlaylistStatus(L.T("Nevernyy_Pin"));
+                    return;
+                }
+                _ = ReshowHostAsync();
+            }
+
+            var items = overrides.Select(o => new ChannelOverrideListItem { Override = o }).ToList();
+            var list = new StackPanel { Spacing = 4 };
+            foreach (var item in items)
+            {
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                var checkBox = new CheckBox { IsChecked = item.IsChecked, VerticalAlignment = VerticalAlignment.Center };
+                checkBox.Checked += (_, _) => item.IsChecked = true;
+                checkBox.Unchecked += (_, _) => item.IsChecked = false;
+                row.Children.Add(checkBox);
+                row.Children.Add(new TextBlock
+                {
+                    Text = $"{item.ChannelName} — {item.ActionText}",
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap
+                });
+                list.Children.Add(row);
+            }
+
+            var scroll = new ScrollViewer { MaxHeight = 320, Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+
+            var panel = new StackPanel { Spacing = 12, MinWidth = 420 };
+            panel.Children.Add(scroll);
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
+            var restoreButton = new Button
+            {
+                Content = L.T("Vosstanovit_Vybrannye"),
+                Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources["AccentButtonStyle"]
+            };
+            var clearAllButton = new Button { Content = L.T("Ochistit_Vse") };
+            buttons.Children.Add(restoreButton);
+            buttons.Children.Add(clearAllButton);
+            panel.Children.Add(buttons);
+
+            await HideHostAsync();
+
+            var root = _hostDialog?.XamlRoot ?? XamlRoot;
+            restoreButton.Click += async (_, _) =>
+            {
+                var selected = items.Where(i => i.IsChecked).Select(i => i.Override.StreamUrl).ToList();
+                if (selected.Count == 0)
+                {
+                    return;
+                }
+
+                await _playlistCacheService.DeleteChannelOverridesAsync(playlist.Id, selected);
+                SetPlaylistStatus(string.Format(L.T("Vosstanovleno_Kanalov_0"), selected.Count));
+                await FinishRestoreAsync(playlist, selected.Count > 0);
+            };
+            clearAllButton.Click += async (_, _) =>
+            {
+                await _playlistCacheService.DeleteChannelOverridesAsync(
+                    playlist.Id, overrides.Select(o => o.StreamUrl).ToList());
+                SetPlaylistStatus(L.T("Vse_Pravki_Ochishcheny"));
+                await FinishRestoreAsync(playlist, true);
+            };
+
+            var dialog = new ThemedContentDialog
+            {
+                XamlRoot = root,
+                Title = L.T("Vosstanovit_Udalennye_Kanaly_Lbl"),
+                Content = panel,
+                CloseButtonText = L.T("Zakryt")
+            };
+            await dialog.ShowAsync();
+        }
+
+        /// <summary>После восстановления: перезагружает активный плейлист и возвращает хост-диалог.</summary>
+        private async Task FinishRestoreAsync(PlaylistSource playlist, bool reload)
+        {
+            if (reload && playlist.Id == _viewModel.AppSettings.ActivePlaylistId && _reloadActivePlaylist != null)
+            {
+                await _reloadActivePlaylist();
+            }
+
+            _ = ReshowHostAsync();
         }
 
         private async void CloseButton_Click(object sender, RoutedEventArgs e)

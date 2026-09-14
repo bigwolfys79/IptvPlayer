@@ -19,7 +19,7 @@ MediaPlayer.StartPlaybackAsync(channel, url, ...): live / archive (timeshift) / 
 
 Key classes:
 - `HubPage` — launch screen with "Playlists", "Portal", "Settings" cards.
-- `MainPage` (+ partial files `MainPage.FullScreen/Hotkeys/LocalVideo/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — all UI and overlays.
+- `MainPage` (+ partial files `MainPage.ChannelOverrides/FullScreen/Hotkeys/LocalVideo/Navigation/Overlays/Portal/Seek/Settings/StatsOverlay/VideoControls.cs`) — all UI and overlays.
 - `MainPageViewModel` (+ partial files `MainPageViewModel.PortalFilters/Recording/VodResume.cs`) — channel list logic, filtering, recording, VOD resume.
 - `EpgViewModel` — EPG: loading, lazy per-channel loading, current program.
 - `PlayerViewModel` — player management (FFmpegInteropX), archive, VOD.
@@ -131,12 +131,16 @@ There are three unlock kinds: via the PIN dialog buttons (15/30/45/60 min or "un
 
 Channel launch goes through `MainPageViewModel.EnsureChannelAllowedAsync`: the one-time "until switch" unlock is cleared on **any** subsequent channel launch (including auto-resume of the same channel — the PIN is asked again). The daily limit (`ParentalDailyLimitMinutes`) is checked first and is independent of the PIN: once exhausted, no channel starts until midnight. Watched time is accumulated by a one-second tick (`CheckDailyWatchLimit`, MainPage.Seek.cs) while the player is actually playing (not paused/stopped): `ParentalWatchedSeconds` with the date `ParentalWatchedDate` (local, reset at midnight via `DailyDateKey`). When the limit is exhausted during playback, playback stops and a dialog shows the time until reset (`TimeUntilReset`).
 
-## 8. On-Disk Data
+## 8. Channel overrides (move/remove)
+
+User channel overrides on top of the playlist: moving to another group and removing from the list (right-click context menu, the `ChannelItemTemplate` and poster view; handlers in MainPage.ChannelOverrides.cs). Stored in the `channel_overrides` table of the cache DB (`PlaylistDatabaseService`, key `playlist_id + stream_url`, with `tvg_id`/name snapshots for fallback) — they survive an m3u re-download since the channels table is fully rewritten on cache save. Applied after every playlist load (`ChannelOverrideMatcher.Apply`, called from `InitializeAsync`/`ApplyPlaylistAsync`): matching by `stream_url` → `tvg-id` → normalized name (`EpgNameNormalizer`); a non-match leaves an orphan entry until restored. Restoration — a button in the playlist settings dialog (list of overrides with checkboxes, restore selected or clear all, then reloading the active playlist via `ReloadActivePlaylistAsync`). Actions on channels of blocked groups (move, remove, opening the restoration screen containing such entries) require the PIN — `ParentalControlService.IsPinRequiredForGroup` (control enabled + PIN set + group blocked + no active unlock).
+
+## 9. On-Disk Data
 
 | What | Where |
 |---|---|
 | Settings (sources, portals, frequencies, volume, decoder, favorites) | `%LocalAppData%\IptvPlayer\settings.json` (atomic writes via `.tmp`; previous version in `settings.json.prev`, corrupted ones as `*.corrupt-*`) |
-| Channel/catalog cache and learned EPG aliases (SQLite, single DB for all playlists; legacy `playlist_cache_{id}.json` files are migrated into it once) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
+| Channel/catalog cache, learned EPG aliases and channel overrides (SQLite, single DB for all playlists; legacy `playlist_cache_{id}.json` files are migrated into it once) | `%LocalAppData%\IptvPlayer\iptvplayer_cache.db` |
 | Parsed XMLTV source cache and merged EPG cache (MemoryPack+Brotli) | `%LocalAppData%\IptvPlayer\cache\` |
 | Recordings (ffmpeg, MPEG-TS without transcoding) | "Videos\IptvPlayer" or configured folder |
 | Log (Serilog, daily rolling, 14 days) | `%LocalAppData%\IptvPlayer\logs\` |
@@ -144,7 +148,7 @@ Channel launch goes through `MainPageViewModel.EnsureChannelAllowedAsync`: the o
 
 In MSIX mode (Debug), `%LocalAppData%` paths are virtualized into the package; in unpackaged mode (Release/Inno), they are used directly — the code works identically in both.
 
-## 9. Large Catalog Performance
+## 10. Large Catalog Performance
 
 Portal catalogs have 20k+ items; key decisions:
 - `FilterChannels` replaces `DisplayedChannels` entirely (one ItemsSource change instead of thousands of CollectionChanged events). Selection in lists uses **OneWay + SelectionChanged**: TwoWay binding was overwriting `SelectedChannel` to null when clearing the hidden view's ItemsSource (video is bound to `SelectedChannel.IsPlaying` and would disappear); after rebuilding, selection is restored to controls by MainPage via the FilterChanged event.
@@ -154,11 +158,11 @@ Portal catalogs have 20k+ items; key decisions:
 - Buffer: live — `ReadAheadSeconds` (15s / 32+ MB), VOD — separate `VodReadAheadSeconds` (4s / 8+ MB): a large buffer on slow CDN was keeping VOD stream startup at several seconds.
 - Memory optimization: `EPGEntry.Description` and `ChannelViewModel.CurrentProgram*` are nullable (~46 MB savings with 2000+ channels + 400k programs).
 
-## 10. Application Updates
+## 11. Application Updates
 
 Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAsync`): background check 2 minutes after startup (no more than once per day — `AppSettings.LastUpdateCheckUtc`), GitHub API parsing is the same as the manual button in "About". The downloaded installer is verified by SHA256 (`assets[].digest`, if the source provided it). User consent — ContentDialog; installation — `setup.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES` run from the shell (UAC: Program Files), the application closes normally, and after the silent install it is relaunched (a separate `[Run]` entry with `Check: WizardSilent` in .iss — does not affect interactive installs). While recordings are in progress, installation is deferred until the `RecordingsChanged` event. "Later" in the update dialog defers installation until the app closes: the downloaded installer path is kept in `App.PendingUpdateSetupPath`, and on real exit (not to tray) `MainWindow` launches the silent install via `App.TryStartPendingUpdateInstall`. Any error is silent: the old version continues to work (Inno installs over it).
 
-## 11. Logging and DI
+## 12. Logging and DI
 
 **Serilog.** The static logger is configured first thing in the `App` constructor (before `InitializeComponent` — global exception handlers must already be able to write to the log): Debug output (always) + file sink with daily rolling. Classes receive `ILogger<T>` via constructor (source in the log = class name); the file log is toggled off at runtime via a `LoggingLevelSwitch` in settings.
 
@@ -166,23 +170,24 @@ Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAs
 
 **MVVM conventions.** Properties use manual `SetProperty` instead of `[ObservableProperty]` (the generator does not create WinRT projectors — MVVMTK0045, important for AOT/ABI); actions use `[RelayCommand]`; MainPage code-behind is split into partial files by zones.
 
-## 12. Partial File Split
+## 13. Partial File Split
 
 **MainPage** (3133 → 1374 lines):
 
 | File | Lines | Content |
 |---|---|---|
-| `MainPage.xaml.cs` | 1374 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
-| `MainPage.Portal.cs` | 264 | Portal API methods |
-| `MainPage.Settings.cs` | 104 | Settings dialogs |
-| `MainPage.Navigation.cs` | 375 | Playlist switching, navigation |
-| `MainPage.VideoControls.cs` | 554 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
-| `MainPage.Seek.cs` | 750 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, parental control (PIN dialog, daily watch limit) |
-| `MainPage.LocalVideo.cs` | 41 | Local video files: file picking, playback start |
-| `MainPage.FullScreen.cs` | 303 | Fullscreen mode |
-| `MainPage.Hotkeys.cs` | 394 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
-| `MainPage.Overlays.cs` | 450 | Overlays |
-| `MainPage.StatsOverlay.cs` | 213 | Statistics |
+| `MainPage.xaml.cs` | 1109 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.Portal.cs` | 296 | Portal API methods |
+| `MainPage.Settings.cs` | 106 | Settings dialogs |
+| `MainPage.Navigation.cs` | 383 | Playlist switching, navigation |
+| `MainPage.VideoControls.cs` | 536 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
+| `MainPage.ChannelOverrides.cs` | 257 | Move/remove channel, overrides apply, PIN approval dialog |
+| `MainPage.Seek.cs` | 718 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, parental control (PIN dialog, daily watch limit) |
+| `MainPage.LocalVideo.cs` | 38 | Local video files: file picking, playback start |
+| `MainPage.FullScreen.cs` | 259 | Fullscreen mode |
+| `MainPage.Hotkeys.cs` | 375 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
+| `MainPage.Overlays.cs` | 466 | Overlays |
+| `MainPage.StatsOverlay.cs` | 193 | Statistics |
 
 **HubPage** (990 lines):
 

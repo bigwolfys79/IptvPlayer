@@ -171,6 +171,15 @@
                            TextWrapping="Wrap"/>
                 <ComboBox x:Name="PlaylistRefreshCombo" HorizontalAlignment="Stretch"/>
 
+                <TextBlock x:Name="RestoreHeader" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+                <TextBlock x:Name="RestoreHint"
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+                <Button x:Name="RestoreChannelsButton"
+                        HorizontalAlignment="Left"
+                        Click="RestoreChannelsButton_Click"/>
+
                 <TextBlock x:Name="TransferHeader" x:Uid="Perenos_Nastroek" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button x:Name="ExportSettingsButton"

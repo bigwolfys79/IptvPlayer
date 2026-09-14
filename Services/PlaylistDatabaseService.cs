@@ -22,6 +22,15 @@ public interface IPlaylistCacheService
 
     /// <summary>Перезаписывает пакет выученных соответствий (по ключу имени XMLTV).</summary>
     Task UpsertEpgAliasesAsync(IReadOnlyList<PlaylistDatabaseService.EpgAlias> aliases);
+
+    /// <summary>Пользовательские правки каналов плейлиста (перенос группы/удаление).</summary>
+    Task<List<PlaylistDatabaseService.ChannelOverride>> GetChannelOverridesAsync(int playlistId);
+
+    /// <summary>Добавляет/обновляет правку канала (ключ — playlist_id + stream_url).</summary>
+    Task UpsertChannelOverrideAsync(PlaylistDatabaseService.ChannelOverride overrideEntry);
+
+    /// <summary>Удаляет правки по stream_url — восстановление каналов после очистки.</summary>
+    Task DeleteChannelOverridesAsync(int playlistId, IReadOnlyList<string> streamUrls);
 }
 
 /// <summary>
@@ -83,6 +92,17 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                     xmltv_name TEXT NOT NULL,
                     stream_url TEXT NOT NULL,
                     created_at_utc TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS channel_overrides (
+                    playlist_id INTEGER NOT NULL,
+                    stream_url TEXT NOT NULL,
+                    channel_name TEXT NOT NULL,
+                    original_group TEXT,
+                    tvg_id TEXT,
+                    new_group TEXT,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    created_at_utc TEXT NOT NULL,
+                    PRIMARY KEY (playlist_id, stream_url)
                 );";
             cmd.ExecuteNonQuery();
 
@@ -244,7 +264,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             connection.Open();
 
             var cmd = connection.CreateCommand();
-            cmd.CommandText = "DELETE FROM channels WHERE playlist_id = $id; DELETE FROM playlists WHERE id = $id;";
+            cmd.CommandText = "DELETE FROM channels WHERE playlist_id = $id; DELETE FROM channel_overrides WHERE playlist_id = $id; DELETE FROM playlists WHERE id = $id;";
             cmd.Parameters.AddWithValue("$id", playlistId);
             cmd.ExecuteNonQuery();
         }
@@ -446,6 +466,115 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Не удалось сохранить EPG-псевдонимы ({Count} шт.).", aliases.Count);
+        }
+    }
+
+    /// <summary>
+    /// Пользовательская правка канала поверх плейлиста: перенос в другую группу
+    /// (NewGroup) и/или удаление из списка (IsDeleted). Ключ — stream_url
+    /// (Id канала нестабилен и пересоздаётся при каждом парсинге); tvg_id и имя —
+    /// снимок для fallback-матчинга при смене провайдером адреса потока.
+    /// </summary>
+    public sealed record ChannelOverride(
+        int PlaylistId,
+        string StreamUrl,
+        string ChannelName,
+        string? OriginalGroup,
+        string? TvgId,
+        string? NewGroup,
+        bool IsDeleted,
+        DateTime CreatedAtUtc);
+
+    public async Task<List<ChannelOverride>> GetChannelOverridesAsync(int playlistId)
+    {
+        var result = new List<ChannelOverride>();
+        try
+        {
+            using var connection = new SqliteConnection($"Data Source={DbPath}");
+            await connection.OpenAsync();
+
+            var cmd = connection.CreateCommand();
+            cmd.CommandText =
+                "SELECT stream_url, channel_name, original_group, tvg_id, new_group, is_deleted, created_at_utc " +
+                "FROM channel_overrides WHERE playlist_id = $id";
+            cmd.Parameters.AddWithValue("$id", playlistId);
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result.Add(new ChannelOverride(
+                    playlistId,
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2),
+                    reader.IsDBNull(3) ? null : reader.GetString(3),
+                    reader.IsDBNull(4) ? null : reader.GetString(4),
+                    reader.GetInt32(5) != 0,
+                    DateTime.Parse(reader.GetString(6))));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось прочитать правки каналов плейлиста {PlaylistId}.", playlistId);
+        }
+
+        return result;
+    }
+
+    public async Task UpsertChannelOverrideAsync(ChannelOverride overrideEntry)
+    {
+        try
+        {
+            using var connection = new SqliteConnection($"Data Source={DbPath}");
+            await connection.OpenAsync();
+
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+                INSERT OR REPLACE INTO channel_overrides
+                    (playlist_id, stream_url, channel_name, original_group, tvg_id, new_group, is_deleted, created_at_utc)
+                VALUES ($pid, $url, $name, $origGroup, $tvg, $newGroup, $deleted, $now)";
+            cmd.Parameters.AddWithValue("$pid", overrideEntry.PlaylistId);
+            cmd.Parameters.AddWithValue("$url", overrideEntry.StreamUrl);
+            cmd.Parameters.AddWithValue("$name", overrideEntry.ChannelName);
+            cmd.Parameters.AddWithValue("$origGroup", (object?)overrideEntry.OriginalGroup ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$tvg", (object?)overrideEntry.TvgId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$newGroup", (object?)overrideEntry.NewGroup ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$deleted", overrideEntry.IsDeleted ? 1 : 0);
+            cmd.Parameters.AddWithValue("$now", DateTime.UtcNow.ToString("O"));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось сохранить правку канала «{Channel}».", overrideEntry.ChannelName);
+        }
+    }
+
+    public async Task DeleteChannelOverridesAsync(int playlistId, IReadOnlyList<string> streamUrls)
+    {
+        if (streamUrls.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using var connection = new SqliteConnection($"Data Source={DbPath}");
+            await connection.OpenAsync();
+
+            var cmd = connection.CreateCommand();
+            var urlParams = string.Join(", ", streamUrls.Select((_, i) => $"$u{i}"));
+            cmd.CommandText =
+                $"DELETE FROM channel_overrides WHERE playlist_id = $pid AND stream_url IN ({urlParams})";
+            cmd.Parameters.AddWithValue("$pid", playlistId);
+            for (var i = 0; i < streamUrls.Count; i++)
+            {
+                cmd.Parameters.AddWithValue($"$u{i}", streamUrls[i]);
+            }
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось удалить правки каналов плейлиста {PlaylistId}.", playlistId);
         }
     }
 }
