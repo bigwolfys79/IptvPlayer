@@ -10,42 +10,33 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.ViewModels;
 
-/// <summary>
-/// Логика фильтров портала: серверная фильтрация видео-портала по жанру/году/типу.
-/// </summary>
+
 public partial class MainPageViewModel
 {
-    /// <summary>Жанры из manifest.controls.filters (id → title) для серверных фильтров.</summary>
+
     private List<PortalGenreFilter> _portalGenreFilters = new();
 
-    /// <summary>Года из manifest.controls.filters (title → years-value) для серверных фильтров.</summary>
+
     private List<PortalYearFilter> _portalYearFilters = new();
 
-    /// <summary>Категории видео-портала из manifest (fid → title) для фильтра типа контента.</summary>
+
     private List<PortalCategoryInfo> _portalCategories = new();
 
-    /// <summary>Загружен ли каталог из портала (серверные фильтры доступны).</summary>
+
     private bool _isPortalSource;
 
-    /// <summary>
-    /// Флаг подавления серверной перезагрузки при программном сбросе
-    /// фильтров (SetPortalInfo / ClearPortalInfo / ResetPortalFilters).
-    /// </summary>
+
     private bool _suppressFilterLoad;
 
-    /// <summary>
-    /// Текущий источник портала для серверных фильтров (свой на каждую сессию).
-    /// </summary>
+
     public PlaylistSource? PortalSource { get; set; }
 
     private CancellationTokenSource? _filterLoadCts;
 
-    /// <summary>Идёт ли серверная загрузка фильтра (не сбрасывать жанр/год в RefreshGroups).</summary>
+
     private bool _isLoadingFiltered;
 
-    /// <summary>
-    /// Устанавливает информацию об источнике портала для серверных фильтров.
-    /// </summary>
+
     public void SetPortalInfo(PlaylistSource source, List<PortalGenreFilter> genres, List<PortalYearFilter> years, List<PortalCategoryInfo> categories)
     {
         PortalSource = source;
@@ -102,7 +93,7 @@ public partial class MainPageViewModel
         OnPropertyChanged(nameof(IsYearFilterVisible));
     }
 
-    /// <summary>Сбрасывает информацию об источнике портала (M3U-плейлист).</summary>
+
     public void ClearPortalInfo()
     {
         PortalSource = null;
@@ -140,9 +131,7 @@ public partial class MainPageViewModel
         OnPropertyChanged(nameof(IsYearFilterVisible));
     }
 
-    /// <summary>
-    /// Сброс всех фильтров портала к дефолтным значениям.
-    /// </summary>
+
     public void ResetPortalFilters()
     {
         if (!_isPortalSource || PortalSource == null) return;
@@ -166,9 +155,7 @@ public partial class MainPageViewModel
         _ = LoadFilteredFromServerAsync();
     }
 
-    /// <summary>
-    /// Серверная загрузка с фильтрами типа контента/жанра/года.
-    /// </summary>
+
     private async Task LoadFilteredFromServerAsync()
     {
         if (PortalSource == null) return;
@@ -237,9 +224,7 @@ public partial class MainPageViewModel
         }
     }
 
-    /// <summary>
-    /// Определяет fid текущей категории по выбранному типу контента.
-    /// </summary>
+
     private int ResolveCurrentFid()
     {
         if (!string.IsNullOrEmpty(SelectedContentType) && SelectedContentType != AllContentTypesOption)
@@ -255,7 +240,7 @@ public partial class MainPageViewModel
         return _portalCategories.Count > 0 ? _portalCategories[0].Fid : 0;
     }
 
-    /// <summary>Извлекает fid из JSON-запроса элемента портала (0, если не удалось).</summary>
+
     private static int ExtractFidFromRequest(string? requestJson)
     {
         if (string.IsNullOrEmpty(requestJson)) return 0;

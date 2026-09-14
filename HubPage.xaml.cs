@@ -1,3 +1,4 @@
+using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -24,18 +25,14 @@ public sealed partial class HubPage : Page
     private string? _lastWatchedChannelName;
     private List<(string Title, string RawTitle, int EpisodeIndex, VodResumePosition Position, int? PlaylistId, string? LocalPath)> _vodResumeItems = new();
 
-    /// <summary>Префикс ключей позиции досмотра локальных файлов (MainPageViewModel.LocalFileResumeKey).</summary>
+
     private const string LocalFileKeyPrefix = "file::";
     private FlyoutType? _openFlyout;
     private DispatcherTimer? _clockTimer;
     private bool _initialized;
     private bool _plaqueIsVod;
 
-    /// <summary>
-    /// Вводная анимация проигрывается только при первом показе хаба за
-    /// запуск приложения: при возврате из MainPage (Esc) страница создаётся
-    /// заново, и повторное «закручивание» карточек только мешает.
-    /// </summary>
+
     private static bool _introPlayed;
 
     public HubPage()
@@ -47,7 +44,67 @@ public sealed partial class HubPage : Page
         Unloaded += HubPage_Unloaded;
 
         ProcessKeyboardAccelerators += HubPage_ProcessKeyboardAccelerators;
+
+
+        RootGrid.SizeChanged += (_, e) => ScheduleHubScaleUpdate();
+        MainPanel.SizeChanged += (_, e) => ScheduleHubScaleUpdate();
     }
+
+    private bool _hubScaleScheduled;
+
+    // Deferred hub scale update
+    private void ScheduleHubScaleUpdate()
+    {
+
+
+        if (_hubScaleScheduled)
+        {
+            return;
+        }
+        _hubScaleScheduled = true;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _hubScaleScheduled = false;
+            try
+            {
+                UpdateHubScale();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Масштабирование HubPage.");
+            }
+        });
+    }
+
+    // Scale hub panel to fit window width
+    private void UpdateHubScale()
+    {
+
+
+        MainPanel.Measure(new Windows.Foundation.Size(
+            double.PositiveInfinity, double.PositiveInfinity));
+        var desiredWidth = MainPanel.DesiredSize.Width;
+        if (RootGrid.ActualWidth <= 0 || desiredWidth <= 0)
+        {
+            return;
+        }
+        MainPanel.InvalidateMeasure();
+
+        var target = Math.Min(1.0, (RootGrid.ActualWidth - 32) / desiredWidth);
+        var clamped = Math.Max(0.4, target);
+        MainPanelScale.ScaleX = clamped;
+        MainPanelScale.ScaleY = clamped;
+
+        if (Math.Abs(clamped - _lastHubScale) > 0.005)
+        {
+            _lastHubScale = clamped;
+            Serilog.Log.Information(
+                "HubScale: root={Root:F0} desired={Desired:F0} actual={Actual:F0} target={Target:F2} scale={Scale:F2}",
+                RootGrid.ActualWidth, desiredWidth, MainPanel.ActualWidth, target, clamped);
+        }
+    }
+
+    private double _lastHubScale = -1;
 
     private void HubPage_ProcessKeyboardAccelerators(UIElement sender, ProcessKeyboardAcceleratorEventArgs args)
     {
@@ -133,11 +190,7 @@ public sealed partial class HubPage : Page
         }
     }
 
-    /// <summary>
-    /// Пересчитывает производные данные из _settings: «последний канал» и
-    /// содержимое плашки «Продолжить». Вызывается после загрузки настроек и
-    /// после каждого диалога, который мог их изменить (п. об устаревании кэша).
-    /// </summary>
+
     private void RefreshDerived()
     {
         if (_settings == null) return;
@@ -150,11 +203,7 @@ public sealed partial class HubPage : Page
         UpdateContinueButton();
     }
 
-    /// <summary>
-    /// Плашка под карточками: недосмотренный VOD («Продолжить: …»), а если
-    /// его нет — последний живой канал («Включить: …»). Всегда есть быстрый
-    /// путь в один клик, когда есть что включить.
-    /// </summary>
+
     private void UpdateContinueButton()
     {
         if (_vodResumeItems.Count > 0)
@@ -175,8 +224,7 @@ public sealed partial class HubPage : Page
         }
     }
 
-    /// <summary>Тексты, зависящие от языка: задаются здесь, а не в конструкторе,
-    /// чтобы смена языка в настройках подхватывалась при следующем Loaded.</summary>
+
     private void UpdateLocalizedTexts()
     {
         ToolTipService.SetToolTip(PlaylistsButton, $"{L.T("Hub_Pleylisty_ToolTip")} — 1");
@@ -215,10 +263,7 @@ public sealed partial class HubPage : Page
         SubText.Text = L.T("IptvPlayer_Vyberite_Chto");
     }
 
-    /// <summary>
-    /// Приветствие привязано к часу суток — при долго открытом хабе обновляем
-    /// его раз в минуту (и заодно закрываем flyout при потере фокуса окна).
-    /// </summary>
+
     private void SetupClockTimer()
     {
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
@@ -413,8 +458,10 @@ public sealed partial class HubPage : Page
 
     private enum FlyoutType { Playlists, Portal, Settings }
 
+    // Open hub flyout menu
     private void ShowCustomFlyout(FlyoutType type, FrameworkElement anchor)
     {
+
 
         if (_openFlyout == type)
         {
@@ -437,34 +484,49 @@ public sealed partial class HubPage : Page
             : new Windows.Foundation.Size(1280, 800);
 
 
-        var transform = anchor.TransformToVisual(null);
-        var anchorTop = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
-        var anchorBottom = transform.TransformPoint(new Windows.Foundation.Point(0, anchor.ActualHeight));
-
-        var spaceBelow = windowSize.Height - 20 - anchorBottom.Y - 8;
-        var spaceAbove = anchorTop.Y - 8 - 20;
-        FlyoutScroll.MaxHeight = Math.Max(200, Math.Max(spaceBelow, spaceAbove));
+        FlyoutScroll.MaxHeight = Math.Max(200, windowSize.Height - 40);
 
 
-        FlyoutBorder.Measure(new Windows.Foundation.Size(
-            Math.Max(0, windowSize.Width - 32), Math.Max(0, windowSize.Height - 32)));
-        double flyoutW = FlyoutBorder.DesiredSize.Width;
-        double flyoutH = FlyoutBorder.DesiredSize.Height;
-
-        double left = anchorTop.X + (anchor.ActualWidth / 2) - (flyoutW / 2);
-        double top = anchorBottom.Y + 8;
-
-
-        if (top + flyoutH > windowSize.Height - 20)
-            top = anchorTop.Y - flyoutH - 8;
+        var pad = FlyoutBorder.Padding;
+        var frame = FlyoutBorder.BorderThickness;
+        FlyoutContent.Measure(new Windows.Foundation.Size(
+            Math.Max(0, windowSize.Width - 32 - pad.Left - pad.Right - frame.Left - frame.Right),
+            Math.Max(0, windowSize.Height - 32 - pad.Top - pad.Bottom - frame.Top - frame.Bottom)));
+        double flyoutW = FlyoutContent.DesiredSize.Width + pad.Left + pad.Right + frame.Left + frame.Right;
+        double flyoutH = Math.Min(
+            FlyoutContent.DesiredSize.Height + pad.Top + pad.Bottom + frame.Top + frame.Bottom,
+            FlyoutScroll.MaxHeight);
 
 
-        if (left + flyoutW > windowSize.Width - 20)
-            left = windowSize.Width - flyoutW - 20;
+        var scale = MainPanelScale.ScaleX;
+        var layoutPos = anchor.TransformToVisual(this)
+            .TransformPoint(new Windows.Foundation.Point(0, 0));
+        var panelLayoutPos = MainPanel.TransformToVisual(this)
+            .TransformPoint(new Windows.Foundation.Point(0, 0));
+        var origin = new Windows.Foundation.Point(
+            panelLayoutPos.X + MainPanel.ActualWidth / 2,
+            panelLayoutPos.Y + MainPanel.ActualHeight / 2);
+        var visualPos = new Windows.Foundation.Point(
+            origin.X + (layoutPos.X - origin.X) * scale,
+            origin.Y + (layoutPos.Y - origin.Y) * scale);
+        var visualW = anchor.ActualWidth * scale;
+        var visualH = anchor.ActualHeight * scale;
 
 
-        if (left < 20)
-            left = 20;
+        double left = visualPos.X;
+        double top = visualPos.Y + visualH + 8;
+
+        if (top + flyoutH > windowSize.Height - 16)
+        {
+            top = visualPos.Y - flyoutH - 8;
+        }
+
+
+        top = Math.Min(Math.Max(16, top), Math.Max(16, windowSize.Height - flyoutH - 16));
+        left = Math.Min(Math.Max(16, left), Math.Max(16, windowSize.Width - flyoutW - 16));
+        Serilog.Log.Information(
+            "HubFlyout: win={W}x{H} visual={VX:F0},{VY:F0} flyout={FW:F0}x{FH:F0} left={L:F0} top={T:F0}",
+            windowSize.Width, windowSize.Height, visualPos.X, visualPos.Y, flyoutW, flyoutH, left, top);
 
         FlyoutBorder.Margin = new Thickness(left, top, 0, 0);
         FlyoutBorder.Visibility = Visibility.Visible;
@@ -483,6 +545,7 @@ public sealed partial class HubPage : Page
         e.Handled = true;
     }
 
+    // Close hub flyout menu
     private void CloseFlyout()
     {
         _openFlyout = null;
@@ -571,7 +634,7 @@ public sealed partial class HubPage : Page
         }
     }
 
-    /// <summary>«осталось N мин» для недосмотренного VOD; null — длительность неизвестна.</summary>
+
     private static string? FormatRemaining(VodResumePosition position)
     {
         if (position.DurationSeconds <= 0)
@@ -627,12 +690,7 @@ public sealed partial class HubPage : Page
         });
     }
 
-    /// <summary>
-    /// Установка обновления из хаба: как MainPage.OfferUpdateInstallAsync,
-    /// но записи проверяются напрямую через RecordingService (у хаба нет
-    /// ViewModel главной страницы). При активных записях обновление
-    /// откладываем — установщик завершит приложение вместе с ними.
-    /// </summary>
+
     private async Task OfferUpdateInstallFromHubAsync(Version version, string setupPath)
     {
         var dialog = new ThemedContentDialog
@@ -668,10 +726,7 @@ public sealed partial class HubPage : Page
         App.Services.GetRequiredService<IUpdateService>().RunInstallerAndExit(setupPath);
     }
 
-    /// <summary>
-    /// Тема окна: светлая — чёрные тона элементов флайаута/справки,
-    /// тёмная (по умолчанию) — белые, как было изначально.
-    /// </summary>
+
     private static bool HubIsLight =>
         (MainWindow.Instance?.Content as FrameworkElement)?.ActualTheme == ElementTheme.Light;
 
@@ -766,12 +821,7 @@ public sealed partial class HubPage : Page
         ShowHotkeysDialog();
     }
 
-    /// <summary>
-    /// Диалог со всеми горячими клавишами приложения.
-    /// СИНХРОНИЗАЦИЯ: список ниже должен соответствовать MainPage.OnPagePreviewKeyDown
-    /// (MainPage.Hotkeys.cs) и клавишам самого хаба — при добавлении/изменении
-    /// горячих клавиш обновляй оба места (см. якорь HOTKEYS-SYNC в Hotkeys.cs).
-    /// </summary>
+
     private async void ShowHotkeysDialog()
     {
         var rows = new (string Key, string DescKey)[]
@@ -863,11 +913,7 @@ public sealed partial class HubPage : Page
         ShowCustomFlyout(FlyoutType.Settings, SettingsButton);
     }
 
-    /// <summary>
-    /// Карточка «Видео»: выбор локального видеофайла и воспроизведение его
-    /// на MainPage тем же конвейером, что VOD портала. Отмена пикера —
-    /// тихий возврат на хаб.
-    /// </summary>
+
     private async void VideoButton_Click(object sender, RoutedEventArgs e)
     {
         await PickAndPlayLocalVideoAsync();

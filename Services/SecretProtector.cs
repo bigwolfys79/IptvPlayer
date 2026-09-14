@@ -5,14 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Шифрование чувствительных строк (ключ портала, URL плейлистов с
-/// username/password) через DPAPI Windows, scope CurrentUser: расшифровать
-/// может только тот же пользователь на том же ПК. Формат в файле настроек:
-/// "dpapi:" + base64. Значения без префикса считаются legacy-plaintext и
-/// пропускаются как есть — миграция старых settings.json происходит
-/// автоматически при первом же сохранении.
-/// </summary>
+
 public static class SecretProtector
 {
     public const string Prefix = "dpapi:";
@@ -68,12 +61,7 @@ public static class SecretProtector
         "https?://[^\\s\"'\\\\]+\\.(?:m3u8|mp4|ts)[^\\s\"'\\\\]*",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    /// <summary>
-    /// Маскирует секреты в строке для записи в логи: значение поля "key" в
-    /// JSON-теле запроса портала, параметры username/password/token в
-    /// query-строке URL плейлиста или EPG-источника и прямые ссылки на
-    /// медиа-потоки (m3u8/mp4/ts) с токенами доступа в пути.
-    /// </summary>
+
     public static string Mask(string? value)
     {
         if (string.IsNullOrEmpty(value))

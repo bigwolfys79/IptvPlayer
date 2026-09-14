@@ -12,14 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Элемент каталога видео-портала: фильм/сериал одной строкой. Group —
-/// название категории портала (становится группой в фильтре каналов).
-/// StreamUrl заполнен у фильмов (type "stream" — сервер сразу даёт master.m3u8);
-/// у сериалов (type "multistream") ссылки нет — поток запрашивается по клику
-/// командой flick (берётся первый сезон/эпизод). RequestJson — прозрачный
-/// request-объект из ответа API, передаётся серверу как есть.
-/// </summary>
+
 public class PortalCatalogItem
 {
     public string Name { get; set; } = string.Empty;
@@ -28,17 +21,17 @@ public class PortalCatalogItem
     public string? StreamUrl { get; set; }
     public string RequestJson { get; set; } = string.Empty;
 
-    /// <summary>Описание из каталога (может отсутствовать у части элементов).</summary>
+
     public string? Description { get; set; }
 
-    /// <summary>Год выпуска (0 — не указан). Используется сортировкой каталога.</summary>
+
     public int Year { get; set; }
 
-    /// <summary>Жанр из фильтра manifest (null — жанр не определён).</summary>
+
     public string? Genre { get; set; }
 }
 
-/// <summary>Элемент фильтра жанров из manifest.controls.filters.</summary>
+
 public class PortalGenreFilter
 {
     public int Id { get; set; }
@@ -46,7 +39,7 @@ public class PortalGenreFilter
     public string FilterRequestJson { get; set; } = string.Empty;
 }
 
-/// <summary>Категория видео-портала из manifest (fid → название типа контента).</summary>
+
 public class PortalCategoryInfo
 {
     public int Fid { get; set; }
@@ -54,19 +47,14 @@ public class PortalCategoryInfo
     public string RequestJson { get; set; } = string.Empty;
 }
 
-/// <summary>
-/// Элемент фильтра годов из manifest.controls.filters.
-/// Title — то, что видит пользователь в комбобоксе (например,
-/// «2024» или «2021-2026»). YearsValue — строка, передаваемая
-/// в request.years на сервер (совпадает с Title для этого фильтра).
-/// </summary>
+
 public class PortalYearFilter
 {
     public string Title { get; set; } = string.Empty;
     public string YearsValue { get; set; } = string.Empty;
 }
 
-/// <summary>Результат загрузки каталога: элементы + жанры + request JSON категорий.</summary>
+
 public class PortalCatalogLoadResult
 {
     public List<PortalCatalogItem> Items { get; set; } = new();
@@ -74,33 +62,25 @@ public class PortalCatalogLoadResult
     public Dictionary<int, string> CategoryRequests { get; set; } = new();
 }
 
-/// <summary>
-/// Результат запроса потока: основная ссылка (авто-качество) и варианты
-/// качества портала ({"480":url,"720":url,"1080":url,"auto":url} из ответа
-/// flick; может отсутствовать — тогда выбор качества недоступен).
-/// </summary>
+
 public class PortalStreamResult
 {
     public string Url { get; set; } = string.Empty;
     public Dictionary<string, string> Variants { get; set; } = new();
 }
 
-/// <summary>Один эпизод сериала (или единственный фильм) из ответа flick.</summary>
+
 public class PortalEpisode
 {
     public string Title { get; set; } = string.Empty;
     public string StreamUrl { get; set; } = string.Empty;
     public Dictionary<string, string> Variants { get; set; } = new();
 
-    /// <summary>request-объект эпизода (прозрачная команда, если URL устареет).</summary>
+
     public string RequestJson { get; set; } = string.Empty;
 }
 
-/// <summary>
-/// Разобранный ответ flick: эпизоды (у фильма — один) плюс шапка сериала
-/// (название/описание/постер приходят в корне ответа и переиспользуются
-/// диалогом выбора серий).
-/// </summary>
+
 public class PortalFlickResult
 {
     public string SerialTitle { get; set; } = string.Empty;
@@ -111,53 +91,23 @@ public class PortalFlickResult
 
 public interface IVideoPortalService
 {
-    /// <summary>
-    /// Загружает весь каталог портала: manifest → категории → страницы
-    /// элементов по каждой категории (по 300, столько отдаёт сервер).
-    /// Сетевые запросы — только здесь и в ResolveStreamAsync; кэширование
-    /// делает вызывающий (MainPage через PlaylistDatabaseService, как для M3U).
-    /// </summary>
+
+
     Task<List<PortalCatalogItem>> LoadCatalogAsync(PlaylistSource source, CancellationToken ct = default);
 
-    /// <summary>
-    /// Загружает жанры, года и все категории из manifest для серверных фильтров.
-    /// Возвращает (genreFilters, yearFilters, categories) — категории с fid и заголовками.
-    /// </summary>
+
     Task<(List<PortalGenreFilter> Genres, List<PortalYearFilter> Years, List<PortalCategoryInfo> Categories)> LoadManifestInfoAsync(PlaylistSource source, CancellationToken ct = default);
 
-    /// <summary>
-    /// Прямой запрос фильтра (без categoryRequestJson): строит запрос из
-    /// fid категории и параметров фильтра. Используется при смене фильтра
-    /// жанра/года в UI — вместо загрузки всего каталога.
-    /// </summary>
+
     Task<List<PortalCatalogItem>> LoadFilteredAsync(
         PlaylistSource source, int fid, int? genreId, string? yearOrRange,
         CancellationToken ct = default);
 
-    /// <summary>
-    /// Запрашивает у портала эпизоды элемента (команда flick): сериалу возвращает
-    /// список серий с готовыми ссылками (у фильма — один элемент с вариантами
-    /// качества). Вызывается при клике; ссылки одноразовые, не кэшируются.
-    /// </summary>
+
     Task<PortalFlickResult> ResolveEpisodesAsync(PlaylistSource source, string requestJson, CancellationToken ct = default);
 }
 
-/// <summary>
-/// Клиент видео-портала (источник типа "portal"). Протокол изучен по живому
-/// серверу: ключ передаётся ПОЛЕМ "key" в теле каждого POST-запроса
-/// (без query-параметров), команда определяет эндпоинт — {cmd}.json:
-///   manifest: {"key":K} → {type:"videoportal", items:[{type:"category",
-///             title, request:{cmd:"flicks", fid, offset, limit, ...}}]}
-///   flicks:   {key, cmd:"flicks", fid, offset, limit} → {type:"category",
-///             count:N, items:[...30..300 записей..., {type:"next"}]}
-///   элемент:  {type:"stream"|"multistream", title, img, fid,
-///             url (у фильмов), request:{cmd:"flick", fid} (у сериалов)}
-///   flick:    {key, cmd:"flick", fid} → {type:"multistream", items:[{type:
-///             "stream", url, ...}] — сезоны/эпизоды; первый = по умолчанию}
-/// Каждый запрос/ответ логируется (с обрезкой до 8 КБ) — протокол развивается
-/// без переделки клиента: неизвестные поля игнорируются, request-объекты
-/// передаются как есть.
-/// </summary>
+
 public class VideoPortalService : IVideoPortalService
 {
     private const int MaxLoggedChars = 8192;
@@ -261,10 +211,7 @@ public class VideoPortalService : IVideoPortalService
         return result;
     }
 
-    /// <summary>
-    /// Загружает жанры и все категории из manifest для серверных фильтров.
-    /// Возвращает (genreFilters, categories) — категории с fid и заголовками.
-    /// </summary>
+
     public async Task<(List<PortalGenreFilter> Genres, List<PortalYearFilter> Years, List<PortalCategoryInfo> Categories)> LoadManifestInfoAsync(
         PlaylistSource source, CancellationToken ct = default)
     {
@@ -306,11 +253,7 @@ public class VideoPortalService : IVideoPortalService
         return (genres, years, categories);
     }
 
-    /// <summary>
-    /// Прямой запрос фильтра (без categoryRequestJson): строит запрос из
-    /// fid категории и параметров фильтра. Используется при смене фильтра
-    /// жанра/года в UI — вместо загрузки всего каталога.
-    /// </summary>
+
     public async Task<List<PortalCatalogItem>> LoadFilteredAsync(
         PlaylistSource source, int fid, int? genreId, string? yearOrRange,
         CancellationToken ct = default)
@@ -379,7 +322,7 @@ public class VideoPortalService : IVideoPortalService
         _ => $"жанр {genreId}"
     };
 
-    /// <summary>Категории, для которых стоит загружать жанры (fid=1 фильмы, fid=2 сериалы).</summary>
+
     private static bool IsGenreableCategory(string requestJson)
     {
         try
@@ -653,7 +596,7 @@ public class VideoPortalService : IVideoPortalService
         return result;
     }
 
-    /// <summary>Копирует объект variants (качество → url), если он есть в ответе.</summary>
+
     private static void CopyVariants(JsonElement element, Dictionary<string, string> variants)
     {
         if (element.ValueKind != JsonValueKind.Object ||
@@ -674,10 +617,7 @@ public class VideoPortalService : IVideoPortalService
         }
     }
 
-    /// <summary>
-    /// Ключ в коротком виде ("6ee2c415..."): пользователь мог вставить и
-    /// полный формат "portal::[key:6ee2c415...]" — обёртку снимаем.
-    /// </summary>
+
     private static string NormalizeKey(PlaylistSource source)
     {
         if (string.IsNullOrWhiteSpace(source.PortalKey))
@@ -695,14 +635,7 @@ public class VideoPortalService : IVideoPortalService
         return key;
     }
 
-    /// <summary>
-    /// Эндпоинт команды по телу запроса:
-    ///   • {"cmd":"flicks",...}      → flicks.json  (загрузка категории, §3)
-    ///   • {"filter":"on",...}        → flicks.json  (фильтр, §5/§9 — без cmd)
-    ///   • {"cmd":"flick",...}        → flick.json   (один элемент, §4)
-    ///   • {"cmd":"search",...}       → search.json  (поиск, §8)
-    ///   • прочее                     → manifest.json
-    /// </summary>
+
     private static string CommandEndpoint(string requestJson)
     {
         try
@@ -729,7 +662,7 @@ public class VideoPortalService : IVideoPortalService
         return "manifest.json";
     }
 
-    /// <summary>Подменяет offset/limit в request-объекте (пагинация категорий).</summary>
+
     private static string WithPaging(string requestJson, int offset, int limit) =>
         MergeFields(requestJson, new Dictionary<string, JsonElement>
         {
@@ -737,19 +670,14 @@ public class VideoPortalService : IVideoPortalService
             ["limit"] = JsonSerializer.SerializeToElement(limit)
         });
 
-    /// <summary>Добавляет в request-объект поле "key" (авторизация каждого запроса).</summary>
+
     private static string MergeKey(string requestJson, string key) =>
         MergeFields(requestJson, new Dictionary<string, JsonElement>
         {
             ["key"] = JsonSerializer.SerializeToElement(key)
         });
 
-    /// <summary>
-    /// Пересобирает request-объект с заменёнными полями. Использует
-    /// Utf8JsonReader/Utf8JsonWriter напрямую — без промежуточного Dictionary
-    /// и двойного parse/serialize. Это горячий путь (вызывается на каждую
-    /// страницу категории), оптимизация убирает ~200 мс overhead на 500 страницах.
-    /// </summary>
+
     private static string MergeFields(string requestJson, Dictionary<string, JsonElement> overrides)
     {
         try
@@ -794,10 +722,7 @@ public class VideoPortalService : IVideoPortalService
         }
     }
 
-    /// <summary>
-    /// Возвращает манифест портала с кэшированием. Избегает повторного запроса
-    /// manifest.json при вызове LoadManifestInfoAsync после LoadCatalogAsync.
-    /// </summary>
+
     private async Task<JsonDocument> GetManifestAsync(PlaylistSource source, string key, CancellationToken ct)
     {
         var cacheKey = source.Url ?? string.Empty;
@@ -942,13 +867,7 @@ public class VideoPortalService : IVideoPortalService
         return genres;
     }
 
-    /// <summary>
-    /// Извлекает список годов/диапазонов из manifest.controls.filters,
-    /// где filter.title == "Год". Каждый элемент описан как
-    /// { title: "2024" | "2021-2026", request: { filter: "on", years: "..." } }.
-    /// Title используется как подпись в комбобоксе, YearsValue —
-    /// как значение request.years при загрузке отфильтрованной категории.
-    /// </summary>
+
     private static List<PortalYearFilter> ParseYearFilters(JsonElement manifest)
     {
         var years = new List<PortalYearFilter>();

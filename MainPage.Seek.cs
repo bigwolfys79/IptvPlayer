@@ -13,10 +13,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Перемотка VOD и архива, баннер архива, видимость EPG, кнопки полного экрана,
-/// PIN-диалог родительского контроля и прокрутка EPG.
-/// </summary>
+
 public sealed partial class MainPage : Page
 {
     private void UpdateArchivePauseButton()
@@ -494,11 +491,7 @@ public sealed partial class MainPage : Page
 
     private ChannelViewModel? _epgEmptyStateChannel;
 
-    /// <summary>
-    /// Показывает «Программа недоступна» вместо пустой сетки, когда EPG-панель
-    /// открыта, а у выбранного канала нет ни одной программы (и загрузка EPG
-    /// уже завершилась — во время загрузки пустой список ещё не приговор).
-    /// </summary>
+
     private void UpdateEpgEmptyState()
     {
 
@@ -645,10 +638,7 @@ public sealed partial class MainPage : Page
         return await tcs.Task;
     }
 
-    /// <summary>
-    /// Секундный тик: считает просмотренное время, когда плеер реально
-    /// играет (не пауза и не остановка). Само накопление и события — в VM.
-    /// </summary>
+
     private void CheckDailyWatchLimit()
     {
         if (ViewModel.AppSettings.ParentalControlEnabled &&
@@ -659,7 +649,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>Сообщение об исчерпанном дневном лимите просмотра.</summary>
+
     private async Task ShowDailyLimitDialogAsync()
     {
         var untilMidnight = ParentalControlService.TimeUntilReset(DateTime.Now);

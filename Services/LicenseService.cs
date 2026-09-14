@@ -11,29 +11,7 @@ using Serilog;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Проверка типа использования (личное/коммерческое), срока пробного
-/// периода и офлайн-активации. Сервера активации нет — лицензия это
-/// строка, подписанная приватным ключом RSA-2048 разработчика:
-/// "IPL1.{base64url(payloadJson)}.{base64url(подпись)}". Публичный ключ
-/// зашит в приложение, приватный существует только у разработчика
-/// (генератор: Tools/LicenseGenerator). Валидную лицензию без приватного
-/// ключа подделать нельзя, в отличие от HMAC-токена триала, чей ключ
-/// лежит в бинарнике.
-///
-/// Привязка к машине: payload содержит hwid — короткий код железа
-/// (volume serial + MachineGuid), который покупатель присылает
-/// разработчику вместе с оплатой, а тот вписывает в лицензию.
-///
-/// Анти-откат часов: каждый запуск сохраняет монотонное время
-/// (LastSeen, DPAPI, HKCU); если системные часы вдруг меньше
-/// сохранённого — временем считается сохранённое, откат не даёт
-/// «омолодить» истекающую лицензию.
-///
-/// Trial-токен (первые 30 дней коммерческого использования) остаётся
-/// прежним: DPAPI (LocalMachine) зашифрованная строка
-/// "{timestamp_unix}|{hardware_id}|{hmac}" в HKLM\SOFTWARE\IptvPlayer.
-/// </summary>
+
 public static class LicenseService
 {
     private const string RegPath = @"SOFTWARE\IptvPlayer";
@@ -46,7 +24,7 @@ public static class LicenseService
     private const string LastSeenValueName = "LastSeenUtc";
     private const string UserRegPath = @"SOFTWARE\IptvPlayer";
 
-    /// <summary>Допуск рассинхрона часов, прежде чем считать их откатом.</summary>
+
     private static readonly TimeSpan ClockSkewTolerance = TimeSpan.FromHours(1);
 
     private static readonly byte[] HmacKey = Encoding.UTF8.GetBytes(
@@ -56,9 +34,7 @@ public static class LicenseService
     private const string PublicKeyXml =
         "<RSAKeyValue><Modulus>6Xu4JlI0aGBUZ07SIZ3Mon9wy9EvTV18GcL5f0OBQUWaVn5nZqG6/tk+Ms1HWdkxkRXMxiHWoouRplIIFnOJsASsyRr0RGH/R80nRQPbflzVV11N2D/tDp6wWuyiQ+gwzwOcamoE03Z2TI4r1JapiUpCz4qpH1JgTKoV1m5xOcrCMCTV+9SDb5rB52iRdZvhmBkxUPyiB6DB2LHrcOlvFg+12KY0SducDrUBJADA8t4qPBy3FbS5eeYjZ7Skwk1f46Rfure+soy0TrFBUtZCdznCpTfFkYZK6L9BsiA2wsphabq40xtfIYWxUvxPlEhIJIVz/bKbbWeH1Ng9ljyi8Q==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
 
-    /// <summary>
-    /// Проверяет лицензию при запуске. Вызывать ДО создания MainWindow.
-    /// </summary>
+
     public static LicenseInfo CheckLicense()
     {
         try
@@ -137,16 +113,10 @@ public static class LicenseService
         }
     }
 
-    /// <summary>
-    /// Код железа для привязки лицензии — его пользователь копирует из
-    /// диалога активации и присылает разработчику.
-    /// </summary>
+
     public static string GetHwidCode() => FormatHwidCode(ComputeHardwareHash());
 
-    /// <summary>
-    /// Офлайн-активация: проверяет строку лицензии (подпись, HWID, срок)
-    /// и сохраняет её в реестре пользователя. Никакой сети.
-    /// </summary>
+
     public static ActivationResult Activate(string licenseText)
     {
         if (string.IsNullOrWhiteSpace(licenseText))
@@ -193,10 +163,7 @@ public static class LicenseService
         return ActivationResult.Ok(data);
     }
 
-    /// <summary>
-    /// Проверяет текст лицензии без сохранения: подпись публичным ключом,
-    /// формат, срок. HWID здесь НЕ проверяется (см. Activate).
-    /// </summary>
+
     public static LicenseData? ValidateLicenseText(string licenseText)
     {
         try
@@ -241,10 +208,7 @@ public static class LicenseService
         }
     }
 
-    /// <summary>
-    /// Время с защитой от отката часов: если системное время меньше
-    /// сохранённого при прошлом запуске — используется сохранённое.
-    /// </summary>
+
     private static DateTime GetMonotonicNow()
     {
         var now = DateTime.UtcNow;
@@ -312,10 +276,7 @@ public static class LicenseService
     private static string GenerateHardwareId()
         => Convert.ToBase64String(ComputeHardwareHash());
 
-    /// <summary>
-    /// Короткий человекочитаемый код железа: первые 8 байт хеша в hex,
-    /// группами XXXX-XXXX-XXXX-XXXX. Его вписывают в лицензию.
-    /// </summary>
+
     private static string FormatHwidCode(byte[] hash)
     {
         var hex = Convert.ToHexString(hash, 0, 8);
@@ -451,7 +412,7 @@ public static class LicenseService
         catch { return null; }
     }
 
-    /// <summary>Лицензионный ключ ищем и в HKLM (пропишет инсталлятор), и в HKCU.</summary>
+
     private static string? ReadFirstAvailable(string valueName)
     {
         try

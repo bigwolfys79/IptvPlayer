@@ -10,12 +10,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs;
 
-/// <summary>
-/// Родительский контроль: скрытие каналов выбранных групп (по умолчанию
-/// предлагаются «взрослые» — 18+/xxx/adult/эротик и т.п.). Отключение и
-/// правка списка защищены PIN (если он установлен); временная
-/// разблокировка — на 15/30/45/60 минут или до перезапуска.
-/// </summary>
+
 public sealed partial class ParentalControlDialog : UserControl
 {
     private readonly MainPageViewModel _viewModel;
@@ -150,7 +145,7 @@ public sealed partial class ParentalControlDialog : UserControl
         }
     }
 
-    /// <summary>Сколько времени просмотра осталось сегодня (или «без лимита»).</summary>
+
     private void UpdateDailyLimitRemaining()
     {
         if (Settings.ParentalDailyLimitMinutes <= 0)

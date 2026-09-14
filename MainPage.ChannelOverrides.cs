@@ -12,20 +12,12 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Пользовательские правки каналов поверх плейлиста: перенос в другую группу
-/// и удаление из списка. Правки живут в SQLite (channel_overrides) и
-/// применяются после каждой загрузки/обновления плейлиста — ChannelsOverride
-/// переживает перекачку m3u. Действия над каналами заблокированных групп
-/// требуют PIN (если установлен).
-/// </summary>
+
 public sealed partial class MainPage : Page
 {
-    /// <summary>
-    /// Применяет сохранённые правки к свежезагруженному списку каналов:
-    /// удаляет скрытые каналы, переносит перемещённые. Вызывается до
-    /// наполнения репозитория и ViewModel.Channels.
-    /// </summary>
+
+
+    // Apply saved move/remove overrides after playlist load
     private async Task<List<ChannelViewModel>> ApplyChannelOverridesAsync(List<ChannelViewModel> channels)
     {
         var playlist = _activePlaylist;
@@ -74,11 +66,8 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Тексты пунктов контекстного меню канала задаются при открытии:
-    /// MenuFlyoutItem не берёт текст из «плоского» ключа ресурса, а ключ с
-    /// суффиксом .Text конфликтовал бы с ним же (нужен для L.T в коде).
-    /// </summary>
+
+    // Fill context menu texts
     private void ChannelContextMenu_Opening(object? sender, object e)
     {
         if (sender is MenuFlyout { Items.Count: >= 2 } menu)
@@ -94,6 +83,7 @@ public sealed partial class MainPage : Page
         }
     }
 
+    // Move channel to another group
     private async Task MoveChannelToGroupAsync(ChannelViewModel channel)
     {
         if (!await EnsurePinApprovedForGroupAsync(channel.Group))
@@ -136,10 +126,11 @@ public sealed partial class MainPage : Page
             _logger.LogWarning(ex, "Сохранение переноса канала «{Channel}».", channel.Name);
         }
 
-        await RebuildChannelRepositoryAsync();
+        await RebuildChannelRepositoryAsync(originalGroup, newGroup);
         ShowActionToast(string.Format(L.T("Kanal_Perenesen_V_Gruppu"), channel.Name, newGroup));
     }
 
+    // Remove channel from list
     private async Task DeleteChannelAsync(ChannelViewModel channel)
     {
         if (!await EnsurePinApprovedForGroupAsync(channel.Group))
@@ -199,11 +190,9 @@ public sealed partial class MainPage : Page
         ShowActionToast(string.Format(L.T("Kanal_Udalen_Iz_Spiska"), channel.Name));
     }
 
-    /// <summary>
-    /// Синхронизирует список каналов после правки: репозиторий EPG,
-    /// EpgViewModel, счётчик, группы и фильтр.
-    /// </summary>
-    private async Task RebuildChannelRepositoryAsync()
+
+    // Sync channel list after an edit
+    private async Task RebuildChannelRepositoryAsync(string? movedFromGroup = null, string? movedToGroup = null)
     {
         await _channelRepository.Clear();
         foreach (var channel in ViewModel.Channels)
@@ -213,15 +202,20 @@ public sealed partial class MainPage : Page
 
         ViewModel.EpgViewModel.SetChannels(ViewModel.Channels.ToList());
         ViewModel.UpdateChannelCountText();
-        ViewModel.RefreshGroups();
+
+        var selectedGroup = ViewModel.SelectedGroup;
+        if (movedToGroup != null &&
+            string.Equals(selectedGroup?.Trim(), movedFromGroup?.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            selectedGroup = movedToGroup;
+        }
+
+        ViewModel.RefreshGroups(selectedGroup);
         ViewModel.FilterChannels();
     }
 
-    /// <summary>
-    /// PIN-гейт для действий над каналом заблокированной группы: при
-    /// включённом родительском контроле и установленном PIN запрашивает
-    /// разовое подтверждение. true — действие разрешено.
-    /// </summary>
+
+    // Require PIN for locked group actions
     private async Task<bool> EnsurePinApprovedForGroupAsync(string? group)
     {
         var settings = ViewModel.AppSettings;
@@ -233,7 +227,8 @@ public sealed partial class MainPage : Page
         return await ShowPinApprovalDialogAsync();
     }
 
-    /// <summary>Диалог разового подтверждения PIN (без разблокировки групп).</summary>
+
+    // Show PIN confirmation dialog
     private async Task<bool> ShowPinApprovalDialogAsync()
     {
         var pinBox = new PasswordBox

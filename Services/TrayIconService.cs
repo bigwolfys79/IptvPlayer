@@ -4,13 +4,7 @@ using System.Threading;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Иконка в системном трее на голом Win32 (Shell_NotifyIconW): сторонние
-/// пакеты (H.NotifyIcon.WinUI) несовместимы с нашей версией Windows App SDK
-/// на net8. Левый клик — показать окно, правый — меню «Показать/Выход».
-/// Иконка и меню живут в собственном невидимом Win32-окне с родным
-/// message loop потоком — XAML не участвует, поэтому просто и стабильно.
-/// </summary>
+
 public sealed class TrayIconService : IDisposable
 {
     private const uint WM_TRAYICON = 0x8000;
@@ -71,14 +65,11 @@ public sealed class TrayIconService : IDisposable
         return hwnd;
     }
 
-    /// <summary>
-    /// Иконка в трее показывается только пока окно приложения скрыто
-    /// (свернуто/закрыто в трей). Изначально не добавляется — только по Show().
-    /// </summary>
+
     private readonly object _visibilitySync = new();
     private bool _addedToTray;
 
-    /// <summary>Добавляет иконку в трей (повторные вызовы — no-op).</summary>
+
     public void Show()
     {
         lock (_visibilitySync)
@@ -92,7 +83,7 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    /// <summary>Убирает иконку из трея (повторные вызовы — no-op).</summary>
+
     public void Hide()
     {
         lock (_visibilitySync)

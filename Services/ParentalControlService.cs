@@ -7,15 +7,7 @@ using IptvPlayer.Models;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Логика родительского контроля: скрытие каналов выбранных групп за PIN
-/// с возможностью временной разблокировки (15/30/45/60 мин или до
-/// выключения). Чистая логика — покрыта unit-тестами.
-///
-/// PIN хранится как PBKDF2-SHA256 (соль:хэш, base64), не открытым текстом.
-/// Если PIN не установлен, контроль работает как простое скрытие групп без
-/// защиты от отключения (осознанный режим «спрятать от гостей»).
-/// </summary>
+
 public static class ParentalControlService
 {
 
@@ -27,7 +19,8 @@ public static class ParentalControlService
 
     private const int Pbkdf2Iterations = 100_000;
 
-    /// <summary>Похоже ли название группы на «взрослую» (для автоподсказки).</summary>
+
+    // Check adult group name
     public static bool LooksLikeAdultGroup(string? groupName)
     {
         if (string.IsNullOrWhiteSpace(groupName))
@@ -39,7 +32,8 @@ public static class ParentalControlService
         return AdultGroupKeywords.Any(k => lowered.Contains(k));
     }
 
-    /// <summary>Заблокированы ли группы прямо сейчас (true = каналы скрыты).</summary>
+
+    // Are groups hidden now
     public static bool IsLocked(AppSettings settings, DateTime? utcNow = null)
     {
         if (!settings.ParentalControlEnabled)
@@ -51,7 +45,8 @@ public static class ParentalControlService
         return settings.ParentalControlUnlockedUntilUtc is not { } until || now >= until;
     }
 
-    /// <summary>Группа входит в заблокированный список (сравнение без регистра).</summary>
+
+    // Is group in blocked list
     public static bool IsGroupBlocked(AppSettings settings, string? groupName)
     {
         if (string.IsNullOrWhiteSpace(groupName))
@@ -62,11 +57,8 @@ public static class ParentalControlService
         return settings.ParentalControlBlockedGroups.Contains(groupName.Trim(), StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Требуется ли подтверждение PIN для действия над каналом заблокированной
-    /// группы (перенос, удаление, восстановление): контроль включён, PIN
-    /// задан, группа заблокирована и нет активной разблокировки.
-    /// </summary>
+
+    // Is PIN required for locked group action
     public static bool IsPinRequiredForGroup(AppSettings settings, string? groupName, DateTime? utcNow = null)
     {
         return IsLocked(settings, utcNow)
@@ -74,7 +66,8 @@ public static class ParentalControlService
             && IsGroupBlocked(settings, groupName);
     }
 
-    /// <summary>Временная разблокировка на N минут; null — до выключения.</summary>
+
+    // Temporary unlock for N minutes
     public static void Unlock(AppSettings settings, int? minutes)
     {
         settings.ParentalControlUnlockedUntilUtc = minutes is > 0
@@ -82,37 +75,32 @@ public static class ParentalControlService
             : DateTime.MaxValue;
     }
 
-    /// <summary>Снова скрыть группы немедленно.</summary>
+
+    // Lock groups immediately
     public static void Lock(AppSettings settings)
     {
         settings.ParentalControlUnlockedUntilUtc = null;
         ClearChannelUnlock(settings);
     }
 
-    /// <summary>
-    /// Разблокировка только одного канала (PIN введён без выбора
-    /// длительности): до переключения на другой канал. Живёт в памяти
-    /// AppSettings сессии и на диск не пишется.
-    /// </summary>
+
+    // Unlock single channel until switch
     public static void UnlockForChannel(AppSettings settings, string channelName, string? group)
     {
         settings.ParentalTempUnlockedChannel = channelName;
         settings.ParentalTempUnlockedGroup = group?.Trim();
     }
 
-    /// <summary>Снять разблокировку одного канала.</summary>
+
+    // Clear single channel unlock
     public static void ClearChannelUnlock(AppSettings settings)
     {
         settings.ParentalTempUnlockedChannel = null;
         settings.ParentalTempUnlockedGroup = null;
     }
 
-    /// <summary>
-    /// Доступен ли канал для запуска: группы не заблокированы глобально
-    /// либо канал разблокирован по PIN «до переключения» (UnlockForChannel
-    /// привязан к имени канала — при запуске другого канала доступ снимается
-    /// вызывающим кодом через ClearChannelUnlock).
-    /// </summary>
+
+    // Can channel start now
     public static bool IsChannelAccessible(
         AppSettings settings, string channelName, string? group, DateTime? utcNow = null)
     {
@@ -125,7 +113,8 @@ public static class ParentalControlService
             && string.Equals(settings.ParentalTempUnlockedGroup, group?.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Хэш PIN в виде «соль:хэш» (base64). PIN может быть пустым — вернёт null.</summary>
+
+    // Hash PIN with PBKDF2
     public static string? HashPin(string? pin)
     {
         if (string.IsNullOrEmpty(pin))
@@ -139,7 +128,8 @@ public static class ParentalControlService
         return $"{Convert.ToBase64String(salt)}:{Convert.ToBase64String(hash)}";
     }
 
-    /// <summary>Проверка PIN; true, если совпадает (или PIN вообще не установлен).</summary>
+
+    // Verify PIN against hash
     public static bool VerifyPin(AppSettings settings, string? pin)
     {
         if (string.IsNullOrEmpty(settings.ParentalControlPinHash))
@@ -172,10 +162,7 @@ public static class ParentalControlService
         }
     }
 
-    /// <summary>
-    /// Автопредложение: все «взрослые» группы из списка каналов — их обычно
-    /// и хотят скрыть; пользователь может снять/добавить галочки вручную.
-    /// </summary>
+
     public static List<string> SuggestBlockedGroups(IEnumerable<string?> groupNames)
     {
         return groupNames
@@ -185,13 +172,10 @@ public static class ParentalControlService
             .ToList();
     }
 
-    /// <summary>Ключ дня для счётчика просмотра (локальная дата).</summary>
+
     public static string DailyDateKey(DateTime localNow) => localNow.ToString("yyyy-MM-dd");
 
-    /// <summary>
-    /// Сбрасывает счётчик просмотра при смене суток. Вызывается перед любым
-    /// чтением/увеличением счётчика (значение и дата хранятся в настройках).
-    /// </summary>
+
     public static void ResetWatchedIfNewDay(AppSettings settings, DateTime localNow)
     {
         var today = DailyDateKey(localNow);
@@ -202,10 +186,8 @@ public static class ParentalControlService
         }
     }
 
-    /// <summary>
-    /// Исчерпан ли дневной лимит (true = воспроизведение запрещено до
-    /// полуночи). Лимит действует только при включённом родительском контроле.
-    /// </summary>
+
+    // Is daily watch limit reached
     public static bool IsDailyLimitReached(AppSettings settings, DateTime localNow)
     {
         if (!settings.ParentalControlEnabled || settings.ParentalDailyLimitMinutes <= 0)
@@ -217,8 +199,7 @@ public static class ParentalControlService
         return settings.ParentalWatchedSeconds >= settings.ParentalDailyLimitMinutes * 60L;
     }
 
-    /// <summary>Остаток лимита на сегодня в минутах (0 — исчерпан; неполная
-    /// минута округляется вверх). Без лимита — int.MaxValue.</summary>
+
     public static int GetRemainingMinutes(AppSettings settings, DateTime localNow)
     {
         if (!settings.ParentalControlEnabled || settings.ParentalDailyLimitMinutes <= 0)
@@ -236,10 +217,8 @@ public static class ParentalControlService
         return (int)Math.Min(int.MaxValue, (remainingSeconds + 59) / 60);
     }
 
-    /// <summary>
-    /// Добавляет просмотренные секунды к счётчику дня. Смена даты обнуляет
-    /// счётчик. На диск настройки пишет вызывающий.
-    /// </summary>
+
+    // Accumulate watched seconds
     public static void AddWatchedSeconds(AppSettings settings, int seconds, DateTime localNow)
     {
         if (seconds <= 0)
@@ -252,7 +231,7 @@ public static class ParentalControlService
             int.MaxValue, (long)settings.ParentalWatchedSeconds + seconds);
     }
 
-    /// <summary>Сколько осталось до полуночи (сброса лимита) — для сообщения.</summary>
+
     public static TimeSpan TimeUntilReset(DateTime localNow)
     {
         var midnight = localNow.Date.AddDays(1);

@@ -6,19 +6,8 @@ using WinRT;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// Минимальный D3D11-интероп для рендер-пути frame server: создание
-    /// устройства, BGRA8-текстуры-приёмника кадра и оборачивание её в
-    /// WinRT IDirect3DSurface / IDirect3DDevice.
-    ///
-    /// Win2D (WinUI3) не создаёт IDirect3DSurface и не отдаёт свой D3D-девайс,
-    /// а MediaPlayer.CopyFrameToVideoSurface требует готовую поверхность —
-    /// поэтому девайс, текстура и обёртка делаются здесь через стандартные
-    /// экспорты d3d11.dll: CreateDirect3D11DeviceFromDXGIBuffer и
-    /// CreateDirect3D11DeviceFromDXGIDevice. Текстура создана на собственном устройстве,
-    /// из которого создаётся и CanvasDevice — Win2D требует совпадения
-    /// девайса при CreateFromDirect3D11Surface.
-    /// </summary>
+
+
     internal static unsafe class Direct3DInterop
     {
 
@@ -46,10 +35,7 @@ namespace IptvPlayer.Services
         private static extern int CreateDirect3D11SurfaceFromDXGISurface(
             IntPtr dxgiSurface, out IntPtr inspectable);
 
-        /// <summary>
-        /// Создаёт D3D11-девайс и возвращает (нативный девайс, IDirect3DDevice).
-        /// Нативный указатель нужен для создания текстур.
-        /// </summary>
+
         public static (IntPtr NativeDevice, IDirect3DDevice Device) CreateDevice()
         {
 
@@ -72,22 +58,13 @@ namespace IptvPlayer.Services
             return (device, d3dDevice);
         }
 
-        /// <summary>
-        /// Создаёт BGRA8-текстуру на девайсе и оборачивает её в IDirect3DSurface
-        /// (приёмник кадра для CopyFrameToVideoSurface).
-        /// </summary>
+
         public static IDirect3DSurface CreateBgraSurface(IntPtr nativeDevice, int width, int height)
         {
             return CreateSurface(nativeDevice, width, height, DxgiFormatB8G8R8A8UNorm);
         }
 
-        /// <summary>
-        /// Создаёт текстуру заданного DXGI-формата (87 = BGRA8, 103 = NV12) —
-        /// приёмник кадра для CopyFrameToVideoSurface. NV12 — нативный формат
-        /// frame server: копирование без конверсии, и только NV12-вход даёт
-        /// драйверу NVIDIA подставить RTX VSR в VideoProcessorBlt.
-        /// Bind-флаги соответствуют требованиям CreateVideoProcessorInputView.
-        /// </summary>
+
         public static IDirect3DSurface CreateSurface(IntPtr nativeDevice, int width, int height, int dxgiFormat)
         {
 

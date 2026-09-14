@@ -16,28 +16,8 @@ using Microsoft.UI.Xaml.Media;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// Рендер-путь «frame server» (экспериментальный апскейл, фаза 2):
-    /// MediaPlayer работает с IsVideoFrameServerEnabled и сам ничего не
-    /// рисует. Кадр копируется в текстуру РАЗРЕШЕНИЯ ПОТОКА
-    /// (CopyFrameToVideoSurface), а в окно рисуется двумя HLSL-проходами:
-    ///   1) FsrEasu.cso — FSR 1.0 EASU (порт AMD ffx_fsr1.h, MIT):
-    ///      edge-адаптивный апскейл, кадр вписывается в окно единым
-    ///      коэффициентом Math.Min(w/frameW, h/frameH);
-    ///   2) FsrRcas.cso — FSR 1.0 RCAS: резкость с robust-лимитерами.
-    /// Фолбэк при отсутствии FSR-шейдеров: бикубик Catmull-Rom (Upscale.cso)
-    /// + упрощённый CAS (Sharpen.cso); далее — линейный масштаб движка.
-    /// Это даёт заметно более чёткую картинку, чем линейный масштаб
-    /// медиа-движка, особенно на апскейле SD (×2+). Шейдеры — Assets/Shaders.
-    ///
-    /// Девайс один и тот же для текстуры-приёмника и для Win2D (Win2D требует
-    /// совпадения девайса при CreateFromDirect3D11Surface) — см.
-    /// Direct3DInterop. Кадры приходят на фоновом потоке: рисуем там же под
-    /// атомарным флагом (кадр пропускается, если предыдущий ещё рисуется),
-    /// UI-поток нужен только для создания/ресайза свапчейна.
-    /// При любой ошибке шейдерного пути — однократный откат на прямую
-    /// отрисовку (линейный масштаб движка), без падения плеера.
-    /// </summary>
+
+
     public sealed class FrameServerRenderer : IDisposable
     {
         private readonly ILogger _logger;
@@ -73,12 +53,7 @@ namespace IptvPlayer.Services
 
         private const float Sharpening = 0.80f;
 
-        /// <summary>
-        /// Режим отображения (дублирует MediaPlayer.Stretch, который при
-        /// frame server-рендере не участвует в отрисовке): Uniform — вписать
-        /// с чёрными полями, UniformToFill — заполнить окно с обрезкой краёв,
-        /// Fill — растянуть без сохранения пропорций.
-        /// </summary>
+
         public Stretch VideoStretchMode { get; set; } = Stretch.Uniform;
 
         public FrameServerRenderer(ILogger logger)
@@ -86,11 +61,7 @@ namespace IptvPlayer.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Подключает рендер к панели и играющему плееру. UI-поток.
-        /// streamWidth/streamHeight — разрешение потока (для лога и размера
-        /// текстуры-приёмника).
-        /// </summary>
+
         public void Attach(CanvasSwapChainPanel panel, MediaPlayer player,
             int streamWidth = 0, int streamHeight = 0)
         {
@@ -143,9 +114,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Отключает рендер (смена канала, выключение режима).
-        /// </summary>
+
         public void Detach()
         {
             if (_player != null)
@@ -275,11 +244,7 @@ namespace IptvPlayer.Services
                 return;
             }
 
-            // Размер кадра — NaturalVideoWidth/Height сессии: фактическое
-            // отображаемое разрешение (учитывает SAR и поворот), обновляется
-            // при смене потока без пересоздания плеера. Размеры из диагностики
-            // Attach бывают нулевыми или пиксельными — тогда приёмник получал
-            // чужие пропорции, и растяжение/кроп считались неверно.
+
             var session = sender.PlaybackSession;
             var frameW = 0;
             var frameH = 0;
@@ -297,9 +262,7 @@ namespace IptvPlayer.Services
                 frameH = _streamHeight > 0 ? _streamHeight : h;
             }
 
-            // Видеопроцессорный путь принимает кадр в NV12 (нативный формат
-            // frame server и обязательное условие подстановки RTX VSR драйвером),
-            // шейдерный путь Win2D требует BGRA. NV12 требует чётные размеры.
+
             var wantNv12 = _videoProcessor is not null;
             if (wantNv12 && ((frameW & 1) != 0 || (frameH & 1) != 0))
             {
@@ -331,8 +294,8 @@ namespace IptvPlayer.Services
             }
             catch (Exception ex) when (_frameIsNv12)
             {
-                // NV12-приёмник не поддержан окружением — отключаем
-                // видеопроцессорный путь, следующий кадр придёт в BGRA.
+
+
                 _logger.LogWarning(ex,
                     "FrameServerRenderer: копирование кадра в NV12 не удалось, откат на BGRA (шейдерный путь).");
                 _videoProcessor?.Dispose();
@@ -370,9 +333,7 @@ namespace IptvPlayer.Services
                     return;
                 }
 
-                // Неудача TryRender: путь отключён внутри — снимаем и
-                // видеопроцессор, чтобы приёмник кадра пересоздался в BGRA
-                // (Win2D NV12 не читает). Иначе — цикл пересозданий NV12.
+
                 _videoProcessor?.Dispose();
                 _videoProcessor = null;
                 _frameSurface?.Dispose();
@@ -488,12 +449,7 @@ namespace IptvPlayer.Services
             swapChain.Present();
         }
 
-        /// <summary>
-        /// Коэффициенты масштабирования по режиму: Uniform — единый
-        /// коэффициент вписывания, UniformToFill — единый коэффициент
-        /// заполнения (пропорции сохранены, края обрезаются), Fill —
-        /// независимые коэффициенты по осям (растяжение).
-        /// </summary>
+
         private (float Scale, float ScaleX, float ScaleY) ComputeScale(
             int frameW, int frameH, int w, int h)
         {

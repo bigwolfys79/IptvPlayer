@@ -11,23 +11,7 @@ using System.Threading.Tasks;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Диагностический локальный прокси для измерения РЕАЛЬНОЙ скорости
-/// потока (Ctrl+J): FFmpeg получает URL вида http://127.0.0.1:port/p/...
-/// и качает данные из прокси, а прокси — с провайдера, считая каждый
-/// байт тела ответа. Провайдер видит то же число соединений, что и без
-/// прокси (замена access-слоя, не второй клиент).
-///
-/// Сервер — минималистичный TCP (а не HttpListener): HttpListener требует
-/// urlacl-резервирование (netsh, админ), а FFmpeg шлёт простые GET без
-/// фич вроде chunked-запросов. HLS-плейлисты (m3u8) перезаписываются:
-/// каждый URI (варианты, сегменты, ключи) оборачивается в маршрут
-/// прокси с абсолютным upstream-URL, поэтому FFmpeg остаётся на 127.0.0.1
-/// на всём дереве плейлиста.
-///
-/// Включается галкой в настройках воспроизведения (выкл. по умолчанию);
-/// путь данных для воспроизведения не меняется — только источник сокета.
-/// </summary>
+
 public sealed class LocalStreamProxy : IDisposable
 {
     private const int WindowSamples = 5;
@@ -58,13 +42,7 @@ public sealed class LocalStreamProxy : IDisposable
 
     public bool IsRunning => _listener is not null;
 
-    /// <summary>
-    /// URL-обёртка: FFmpeg получает этот адрес вместо upstream.
-    /// Запускает сервер при первом вызове (лениво, порт свободный).
-    /// В конце маршрута — расширение исходного файла: HLS-демуксер FFmpeg
-    /// сверяет расширение сегмента со списком разрешённых (.ts/.m4s/...)
-    /// и отвергает «безымянные» URL.
-    /// </summary>
+
     public string WrapUrl(string upstreamUrl)
     {
         if (!IsRunning && !TryStart())
@@ -94,10 +72,7 @@ public sealed class LocalStreamProxy : IDisposable
         }
     }
 
-    /// <summary>
-    /// Сброс счётчиков под новый поток (вызывается при открытии канала) —
-    /// скорость предыдущего канала не должна смешиваться с новым.
-    /// </summary>
+
     public void ResetForNewStream()
     {
         lock (_gate)
@@ -108,10 +83,7 @@ public sealed class LocalStreamProxy : IDisposable
         }
     }
 
-    /// <summary>
-    /// Очередной замер скорости (вызывать ~раз в секунду, тик оверлея).
-    /// Возвращает сглаженную скорость в бит/с или null, пока данных нет.
-    /// </summary>
+
     public double? Sample()
     {
         lock (_gate)
@@ -364,11 +336,7 @@ public sealed class LocalStreamProxy : IDisposable
         Count(bytes.LongLength);
     }
 
-    /// <summary>
-    /// URI в каждой строке плейлиста оборачивается в маршрут прокси:
-    /// относительные сначала разрешаются против upstream-базы. Строки-
-    /// теги с URI="..." (ключи шифрования, media) переписываются тоже.
-    /// </summary>
+
     private string RewritePlaylist(string body, Uri upstreamBase)
     {
         var sb = new StringBuilder(body.Length + 1024);

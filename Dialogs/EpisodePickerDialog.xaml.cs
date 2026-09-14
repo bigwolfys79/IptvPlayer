@@ -12,7 +12,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace IptvPlayer.Dialogs;
 
-/// <summary>Строка списка эпизодов: порядковый номер и название серии.</summary>
+
 public class EpisodePickerItem
 {
     public string Number { get; set; } = string.Empty;
@@ -20,13 +20,7 @@ public class EpisodePickerItem
     public PortalEpisode Episode { get; set; } = new();
 }
 
-/// <summary>
-/// Диалог выбора серии сериала портала: шапка (постер, название, описание),
-/// комбобокс сезона (сезоны — соседние карточки каталога, серийные списки
-/// подгружаются flick'ом) и список серий. Клик по серии — выбрать и закрыть;
-/// «Смотреть с первой» — первый эпизод; «Отмена» — ничего не выбирать.
-/// Возвращает выбранную пару (карточка сезона, эпизод).
-/// </summary>
+
 public sealed partial class EpisodePickerDialog : UserControl
 {
     private readonly IVideoPortalService _videoPortalService =
@@ -38,7 +32,7 @@ public sealed partial class EpisodePickerDialog : UserControl
     private bool _updatingSeasons;
     private PortalFlickResult _flick;
 
-    /// <summary>Выбранный сезон (карточка каталога) + эпизод + его список серий.</summary>
+
     private (ChannelViewModel Channel, PortalEpisode Episode, System.Collections.Generic.List<PortalEpisode> Episodes)? _result;
 
     public ObservableCollection<EpisodePickerItem> Episodes { get; } = new();
@@ -51,15 +45,12 @@ public sealed partial class EpisodePickerDialog : UserControl
         InitializeComponent();
     }
 
-    /// <summary>Сезоны сериала (включая текущий), отсортированные по номерам.</summary>
+
     private System.Collections.Generic.List<ChannelViewModel> Seasons { get; }
 
     private ChannelViewModel CurrentSeason { get; set; }
 
-    /// <summary>
-    /// Показывает диалог и возвращает выбранную пару сезон/эпизод
-    /// (null — отменено).
-    /// </summary>
+
     public static async Task<(ChannelViewModel Channel, PortalEpisode Episode, System.Collections.Generic.List<PortalEpisode> Episodes)?> PickAsync(
         XamlRoot xamlRoot, ChannelViewModel channel, PortalFlickResult flick)
     {
@@ -119,7 +110,7 @@ public sealed partial class EpisodePickerDialog : UserControl
         return Task.CompletedTask;
     }
 
-    /// <summary>«Название. Сезон 3. (2021)» → «Сезон 3»; без пометки — как есть.</summary>
+
     private static string SeasonLabelOf(string name) =>
         MainPageViewModel.ParsePortalSeasonName(name).Season is { } season
             ? (season.From == season.To

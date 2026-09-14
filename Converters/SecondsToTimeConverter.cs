@@ -3,11 +3,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace IptvPlayer.Converters;
 
-/// <summary>
-/// Секунды (double) → «ч:мм:сс» / «мм:сс» — формат подсказки над бегунком
-/// ползунка перемотки VOD (ThumbToolTip показывает сырое значение слайдера).
-/// Формат совпадает с PlayerViewModel.FormatArchiveTime.
-/// </summary>
+
 public partial class SecondsToTimeConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)

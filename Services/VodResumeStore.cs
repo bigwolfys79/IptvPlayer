@@ -10,13 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Позиции досмотра фильмов/серий портала в SQLite (та же
-/// iptvplayer_cache.db, что у кэша плейлистов). Вынесено из settings.json:
-/// записи обновляются каждые несколько секунд во время просмотра — так
-/// настройки не переписываются целиком, а позиции переживают перезапуск.
-/// Машинно-зависимые данные: в экспорт настроек не попадают.
-/// </summary>
+
 public class VodResumeStore
 {
     private static readonly string CacheDirectory = Path.Combine(
@@ -73,7 +67,7 @@ public class VodResumeStore
         }
     }
 
-    /// <summary>Загружает все сохранённые позиции (пустой словарь при сбое).</summary>
+
     public async Task<Dictionary<string, VodResumePosition>> LoadAllAsync()
     {
         var result = new Dictionary<string, VodResumePosition>();
@@ -108,7 +102,7 @@ public class VodResumeStore
         return result;
     }
 
-    /// <summary>Сохраняет весь текущий набор позиций (upsert) одной транзакцией.</summary>
+
     public async Task SaveAllAsync(IReadOnlyDictionary<string, VodResumePosition> positions)
     {
         await _saveGate.WaitAsync();

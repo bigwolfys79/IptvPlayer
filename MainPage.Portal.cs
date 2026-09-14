@@ -11,15 +11,11 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Методы портала: загрузка каталога, управление кэшем, выбор серий.
-/// </summary>
+
 public sealed partial class MainPage : Page
 {
-    /// <summary>
-    /// Имя плейлиста по умолчанию — хост URL (без www), чтобы список плейлистов
-    /// был узнаваемым без обязательного ввода имени при добавлении.
-    /// </summary>
+
+
     internal static string DefaultPlaylistName(string url)
     {
 
@@ -42,13 +38,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Загружает каналы плейлиста при старте и при переключении: если кэш
-    /// этого плейлиста свеж (PlaylistRefreshDays не истёк и формат актуален) —
-    /// каналы берутся из кэша без скачивания; иначе M3U перекачивается и кэш
-    /// обновляется. При сбое скачивания отдаётся просроченный кэш —
-    /// переключение/запуск не должно оставлять пользователя без каналов.
-    /// </summary>
+
     private async Task<List<ChannelViewModel>> LoadPlaylistChannelsAsync(
         PlaylistSource playlist, System.Threading.CancellationToken ct = default)
     {
@@ -142,16 +132,7 @@ public sealed partial class MainPage : Page
         return result;
     }
 
-    /// <summary>
-    /// Загрузка каналов с оверлеем: пока идёт скачивание/разбор плейлиста или
-    /// каталога портала, интерфейс перекрывается кольцом загрузки с именем
-    /// источника (скачивание M3U может занимать десятки секунд, без оверлея
-    /// смена плейлиста выглядит «зависанием»). finally гарантирует снятие
-    /// оверлея и при исключении (fallback на просроченный кэш внутри).
-    /// Минимальное время показа: при загрузке из свежего кэша каналы готовы
-    /// за миллисекунды и текст оверлея не успеть прочитать — держим его
-    /// не менее двух секунд в любую сторону (включая возврат из хаба).
-    /// </summary>
+
     private async Task<List<ChannelViewModel>> LoadPlaylistChannelsWithOverlayAsync(
         PlaylistSource playlist, System.Threading.CancellationToken ct = default)
     {
@@ -191,11 +172,7 @@ public sealed partial class MainPage : Page
         Genre = cached.Genre
     };
 
-    /// <summary>
-    /// Элемент каталога портала → канал: категория становится группой
-    /// (фильтр групп работает без изменений), StreamUrl остаётся null до
-    /// клика — поток у портала одноразовый и запрашивается по клику.
-    /// </summary>
+
     private static ChannelViewModel PortalItemToChannel(PortalCatalogItem item) => new()
     {
         Name = item.Name,
@@ -226,21 +203,13 @@ public sealed partial class MainPage : Page
         return completion.Task;
     }
 
-    /// <summary>
-    /// Кнопка сброса фильтров портала: возвращает «Все типы / Все жанры / Все годы»
-    /// и запускает одну серверную перезагрузку каталога с итоговым состоянием.
-    /// </summary>
+
     private void ResetFiltersButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.ResetPortalFilters();
     }
 
-    /// <summary>
-    /// Проверяет, наступил ли срок обновления кэша по настройкам
-    /// (AppSettings.PlaylistRefreshDays / EpgRefreshDays).
-    /// savedAtUtc — момент последнего сохранения кэша (UTC).
-    /// refreshDays — количество дней из настроек (0 = никогда не обновлять).
-    /// </summary>
+
     private static bool IsCacheDue(DateTime savedAtUtc, int refreshDays)
     {
         if (refreshDays <= 0)
@@ -256,12 +225,7 @@ public sealed partial class MainPage : Page
         return (DateTime.UtcNow - savedAtUtc) >= TimeSpan.FromDays(refreshDays);
     }
 
-    /// <summary>
-    /// Сохраняет разобранные каналы плейлиста в локальный кэш SQLite
-    /// (PlaylistDatabaseService) — при следующем запуске, если срок
-    /// обновления из настроек ещё не наступил, плейлист не придётся
-    /// перекачивать.
-    /// </summary>
+
     private Task SavePlaylistCacheAsync(int playlistId, List<ChannelViewModel> channels, string? portalKey = null)
     {
         var cache = new Models.PlaylistCache

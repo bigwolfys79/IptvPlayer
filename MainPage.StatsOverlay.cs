@@ -23,10 +23,7 @@ using Windows.UI.Core;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Оверлей статистики потока (Ctrl+J).
-/// Вынесено из MainPage.xaml.cs (MVVM-этап 3: разбиение code-behind по зонам).
-/// </summary>
+
 public sealed partial class MainPage
 {
 
@@ -39,12 +36,7 @@ public sealed partial class MainPage
     private void ToggleStatsOverlay() =>
         SetStatsOverlayVisible(StatsOverlay.Visibility != Visibility.Visible);
 
-    /// <summary>
-    /// Показывает/прячет оверлей статистики. Единая точка для Ctrl+J,
-    /// тумблера в настройках и старта приложения; состояние запоминается
-    /// (persist = false — на старте, чтобы не перезаписывать файл настроек
-    /// тем же значением).
-    /// </summary>
+
     private void SetStatsOverlayVisible(bool show, bool persist = true)
     {
         StatsOverlay.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
@@ -62,12 +54,7 @@ public sealed partial class MainPage
         }
     }
 
-    /// <summary>
-    /// Пересобирает текст статистики: статические параметры потока — из
-    /// снимка StreamService.CurrentDiagnostics, живые (заполнение буфера,
-    /// простои) — из сессии/событий текущего плеера. Вызывается секундным
-    /// тиком и по BufferingStarted; скрытый оверлей — тихий no-op.
-    /// </summary>
+
     private void UpdateStatsOverlay()
     {
         if (StatsOverlay.Visibility != Visibility.Visible)
@@ -173,9 +160,7 @@ public sealed partial class MainPage
         StatsText.Text = sb.ToString();
     }
 
-    /// <summary>
-    /// Форматирует битрейт в читаемый вид (kbps, Mbps, Gbps).
-    /// </summary>
+
     private static string FormatBitrate(long bitsPerSecond)
     {
         if (bitsPerSecond <= 0)

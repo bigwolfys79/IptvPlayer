@@ -9,9 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.ViewModels;
 
-/// <summary>
-/// Позиции возобновления VOD и портальное воспроизведение (интерактивный PlayChannelAsync).
-/// </summary>
+
 public partial class MainPageViewModel
 {
     private const int MaxVodResumeEntries = 200;
@@ -25,12 +23,7 @@ public partial class MainPageViewModel
     internal static string VodResumeKey(string title, int episodeIndex)
         => episodeIndex >= 0 ? $"{title}::{episodeIndex}" : title;
 
-    /// <summary>
-    /// Отдельное пространство ключей для локальных файлов (карточка
-    /// «Видео»): «file::полный-путь». Имя файла может совпасть с фильмом
-    /// портала — по пути они не пересекутся, а хаб отличит локальный файл
-    /// по префиксу и предложит «Продолжить» именно файл.
-    /// </summary>
+
     internal static string LocalFileResumeKey(string path) => $"file::{path}";
 
     public TimeSpan? GetSavedLocalFilePosition(string path)
@@ -57,11 +50,7 @@ public partial class MainPageViewModel
         return await VodResumePromptRequested(title, saved.Value) ? saved : null;
     }
 
-    /// <summary>
-    /// Немедленно сохраняет текущие позиции досмотра (путь выхода):
-    /// CaptureVodPosition пишет с дебаунсом 5 с — без flush последние
-    /// секунды просмотра теряются.
-    /// </summary>
+
     public Task FlushVodResumePositionsAsync()
     {
         return _vodResumeStore.SaveAllAsync(_vodResumePositions);

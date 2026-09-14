@@ -4,11 +4,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace IptvPlayer.Converters;
 
-/// <summary>
-/// Строка → Visibility: непустая строка видима, null/пустая — скрыта.
-/// Используется для необязательных элементов интерфейса (описание фильма
-/// портала есть не у каждого элемента).
-/// </summary>
+
 public partial class StringToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language) =>

@@ -10,10 +10,7 @@ namespace IptvPlayer.Services
         Task<ChannelViewModel?> GetChannelByIdAsync(int id);
         Task AddChannelAsync(ChannelViewModel channel);
 
-        /// <summary>
-        /// Полностью очищает репозиторий — при переключении активного плейлиста:
-        /// каналы предыдущего плейлиста больше не должны быть видны EPGService.
-        /// </summary>
+
         Task Clear();
     }
 }

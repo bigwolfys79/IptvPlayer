@@ -5,12 +5,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace IptvPlayer.Converters;
 
-/// <summary>
-/// string (URL логотипа) -> ImageSource для x:Bind в DataTemplate. Пустая
-/// строка/null -> null: Image с пустым Source просто ничего не рисует,
-/// оставляя зарезервированное место в строке канала (строки не "прыгают",
-/// когда логотипы догружаются после EPG).
-/// </summary>
+
 public partial class StringToImageSourceConverter : IValueConverter
 {
     public object? Convert(object value, Type targetType, object parameter, string language)

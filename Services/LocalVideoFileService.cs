@@ -12,23 +12,17 @@ using WinRT;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Локальные видеофайлы (карточка «Видео» на хабе): выбор файла через
-/// FileOpenPicker и сборка «канала» для плеера. Воспроизведение идёт тем
-/// же конвейером FFmpegInteropX, что и VOD портала: file:///-URI →
-/// StreamService.CreatePlayerAsync(isVod: true), поэтому seek/пауза/фулскрин
-/// достаются бесплатно.
-/// </summary>
+
 public class LocalVideoFileService
 {
-    /// <summary>Расширения, предлагаемое в диалоге выбора.</summary>
+
     private static readonly string[] VideoExtensions =
     {
         ".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".ts",
         ".m2ts", ".wmv", ".m4v", ".mpg", ".mpeg", ".3gp"
     };
 
-    /// <summary>Похоже ли имя файла на поддерживаемое видео (для аргумента запуска).</summary>
+
     public static bool IsVideoFile(string path) =>
         VideoExtensions.Contains(System.IO.Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
@@ -39,11 +33,7 @@ public class LocalVideoFileService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Открывает диалог выбора видеофайла. Возвращает null, если пользователь
-    /// отменил выбор. В WinUI 3 (unpackaged в том числе) пикеру нужен hwnd
-    /// окна — передаётся через IInitializeWithWindow.
-    /// </summary>
+
     public async Task<LocalVideoFile?> PickAsync()
     {
         var picker = new FileOpenPicker
@@ -79,22 +69,14 @@ public class LocalVideoFileService
         }
     }
 
-    /// <summary>Собирает модель из пути (например, для будущего drag&drop).</summary>
+
     public static LocalVideoFile FromPath(string path)
     {
         var title = System.IO.Path.GetFileNameWithoutExtension(path);
         return new LocalVideoFile(path, title);
     }
 
-    /// <summary>
-    /// «Канал» для плеера из локального файла: имя — заголовок, StreamUrl —
-    /// «сырой» путь диска (E:\видео\файл.mpg). Протокол file: в FFmpeg НЕ
-    /// декодирует URL-проценты, поэтому кириллица/пробелы в file:///-URI
-    /// ломают открытие — avformat'у нужен сырой путь. Системный фолбэк
-    /// (MediaSource.CreateFromUri(new Uri(path))) сам превращает путь в
-    /// корректный file:///-URI. Id = -1: в списке каналов его нет, поиск
-    /// по Id в UI обязан падать обратно на SelectedChannel.
-    /// </summary>
+
     public static ChannelViewModel CreateChannel(LocalVideoFile file)
     {
         return new ChannelViewModel

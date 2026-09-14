@@ -2,10 +2,7 @@ using IptvPlayer.Services;
 
 namespace IptvPlayer.Tests;
 
-/// <summary>
-/// Тесты нормализации имён каналов — основа 4-уровневого сопоставления
-/// плейлист ↔ XMLTV (см. EPGService.MatchChannel).
-/// </summary>
+
 public class EpgNormalizationTests
 {
     [Theory]

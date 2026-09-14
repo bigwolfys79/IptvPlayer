@@ -484,7 +484,11 @@
                     CornerRadius="8"
                     Background="{ThemeResource OverlayScrimBrush}"
                     Visibility="Collapsed"
-                    Opacity="0">
+                    Opacity="0"
+                    RenderTransformOrigin="0.5,1">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="WindowedOverlayScale" />
+                </Border.RenderTransform>
                 <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
                                         <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayPrevChannelButton"
                                                         Width="40" Height="40"
@@ -1009,7 +1013,13 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="2" Grid.Column="1" Background="{ThemeResource OverlayScrimBrush}" Padding="16,14">
+            <Border x:Name="FullScreenBottomBar"
+                    Grid.Row="2" Grid.Column="1"
+                    Background="{ThemeResource OverlayScrimBrush}" Padding="16,14"
+                    RenderTransformOrigin="0.5,1">
+                <Border.RenderTransform>
+                    <ScaleTransform x:Name="FullScreenBarScale" />
+                </Border.RenderTransform>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16">
                                                 <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayPrevChannelButton"
                                                                 Width="56" Height="56"

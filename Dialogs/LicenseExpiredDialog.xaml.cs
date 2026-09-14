@@ -9,14 +9,7 @@ using Windows.Storage.Pickers;
 
 namespace IptvPlayer.Dialogs;
 
-/// <summary>
-/// Диалог при истечении пробного периода коммерческого использования.
-/// Кроме контактов разработчика содержит офлайн-активацию: пользователь
-/// копирует HWID, получает от разработчика подписанную лицензию (текстом
-/// или .lic-файлом) и вставляет её — сервер активации не нужен.
-/// ShowAsync возвращает true, если лицензия была активирована успешно —
-/// приложение продолжает запуск.
-/// </summary>
+
 public sealed partial class LicenseExpiredDialog : UserControl
 {
     private ContentDialog? _hostDialog;
@@ -27,11 +20,7 @@ public sealed partial class LicenseExpiredDialog : UserControl
         InitializeComponent();
     }
 
-    /// <summary>
-    /// Показывает диалог; true — лицензия активирована, запуск продолжать.
-    /// <paramref name="manageMode"/> — принудительный вызов из «О программе»:
-    /// заголовок про активацию, а не про истёкший триал.
-    /// </summary>
+
     public async Task<bool> ShowAsync(XamlRoot xamlRoot, int daysRemaining = 0,
         bool manageMode = false)
     {

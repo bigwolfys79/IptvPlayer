@@ -8,11 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs;
 
-/// <summary>
-/// Диалог переноса канала в другую группу: редактируемый комбобокс — выбор
-/// существующей группы или ввод имени новой. Возвращает итоговое имя группы
-/// (null — отменено).
-/// </summary>
+
 public sealed partial class MoveChannelDialog : UserControl
 {
     private string? _result;
@@ -34,10 +30,8 @@ public sealed partial class MoveChannelDialog : UserControl
         GroupCombo.Text = currentGroup ?? string.Empty;
     }
 
-    /// <summary>
-    /// Показывает диалог и возвращает выбранную/введённую группу
-    /// (null — отменено или имя пустое).
-    /// </summary>
+
+    // Show dialog, return target group
     public static async Task<string?> PickAsync(
         XamlRoot xamlRoot, string channelName, IReadOnlyList<string> groups, string? currentGroup)
     {
@@ -53,12 +47,14 @@ public sealed partial class MoveChannelDialog : UserControl
         return control._result;
     }
 
+    // Close without moving
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         _result = null;
         _hostDialog?.Hide();
     }
 
+    // Confirm group name
     private void MoveButton_Click(object sender, RoutedEventArgs e)
     {
         var group = GroupCombo.Text?.Trim();

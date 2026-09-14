@@ -13,20 +13,8 @@ using Microsoft.UI.Dispatching;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// Раньше GetEPGEntriesAsync возвращал 2 захардкоженных "Sample Program" /
-    /// "Next Program" — теперь реально скачивает и парсит XMLTV из источников,
-    /// сохранённых в настройках, сливает несколько источников (первый в
-    /// списке источников имеет приоритет при пересечении по времени для
-    /// одного канала) и сопоставляет программы с каналами по
-    /// ChannelViewModel.TvgId (а не по int Id, которого в XMLTV нет).
-    ///
-    /// Часть провайдеров плейлистов вообще не проставляет tvg-id в #EXTINF
-    /// (например lunexas.top — есть только tvg-rec, служебный флаг записи).
-    /// Для таких каналов используется резервное сопоставление по
-    /// нормализованному названию канала (см. EpgNameNormalizer) —
-    /// сравнивается название из M3U с display-name из XMLTV.
-    /// </summary>
+
+
     public class EPGService : IEPGService
     {
 
@@ -99,13 +87,7 @@ namespace IptvPlayer.Services
 
         private readonly System.Threading.SemaphoreSlim _statusUpdateGate = new(1, 1);
 
-        /// <summary>
-        /// Записывает результат реальной загрузки источника (сеть, не кэш) в
-        /// статусные поля EPGSource всех копий этого URL (глобальные источники
-        /// и у каждого плейлиста) и сохраняет настройки. Сериализуется через
-        /// семафор: события фоновой перекачки и основного пути не должны
-        /// пересекаться на мутации одних и тех же объектов.
-        /// </summary>
+
         private async void OnSourceLoadFinished(string url, bool success, string? error)
         {
             try
@@ -273,12 +255,7 @@ namespace IptvPlayer.Services
             await GetChannelsAsync();
         }
 
-        /// <summary>
-        /// Перечитывает EPG с текущими источниками (активного плейлиста), не
-        /// очищая дисковый кэш источников — XmlTvService отдаёт свежие файлы
-        /// с диска без перекачки. Вызывается при переключении плейлиста и при
-        /// изменении его источников: общий фид epg.one не качается заново.
-        /// </summary>
+
         public async Task ReloadSourcesAsync()
         {
             _epgLoaded = false;
@@ -315,23 +292,10 @@ namespace IptvPlayer.Services
             Name
         }
 
-        /// <summary>
-        /// Выученные псевдонимы: StreamUrl нашего канала → id канала в XMLTV.
-        /// Заполняется LoadEpgAliasesAsync после каждой загрузки EPG,
-        /// применяется в MatchChannel между tvg-id и таблицей имя-&gt;tvg-id.
-        /// </summary>
+
         private Dictionary<string, string> _epgChannelIdByStreamUrl = new(StringComparer.Ordinal);
 
-        /// <summary>
-        /// Порядок путей — от самого надёжного к самому приблизительному:
-        /// 1) точное совпадение TvgId из плейлиста с id канала в XMLTV;
-        /// 2) выученный псевдоним (соответствие, запомненное при прошлом
-        ///    успешном обновлении EPG для однозначных совпадений);
-        /// 3) таблица "имя -> tvg-id" от epg.one (строгий ключ с таймшифтом,
-        ///    затем мягкий) — надёжна тем, что собрана из этого же плейлиста;
-        /// 4) индекс нормализованных имён XMLTV (срезаем HD/таймшифт/коды
-        ///    стран и сравниваем то, что осталось).
-        /// </summary>
+
         private (List<EPGEntry> Entries, MatchMethod Method) MatchChannel(ChannelViewModel channel)
         {
 
@@ -374,12 +338,6 @@ namespace IptvPlayer.Services
         }
 
 
-        /// <summary>
-        /// Загружает таблицу "имя -> tvg-id" (Assets/epg-name-map.json).
-        /// Вызывается один раз за сессию до первого сопоставления; отсутствие
-        /// или битость файла не фатально — просто останутся пути по tvg-id из
-        /// плейлиста и по индексу имён.
-        /// </summary>
         private void LoadTvgIdNameMap()
         {
             if (_nameMapLoadAttempted)
@@ -445,22 +403,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Скачивает и сливает все включённые источники из настроек, если это
-        /// ещё не было сделано в текущей сессии (или если force = true, как
-        /// после явного RefreshEPGAsync). Каждый XmlTvService.LoadAsync сам
-        /// кэширует сырые данные по TTL, так что повторные вызовы внутри TTL
-        /// не бьют по сети.
-        ///
-        /// Дополнительная защита от двойной загрузки: если успешно загружались
-        /// менее _minReloadInterval назад и force=false, пропускаем перезагрузку.
-        /// Это предотвращает случайные двойные вызовы при старте приложения.
-        /// </summary>
-        /// <summary>
-        /// Публичная точка входа: не запускает вторую параллельную загрузку,
-        /// если одна уже идёт — все конкурентные вызовы дожидаются того же
-        /// Task'а (см. комментарий у _loadingTask/_loadingTaskGate выше).
-        /// </summary>
+
         private Task EnsureEpgLoadedAsync(bool force = false)
         {
             var now = DateTime.Now;
@@ -623,16 +566,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Быстрый путь загрузки EPG: читает кэш слитого результата
-        /// (MergedEpgCache) и, если он валиден, заполняет индексы без
-        /// чтения кэшей источников и без слияния. Валидность: набор URL
-        /// совпадает с включёнными источниками (в том же порядке) и
-        /// периодичность обновления (maxAge) ещё не истекла ни по одному
-        /// источнику — ровно то же условие, по которому XmlTvService взял
-        /// бы кэш источника без сети, поэтому данные идентичны полному
-        /// пути. false — промах (идти полным путём).
-        /// </summary>
+
         private async Task<bool> TryLoadMergedCacheAsync(
             List<Models.EPGSource> enabledSources, TimeSpan maxAge)
         {
@@ -685,18 +619,7 @@ namespace IptvPlayer.Services
             return true;
         }
 
-        /// <summary>
-        /// Подставляет логотип из XMLTV (&lt;icon src&gt;) каналам, у которых
-        /// нет tvg-logo в плейлисте. Мутирует те же объекты ChannelViewModel,
-        /// что лежат в ChannelRepository — GetChannelsAsync() теперь отдаёт
-        /// их напрямую (см. комментарий там), так что изменение LogoUrl
-        /// долетает до UI через INotifyPropertyChanged без дополнительной
-        /// инвалидации какого-либо кэша.
-        ///
-        /// Мутации выполняются строго на UI-потоке (см. _uiDispatcher):
-        /// подбор кандидатов — чистые словарные поискы — можно делать где
-        /// угодно, а вот запись LogoUrl трогает привязки x:Bind.
-        /// </summary>
+
         private async Task ApplyMissingLogosAsync()
         {
 
@@ -833,11 +756,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Читает выученные псевдонимы из кэш-БД и оставляет только те, чей
-        /// xmltv-id реально присутствует в загруженных источниках: при смене
-        /// EPG-файла старые соответствия не должны указывать мимо.
-        /// </summary>
+
         private async Task LoadEpgAliasesAsync()
         {
             var aliases = await _playlistCacheService.GetEpgAliasesAsync().ConfigureAwait(false);
@@ -950,15 +869,7 @@ namespace IptvPlayer.Services
                     : "В загруженном XMLTV вообще нет ни одного id каналов.");
         }
 
-        /// <summary>
-        /// Запоминает однозначное соответствие «имя канала XMLTV → наш канал»:
-        /// только совпадения через таблицу имя-&gt;tvg-id или уникальное
-        /// совпадение по нормализованному имени, имя не короче 2 символов и
-        /// канал с http(s)-адресом (для локальных файлов и порталов
-        /// соответствия не запоминаются).
-        /// Ключ — мягко нормализованное display-name из XMLTV. Уже известное
-        /// неизменённое соответствие не перезаписывается.
-        /// </summary>
+
         private void TryLearnAlias(
             List<PlaylistDatabaseService.EpgAlias> learned,
             ChannelViewModel channel,

@@ -6,29 +6,15 @@ using Windows.UI;
 
 namespace IptvPlayer.Controls;
 
-/// <summary>
-/// Нарисованные (векторные) иконки для кнопок, состояние которых меняется
-/// из code-behind (запись, пауза архива) — вместо глифов шрифтов Segoe
-/// Fluent Icons / MDL2. Причины ухода от глифов: «точка записи» (E7C8) на
-/// части машин была неотличима от чёрного квадрата, а FontIcon без явного
-/// семейства на Windows 10 вообще рисовал квадратики. Фигуры выглядят
-/// одинаково на любой Windows и окрашиваются явно.
-/// Статичные иконки (настройки, EPG, громкость и пр.) нарисованы прямо
-/// в MainPage.xaml — здесь только то, что пересобирается из кода.
-/// </summary>
+
 public static class AppIcons
 {
-    /// <summary>Классический «REC»-красный.</summary>
+
     public static readonly Brush RecordRed = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0x3B, 0x3B));
 
     private static readonly Brush White = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
 
-    /// <summary>
-    /// Цвет иконок оверлеев: в тёмной теме — белый, в светлой — тёмный
-    /// (OverlayFgBrush из App.xaml). Иконки пересобираются при каждом
-    /// обновлении состояния кнопок; смена темы вызывает те же обновления
-    /// (ApplyTheme), поэтому кэшировать не нужно.
-    /// </summary>
+
     private static Brush Fg()
     {
         return (MainWindow.Instance?.Content as FrameworkElement)?.ActualTheme == ElementTheme.Light
@@ -36,7 +22,7 @@ public static class AppIcons
             : White;
     }
 
-    /// <summary>Точка записи ● — красная, как индикатор REC у камер.</summary>
+
     public static Ellipse RecordDot(double size = 14)
     {
         return new Ellipse
@@ -49,7 +35,7 @@ public static class AppIcons
         };
     }
 
-    /// <summary>Квадрат остановки записи ■ — красный, как STOP у камер.</summary>
+
     public static Rectangle StopSquare(double size = 13)
     {
         return new Rectangle
@@ -64,7 +50,7 @@ public static class AppIcons
         };
     }
 
-    /// <summary>Треугольник воспроизведения ▶ (продолжение архива).</summary>
+
     public static Microsoft.UI.Xaml.Shapes.Path Play(double size = 16)
     {
 
@@ -87,7 +73,7 @@ public static class AppIcons
         };
     }
 
-    /// <summary>Пауза ‖ — две скруглённые полосы.</summary>
+
     public static Grid Pause(double size = 16)
     {
         var barWidth = size * 0.22;
@@ -108,11 +94,7 @@ public static class AppIcons
         return grid;
     }
 
-    /// <summary>
-    /// Динамик со звуковыми волнами (обычный режим). Те же фигуры, что у
-    /// статичной иконки громкости в MainPage.xaml — здесь, чтобы переключаться
-    /// на заглушенный вариант из code-behind.
-    /// </summary>
+
     public static Grid SpeakerOn(double size = 16)
     {
         var grid = new Grid { Width = size, Height = size };
@@ -135,7 +117,7 @@ public static class AppIcons
         return grid;
     }
 
-    /// <summary>Динамик с крестом — беззвучный режим.</summary>
+
     public static Grid SpeakerMuted(double size = 16)
     {
         var grid = new Grid { Width = size, Height = size };

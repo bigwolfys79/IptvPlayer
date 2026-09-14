@@ -24,10 +24,7 @@ using Windows.UI.Core;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Показ/скрытие видео-оверлеев с fade-анимацией (оконный и полноэкранный).
-/// Вынесено из MainPage.xaml.cs (MVVM-этап 3: разбиение code-behind по зонам).
-/// </summary>
+
 public sealed partial class MainPage
 {
 
@@ -99,13 +96,6 @@ public sealed partial class MainPage
     private readonly Storyboard _overlayFadeStoryboard = new();
     private readonly DoubleAnimation _overlayFadeAnimation = new() { EnableDependentAnimation = true };
 
-    /// <summary>
-    /// Плавно показывает оверлей поверх видео (fade-in по Opacity). Если оверлей
-    /// уже полностью виден, ничего не анимирует — иначе Storyboard.Stop() при
-    /// каждом вызове сбрасывал бы Opacity обратно к базовому значению (0 из
-    /// XAML) перед новым fade-in, и при частых PointerMoved (быстрое дёрганье
-    /// мышью) это выглядело как мигание/скрытие-показ оверлея.
-    /// </summary>
 
     private bool _fullScreenOverlayFadingIn;
     private bool _windowedOverlayFadingIn;
@@ -116,10 +106,7 @@ public sealed partial class MainPage
 
     private Services.CursorHider? _cursorHider;
 
-    /// <summary>
-    /// Пробуждение из скрытого состояния по движению мыши (вызывается
-    /// CursorHider, когда события указателя до XAML не доходят).
-    /// </summary>
+
     private void WakeFromHiddenCursor()
     {
         Serilog.Log.Debug("Cursor: WakeFromHiddenCursor — движение мыши, показ оверлея");
@@ -129,13 +116,7 @@ public sealed partial class MainPage
         _overlayHideTimer.Start();
     }
 
-    /// <summary>
-    /// Пробуждение по КЛИКУ в скрытом состоянии: курсор возвращается сразу,
-    /// но мышь над видео оставляем прозрачной на ~400 мс — оба клика
-    /// двойного щелчка должны попасть в XAML-подложку (VideoAreaBorder),
-    /// иначе DoubleTapped не срабатывает. Оверлей показываем после окна
-    /// двойного клика, если fullscreen не выключили.
-    /// </summary>
+
     private void WakeFromHiddenCursorByClick()
     {
         Serilog.Log.Debug("Cursor: WakeFromHiddenCursorByClick — возврат курсора (мышь прозрачна 400мс)");
@@ -145,11 +126,7 @@ public sealed partial class MainPage
         _ = DelayedOverlayShowAfterClickAsync();
     }
 
-    /// <summary>
-    /// Колесо мыши в спрятанном состоянии: до XAML событие не доходит
-    /// (мост прозрачен) — CursorHider ловит его низкоуровневым хуком.
-    /// Логика та же, что у колеса над видео: 5% на метку колеса.
-    /// </summary>
+
     private void OnWheelWhileCursorHidden(int wheelDelta)
     {
         var steps = wheelDelta / 120;
@@ -167,12 +144,7 @@ public sealed partial class MainPage
         OnVolumeSliderChanged(target);
     }
 
-    /// <summary>
-    /// Двойной клик по видео в спрятанном состоянии: XAML-ская пара
-    /// DoubleTapped не собирается (первый клик теряется в прозрачном мосте),
-    /// поэтому CursorHider распознаёт её сам — переключаем fullscreen так же,
-    /// как VideoArea_DoubleTapped.
-    /// </summary>
+
     private void WakeFromHiddenCursorByDoubleClick()
     {
         Serilog.Log.Debug("Cursor: WakeFromHiddenCursorByDoubleClick — переключение fullscreen");
@@ -207,7 +179,7 @@ public sealed partial class MainPage
         _overlayHideTimer.Start();
     }
 
-    /// <summary>Показывает системный курсор.</summary>
+
     private void ShowCursorOverVideo()
     {
         Serilog.Log.Debug("Cursor.ShowCursorOverVideo: ProtectedCursor=null на CursorGrid (показ)");
@@ -217,7 +189,7 @@ public sealed partial class MainPage
         SetProtectedCursor(MediaPlayer, null);
     }
 
-    /// <summary>Прячет курсор над окном (вызывается при автоскрытии оверлея).</summary>
+
     private void HideCursorOverVideo()
     {
         Serilog.Log.Debug("Cursor.HideCursorOverVideo: ProtectedCursor на CursorGrid (один элемент), CursorHider для моста");
@@ -242,10 +214,6 @@ public sealed partial class MainPage
     }
 
 
-    /// <summary>
-    /// Установка protected-свойства UIElement.ProtectedCursor на произвольный
-    /// элемент (наследника сделать нельзя) — приём из блога Simon Mourier.
-    /// </summary>
     private static void SetProtectedCursor(Microsoft.UI.Xaml.UIElement element,
         Microsoft.UI.Input.InputCursor? cursor)
     {
@@ -306,7 +274,7 @@ public sealed partial class MainPage
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint inputCount, INPUT[] inputs, int size);
 
-    /// <summary>Сдвиг мыши на dx пикселей — принудительное событие указателя.</summary>
+
     private static void NudgePointer(int dx)
     {
         var input = new INPUT
@@ -320,11 +288,125 @@ public sealed partial class MainPage
 
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _actionToastHideTimer;
 
-    /// <summary>
-    /// Короткое подтверждение действия внизу по центру видео (громкость,
-    /// mute, таймер сна): текст + авто-скрытие через 2,2 с, fade по Opacity.
-    /// Показывается в обеих поверхностях — оконной и полноэкранной.
-    /// </summary>
+
+    private bool _channelListAutoCollapsed;
+
+
+    private const double ChannelListAutoCollapseThreshold = 640;
+
+
+    private const double ToolbarMinScale = 0.6;
+
+
+    private bool _adaptiveLayoutScheduled;
+
+    // Window size changed handler
+    private void OnRootLayoutSizeChanged(object sender, Microsoft.UI.Xaml.SizeChangedEventArgs e)
+    {
+
+
+        if (_adaptiveLayoutScheduled)
+        {
+            return;
+        }
+        _adaptiveLayoutScheduled = true;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _adaptiveLayoutScheduled = false;
+            try
+            {
+                UpdateOverlayScales();
+                UpdateChannelListAutoCollapse();
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Адаптивная вёрстка MainPage.");
+            }
+        });
+    }
+
+
+    // Scale toolbars to fit window width
+    private void UpdateOverlayScales()
+    {
+        ApplyOverlayScale(WindowedOverlayScale, WindowedVideoOverlay, RightPanelGrid.ActualWidth);
+        var fullscreenAvailable = FullScreenOverlay.ActualWidth -
+            (OverlayChannelsPanel.Visibility == Visibility.Visible ? OverlayChannelsPanel.ActualWidth : 0);
+        ApplyOverlayScale(FullScreenBarScale, FullScreenBottomBar, fullscreenAvailable);
+    }
+
+    // Apply scale to one toolbar
+    private static void ApplyOverlayScale(ScaleTransform scale, FrameworkElement overlay, double availableWidth)
+    {
+
+
+        overlay.Measure(new Windows.Foundation.Size(
+            double.PositiveInfinity, double.PositiveInfinity));
+        var desiredWidth = overlay.DesiredSize.Width;
+        if (availableWidth <= 0 || desiredWidth <= 0 || overlay.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        var target = Math.Min(1.0, availableWidth / desiredWidth);
+        var clamped = Math.Max(ToolbarMinScale, target);
+        scale.ScaleX = clamped;
+        scale.ScaleY = clamped;
+
+        if (Math.Abs(clamped - _lastScale) > 0.005)
+        {
+            _lastScale = clamped;
+            Serilog.Log.Information(
+                "OverlayScale {Name}: avail={Avail:F0} desired={Desired:F0} actual={Actual:F0} target={Target:F2} scale={Scale:F2}",
+                overlay.Name, availableWidth, desiredWidth, overlay.ActualWidth, target, clamped);
+        }
+    }
+
+    private static double _lastScale = -1;
+
+
+    // Auto-collapse channel list on narrow window
+    private void UpdateChannelListAutoCollapse()
+    {
+        if (_localVideoFile != null || _isFullScreen)
+        {
+            return;
+        }
+
+        if (!_channelListAutoCollapsed)
+        {
+            if (RootGrid.ActualWidth >= ChannelListAutoCollapseThreshold || ChannelListColumn.ActualWidth <= 0)
+            {
+                return;
+            }
+
+            if (ChannelListColumn.ActualWidth > 0)
+            {
+                _channelListExpandedWidth = ChannelListColumn.ActualWidth;
+            }
+            ChannelListColumn.MinWidth = 0;
+            ChannelListColumn.Width = new GridLength(0);
+            ChannelListSplitter.Visibility = Visibility.Collapsed;
+            ChannelListSplitterGrip.Visibility = Visibility.Collapsed;
+            _channelListAutoCollapsed = true;
+        }
+        else
+        {
+            if (RootGrid.ActualWidth < ChannelListAutoCollapseThreshold)
+            {
+                return;
+            }
+
+            ChannelListColumn.MinWidth = 240;
+            ChannelListColumn.Width = new GridLength(_channelListExpandedWidth);
+            ChannelListSplitter.Visibility = Visibility.Visible;
+            ChannelListSplitterGrip.Visibility = Visibility.Visible;
+            _channelListAutoCollapsed = false;
+        }
+    }
+
+
+    // Show short action toast
     private void ShowActionToast(string message)
     {
         ActionToastText.Text = message;
@@ -411,12 +493,7 @@ public sealed partial class MainPage
         _overlayFadeStoryboard.Begin();
     }
 
-    /// <summary>
-    /// Плавно скрывает оверлей (fade-out по Opacity), затем сворачивает его,
-    /// чтобы он не перехватывал события указателя поверх видео.
-    /// При immediate = true скрывает мгновенно, без анимации (используется
-    /// при выходе из fullscreen).
-    /// </summary>
+
     private void HideFullScreenOverlay(bool immediate = false)
     {
         _fullScreenOverlayFadingIn = false;

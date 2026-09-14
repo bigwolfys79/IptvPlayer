@@ -8,18 +8,8 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs
 {
-    /// <summary>
-    /// Раздел «Диагностика» меню шестерёнки: все диагностические
-    /// переключатели одной формы. Изменения применяются сразу и
-    /// сохраняются через дебаунс настроек MainPage, поэтому кнопка
-    /// одна — «Закрыть».
-    ///
-    /// «Временная диагностика» объединяет два отладочных механизма,
-    /// которые раньше были жёстко включены/выключены в коде:
-    /// e.Handled=true в App.OnUnhandledException (краш не роняет
-    /// процесс, вместо этого — слепок визуального дерева в лог) и
-    /// погλοтный лог EPGService на каждый канал. Выключена по умолчанию.
-    /// </summary>
+
+
     public sealed partial class DiagnosticsDialog : UserControl
     {
 
@@ -95,7 +85,7 @@ namespace IptvPlayer.Dialogs
             _saveSettingsDebounced();
         }
 
-        /// <summary>Снимок настроек диагностики на момент открытия диалога.</summary>
+
         public sealed record AppSettingsSnapshot(
             bool DiagnosticStreamProxy,
             bool FileLoggingEnabled,

@@ -8,54 +8,33 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
-/// <summary>Найденное обновление: версия, ссылка на установщик и контрольная сумма (если релиз её отдаёт).</summary>
+
 public class UpdateInfo
 {
     public Version Version { get; init; } = new(0, 0);
     public string DownloadUrl { get; init; } = string.Empty;
 
-    /// <summary>SHA256 установщика из GitHub API (assets[].digest, вид "sha256:hex"). null — источник сумму не отдал.</summary>
+
     public string? Sha256 { get; init; }
 }
 
 public interface IUpdateService
 {
-    /// <summary>
-    /// Проверяет обновление по GitHub Releases (или UpdateCheckUrl из настроек).
-    /// Возвращает UpdateInfo, если доступная версия новее текущей; null —
-    /// обновления нет. Ошибки сети не бросает — null и запись в лог.
-    /// </summary>
+
+
     Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Скачивает установщик во временную папку и проверяет контрольную сумму
-    /// (если известна). Возвращает путь к файлу; при несовпадении суммы файл
-    /// удаляется и бросается исключение — устанавливать нельзя.
-    /// </summary>
+
     Task<string> DownloadAsync(UpdateInfo update, IProgress<double>? progress = null, CancellationToken ct = default);
 
-    /// <summary>
-    /// Запускает установщик в тихом режиме, не трогая приложение (закрытие —
-    /// на вызывающем). Используется и при согласии пользователя, и при
-    /// отложенной установке на выходе.
-    /// </summary>
+
     void StartInstaller(string setupPath);
 
-    /// <summary>
-    /// Запускает установщик в тихом режиме и закрывает приложение. Установщик
-    /// ставит поверх (старая версия остаётся рабочей при сбое), после установки
-    /// запускает приложение (запись [Run] в .iss для тихого режима). UAC
-    /// подтверждение остаётся: установка идёт в Program Files.
-    /// </summary>
+
     void RunInstallerAndExit(string setupPath);
 }
 
-/// <summary>
-/// Полуавтоматическое обновление: фоновая проверка (не чаще раза в сутки по
-/// вызову), скачивание установщика с проверкой SHA256 и тихая установка поверх
-/// после согласия пользователя. Логика разбора ответа GitHub API та же, что в
-/// ручной проверке «О программе» (AboutDialog), вынесена сюда для переиспользования.
-/// </summary>
+
 public class UpdateService : IUpdateService
 {
     private const string DefaultUpdateUrl = "https://api.github.com/repos/bigwolfys79/IptvPlayer/releases/latest";

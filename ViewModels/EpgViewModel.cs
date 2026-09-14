@@ -77,11 +77,7 @@ public partial class EpgViewModel : ObservableObject
         set => SetProperty(ref _selectedEPGSource, value);
     }
 
-    /// <summary>
-    /// Начало общей 120-часовой шкалы (now-72h..now+48h), а не выбранный
-    /// календарный день — раньше EPG грузилось постранично по дням, теперь
-    /// весь диапазон грузится целиком и дальше просто скроллится.
-    /// </summary>
+
     public DateTime WindowStart
     {
         get => _windowStart;
@@ -102,12 +98,7 @@ public partial class EpgViewModel : ObservableObject
 
     public DateTime WindowEnd => WindowStart + BackwardSpan + ForwardSpan;
 
-    /// <summary>
-    /// Час суток (0-23) для каждого часового столбца шкалы над сеткой EPG —
-    /// раньше был статичным списком 0..23 на один календарный день, теперь
-    /// один элемент на каждый час 120-часового окна [WindowStart..WindowEnd],
-    /// т.к. шкала теперь не постраничная, а сплошная.
-    /// </summary>
+
     public List<int> TimeScaleHours
     {
         get => _timeScaleHours;
@@ -121,11 +112,7 @@ public partial class EpgViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Показывает индикатор загрузки над сеткой EPG (ProgressBar в MainPage.xaml) —
-    /// раньше во время LoadEPGAsync/RefreshEPGAsync не было никакой обратной
-    /// связи, что вообще что-то происходит.
-    /// </summary>
+
     public bool IsLoading
     {
         get => _isLoading;
@@ -160,14 +147,7 @@ public partial class EpgViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// EPG (пере)загружен и RecalculateCurrentProgramsAsync обновил
-    /// CurrentProgramTitle/логотипы каналов. Подписчики (MainPageViewModel)
-    /// пересобирают список каналов: логотипы заполняются в том числе из
-    /// фонового потока (ApplyMissingLogosAsync внутри Task.Run в
-    /// RefreshEPGAsync), где уведомления INPC могли не дойти до привязок —
-    /// пересоздание DisplayedChannels перечитывает все привязки на UI-потоке.
-    /// </summary>
+
     public event EventHandler? EpgReloaded;
 
     private async void LoadEpgSourcesFromSettings()
@@ -257,12 +237,7 @@ public partial class EpgViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Полная перезагрузка EPG при переключении активного плейлиста: сервис
-    /// перечитывает источники уже нового плейлиста (без очистки дискового
-    /// кэша), затем пересобираются программы каналов. Под тем же семафором,
-    /// что и LoadEPGAsync.
-    /// </summary>
+
     public async Task ReloadForPlaylistAsync()
     {
         await _loadLock.WaitAsync();
@@ -365,33 +340,10 @@ public partial class EpgViewModel : ObservableObject
             .ToList();
     }
 
-    /// <summary>
-    /// Раньше CurrentProgramTitle обновлялся только по клику на канал
-    /// (LoadEPGForChannelAsync). Теперь пересчитывается сразу для всех
-    /// каналов при каждой загрузке/обновлении EPG.
-    /// </summary>
-    /// <summary>
-    /// Раньше цикл по всем каналам плейлиста (~2000) выполнялся одним синхронным
-    /// блоком: GetEPGEntriesAsync внутри не делает настоящего I/O (только
-    /// Dictionary-lookup в памяти), поэтому await по нему почти всегда
-    /// завершается синхронно, а в этом случае компилятор НЕ отдаёт
-    /// управление обратно в message loop UI-потока — продолжение цикла
-    /// выполняется тут же, инлайново. В результате весь foreach шёл единым
-    /// непрерывным куском: ни перерисовки кадра, ни обработки клика мыши,
-    /// пока не закончится весь список — визуально это выглядело как
-    /// "прогресс крутится, а приложение не отвечает", а не просто "долго".
-    /// Task.Yield() каждые YieldEveryNChannels итераций форсированно
-    /// возвращает управление в UI message loop между пачками — интерфейс
-    /// остаётся отзывчивым (клики/отрисовка обрабатываются), при этом
-    /// общее время работы почти не меняется (Task.Yield — это одна
-    /// операция постановки в очередь диспетчера, не реальный I/O).
-    /// </summary>
+
     private const int YieldEveryNChannels = 50;
 
-    /// <summary>
-    /// Заглушка вместо пустой текущей программы: у каналов без EPG в списке
-    /// и в шапке плеера показывается «Программа недоступна».
-    /// </summary>
+
     private static string NoProgramTitle => L.T("Programma_Nedostupna_Lbl");
 
     private async Task RecalculateCurrentProgramsAsync()
@@ -428,15 +380,7 @@ public partial class EpgViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Облегчённое обновление "текущей передачи" для ВСЕХ каналов — только
-    /// CurrentProgramTitle/CurrentEPGEntry/IsCurrent, без пересборки
-    /// EPGEntries-коллекций. Вызывается таймером из MainPage каждую минуту:
-    /// строка в списке каналов не должна застревать на передаче, актуальной
-    /// на момент загрузки плеера (раньше обновлялась только по клику на
-    /// канал). INotifyPropertyChanged у ChannelViewModel обновляет список
-    /// без его пересоздания (в шаблоне стоит Mode=OneWay).
-    /// </summary>
+
     public async Task RefreshCurrentProgramsLightAsync()
     {
         if (IsLoading)
@@ -488,12 +432,7 @@ public partial class EpgViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// EPGEntry не реализует INotifyPropertyChanged, так что смена
-    /// EpgTimelineScale.WindowStart сама по себе не пересчитает уже
-    /// забинженные Canvas.Left/Width в сетке. Пересобираем коллекции —
-    /// это форсирует переконвертацию всех биндингов на новую WindowStart.
-    /// </summary>
+
     private void RebindTimelineEntries()
     {
         foreach (var channel in Channels)
@@ -507,9 +446,7 @@ public partial class EpgViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Принудительное обновление EPG (кнопка в пустом состоянии панели).
-    /// </summary>
+
     [RelayCommand]
     private async Task RefreshEpgAsync()
     {

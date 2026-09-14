@@ -1,14 +1,6 @@
 namespace IptvPlayer.Models;
 
-/// <summary>
-/// Снимок параметров текущего потока для оверлея статистики (Ctrl+J):
-/// кодеки/разрешение/битрейт и выбранный декодер берутся из FFmpegMediaSource
-/// один раз при открытии потока (StreamService), глубина буфера — из
-/// конфигурации. Живые метрики (буферизация, простои) представление считает
-/// само по событиям MediaPlayer. Снимок, а не живой объект источника —
-/// чтобы оверлей не трогал FFmpeg-объекты, чьё время жизни привязано
-/// к плееру (ConditionalWeakTable в StreamService).
-/// </summary>
+
 public sealed class PlaybackDiagnostics
 {
     public string? VideoCodec { get; init; }
@@ -29,16 +21,9 @@ public sealed class PlaybackDiagnostics
     public int ReadAheadSeconds { get; init; }
     public long ReadAheadBytes { get; init; }
 
-    /// <summary>
-    /// Активная цепочка нормализации громкости (dynaudnorm/loudnorm) или
-    /// null — тяжёлые аудиофильтры заметно грузят CPU, для корреляции
-    /// с лагами показываем в оверлее и логе.
-    /// </summary>
+
     public string? AudioFilter { get; init; }
 
-    /// <summary>
-    /// Поток открыт системным источником (откат, когда FFmpeg не смог) —
-    /// статистика FFmpeg недоступна, оверлей показывает только это.
-    /// </summary>
+
     public bool SystemSourceFallback { get; init; }
 }

@@ -4,10 +4,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace IptvPlayer.Converters;
 
-/// <summary>
-/// Преобразует DateTime в короткую локализованную строку
-/// (для отображения выбранной даты EPG).
-/// </summary>
+
 public partial class DateConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)

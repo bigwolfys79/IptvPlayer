@@ -10,14 +10,7 @@ using Windows.Media.Playback;
 
 namespace IptvPlayer.ViewModels;
 
-/// <summary>
-/// Управление воспроизведением (этап 2 MVVM: вынесено из code-behind MainPage).
-/// Создаёт/останавливает плееры через StreamService, хранит состояние архива
-/// и громкость. Представление реагирует на события и свойства:
-///  - PlayerChanged           → MediaPlayerElement.SetMediaPlayer(...)
-///  - ArchiveStateChanged     → баннер/кнопки паузы и «В эфир»
-///  - IsBuffering/StreamError → прогресс-бар и текст ошибки.
-/// </summary>
+
 public partial class PlayerViewModel : ObservableObject
 {
     private readonly IStreamService _streamService;
@@ -69,38 +62,30 @@ public partial class PlayerViewModel : ObservableObject
 
     public bool IsArchivePlaying { get; private set; }
 
-    /// <summary>
-    /// Играет ли VOD-элемент видео-портала. В отличие от HLS-эфира, MP4/HLS-VOD
-    /// перематывается и ставится на паузу самим медиа-движком — рестарт потока
-    /// не нужен, поэтому пробел (ToggleArchivePause) работает и на VOD.
-    /// </summary>
+
     public bool IsVodPlaying { get; private set; }
 
     private ChannelViewModel? _vodChannel;
     private Dictionary<string, string> _vodVariantUrls = new();
 
-    /// <summary>Доступные качества текущего VOD ("Авто", "1080p", ...) по убыванию.</summary>
+
     public IReadOnlyList<string> VodQualities { get; private set; } = Array.Empty<string>();
 
-    /// <summary>Выбранное качество текущего VOD (null — варианты недоступны).</summary>
+
     public string? CurrentVodQuality { get; private set; }
 
     private List<PortalEpisode> _vodEpisodes = new();
 
-    /// <summary>Эпизоды текущего VOD-сериала (пусто — фильм/эфир).</summary>
+
     public IReadOnlyList<PortalEpisode> VodEpisodes { get; private set; } = Array.Empty<PortalEpisode>();
 
-    /// <summary>Индекс играющего эпизода в VodEpisodes (-1 — нет списка).</summary>
+
     public int CurrentVodEpisodeIndex { get; private set; } = -1;
 
-    /// <summary>Канал-сериал текущего VOD (для сезонных переключений).</summary>
+
     public ChannelViewModel? VodChannel => _vodChannel;
 
-    /// <summary>
-    /// Переключает серию текущего VOD-сериала: стартует поток выбранного
-    /// эпизода (ссылки уже получены flick'ом, без запроса к порталу), список
-    /// эпизодов сохраняется для комбобокса.
-    /// </summary>
+
     public async Task PlayVodEpisodeAsync(int index)
     {
         if (!IsVodPlaying || _vodChannel == null ||
@@ -118,13 +103,13 @@ public partial class PlayerViewModel : ObservableObject
             vodEpisodes: _vodEpisodes, vodEpisodeIndex: index);
     }
 
-    /// <summary>Изменилось состояние VOD (старт/стоп/смена качества) — обновить кнопки панелей.</summary>
+
     public event EventHandler? VodStateChanged;
 
     private double _vodPositionSeconds;
     private double _vodDurationSeconds;
 
-    /// <summary>Перетаскивается ли ползунок перемотки VOD в представлении.</summary>
+
     public bool IsVodSeeking { get; set; }
 
     public double VodPositionSeconds
@@ -142,10 +127,7 @@ public partial class PlayerViewModel : ObservableObject
     public string VodPositionText { get; private set; } = "00:00";
     public string VodDurationText { get; private set; } = "00:00";
 
-    /// <summary>
-    /// Обновляет позицию/длительность VOD из медиа-движка. Вызывается
-    /// секундным таймером представления; вне VOD — тихий no-op.
-    /// </summary>
+
     public void RefreshVodPosition()
     {
         if (!IsVodPlaying || Player?.PlaybackSession == null)
@@ -173,7 +155,7 @@ public partial class PlayerViewModel : ObservableObject
         }
     }
 
-    /// <summary>Перемотка VOD к позиции (сек) — напрямую через медиа-движок.</summary>
+
     public void SeekVod(double positionSeconds)
     {
         if (!IsVodPlaying || Player?.PlaybackSession == null)
@@ -209,42 +191,30 @@ public partial class PlayerViewModel : ObservableObject
     private double _archivePositionSeconds;
     private double _archiveDurationSeconds;
 
-    /// <summary>
-    /// Перетаскивается ли в данный момент ползунок перемотки в представлении: пока
-    /// true, RefreshArchivePosition не двигает Value слайдера из таймера
-    /// (иначе палец «сбрасывало» бы ежесекундным обновлением).
-    /// </summary>
+
     public bool IsArchiveSeeking { get; set; }
 
-    /// <summary>Секунд от начала передачи до текущей позиции архивного показа.</summary>
+
     public double ArchivePositionSeconds
     {
         get => _archivePositionSeconds;
         private set => SetProperty(ref _archivePositionSeconds, value);
     }
 
-    /// <summary>
-    /// Длина слайдера — вся передача от начала до конца: полоса всегда
-    /// изображает программу целиком. Идущая прямо сейчас передача просто
-    /// ещё «не докрутилась»: позиция (и точка перемотки) не заходит дальше
-    /// живого эфира, но масштаб полосы не меняется со временем.
-    /// </summary>
+
     public double ArchiveDurationSeconds
     {
         get => _archiveDurationSeconds;
         private set => SetProperty(ref _archiveDurationSeconds, value);
     }
 
-    /// <summary>Подпись позиции слайдера (h:mm:ss / mm:ss).</summary>
+
     public string ArchivePositionText { get; private set; } = "00:00";
 
-    /// <summary>Подпись длительности слайдера.</summary>
+
     public string ArchiveDurationText { get; private set; } = "00:00";
 
-    /// <summary>
-    /// Пересчитывает позицию/длительность архива по часам. Вызывается
-    /// секундным таймером представления; вне архива — тихий no-op.
-    /// </summary>
+
     public void RefreshArchivePosition()
     {
         if (!IsArchivePlaying || ArchiveEntry == null)
@@ -271,11 +241,7 @@ public partial class PlayerViewModel : ObservableObject
         OnPropertyChanged(nameof(ArchiveDurationText));
     }
 
-    /// <summary>
-    /// Перемотка архива к позиции (секунд от начала передачи): перезапускает
-    /// поток с новой точки старта. Пока FFmpeg пересоздаёт источник, экран
-    /// на долю секунды держит старый кадр — как при переключении канала.
-    /// </summary>
+
     public async Task SeekArchiveAsync(double positionSeconds)
     {
         if (!IsArchivePlaying || ArchiveEntry == null ||
@@ -299,10 +265,7 @@ public partial class PlayerViewModel : ObservableObject
         await StartPlaybackAsync(_archiveChannel, url, ArchiveEntry, archivePlayStart: start);
     }
 
-    /// <summary>
-    /// Формат подписи времени на полосе перемотки архива (h:mm:ss / mm:ss).
-    /// Используется и представлением (подпись во время перетаскивания).
-    /// </summary>
+
     internal static string FormatArchiveTime(double seconds)
     {
         var t = TimeSpan.FromSeconds(Math.Max(0, seconds));
@@ -311,13 +274,13 @@ public partial class PlayerViewModel : ObservableObject
             : t.ToString(@"mm\:ss");
     }
 
-    /// <summary>Последняя громкость, выставленная пользователем (0..1).</summary>
+
     public double? LastUserVolume { get; set; }
 
-    /// <summary>Плеер сменился (создан/остановлен) — представление переподключает элемент.</summary>
+
     public event EventHandler? PlayerChanged;
 
-    /// <summary>Изменилось состояние архива (старт/конец архива, пауза) — обновить кнопки/баннеры.</summary>
+
     public event EventHandler? ArchiveStateChanged;
 
     public PlayerViewModel(IStreamService streamService, ISettingsService settingsService, ILogger<PlayerViewModel> logger)
@@ -327,7 +290,7 @@ public partial class PlayerViewModel : ObservableObject
         _logger = logger;
     }
 
-    /// <summary>Прямой эфир канала.</summary>
+
     public async Task PlayLiveAsync(ChannelViewModel channel)
     {
         if (string.IsNullOrWhiteSpace(channel.StreamUrl))
@@ -339,11 +302,7 @@ public partial class PlayerViewModel : ObservableObject
         await StartPlaybackAsync(channel, channel.StreamUrl, archiveEntry: null);
     }
 
-    /// <summary>
-    /// Запуск потока (эфир или архивный timeshift) в новом плеере.
-    /// archivePlayStart — фактическая точка старта архивного показа (после
-    /// перемотки отличается от ArchiveEntry.StartTime).
-    /// </summary>
+
     public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1)
     {
 
@@ -525,7 +484,7 @@ public partial class PlayerViewModel : ObservableObject
         _displayRequested = false;
     }
 
-    /// <summary>Полная остановка текущего плеера (смена канала, закрытие).</summary>
+
     public void Stop()
     {
         _playbackGeneration++;
@@ -582,10 +541,7 @@ public partial class PlayerViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Пауза/возобновление архивной передачи. Возвращает true, если действие
-    /// выполнено (архив играет и канал совпадает).
-    /// </summary>
+
     public bool ToggleArchivePause(ChannelViewModel? selectedChannel)
     {
         if (Player == null || selectedChannel == null || CurrentPlayerChannelId != selectedChannel.Id)
@@ -616,7 +572,7 @@ public partial class PlayerViewModel : ObservableObject
         return true;
     }
 
-    /// <summary>Сброс архивного состояния (например, поток упал).</summary>
+
     public void ResetArchiveState()
     {
         IsArchivePlaying = false;
@@ -624,11 +580,7 @@ public partial class PlayerViewModel : ObservableObject
         ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// Подкладывает варианты качества в уже играющий VOD (фоновый flick для
-    /// фильма, стартовавшего мгновенно по ссылке каталога). Кнопка качества
-    /// появляется по событию VodStateChanged.
-    /// </summary>
+
     public void SetVodVariants(Dictionary<string, string> variants)
     {
         if (!IsVodPlaying || variants.Count == 0)
@@ -645,10 +597,7 @@ public partial class PlayerViewModel : ObservableObject
         VodStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// Переключает качество VOD на выбранную метку ("Авто", "1080p", ...):
-    /// рестарт потока с новой ссылкой и возобновлением позиции.
-    /// </summary>
+
     public async Task SwitchVodQualityAsync(string quality)
     {
         if (!IsVodPlaying || _vodChannel == null || !_vodVariantUrls.TryGetValue(quality, out var url))
@@ -663,12 +612,7 @@ public partial class PlayerViewModel : ObservableObject
             vodVariants: _vodVariantUrls, vodQuality: quality, resumePosition: resume);
     }
 
-    /// <summary>
-    /// Ключ портала → метка качества: "auto" → "Авто", "1080" → "1080p".
-    /// Идемпотентно: уже готовая метка ("1080p", "Авто") не меняется — при
-    /// переключении качества словарь ссылок (с метками) передаётся в
-    /// StartPlaybackAsync повторно и не должен обрабатываться дважды.
-    /// </summary>
+
     private static string VodQualityLabel(string key)
     {
         if (key.Equals("auto", StringComparison.OrdinalIgnoreCase) || key == "Авто")
@@ -684,10 +628,7 @@ public partial class PlayerViewModel : ObservableObject
         return key + "p";
     }
 
-    /// <summary>
-    /// Подписи качеств по убыванию: "Авто" первым, дальше числовые от большего
-    /// к меньшему ("1080p", "720p", "480p"), прочие ключи в конце как есть.
-    /// </summary>
+
     private static IReadOnlyList<string> OrderVodQualities(IEnumerable<string> labels)
     {
         static string? NumericKey(string label) =>
@@ -708,17 +649,10 @@ public partial class PlayerViewModel : ObservableObject
     private bool _isMuted;
     private double? _volumeBeforeMute;
 
-    /// <summary>
-    /// Включён ли беззвучный режим. Представление реагирует на смену
-    /// (кнопки M, слайдеры показывают ноль) через PropertyChanged.
-    /// </summary>
+
     public bool IsMuted => _isMuted;
 
-    /// <summary>
-    /// Переключает беззвучный режим: громкость текущего плеера в 0 без
-    /// потери запомненного значения; при снятии — восстановление. Новые
-    /// плееры (переключение канала) создаются уже с учётом режима.
-    /// </summary>
+
     public void ToggleMute()
     {
         if (_isMuted)
@@ -749,10 +683,7 @@ public partial class PlayerViewModel : ObservableObject
         OnPropertyChanged(nameof(IsMuted));
     }
 
-    /// <summary>
-    /// Снимает mute без восстановления громкости — когда громность уже
-    /// применена снаружи (пользователь двинул слайдер/колесо мыши).
-    /// </summary>
+
     public void ClearMute()
     {
         if (!_isMuted)
@@ -774,11 +705,7 @@ public partial class PlayerViewModel : ObservableObject
         set => SetProperty(ref _videoUpscaler, value);
     }
 
-    /// <summary>
-    /// Смена пресета улучшения картинки (кнопка «Качество картинки»):
-    /// применяется живьём к играющему плееру и сохраняется в настройках —
-    /// следующие каналы открываются уже с выбранным пресетом.
-    /// </summary>
+
     public async Task SetVideoUpscalerAsync(string mode)
     {
         var normalized = VideoUpscaler.Normalize(mode);

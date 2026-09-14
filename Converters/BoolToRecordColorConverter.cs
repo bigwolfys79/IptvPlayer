@@ -5,10 +5,7 @@ using Windows.UI;
 
 namespace IptvPlayer.Converters;
 
-/// <summary>
-/// bool → цвет точки записи в карточке EPG: передача запланирована к записи —
-/// красный (классический REC), нет — приглушённо-серый.
-/// </summary>
+
 public partial class BoolToRecordColorConverter : IValueConverter
 {
     private static readonly Brush Record = new SolidColorBrush(Color.FromArgb(0xFF, 0xF5, 0x3B, 0x3B));

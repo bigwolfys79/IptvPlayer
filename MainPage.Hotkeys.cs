@@ -23,12 +23,7 @@ using Windows.UI.Core;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Горячие клавиши и ввод номера канала цифрами.
-/// Вынесено из MainPage.xaml.cs (MVVM-этап 3: разбиение code-behind по зонам).
-/// HOTKEYS-SYNC: при изменении набора клавиш обновляй справку в
-/// HubPage.ShowHotkeysDialog (и строки HK_* в Resources.resw).
-/// </summary>
+
 public sealed partial class MainPage
 {
 
@@ -38,17 +33,7 @@ public sealed partial class MainPage
 
     private bool _hotkeysAttached;
 
-    /// <summary>
-    /// Единая точка обработки клавиатуры. Повешена на корневой элемент XamlRoot
-    /// (см. конструктор): туннелирующее событие перехватывает клавиши раньше
-    /// кнопок (пробел не «нажимает» сфокусированную кнопку), срабатывает и
-    /// когда фокуса внутри страницы нет, но не мешает открытым ContentDialog
-    /// (см. проверку ниже). Пары: Space — пауза архива; ↑/↓ и PgUp/PgDn —
-    /// соседний канал; M — без звука; F/F11 — полный экран; Esc — выход из
-    /// него; Ctrl+F — поиск; Ctrl+J — статистика; цифры — ввод номера канала.
-    /// Буквы приходят как VK-коды латиницы независимо от раскладки («М» на
-    /// русской клавиатуре — тот же VirtualKey.M; проверено таблицей раскладки).
-    /// </summary>
+
     private void OnPagePreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
 
@@ -205,11 +190,7 @@ public sealed partial class MainPage
         }
     }
 
-    /// <summary>
-    /// Переключение на соседний канал текущего (отфильтрованного) списка с
-    /// заходом по кругу. В fullscreen заодно показывается полноэкранный оверлей
-    /// — название канала отображается в его шапке, без оверлея переключение происходит без индикации канала.
-    /// </summary>
+
     private void ZapToAdjacentChannel(int offset)
     {
         var channels = ViewModel.DisplayedChannels;
@@ -254,11 +235,7 @@ public sealed partial class MainPage
         _channelNumberInputTimer.Start();
     }
 
-    /// <summary>
-    /// Обновляет оверлей ввода: крупные цифры + имя канала, который разрешается
-    /// этим номером (по мере набора), либо диапазон «1..N», если номера ещё
-    /// нет в списке.
-    /// </summary>
+
     private void UpdateChannelNumberOverlay()
     {
         var channels = ViewModel.DisplayedChannels;
@@ -300,7 +277,7 @@ public sealed partial class MainPage
         ChannelNumberOverlay.Visibility = Visibility.Collapsed;
     }
 
-    /// <summary>Цифра верхнего ряда или numpad (в любой раскладке), иначе −1.</summary>
+
     private static int DigitFromKey(VirtualKey key)
     {
         if (key >= VirtualKey.Number0 && key <= VirtualKey.Number9)
@@ -314,14 +291,11 @@ public sealed partial class MainPage
         return -1;
     }
 
-    /// <summary>Фокус в поле текстового ввода (поиск) — клавиши идут туда.</summary>
+
     private bool IsTextInputFocused() =>
         IsFocusedWithin(element => element is TextBox or AutoSuggestBox);
 
-    /// <summary>
-    /// Фокус на элементе, которым управляют стрелки/PgUp/PgDn (списки, слайдер
-    /// перемотки, комбобокс) — навигационные клавиши оставляем ему.
-    /// </summary>
+
     private bool IsNavigationControlFocused() =>
         IsFocusedWithin(element =>
             element is ListView or Slider or ComboBox or TextBox or AutoSuggestBox);
@@ -330,7 +304,7 @@ public sealed partial class MainPage
         FocusManager.GetFocusedElement(XamlRoot) is DependencyObject focused &&
         AnyAncestorOrSelf(focused, match);
 
-    /// <summary>Обход цепочки предков visual-дерева (включая сам элемент).</summary>
+
     private static bool AnyAncestorOrSelf(DependencyObject element, Func<DependencyObject, bool> match)
     {
         while (element != null)
@@ -344,7 +318,7 @@ public sealed partial class MainPage
         return false;
     }
 
-    /// <summary>Выделяет текст поиска, чтобы новый ввод заменял прежний запрос.</summary>
+
     private void SelectAllInSearchBox()
     {
         if (FindDescendant<TextBox>(ChannelSearchBox) is { } box)

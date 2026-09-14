@@ -5,10 +5,7 @@ using Windows.UI;
 
 namespace IptvPlayer.Converters;
 
-/// <summary>
-/// Преобразует bool IsLive в кисть индикатора эфира в списке каналов:
-/// зелёная — канал в эфире, иначе серая.
-/// </summary>
+
 public partial class BoolToLiveColorConverter : IValueConverter
 {
     private static readonly SolidColorBrush LiveBrush = new(Color.FromArgb(255, 76, 175, 80));

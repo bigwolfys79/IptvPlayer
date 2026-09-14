@@ -5,14 +5,7 @@ using MemoryPack;
 
 namespace IptvPlayer.Models;
 
-/// <summary>
-/// Одна передача EPG. [MemoryPackable] — бинарная сериализация для дискового
-/// кэша EPG (вместо JSON): 400k+ программ читаются из кэша за миллисекунды
-/// вместо секунд. Сериализуются ТОЛЬКО данные; вычисляемые свойства ниже
-/// помечены [MemoryPackIgnore] и пересчитываются после загрузки.
-/// INotifyPropertyChanged нужен единственному изменяемому в рантайме флагу
-/// HasReminder (колокольчик в EPG-списке) — x:Bind Mode=OneWay.
-/// </summary>
+
 [MemoryPackable]
 public partial class EPGEntry : INotifyPropertyChanged
 {
@@ -36,14 +29,7 @@ public partial class EPGEntry : INotifyPropertyChanged
 
     private bool _isCurrent;
 
-    /// <summary>
-    /// Идёт ли эта передача сейчас в эфире на своём канале.
-    /// Выставляется EpgViewModel при определении текущей передачи.
-    /// INPC-свойство (а не авто-свойство): подсветка карточки и полоса
-    /// прогресса текущей передачи в EPG-списке переключаются на лету,
-    /// когда минутный таймер переносит IsCurrent на новую передачу —
-    /// без уведомления они обновились бы только при пересборке списка.
-    /// </summary>
+
     [MemoryPackIgnore]
     public bool IsCurrent
     {
@@ -58,11 +44,7 @@ public partial class EPGEntry : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Доля прошедшей части передачи (0..1) — тонкая полоса в карточке
-    /// текущей передачи EPG-списка. Течёт со временем: уведомление
-    /// поднимает RefreshLiveProgress из минутного таймера.
-    /// </summary>
+
     [MemoryPackIgnore]
     public double LiveProgress
     {
@@ -81,16 +63,12 @@ public partial class EPGEntry : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Уведомление для x:Bind LiveProgress (значение зависит от часов).</summary>
+
     public void RefreshLiveProgress() => OnPropertyChanged(nameof(LiveProgress));
 
     private bool _hasReminder;
 
-    /// <summary>
-    /// На эту передачу поставлено напоминание (колокольчик в списке EPG
-    /// подсвечен). Рантайм-состояние, в кэш не пишется — восстанавливается
-    /// из настроек при загрузке EPG (ApplyReminderFlags в MainPage).
-    /// </summary>
+
     [MemoryPackIgnore]
     public bool HasReminder
     {
@@ -107,11 +85,7 @@ public partial class EPGEntry : INotifyPropertyChanged
 
     private bool _hasScheduleRecord;
 
-    /// <summary>
-    /// На эту передачу запланирована запись (кнопка записи в EPG подсвечена).
-    /// Рантайм-состояние, из настроек (ScheduledRecordings) восстанавливается
-    /// вместе с HasReminder.
-    /// </summary>
+
     [MemoryPackIgnore]
     public bool HasScheduleRecord
     {
@@ -126,12 +100,7 @@ public partial class EPGEntry : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Можно ли запустить эту передачу в архиве (timeshift) — true только для
-    /// передач, которые уже начались. Вычисляется в момент отрисовки элемента
-    /// списка; при перезагрузке EPG список пересобирается и значение
-    /// пересчитывается. Используется для показа значка "смотреть с начала".
-    /// </summary>
+
     [MemoryPackIgnore]
     public bool CanPlayArchive => StartTime <= DateTime.Now;
 
@@ -139,13 +108,7 @@ public partial class EPGEntry : INotifyPropertyChanged
     [MemoryPackIgnore]
     public string Title => ProgramName;
 
-    /// <summary>
-    /// Время начала для карточки в EPG-списке. Список охватывает окно ±3 дня,
-    /// поэтому для передач не сегодня к времени добавляется день: «Вчера»/
-    /// «Завтра» для соседних дней и дата (dd.MM) для более дальних — иначе
-    /// по одному времени непонятно, за какой день программа. Вычисляется в
-    /// момент отрисовки элемента списка.
-    /// </summary>
+
     [MemoryPackIgnore]
     public string StartTimeString
     {

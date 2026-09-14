@@ -13,56 +13,29 @@ using IptvPlayer.ViewModels;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Дополняет стандартный класс Application поведением конкретного приложения.
-/// Здесь же composition root приложения: конфигурация Serilog (до всего, что
-/// может логировать) и DI-контейнер Microsoft.Extensions.DependencyInjection,
-/// из которого страницы резолвят сервисы и ViewModel'ы (см. Services).
-/// </summary>
+
 public partial class App : Application
 {
     private static Window? _window;
 
-    /// <summary>
-    /// Глобальный DI-контейнер. Заполняется в конструкторе App (до создания
-    /// окна) и существует до завершения процесса. Страницы/окна берут зависимости через
-    /// App.Services.GetRequiredService — WinUI не даёт внедрять их в
-    /// конструкторы XAML-элементов, это стандартный для WinUI 3 паттерн.
-    /// </summary>
+
     public static IServiceProvider Services { get; private set; } = null!;
 
-    /// <summary>Каталог файлового лога (%LocalAppData%\IptvPlayer\logs).</summary>
+
     public static string LogDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "IptvPlayer", "logs");
 
-    /// <summary>
-    /// Главное окно приложения. Нужно диалогам для FileOpenPicker/
-    /// FileSavePicker: в WinUI 3 пикер без HWND-владельца (InitializeWithWindow)
-    /// бросает исключение, а получить окно из XamlRoot нельзя.
-    /// </summary>
+
     public static Window? MainWindow => _window;
 
-    /// <summary>
-    /// Разрешить настоящее закрытие окна: обычный крестик сворачивает в
-    /// трей (CloseToTray), реальный выход — через меню иконки в трее или
-    /// это явно запрошенное закрытие (таймер сна, shutdown).
-    /// </summary>
+
     public static bool AllowClose;
 
-    /// <summary>
-    /// Скачанный установщик обновления, отложенный пользователем («Позже» в
-    /// диалоге обновления): запускается тихой установкой при настоящем
-    /// закрытии приложения. Файл размещается во временной папке, поэтому устанавливать
-    /// можно только в той же сессии — иначе путь сбрасывается.
-    /// </summary>
+
     public static string? PendingUpdateSetupPath;
 
-    /// <summary>
-    /// Запускает отложенную установку обновления, если путь ещё актуален и
-    /// файл на месте; сбрасывает путь в любом случае. Ошибки тихие — выход
-    /// приложения не должен зависеть от обновления.
-    /// </summary>
+
     public static void TryStartPendingUpdateInstall()
     {
         var setupPath = PendingUpdateSetupPath;
@@ -90,17 +63,14 @@ public partial class App : Application
         }
     }
 
-    /// <summary>Иконка в трее (null, пока не создана). Убирается при выходе.</summary>
+
     public static Services.TrayIconService? Tray { get; set; }
 
     private const LogEventLevel FileLoggingDisabledLevel = (LogEventLevel)100;
 
     private static readonly LoggingLevelSwitch FileLogSwitch = new(LogEventLevel.Information);
 
-    /// <summary>
-    /// Инициализирует singleton-объект приложения — первый выполняемый authored-код,
-    /// логический эквивалент main()/WinMain().
-    /// </summary>
+
     public App()
     {
 
@@ -155,17 +125,7 @@ public partial class App : Application
     private const string OutputTemplate =
         "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
 
-    /// <summary>
-    /// Включает/выключает файловый лог на лету (тумблер в настройках).
-    /// Работает через LoggingLevelSwitch файлового sink'а — без пересоздания
-    /// логгера и потери событий на переключении.
-    /// </summary>
-    /// <summary>
-    /// Включена ли «Временная диагностика» (см. AppSettings.TempDiagnosticsEnabled):
-    /// глушение необработанных исключений + подробный лог EPG по каналам.
-    /// Статическое: App.OnUnhandledException и статические ветки EPGService
-    /// не имеют доступа к DI-контейнеру в момент срабатывания.
-    /// </summary>
+
     public static bool TempDiagnosticsEnabled { get; set; }
 
     public static void SetFileLoggingEnabled(bool enabled)
@@ -315,17 +275,12 @@ public partial class App : Application
         Serilog.Log.CloseAndFlush();
     }
 
-    /// <summary>
-    /// Второй запуск переадресовал сюда активацию: показываем окно
-    /// (в том числе когда оно свернуто в трей) и выводим на передний план.
-    /// Событие приходит в контексте WinAppSDK — marshaling в UI-поток.
-    /// </summary>
-    /// <summary>Второй экземпляр передаёт видеофайл через этот файл.</summary>
+
     private static string PendingVideoFilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "IptvPlayer", "pending_video.txt");
 
-    /// <summary>Видеофайл в аргументах командной строки (ассоциация «Открыть с помощью»), null — нет.</summary>
+
     internal static string? GetCommandLineVideoFile()
     {
         var args = Environment.GetCommandLineArgs();
@@ -387,10 +342,7 @@ public partial class App : Application
         e.SetObserved();
     }
 
-    /// <summary>
-    /// Вызывается при запуске приложения.
-    /// </summary>
-    /// <param name="args">Сведения о запросе и процессе запуска.</param>
+
     protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
 

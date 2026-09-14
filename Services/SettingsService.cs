@@ -9,17 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Простое JSON-хранилище настроек в %LocalAppData%\IptvPlayer — тот же
-/// каталог, где живут кэши (см. EpgCacheStore/PlaylistDatabaseService), поэтому
-/// в MSIX-режиме (Debug) путь так же виртуализуется, как у них.
-///
-/// Раньше использовался Windows.Storage.ApplicationData.Current.LocalFolder,
-/// но он требует package identity: в unpackaged-сборке (Release для
-/// инсталятора Inno Setup) ApplicationData.Current == null и любое обращение
-/// к настройкам падало бы исключением при запуске. Обычный файловый путь
-/// работает в обоих режимах.
-/// </summary>
+
 public class SettingsService : ISettingsService
 {
     private static readonly string SettingsDir = Path.Combine(
@@ -83,7 +73,7 @@ public class SettingsService : ISettingsService
             }
         }
 
-        /// <summary>Битый файл переименовывается, а не удаляется — данные можно вытащить.</summary>
+
         private void TrySnapshotCorruptFile()
         {
             try
@@ -100,7 +90,7 @@ public class SettingsService : ISettingsService
             }
         }
 
-        /// <summary>Пытается прочитать settings.json.prev (прошлую успешную запись).</summary>
+
         private (string path, AppSettings settings)? TryLoadBackup()
         {
             try

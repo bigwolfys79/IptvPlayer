@@ -8,12 +8,8 @@ using Microsoft.UI.Xaml.Media;
 
 namespace IptvPlayer.Dialogs
 {
-    /// <summary>
-    /// Раздел интерфейса настроек: язык, тема оформления и действие таймера
-    /// сна. Сохраняет в каноническую копию AppSettings (ViewModel.AppSettings),
-    /// как SettingsDialog; тема и язык применяются к окну сразу после
-    /// сохранения через колбэки, переданные MainPage.
-    /// </summary>
+
+
     public sealed partial class InterfaceSettingsDialog : UserControl
     {
         private readonly MainPageViewModel _viewModel;
@@ -136,28 +132,28 @@ namespace IptvPlayer.Dialogs
 
         }
 
-        /// <summary>Автообновление — применяется сразу, персистится в настройках.</summary>
+
         private async void AutoUpdateToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.AutoUpdateEnabled = AutoUpdateToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 
-        /// <summary>Главное меню (Hub Page) — применяется при следующем запуске.</summary>
+
         private async void ShowHubOnStartupToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.ShowHubOnStartup = ShowHubOnStartupToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 
-        /// <summary>Сворачивание в трей — применяется сразу, персистится в настройках.</summary>
+
         private async void CloseToTrayToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.CloseToTray = CloseToTrayToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 
-        /// <summary>Сворачивание по кнопке «Свернуть» — применяется сразу.</summary>
+
         private async void MinimizeToTrayToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.MinimizeToTray = MinimizeToTrayToggle.IsOn;

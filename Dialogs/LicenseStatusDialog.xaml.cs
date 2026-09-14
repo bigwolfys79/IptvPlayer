@@ -7,13 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs;
 
-/// <summary>
-/// Диалог «Лицензия» (отдельный пункт меню, перед «О программе»): показывает
-/// текущий статус — личное использование, коммерческая лицензия (на кого и
-/// на какой срок) или идущий пробный период. Для неактивированной
-/// коммерческой копии даёт кнопку принудительной активации — тот же
-/// офлайн-диалог, что при истечении триала, без ожидания его конца.
-/// </summary>
+
 public sealed partial class LicenseStatusDialog : UserControl
 {
     private ContentDialog? _hostDialog;
@@ -40,7 +34,7 @@ public sealed partial class LicenseStatusDialog : UserControl
         await dialog.ShowAsync();
     }
 
-    /// <summary>Перечитывает статус лицензии и заполняет тексты.</summary>
+
     private void Refresh()
     {
         var license = LicenseService.CheckLicense();

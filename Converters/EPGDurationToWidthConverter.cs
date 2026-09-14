@@ -3,12 +3,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace IptvPlayer.Converters;
 
-/// <summary>
-/// Новый конвертер — раньше ширины программы по длительности не было вообще
-/// (EPGTimeToPositionConverter отдавал только позицию). Width = Duration.TotalHours * PixelsPerHour,
-/// на том же масштабе, что и EPGTimeToPositionConverter (см. EpgTimelineScale).
-/// Привязка: Width="{Binding Duration, Converter={StaticResource EPGDurationToWidthConverter}}"
-/// </summary>
+
 public partial class EPGDurationToWidthConverter : IValueConverter
 {
     private const double MinWidth = 1;

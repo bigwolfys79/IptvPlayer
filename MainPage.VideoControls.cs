@@ -13,9 +13,7 @@ using Microsoft.UI.Xaml.Media;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Громкость, mute, растяжение видео, таймер сна, мини-плеер, кнопки записи.
-/// </summary>
+
 public sealed partial class MainPage : Page
 {
     private void OverlayVolumeSlider_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
@@ -48,10 +46,7 @@ public sealed partial class MainPage : Page
         _volumeSaveDebounceTimer.Start();
     }
 
-    /// <summary>
-    /// Программно выставляет оба слайдера громкости в одно значение,
-    /// не провоцируя обратные события ValueChanged.
-    /// </summary>
+
     private void SyncVolumeSliders(double value)
     {
         _isVolumeSliderSyncing = true;
@@ -85,11 +80,7 @@ public sealed partial class MainPage : Page
         ShowActionToast(L.T(Player.IsMuted ? "Bez_Zvuka_M_Lbl" : "Zvuk_Vklyuchen"));
     }
 
-    /// <summary>
-    /// Кнопки M в обеих панелях: иконка (динамик/динамик с крестом), подсказка
-    /// и слайдеры (в mute показывают ноль — синхронизация программная и
-    /// LastUserVolume не перезаписывается).
-    /// </summary>
+
     private void UpdateMuteButtons()
     {
         VideoOverlayMuteButton.Content = Player.IsMuted ? AppIcons.SpeakerMuted(16) : AppIcons.SpeakerOn(16);
@@ -104,18 +95,14 @@ public sealed partial class MainPage : Page
         SyncVolumeSliders(Player.IsMuted ? 0.0 : Player.LastUserVolume ?? Player.Player?.Volume ?? 1.0);
     }
 
-    /// <summary>
-    /// Двойной клик по видео — переключение полноэкранного режима.
-    /// </summary>
+
     private void VideoArea_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         SetFullScreenMode(!_isFullScreen);
         e.Handled = true;
     }
 
-    /// <summary>
-    /// Двойной клик по видимому полноэкранному оверлею — только по фону/шапке.
-    /// </summary>
+
     private void FullScreenOverlay_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
         if (e.OriginalSource is DependencyObject source &&
@@ -128,17 +115,14 @@ public sealed partial class MainPage : Page
         e.Handled = true;
     }
 
-    /// <summary>
-    /// Элементы, чьи двойные клики принадлежат им самим — полноэкранный режим
-    /// они переключать не должны.
-    /// </summary>
+
     private static bool IsInteractiveControl(DependencyObject element) =>
         element is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase
             or Slider or ListView or ComboBox or TextBox or AutoSuggestBox;
 
     private void StretchButton_Click(object sender, RoutedEventArgs e) => CycleVideoStretch();
 
-    /// <summary>Строковый режим настроек → Stretch медиаэлемента.</summary>
+
     private static Stretch ParseStretch(string? value) => value switch
     {
         "Fill" => Stretch.Fill,
@@ -146,7 +130,7 @@ public sealed partial class MainPage : Page
         _ => Stretch.Uniform
     };
 
-    /// <summary>Применяет сохранённый режим отображения (старт приложения).</summary>
+
     private void ApplyVideoStretch()
     {
         var stretch = ParseStretch(ViewModel.AppSettings.VideoStretch);
@@ -188,10 +172,7 @@ public sealed partial class MainPage : Page
         ToolTipService.SetToolTip(OverlayStretchButton, tooltip);
     }
 
-    /// <summary>
-    /// Перед открытием меню кнопки отмечаем текущий пресет: RadioMenuFlyoutItem
-    /// не синхронизируется сам — группировка даёт только взаимоисключающий выбор.
-    /// </summary>
+
     private void UpscalerMenu_Opening(object? sender, object e)
     {
         var mode = Player.VideoUpscalerMode;
@@ -215,12 +196,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Переключение рендер-пути frame server: плеер создаётся с флагом
-    /// IsVideoFrameServerEnabled при открытии потока, поэтому смена режима
-    /// требует перезапуска текущего канала. Отрисовка — FrameServerRenderer
-    /// в CanvasSwapChainPanel поверх MediaPlayerElement.
-    /// </summary>
+
     private async void FrameServerItem_Click(object sender, RoutedEventArgs e)
     {
         var enable = !ViewModel.AppSettings.FrameServerRender;
@@ -341,9 +317,7 @@ public sealed partial class MainPage : Page
         UpdateSleepTimerDisplays();
     }
 
-    /// <summary>
-    /// Планирует выключение компьютера (shutdown /s /t 0).
-    /// </summary>
+
     private bool TryShutdownPc()
     {
         try
@@ -364,9 +338,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Обновляет индикаторы таймера сна в обеих панелях (оконной и полноэкранной).
-    /// </summary>
+
     private void UpdateSleepTimerDisplays()
     {
         var isActive = ViewModel.IsSleepTimerActive;
@@ -381,10 +353,7 @@ public sealed partial class MainPage : Page
 
     private bool _panelsHiddenForMini;
 
-    /// <summary>
-    /// Ctrl+T / кнопка: окно поверх всех окон без смены размера и панелей —
-    /// в отличие от мини-плеера, который плюс к этому сжимает окно до 480×300.
-    /// </summary>
+
     private void ToggleAlwaysOnTop()
     {
         var window = MainWindow.Instance;
@@ -399,7 +368,7 @@ public sealed partial class MainPage : Page
 
     private void ToggleAlwaysOnTop(object sender, RoutedEventArgs e) => ToggleAlwaysOnTop();
 
-    /// <summary>Синхронизирует тултипы обеих кнопок с состоянием окна.</summary>
+
     private void UpdateAlwaysOnTopButtons()
     {
         var window = MainWindow.Instance;
@@ -419,10 +388,7 @@ public sealed partial class MainPage : Page
         OverlayAlwaysOnTopButton.Opacity = opacity;
     }
 
-    /// <summary>
-    /// Ctrl+M: компактное always-on-top окно только с видео; панели
-    /// (список каналов, EPG) скрываются и возвращаются при выходе из режима.
-    /// </summary>
+
     private void ToggleMiniPlayer()
     {
         MainWindow.Instance!.ToggleMiniPlayer();
@@ -477,9 +443,7 @@ public sealed partial class MainPage : Page
         ViewModel.ToggleReminderCommand.Execute(entry);
     }
 
-    /// <summary>
-    /// Тост Windows (CommunityToolkit.WinUI.Notifications).
-    /// </summary>
+
     private void ShowReminderToast(Models.ProgramReminder reminder)
     {
         try
@@ -510,7 +474,7 @@ public sealed partial class MainPage : Page
         ViewModel.ToggleScheduleRecordCommand.Execute(entry);
     }
 
-    /// <summary>Синхронизирует вид обеих кнопок записи с состоянием сервиса.</summary>
+
     private void UpdateRecordButtons()
     {
         var active = ViewModel.Recording.IsRecordingStream(ViewModel.SelectedChannel?.StreamUrl);

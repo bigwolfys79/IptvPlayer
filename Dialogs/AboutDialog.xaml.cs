@@ -6,26 +6,12 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs;
 
-/// <summary>
-/// «О программе»: описание, компоненты, пути настроек/логов, кнопки
-/// «Проверить обновления» и «Открыть папку логов».
-///
-/// Проверка и установка обновлений идут через <see cref="IUpdateService"/> —
-/// тот же сценарий, что и при автоматической проверке при старте: найденная
-/// версия превращает кнопку в «Скачать и установить», установщик качается во
-/// временную папку (с проверкой SHA256), затем вызывается
-/// <c>_installHandler</c> (MainPage): диалог «Установить сейчас?», откладывание
-/// при активных записях, тихая установка и перезапуск.
-/// </summary>
+
 public sealed partial class AboutDialog : UserControl
 {
     private readonly IUpdateService _updateService;
 
-    /// <summary>
-    /// Запускает установку уже скачанного установщика (диалог согласия,
-    /// учёт записей, тихая установка). Диалог «О программе» перед вызовом
-    /// закрывается сам — открыть второй ContentDialog поверх нельзя.
-    /// </summary>
+
     private readonly Func<Version, string, Task> _installHandler;
 
     private ContentDialog? _hostDialog;

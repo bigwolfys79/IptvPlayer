@@ -3,15 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace IptvPlayer.ViewModels;
 
-/// <summary>
-/// Канал для UI. Все изменяемые свойства — INotifyPropertyChanged через
-/// SetProperty (CommunityToolkit.Mvvm): раньше каждое писалось вручную на
-/// ~12 строк, и рассинхрон «поле/свойство/уведомление» был реальным
-/// источником багов. Ручные свойства (а не [ObservableProperty]) выбраны
-/// осознанно — сгенерированные генератором не совместимы с AOT/WinRT-ABI
-/// (MVVMTK0045). Вычисляемые свойства (HasArchive и пр.) — обычные, их
-/// обновление вызывается из сеттеров полей-источников.
-/// </summary>
+
 public partial class ChannelViewModel : ObservableObject
 {
 
@@ -49,10 +41,7 @@ public partial class ChannelViewModel : ObservableObject
 
     private string? _currentProgramDescription;
 
-    /// <summary>
-    /// Описание текущей передачи из EPG — показывается в верхних оверлеях
-    /// под названием передачи (аналог описания фильма портала).
-    /// </summary>
+
     public string? CurrentProgramDescription
     {
         get => _currentProgramDescription;
@@ -85,40 +74,22 @@ public partial class ChannelViewModel : ObservableObject
 
     private string? _portalRequest;
 
-    /// <summary>
-    /// Request-объект элемента видео-портала (JSON, как пришёл из API).
-    /// Заполнен только у источников-порталов; StreamUrl у таких элементов
-    /// null до первого клика — по клику поток запрашивается у портала
-    /// (VideoPortalService.ResolveStreamAsync) и результат не кэшируется.
-    /// </summary>
+
     public string? PortalRequest
     {
         get => _portalRequest;
         set => SetProperty(ref _portalRequest, value);
     }
 
-    /// <summary>
-    /// Элемент каталога портала (фильм/сериал), а не ТВ-канал: у таких
-    /// нет и не может быть EPG — все проходы EPG (пересчёт текущих
-    /// передач, сопоставление с XMLTV, добор логотипов) их пропускают.
-    /// В VOD-плейлистах таких элементов основная масса (например,
-    /// 22 009 из 22 009 в «Ilock video»).
-    /// </summary>
+
     public bool IsPortalItem => !string.IsNullOrEmpty(_portalRequest);
 
-    /// <summary>
-    /// Локальный видеофайл (карточка «Видео» на хабе), а не канал из
-    /// плейлиста: StreamUrl — «сырой» путь диска, позиция досмотра хранится
-    /// под отдельным ключом «file::путь» и не попадает в списки портала.
-    /// </summary>
+
     public bool IsLocalFile { get; set; }
 
     private string? _description;
 
-    /// <summary>
-    /// Описание элемента каталога портала (аннотация фильма/сериала).
-    /// Показывается в верхнем оверлее; у обычных каналов M3U — null.
-    /// </summary>
+
     public string? Description
     {
         get => _description;
@@ -127,10 +98,7 @@ public partial class ChannelViewModel : ObservableObject
 
     private int _year;
 
-    /// <summary>
-    /// Год выпуска элемента портала (0 — не указан). Используется
-    /// сортировкой списка по году.
-    /// </summary>
+
     public int Year
     {
         get => _year;
@@ -139,10 +107,7 @@ public partial class ChannelViewModel : ObservableObject
 
     private string? _genre;
 
-    /// <summary>
-    /// Жанр элемента портала (из фильтра manifest.controls.filters).
-    /// null у M3U-каналов и элементов без жанра.
-    /// </summary>
+
     public string? Genre
     {
         get => _genre;
@@ -188,13 +153,7 @@ public partial class ChannelViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Доля прошедшей части текущей передачи (0..1) для тонкой полосы
-    /// прогресса в строке канала и в шапке полноэкранного оверлея. Течёт
-    /// со временем, поэтому уведомление поднимается таймером обновления
-    /// текущей передачи (RefreshCurrentProgramProgress) и при смене самой
-    /// передачи — не только сеттером CurrentEPGEntry.
-    /// </summary>
+
     public double CurrentProgramProgress
     {
         get
@@ -213,22 +172,16 @@ public partial class ChannelViewModel : ObservableObject
         }
     }
 
-    /// <summary>Идёт ли сейчас какая-то передача (для видимости полосы прогресса).</summary>
+
     public bool HasCurrentProgram => CurrentEPGEntry != null;
 
-    /// <summary>
-    /// Периодическое уведомление для x:Bind-полос прогресса: значение
-    /// CurrentProgramProgress зависит от стененных часов, а не от свойств.
-    /// </summary>
+
     public void RefreshCurrentProgramProgress()
     {
         OnPropertyChanged(nameof(CurrentProgramProgress));
     }
 
-    /// <summary>
-    /// Глубина архива передач канала в днях (атрибут tvg-rec / catchup-days
-    /// плейлиста; 0 — архива нет). Определяет зелёную точку в списке каналов.
-    /// </summary>
+
     private int _catchupDays;
 
     public int CatchupDays
@@ -244,11 +197,7 @@ public partial class ChannelViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Канал в избранном (звёздочка в списке). Хранится в настройках по имени
-    /// канала — Id нестабилен между запусками. Избранные показываются первыми
-    /// в списке и в группе «★ Избранное» полноэкранного оверлея.
-    /// </summary>
+
     private bool _isFavorite;
 
     public bool IsFavorite
@@ -263,14 +212,14 @@ public partial class ChannelViewModel : ObservableObject
         }
     }
 
-    /// <summary>Есть ли у канала архив передач (tvg-rec &gt; 0).</summary>
+
     public bool HasArchive => CatchupDays > 0;
 
-    /// <summary>Подсказка точки-индикатора архива в списке каналов.</summary>
+
     public string ArchiveToolTip => string.Format(
         Services.L.T("Tip_ArchiveAvailable"), CatchupDays);
 
-    /// <summary>Подсказка звёздочки в списке каналов.</summary>
+
     public string FavoriteToolTip => IsFavorite
         ? Services.L.T("Ubrat_Iz_Izbrannogo")
         : Services.L.T("Dobavit_V_Izbrannoe");

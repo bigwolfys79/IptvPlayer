@@ -5,19 +5,12 @@ using IptvPlayer.ViewModels;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Применение пользовательских правок каналов (перенос группы/удаление) к
-/// разобранному списку каналов. Ключ матчинга — stream_url; при смене
-/// провайдером адреса потока — fallback на tvg-id, затем на нормализованное
-/// имя (EpgNameNormalizer). Чистая логика — покрыта unit-тестами.
-/// </summary>
+
 public static class ChannelOverrideMatcher
 {
-    /// <summary>
-    /// Применяет правки к списку: помеченные IsDeleted исключаются из
-    /// результата, для перемещённых заменяется группа. Возвращает каналы,
-    /// оставшиеся после применения.
-    /// </summary>
+
+
+    // Apply move/remove overrides to channels
     public static List<ChannelViewModel> Apply(
         IEnumerable<ChannelViewModel> channels,
         IReadOnlyList<PlaylistDatabaseService.ChannelOverride> overrides)

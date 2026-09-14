@@ -11,22 +11,18 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs
 {
-    /// <summary>
-    /// Элемент списка плейлистов в диалоге: обёртка над PlaylistSource с
-    /// вычисленной видимостью маркера активного и кнопки «Активировать»
-    /// (только у неактивного). Список пересобирается целиком после каждого
-    /// действия, поэтому уведомления об изменении не нужны.
-    /// </summary>
+
+
     public class PlaylistListItem
     {
         public PlaylistSource Playlist { get; set; } = new();
 
         public bool IsActive { get; set; }
 
-        /// <summary>Открыто ли поле переименования этого плейлиста (одновременно — только у одного).</summary>
+
         public bool IsEditing { get; set; }
 
-        /// <summary>Раскрыта ли секция источников EPG этого плейлиста.</summary>
+
         public bool IsEpgExpanded { get; set; }
 
         private Visibility ToVisibility(bool visible) =>
@@ -43,15 +39,7 @@ namespace IptvPlayer.Dialogs
         public Visibility EpgSectionVisibility => ToVisibility(IsEpgExpanded);
     }
 
-    /// <summary>
-    /// Управление плейлистами: список источников (активный отмечен, кнопка
-    /// «Активировать» переключает на него список каналов через колбэк из
-    /// MainPage), добавление нового (имя необязательное — по умолчанию хост
-    /// URL) и удаление с подтверждением. Первый добавленный плейлист
-    /// активируется сразу (сценарий первого запуска); следующие — каналы
-    /// подгрузятся при активации. Частота обновления — общая, сохраняется
-    /// по кнопке «Готово».
-    /// </summary>
+
     public sealed partial class PlaylistSettingsDialog : UserControl
     {
         private readonly MainPageViewModel _viewModel;
@@ -205,14 +193,7 @@ namespace IptvPlayer.Dialogs
             }
         }
 
-        /// <summary>
-        /// Источник EPG, с которым работает обработчик: сам EPGSource (чекбокс/
-        /// удаление в строке) и владеющий плейлист. ВАЖНО: строка существует в
-        /// вложенном ItemsControl, её контейнер-ContentPresenter не является
-        /// логическим потомком карточки — подъём по node.Parent обрывается на
-        /// null и владелец не находится. Поднимаемся по ВИЗУАЛЬНОМУ дереву:
-        /// DataContext = PlaylistListItem по нему наследуется до карточки.
-        /// </summary>
+
         private static (PlaylistSource Playlist, EPGSource Source)? FindEpgSourceOwner(object sender)
         {
             if (sender is not FrameworkElement element)
@@ -266,11 +247,7 @@ namespace IptvPlayer.Dialogs
             }
         }
 
-        /// <summary>
-        /// Добавляет источник EPG после проверки: URL дедуплицируется,
-        /// источник проверяется загрузкой начала ответа (gzip/XMLTV) — битый
-        /// не добавляется, ошибка показывается в строке статуса.
-        /// </summary>
+
         private async Task AddEpgSourceAsync(PlaylistSource playlist, string? url, TextBox? box)
         {
             if (string.IsNullOrEmpty(url))
@@ -302,11 +279,7 @@ namespace IptvPlayer.Dialogs
             await PlaylistEpgSourcesChangedAsync(playlist);
         }
 
-        /// <summary>
-        /// Строка статуса под источником EPG: последняя ошибка (если есть) или
-        /// дата последней успешной загрузки. Заполняется из кода, потому что
-        /// форматирование даты и выбор текста не выражаются обычным x:Bind.
-        /// </summary>
+
         private void EpgSourceStatusText_Loaded(object sender, RoutedEventArgs e)
         {
             if (sender is not TextBlock text || text.DataContext is not EPGSource source)
@@ -356,11 +329,7 @@ namespace IptvPlayer.Dialogs
             }
         }
 
-        /// <summary>
-        /// Сохраняет настройки после изменения источников EPG плейлиста; если
-        /// это активный плейлист — перечитывает EPG фоном (дисковый кэш
-        /// источников не чистится, перекачки фида не будет).
-        /// </summary>
+
         private async Task PlaylistEpgSourcesChangedAsync(PlaylistSource playlist)
         {
             await _settingsService.SaveAsync(_viewModel.AppSettings);
@@ -418,10 +387,7 @@ namespace IptvPlayer.Dialogs
             }
         }
 
-        /// <summary>
-        /// Сохраняет введённое имя плейлиста: пустое имя не заменяет существующее
-        /// (кнопка ✓ просто закрывает редактирование).
-        /// </summary>
+
         private async Task SavePlaylistNameAsync(PlaylistListItem item, string? enteredName)
         {
             var newName = enteredName?.Trim();
@@ -474,10 +440,7 @@ namespace IptvPlayer.Dialogs
             PlaylistTypeCombo.SelectedItem is ComboBoxItem { Tag: string tag } &&
             tag == "portal";
 
-        /// <summary>
-        /// Вид полей, зависящих от типа источника: у портала вместо URL M3U —
-        /// базовый адрес API и ключ доступа, выбор локального файла не нужен.
-        /// </summary>
+
         private void UpdatePlaylistTypeUi()
         {
             var isPortal = IsPortalTypeSelected;
@@ -514,13 +477,7 @@ namespace IptvPlayer.Dialogs
             await AddPlaylistAsync(file.Path);
         }
 
-        /// <summary>
-        /// Добавляет источник по URL или пути к локальному файлу M3U/M3U8
-        /// (type "m3u") либо видео-портал по базовому URL API и ключу
-        /// (type "portal"): создаёт PlaylistSource, активирует сразу, если он
-        /// первый, и переключает на него список каналов (SwitchPlaylistAsync
-        /// сам скачает и разберёт источник и сохранит кэш).
-        /// </summary>
+
         private async Task AddPlaylistAsync(string urlOrPath, string type = "m3u", string? portalKey = null)
         {
             var name = PlaylistNameBox.Text.Trim();
@@ -641,7 +598,7 @@ namespace IptvPlayer.Dialogs
             PlaylistStatusText.Visibility = Visibility.Visible;
         }
 
-        /// <summary>Строка списка правок каналов: чекбокс выбора + описание действия.</summary>
+
         public class ChannelOverrideListItem
         {
             public PlaylistDatabaseService.ChannelOverride Override { get; set; } = null!;
@@ -655,12 +612,7 @@ namespace IptvPlayer.Dialogs
             public bool IsChecked { get; set; } = true;
         }
 
-        /// <summary>
-        /// Восстановление удалённых/перемещённых каналов активного плейлиста:
-        /// список правок с чекбоксами, восстановление выбранных (удаление записи
-        /// → канал вернётся при перезагрузке плейлиста) или очистка всех.
-        /// Для правок каналов заблокированных групп запрашивается PIN.
-        /// </summary>
+
         private async void RestoreChannelsButton_Click(object sender, RoutedEventArgs e)
         {
             var playlist = _viewModel.AppSettings.Playlists
@@ -768,7 +720,7 @@ namespace IptvPlayer.Dialogs
             await dialog.ShowAsync();
         }
 
-        /// <summary>После восстановления: перезагружает активный плейлист и возвращает хост-диалог.</summary>
+
         private async Task FinishRestoreAsync(PlaylistSource playlist, bool reload)
         {
             if (reload && playlist.Id == _viewModel.AppSettings.ActivePlaylistId && _reloadActivePlaylist != null)
@@ -793,13 +745,7 @@ namespace IptvPlayer.Dialogs
 
         private readonly Services.SettingsTransferService _transferService = new();
 
-        /// <summary>
-        /// Диалог пароля поверх «Плейлистов»: два ContentDialog одновременно
-        /// показать нельзя, поэтому хост прячется. При отмене хост возвращается
-        /// здесь; при успехе вызывающий код сам показывает его (или следующий
-        /// диалог) в конце своей цепочки.
-        /// confirm=true — с повтором пароля (экспорт).
-        /// </summary>
+
         private async Task<string?> PromptPasswordAsync(string title, string hint, bool confirm)
         {
 
@@ -851,11 +797,7 @@ namespace IptvPlayer.Dialogs
             return box.Password;
         }
 
-        /// <summary>
-        /// Скрывает хост-диалог «Плейлисты» и выжидает такт диспетчера:
-        /// следующий ContentDialog нельзя открыть, пока предыдущий не успел
-        /// закрыться («Only one ContentDialog», COMException 0x80000019).
-        /// </summary>
+
         private async Task HideHostAsync()
         {
             if (_hostDialog == null)
@@ -867,11 +809,7 @@ namespace IptvPlayer.Dialogs
             await Task.Delay(50);
         }
 
-        /// <summary>
-        /// Окно подтверждения действия (удаление плейлиста/источника EPG):
-        /// хост-диалог прячется — два ContentDialog одновременно показать
-        /// нельзя — и показывается снова после ответа. true — подтверждено.
-        /// </summary>
+
         private async Task<bool> ConfirmAsync(string title, string message, string confirmLabel)
         {
 
@@ -897,7 +835,7 @@ namespace IptvPlayer.Dialogs
             }
         }
 
-        /// <summary>Показывает хост-диалог «Плейлисты» снова (после вложенного диалога).</summary>
+
         private async Task ReshowHostAsync()
         {
             if (_hostDialog != null)

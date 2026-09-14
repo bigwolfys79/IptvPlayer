@@ -4,10 +4,8 @@ using IptvPlayer.Models;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// Параметры потока для CreatePlayerAsync — передаются вызывающим
-    /// кодом вместо чтения settings.json с диска.
-    /// </summary>
+
+
     public record PlaybackConfig(
         string? DecoderMode,
         string? AudioNormalization,
@@ -22,37 +20,19 @@ namespace IptvPlayer.Services
     {
         Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig config, bool isVod = false);
 
-        /// <summary>
-        /// Реальная скорость потока в бит/с, измеренная диагностическим
-        /// прокси (LocalStreamProxy), или null — прокси выключен/нет данных.
-        /// </summary>
+
         double? ProxyMeasuredBitrate { get; }
 
-        /// <summary>
-        /// Применяет нормализацию громкости и усиление к уже играющему
-        /// плееру (переключение режима в настройках). allowLoudness=false —
-        /// режим Loudness подменяется Dynamic: буфер loudnorm ~3 с
-        /// на живом эфире даёт отставание звука от видео.
-        /// </summary>
+
         void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false, int boostPercent = 100);
 
-        /// <summary>
-        /// Применяет пресет улучшения картинки к уже играющему плееру
-        /// (кнопка «Качество картинки»). Для плееров без FFmpeg-источника
-        /// ничего не делает.
-        /// </summary>
+
         void ApplyVideoFilters(MediaPlayer? player, string? mode);
 
-        /// <summary>
-        /// Снимок параметров потока, открытого последним CreatePlayerAsync
-        /// (для оверлея статистики Ctrl+J). Null — пока ничего не открыто.
-        /// </summary>
+
         PlaybackDiagnostics? CurrentDiagnostics { get; }
 
-        /// <summary>
-        /// Диагностика URL потока: проверяет доступность и возвращает
-        /// человекочитаемое описание проблемы.
-        /// </summary>
+
         Task<string> DiagnoseStreamUrl(string? streamUrl);
 
     }

@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:controls="using:IptvPlayer.Controls"
     mc:Ignorable="d">
 
     <Page.Resources>
@@ -167,7 +168,11 @@
     <Grid Background="{ThemeResource HubBackground}" x:Name="RootGrid">
 
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                    x:Name="MainPanel" Opacity="0">
+                    x:Name="MainPanel" Opacity="0"
+                    RenderTransformOrigin="0.5,0.5">
+            <StackPanel.RenderTransform>
+                <ScaleTransform x:Name="MainPanelScale" />
+            </StackPanel.RenderTransform>
             <StackPanel HorizontalAlignment="Center" Margin="0,0,0,40"
                         x:Name="HeaderPanel">
                 <TextBlock x:Name="GreetingText"
@@ -192,16 +197,7 @@
                            Margin="0,6,0,0"/>
             </StackPanel>
 
-            <Grid HorizontalAlignment="Center" x:Name="CardsPanel">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="24"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="24"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="24"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <controls:HubWrapPanel x:Name="CardsPanel" HorizontalAlignment="Center" Spacing="24">
 
             <Button x:Name="PlaylistsButton" Grid.Column="0"
                     Click="PlaylistsButton_Click"
@@ -259,6 +255,32 @@
                 </StackPanel>
             </Button>
 
+            <Button x:Name="VideoButton" Grid.Column="4"
+                    Click="VideoButton_Click"
+                    Style="{StaticResource HubCard}"
+                    Background="{ThemeResource HubCardVideoBrush}"
+                    RenderTransformOrigin="0.5,0.5"
+                    AutomationProperties.AutomationId="HubVideoCard">
+                <Button.KeyboardAccelerators>
+                    <KeyboardAccelerator Key="Number3" Invoked="VideoAccelerator_Invoked"/>
+                </Button.KeyboardAccelerators>
+                <Button.RenderTransform>
+                    <CompositeTransform x:Name="VideoTransform" Rotation="180" ScaleX="0.3" ScaleY="0.3"/>
+                </Button.RenderTransform>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="44"
+                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
+                               Margin="0,0,0,16"/>
+                    <TextBlock x:Uid="Video_Card" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                    <TextBlock x:Uid="Video_Card_Subtitle" FontSize="12"
+                               Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
+                               Margin="0,4,0,0"
+                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                </StackPanel>
+            </Button>
+
             <Button x:Name="SettingsButton" Grid.Column="6"
                     Click="SettingsButton_Click"
                     Style="{StaticResource HubCard}"
@@ -286,33 +308,7 @@
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
                 </StackPanel>
             </Button>
-
-            <Button x:Name="VideoButton" Grid.Column="4"
-                    Click="VideoButton_Click"
-                    Style="{StaticResource HubCard}"
-                    Background="{ThemeResource HubCardVideoBrush}"
-                    RenderTransformOrigin="0.5,0.5"
-                    AutomationProperties.AutomationId="HubVideoCard">
-                <Button.KeyboardAccelerators>
-                    <KeyboardAccelerator Key="Number3" Invoked="VideoAccelerator_Invoked"/>
-                </Button.KeyboardAccelerators>
-                <Button.RenderTransform>
-                    <CompositeTransform x:Name="VideoTransform" Rotation="180" ScaleX="0.3" ScaleY="0.3"/>
-                </Button.RenderTransform>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="44"
-                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
-                               Margin="0,0,0,16"/>
-                    <TextBlock x:Uid="Video_Card" FontSize="18" FontWeight="SemiBold"
-                               Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
-                    <TextBlock x:Uid="Video_Card_Subtitle" FontSize="12"
-                               Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
-                               Margin="0,4,0,0"
-                               TextTrimming="CharacterEllipsis" MaxWidth="230"/>
-                </StackPanel>
-            </Button>
-            </Grid>
+            </controls:HubWrapPanel>
 
             <Button x:Name="ContinueButton"
                     Visibility="Collapsed"

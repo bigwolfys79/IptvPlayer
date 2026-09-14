@@ -8,15 +8,8 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs
 {
-    /// <summary>
-    /// Раздел EPG настроек: напоминания о передачах, периодичность обновления
-    /// программы передач и глубина архива (сколько дней назад хранить
-    /// передачи). Источники XMLTV здесь не редактируются — они настраиваются
-    /// для каждого плейлиста в диалоге «Плейлист». Сохраняет в каноническую
-    /// копию AppSettings (ViewModel.AppSettings), как SettingsDialog; при
-    /// изменении глубины архива форсирует перезагрузку EPG фоном — кэш
-    /// источников спарсен со старым окном.
-    /// </summary>
+
+
     public sealed partial class EpgSettingsDialog : UserControl
     {
         private readonly MainPageViewModel _viewModel;

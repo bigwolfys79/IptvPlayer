@@ -4,20 +4,12 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Controls;
 
-/// <summary>
-/// Корневой Grid страницы с управлением видимостью курсора. UIElement.ProtectedCursor
-/// в используемой версии Windows App SDK — protected, поэтому доступ только из
-/// наследника. Это единственный вход в input-site WinUI: ShowCursor потокозависим
-/// (курсор держит поток input-site), WM_SETCURSOR сайту не приходит, обнуление
-/// GCLP_HCURSOR игнорируется. Невидимый курсор делаем через Win32 CreateCursor
-/// (полностью прозрачные маски) и IInputCursorStaticsInterop.CreateFromHCursor —
-/// по рецепту Simon Mourier (simonmourier.com/blog/Cursor-cur-in-WinUI-3).
-/// </summary>
+
 public sealed partial class CursorGrid : Grid
 {
     private static Microsoft.UI.Input.InputCursor? _hiddenCursor;
 
-    /// <summary>Прячет курсор, пока указатель над окном.</summary>
+
     public void HideCursorOverWindow()
     {
         if (_hiddenCursor == null)
@@ -36,7 +28,7 @@ public sealed partial class CursorGrid : Grid
         }
     }
 
-    /// <summary>Возвращает системный курсор по умолчанию.</summary>
+
     public void ShowCursorOverWindow()
     {
         ProtectedCursor = null;
@@ -78,11 +70,7 @@ public sealed partial class CursorGrid : Grid
         }
     }
 
-    /// <summary>
-    /// Оборачивание нативного HCURSOR в WinUI InputCursor через
-    /// IInputCursorStaticsInterop (публичного API CreateFromHCursor в C#
-    /// проекции нет).
-    /// </summary>
+
     private static Microsoft.UI.Input.InputCursor? CreateCursorFromHCursor(nint hcursor)
     {
         if (hcursor == 0)

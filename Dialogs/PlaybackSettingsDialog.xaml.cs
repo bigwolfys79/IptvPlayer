@@ -9,13 +9,8 @@ using Microsoft.UI.Xaml.Media;
 
 namespace IptvPlayer.Dialogs
 {
-    /// <summary>
-    /// Раздел воспроизведения настроек: декодер, буферизация, качество,
-    /// нормализация громкости. Сохраняет в каноническую копию
-    /// AppSettings (ViewModel.AppSettings), как SettingsDialog. Декодер,
-    /// буфер и качество применятся при следующем переключении
-    /// канала; нормализация громкости — к играющему каналу сразу.
-    /// </summary>
+
+
     public sealed partial class PlaybackSettingsDialog : UserControl
     {
         private static readonly string[] DecoderModes = { "Hardware", "Software" };

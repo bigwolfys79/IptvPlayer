@@ -8,11 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer.Dialogs;
 
-/// <summary>
-/// Раздел «Записи» настроек: идущие записи (кнопка «Стоп»), запланированные
-/// (кнопка «Убрать») и папка, куда ffmpeg сохраняет файлы (пусто —
-/// «Видео\IptvPlayer»). Открывается из меню шестерёнки.
-/// </summary>
+
 public sealed partial class RecordingSettingsDialog : UserControl
 {
     private readonly MainPageViewModel _viewModel;
@@ -125,7 +121,7 @@ public sealed partial class RecordingSettingsDialog : UserControl
         SaveButton.Content = L.T("Sokhranit_Lbl");
     }
 
-    /// <summary>FolderPicker требует HWND-владельца (InitializeWithWindow).</summary>
+
     private async void BrowseButton_Click(object sender, RoutedEventArgs e)
     {
         var picker = new Windows.Storage.Pickers.FolderPicker();

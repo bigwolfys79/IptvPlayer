@@ -24,10 +24,7 @@ using Windows.UI.Core;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Главная страница содержимого, отображаемая в окне приложения.
-/// Содержит список каналов, EPG и элементы управления медиаплеером.
-/// </summary>
+
 public sealed partial class MainPage : Page
 {
     private static string AllGroupsOption => L.T("Vse_Gruppy");
@@ -38,10 +35,7 @@ public sealed partial class MainPage : Page
     private readonly ISettingsService _settingsService;
     private readonly IPlaylistCacheService _playlistCacheService;
 
-    /// <summary>
-    /// Активный плейлист (AppSettings.Playlists по ActivePlaylistId) — каналы
-    /// в списке принадлежат ему; переключение — SwitchPlaylistAsync.
-    /// </summary>
+
     private PlaylistSource? _activePlaylist;
 
     private System.Threading.CancellationTokenSource? _playlistLoadCts;
@@ -327,6 +321,10 @@ public sealed partial class MainPage : Page
 
         InitializeComponent();
 
+        RootGrid.SizeChanged += OnRootLayoutSizeChanged;
+        WindowedVideoOverlay.SizeChanged += OnRootLayoutSizeChanged;
+        FullScreenBottomBar.SizeChanged += OnRootLayoutSizeChanged;
+
         IsTabStop = true;
         Loaded += (s, e) => Focus(FocusState.Programmatic);
         Loaded += async (s, e) =>
@@ -486,10 +484,7 @@ public sealed partial class MainPage : Page
         };
     }
 
-    /// <summary>
-    /// Вызывается при навигации на эту страницу. Принимает плейлист из Hub Page
-    /// или данные для VOD resume (плейлист + название канала + индекс серии).
-    /// </summary>
+
     protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
@@ -530,13 +525,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Продолжение записей, прерванных закрытием приложения: для каждой
-    /// незаконченной (EndTime в будущем) и находимой в текущем плейлисте —
-    /// один диалог «Продолжить запись?». Продолжение пишет ffmpeg в НОВЫЙ
-    /// файл «… (продолжение)» на оставшееся время, со свежим URL потока
-    /// (старый к моменту запуска истёк по подписи).
-    /// </summary>
+
     private async Task OfferInterruptedRecordingsAsync()
     {
         try
@@ -612,6 +601,7 @@ public sealed partial class MainPage : Page
         }
     }
 
+    // Initialize page on load
     private async Task InitializeAsync()
     {
 
@@ -819,18 +809,10 @@ public sealed partial class MainPage : Page
         ViewModel.ApplyReminderFlags();
     }
 
-    /// <summary>
-    /// Скачанный установщик, ожидающий окончания записей: установка не
-    /// запускается, пока идёт хотя бы одна запись (прерывать нельзя).
-    /// </summary>
+
     private string? _pendingUpdateSetupPath;
 
-    /// <summary>
-    /// Планирует фоновую проверку обновлений: через 2 минуты после старта,
-    /// не чаще раза в сутки (LastUpdateCheckUtc), только если включена в
-    /// настройках. Ошибки сети/скачивания полностью тихие — старая версия
-    /// продолжает работать, проверка повторится при следующем запуске.
-    /// </summary>
+
     private void ScheduleAutoUpdateCheck()
     {
         if (!ViewModel.AppSettings.AutoUpdateEnabled)
@@ -878,11 +860,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Диалог «установить сейчас?»: согласие → тихая установка (или откладывание,
-    /// если идут записи — установится автоматически после последней), отказ —
-    /// ничего не делаем, установщик остаётся во временной папке.
-    /// </summary>
+
     private async Task OfferUpdateInstallAsync(Version version, string setupPath)
     {
         var dialog = new ThemedContentDialog
@@ -942,11 +920,7 @@ public sealed partial class MainPage : Page
         DispatcherQueue.TryEnqueue(() => _updateService.RunInstallerAndExit(setupPath));
     }
 
-    /// <summary>
-    /// Вид списка каналов/каталога: строки ↔ сетка постеров (настройка
-    /// ChannelListPosterView). Скрывает один контейнер и показывает другой;
-    /// иконка кнопки отражает текущий вид.
-    /// </summary>
+
     private void ApplyChannelViewMode()
     {
 
@@ -970,11 +944,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Применяет тему к корневому элементу окна: Light/Dark/Default (системная).
-    /// RequestedTheme перекрашивает все ThemeResource-ки — на лету, без
-    /// перезапуска. Вызывается на старте и сразу при смене в настройках.
-    /// </summary>
+
     private void ApplyTheme(string theme)
     {
         var elementTheme = theme switch
@@ -994,16 +964,7 @@ public sealed partial class MainPage : Page
         UpdateArchivePauseButton();
     }
 
-    /// <summary>
-    /// Переводит статичные элементы страницы (они имеют x:Name) на текущий
-    /// язык (Services/L). Строки, собираемые в коде (диалоги, сообщения),
-    /// переводятся в момент построения — диалог настроек пересобирается при
-    /// каждом открытии, поэтому подхватывает язык сразу.
-    /// </summary>
-    /// <summary>
-    /// Начальное состояние динамических элементов плеера/оверлеев (язык
-    /// фиксируется при старте через x:Uid + MRT, тексты здесь не ставятся).
-    /// </summary>
+
     private void ApplyInitialState()
     {
         ViewModel.UpdateChannelCountText();
@@ -1061,13 +1022,6 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync();
     }
 
-    /// <summary>
-    /// Показывает/прячет кнопку паузы архива в полноэкранном оверлее и
-    /// переключает её значок (пауза ↔ воспроизведение) по текущему состоянию.
-    /// Вызывается из UpdateArchiveBanner при каждой смене состояния плеера и
-    /// непосредственно после переключения паузы.
-    /// </summary>
-
 
     private Task PlayLiveAsync(ChannelViewModel channel) => ViewModel.PlayChannelAsync(channel, interactive: false);
 
@@ -1081,17 +1035,10 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Защита от петли: OneWay-привязка SelectedItem толкает выделение в
-    /// контролы, их SelectionChanged не должен писать обратно то же значение.
-    /// </summary>
+
     private bool _syncingListSelection;
 
-    /// <summary>
-    /// Выбор в списке каналов/сетке постеров → SelectedChannel. Замена TwoWay
-    /// привязки: TwoWay перезаписывал SelectedChannel значением null при очистке ItemsSource
-    /// скрытого вида (переключение список↔постеры) — видео исчезало.
-    /// </summary>
+
     private void ChannelList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_syncingListSelection)

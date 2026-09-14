@@ -10,16 +10,8 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// Создание плеера для IPTV-потока.
-    ///
-    /// Демуксинг и декодирование по умолчанию идут через FFmpegInteropX:
-    /// системный HLS-стек Windows не поднимает HEVC-дорожку из MPEG-TS
-    /// (каналы 4K играют только звук), а AC-3 начиная с Windows 11 24H2
-    /// вообще убран из системы. FFmpeg разбирает TS и декодирует всё сам,
-    /// рендер при этом остаётся штатный — MediaPlayerElement. Если FFmpeg
-    /// не смог открыться (нет dll и т.п.) — откат на системный источник.
-    /// </summary>
+
+
     public class StreamService : IStreamService
     {
 
@@ -28,17 +20,10 @@ namespace IptvPlayer.Services
         private readonly ILogger<StreamService> _logger;
         private readonly LocalStreamProxy _proxy;
 
-        /// <summary>
-        /// Скорость последнего открытого потока по счётчику байт прокси
-        /// (бит/с) — null, если диагностический прокси выключен.
-        /// </summary>
+
         public double? ProxyMeasuredBitrate => _proxy.Sample();
 
-        /// <summary>
-        /// Снимок параметров последнего открытого потока для оверлея
-        /// статистики (Ctrl+J) — кодеки, разрешение, выбранный декодер,
-        /// буфер. Обновляется в CreatePlayerAsync.
-        /// </summary>
+
         public PlaybackDiagnostics? CurrentDiagnostics { get; private set; }
 
         public StreamService(ILogger<StreamService> logger, LocalStreamProxy proxy)
@@ -68,13 +53,7 @@ namespace IptvPlayer.Services
             return baseFilter;
         }
 
-        /// <summary>
-        /// Применяет нормализацию громкости и усиление к уже играющему
-        /// плееру (переключение режима в настройках). Для плееров без FFmpeg-
-        /// источника (системный откат) — тихо ничего не делает.
-        /// allowLoudness=false (живой эфир) — Loudness подменяется Dynamic:
-        /// буфер loudnorm ~3 с на эфире даёт отставание звука от видео.
-        /// </summary>
+
         public void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false, int boostPercent = 100)
         {
             if (player is null || !LiveSources.TryGetValue(player, out var source))
@@ -105,12 +84,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Применяет пресет улучшения картинки к уже играющему плееру
-        /// (кнопка «Качество картинки»). Живая смена видео-фильтров — тот же
-        /// механизм, что у аудио: граф FFmpeg перестраивается без разрыва
-        /// потока. Для плееров без FFmpeg-источника ничего не делает.
-        /// </summary>
+
         public void ApplyVideoFilters(MediaPlayer? player, string? mode)
         {
             if (player is null || !LiveSources.TryGetValue(player, out var source))
@@ -147,9 +121,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Видео-фильтры, действующие на последнем открытом потоке (для Ctrl+J).
-        /// </summary>
+
         public string? CurrentVideoFilter { get; private set; }
 
         public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig streamConfig, bool isVod = false)
@@ -271,12 +243,7 @@ namespace IptvPlayer.Services
             return player;
         }
 
-        /// <summary>
-        /// Снимок параметров для оверлея статистики: берётся один раз при
-        /// открытии потока, чтобы исключить обращения к активному FFmpegMediaSource
-        /// (его время жизни привязано к плееру). CurrentVideoStream может
-        /// быть ещё не выбран — тогда берётся первая дорожка.
-        /// </summary>
+
         private static PlaybackDiagnostics BuildDiagnostics(
             FFmpegMediaSource source, MediaSourceConfig config, string? audioFilter = null)
         {
@@ -313,10 +280,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Диагностика URL потока: проверяет доступность и возвращает
-        /// человекочитаемое описание проблемы.
-        /// </summary>
+
         public async Task<string> DiagnoseStreamUrl(string? streamUrl)
         {
             if (string.IsNullOrWhiteSpace(streamUrl))

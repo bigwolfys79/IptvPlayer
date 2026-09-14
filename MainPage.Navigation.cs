@@ -12,14 +12,12 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Логика навигации и переключения плейлистов.
-/// </summary>
+
 public sealed partial class MainPage : Page
 {
-    /// <summary>
-    /// Кнопка "Назад" в Hub Page: возврат на главный экран.
-    /// </summary>
+
+
+    // Back to hub screen
     private void BackToHubButton_Click(object sender, RoutedEventArgs e)
     {
         if (Frame.CanGoBack)
@@ -65,13 +63,8 @@ public sealed partial class MainPage : Page
         ApplyChannelViewMode();
     }
 
-    /// <summary>
-    /// Наполняет подменю «Сменить плейлист» в меню настроек: активный отмечен
-    /// галочкой (ToggleMenuFlyoutItem в стиле остальных пунктов), клик по
-    /// пункту переключает плейлист. Подменю прячется, когда плейлист один
-    /// (переключать нечего). Вызывается при старте и после изменения списка
-    /// плейлистов в диалоге настроек.
-    /// </summary>
+
+    // Rebuild playlist switch submenu
     private void UpdatePlaylistMenu()
     {
         var playlists = ViewModel.AppSettings.Playlists;
@@ -100,13 +93,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Переключение активного плейлиста: останавливает воспроизведение, чистит
-    /// каналы предыдущего плейлиста (репозиторий + список + EPG) и наполняет
-    /// их каналами нового — той же логикой кэша/обновления, что и при старте.
-    /// Автопродолжение последнего канала не запускается: переключение —
-    /// осознанное действие, видео включится кликом по каналу.
-    /// </summary>
+
     private async Task SwitchPlaylistAsync(PlaylistSource playlist)
     {
         if (_activePlaylist?.Id == playlist.Id)
@@ -117,13 +104,12 @@ public sealed partial class MainPage : Page
         await ApplyPlaylistAsync(playlist);
     }
 
-    /// <summary>
-    /// Перезагружает активный плейлист без переключения (например, после
-    /// восстановления удалённых каналов): повторяет полную цепочку загрузки.
-    /// </summary>
+
+    // Reload active playlist
     public Task ReloadActivePlaylistAsync() =>
         _activePlaylist is { } playlist ? ApplyPlaylistAsync(playlist) : Task.CompletedTask;
 
+    // Load channels of the given playlist
     private async Task ApplyPlaylistAsync(PlaylistSource playlist)
     {
         try
@@ -203,11 +189,8 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Автопродолжение последнего канала при запуске: то же, что клик по
-    /// каналу, но без блокировки InitializeAsync и без обновления
-    /// LastWatchedChannel (он и есть этот канал).
-    /// </summary>
+
+    // Auto-resume last channel on startup
     private async Task ContinueWatchingAsync(ChannelViewModel channel)
     {
         try
@@ -226,10 +209,8 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// VOD resume из Hub Page: находим канал по названию, разрешаем
-    /// эпизоды portal-сервиса и запускаем нужный эпизод без диалога.
-    /// </summary>
+
+    // Resume VOD from hub screen
     private async Task ResumeVodFromHubAsync(string title, int episodeIndex)
     {
         try
@@ -302,17 +283,13 @@ public sealed partial class MainPage : Page
         }
     }
 
-    /// <summary>
-    /// Прокручивает список каналов к восстановленному при старте каналу.
-    /// </summary>
+
     private async Task ScrollSelectedChannelIntoViewAsync()
     {
         await ScrollChannelIntoViewAsync(ChannelsListView);
     }
 
-    /// <summary>
-    /// Прокрутка полноэкранного списка каналов к текущему.
-    /// </summary>
+
     private async Task ScrollOverlayChannelIntoViewAsync()
     {
         var channel = ViewModel.SelectedChannel;
@@ -340,10 +317,7 @@ public sealed partial class MainPage : Page
         OverlayChannelsListView.ScrollIntoView(channel, ScrollIntoViewAlignment.Leading);
     }
 
-    /// <summary>
-    /// Прокрутка списка каналов к выбранному — как оконного, так и полноэкранного
-    /// оверлея.
-    /// </summary>
+
     private async Task ScrollChannelIntoViewAsync(ListView list)
     {
         if (ViewModel.SelectedChannel == null)

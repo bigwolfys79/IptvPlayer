@@ -12,14 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Скачивает и парсит один XMLTV-источник. Формат programme@start/@stop —
-/// "yyyyMMddHHmmss zzz" (например "20260814120000 +0300"), опционально без
-/// пробела перед смещением или вовсе без смещения (тогда считаем локальным).
-///
-/// Кэш — дисковый (EpgCacheStore, MemoryPack+Brotli) с TTL внутри
-/// обёртки CachedXmlTv: TTL проверяется здесь, а не в самом хранилище.
-/// </summary>
+
 public class XmlTvService : IXmlTvService
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(3);
@@ -40,17 +33,7 @@ public class XmlTvService : IXmlTvService
         _httpClient = httpClient ?? CreateDefaultHttpClient();
     }
 
-    /// <summary>
-    /// Раньше HttpClient создавался как "new HttpClient()" совсем без
-    /// заголовков. Часть раздатчиков XMLTV (в т.ч. epg.one) отдают 403 или
-    /// пустой ответ на запросы без User-Agent, приняв их за бот/скрипт —
-    /// такой запрос падал на EnsureSuccessStatusCode() внутри DownloadAsync,
-    /// EPGService ловил исключение на уровне источника и просто пропускал
-    /// его (см. EPGService.EnsureEpgLoadedAsync), так что EPG по этому
-    /// источнику молча оставался пустым. Плюс дефолтный Timeout в 100 секунд
-    /// может не хватать на большие фиды (например russia3.xml на
-    /// медленном канале) — увеличиваем его здесь же.
-    /// </summary>
+
     private static HttpClient CreateDefaultHttpClient()
     {
         var client = new HttpClient
@@ -87,12 +70,7 @@ public class XmlTvService : IXmlTvService
             };
         }
 
-        // Протухший кэш при разрешённом обновлении отдаём сразу
-        // (stale-while-revalidate): окно парсинга — дни назад + дни вперёд, так
-        // что вчерашний кэш всё ещё покрывает текущие часы, и список каналов
-        // получает программу передач без ожидания перекачки. Без этого при
-        // наступившем сроке обновления EPG весь запуск висел бы без программы
-        // передач, а сбой сети оставлял EPG пустым до ручного обновления.
+
         if (cached != null && maxAge is { } limit && limit != TimeSpan.MaxValue)
         {
             var staleSavedAt = GetSavedAtUtc(cached);
@@ -122,12 +100,7 @@ public class XmlTvService : IXmlTvService
         return parsed;
     }
 
-    /// <summary>
-    /// Ключи источников с идущей фоновой перекачкой: за сессию LoadAsync для
-    /// одного источника вызывается несколько раз (повторные загрузки EPG,
-    /// переключения плейлистов), без защиты каждая запускала бы своё
-    /// параллельное скачивание большого XMLTV.
-    /// </summary>
+
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _backgroundRefreshes = new(StringComparer.Ordinal);
 
     private void StartBackgroundRefresh(EPGSource source, string cacheKey, int daysBack)
@@ -137,8 +110,7 @@ public class XmlTvService : IXmlTvService
             return;
         }
 
-        // Свой CTS: токен вызывающего (_loadCts.Token в EPGService) пересоздаётся
-        // и диспонится при refresh-циклах — удерживать его в фоновой задаче нельзя.
+
         _ = Task.Run(async () =>
         {
             var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(5));
@@ -174,12 +146,7 @@ public class XmlTvService : IXmlTvService
         });
     }
 
-    /// <summary>
-    /// Проверка источника при добавлении в диалоге «Плейлисты»: читает начало
-    /// ответа (до 64 КБ), распаковывает gzip по магическим байтам (та же
-    /// логика, что в DownloadAsync) и ищет признаки XMLTV в начале документа.
-    /// Возвращает null при успехе или человекочитаемый текст ошибки.
-    /// </summary>
+
     public async Task<string?> ValidateEpgSourceAsync(string url, CancellationToken ct = default)
     {
         try
@@ -290,11 +257,7 @@ public class XmlTvService : IXmlTvService
         return decompressed;
     }
 
-    /// <summary>
-    /// Момент сохранения кэш-записи. Записи, созданные до появления поля
-    /// SavedAtUtc, хранят только ExpiresAt (UtcNow + 3ч на момент записи) —
-    /// для них время сохранения восстановимо как ExpiresAt - CacheTtl.
-    /// </summary>
+
     private static DateTime GetSavedAtUtc(CachedXmlTv cached)
     {
         if (cached.SavedAtUtc != default)

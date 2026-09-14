@@ -8,22 +8,12 @@ using IptvPlayer.Models;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Перенос настроек между машинами: экспорт в файл, защищённый паролем
-/// (AES-GCM, ключ выводится PBKDF2-SHA256 из пароля и случайной соли), и
-/// импорт с выбором режима — заменить всё или добавить только плейлисты.
-///
-/// Нужен потому, что секреты в settings.json с v1.12.1 зашифрованы DPAPI и
-/// копированием файла не переносятся: экспорт берёт уже расшифрованные
-/// настройки из памяти и кладёт их в файл с собственной (парольной)
-/// защитой. Машинно-зависимые поля (позиции просмотра, расписание записей,
-/// состояние таймеров/разблокировок) не переносятся.
-/// </summary>
+
 public class SettingsTransferService
 {
     private const int Pbkdf2Iterations = 100_000;
 
-    /// <summary>Поля-одиночки, не имеющие смысла на другой машине.</summary>
+
     private static void StripMachineSpecific(AppSettings s)
     {
         s.ScheduledRecordings.Clear();
@@ -37,12 +27,7 @@ public class SettingsTransferService
         s.RecordingsFolder = null;
     }
 
-    /// <summary>
-    /// Выгружает настройки в файл: JSON-снимок без машинно-зависимых полей,
-    /// сжатый GZip и зашифрованный AES-GCM на ключе из пароля. Непрозрачный
-    /// формат файла не скрывает его содержимое — защиту обеспечивает только
-    /// пароль, о чём диалог предупреждает при экспорте.
-    /// </summary>
+
     public async Task ExportAsync(AppSettings settings, string path, string password)
     {
 
@@ -77,10 +62,7 @@ public class SettingsTransferService
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(envelope));
     }
 
-    /// <summary>
-    /// Читает файл экспорта. Бросает исключение при неверном пароле или
-    /// повреждённом файле — вызывающий код показывает сообщение.
-    /// </summary>
+
     public async Task<AppSettings> ImportAsync(string path, string password)
     {
         var envelope = JsonSerializer.Deserialize<ExportEnvelope>(
@@ -114,23 +96,14 @@ public class SettingsTransferService
             ?? throw new InvalidDataException("Файл экспорта повреждён.");
     }
 
-    /// <summary>
-    /// Режим импорта: заменить всё (плейлисты, EPG, предпочтения — кроме
-    /// машинно-зависимого) или добавить только плейлисты к существующим.
-    /// </summary>
+
     public enum ImportMode
     {
         ReplaceAll,
         PlaylistsOnly
     }
 
-    /// <summary>
-    /// Применяет импортированные настройки к текущим: при ReplaceAll живые
-    /// настройки становятся копией импорта (машинно-зависимое сохраняется
-    /// от текущих), при PlaylistsOnly — плейлисты из файла добавляются с
-    /// новыми Id и без активации. Возвращает число добавленных плейлистов
-    /// (для ReplaceAll — общее число плейлистов после замены).
-    /// </summary>
+
     public static int Apply(AppSettings current, AppSettings imported, ImportMode mode)
     {
         if (mode == ImportMode.ReplaceAll)
@@ -196,7 +169,7 @@ public class SettingsTransferService
         return added;
     }
 
-    /// <summary>Поверхностное копирование всех полей AppSettings.</summary>
+
     private static void CopyAll(AppSettings from, AppSettings to)
     {
         var replaced = JsonSerializer.Deserialize<AppSettings>(

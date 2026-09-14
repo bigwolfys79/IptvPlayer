@@ -3,13 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Перехват сворачивания окна через Win32 subclass (SetWindowSubclass):
-/// OverlappedPresenter в используемой версии Windows App SDK не имеет
-/// события изменения состояния, поэтому ловим WM_SIZE с SIZE_MINIMIZED
-/// в оконной процедуре. Экземпляр должен жить, пока жив окно, — иначе
-/// delegate subclass'а соберётся GC и приложение упадёт в wndproc.
-/// </summary>
+
 public sealed class MinimizeToTrayHook : IDisposable
 {
     private const uint WM_SIZE = 0x0005;

@@ -11,14 +11,8 @@ using IptvPlayer.ViewModels;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// Парсер M3U/M3U8 плейлистов (расширенный формат с метаданными #EXTINF)
-    /// в список каналов приложения.
-    ///
-    /// Логика разбора портирована из проверенной реализации на другой платформе
-    /// (WinPlay/WPF) и адаптирована под интерфейс IM3UParserService/ChannelViewModel
-    /// этого проекта.
-    /// </summary>
+
+
     public class M3UParserService : IM3UParserService
     {
         private static readonly HttpClient _httpClient = CreateHttpClient();
@@ -55,9 +49,7 @@ namespace IptvPlayer.Services
             return client;
         }
 
-        /// <summary>
-        /// Загружает и разбирает плейлист по URL (http/https).
-        /// </summary>
+
         public async Task<List<ChannelViewModel>> ParseFromUrlAsync(string playlistUrl, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(playlistUrl))
@@ -114,9 +106,7 @@ namespace IptvPlayer.Services
             return channels;
         }
 
-        /// <summary>
-        /// Разбирает плейлист из локального файла (с автоопределением кодировки).
-        /// </summary>
+
         public async Task<List<ChannelViewModel>> ParseFromFileAsync(string filePath)
         {
             if (!File.Exists(filePath))
@@ -129,9 +119,7 @@ namespace IptvPlayer.Services
             return await Task.Run(() => ParseContent(content));
         }
 
-        /// <summary>
-        /// Разбирает "сырой" текст M3U/M3U8 в список каналов.
-        /// </summary>
+
         public List<ChannelViewModel> ParseContent(string content)
         {
             var channels = new List<ChannelViewModel>();
@@ -250,7 +238,7 @@ namespace IptvPlayer.Services
             };
         }
 
-        /// <summary>Достаёт значение атрибута вида key="value" (или key=value без кавычек).</summary>
+
         private static string? GetAttribute(string line, string key)
         {
             if (string.IsNullOrEmpty(line))
@@ -268,13 +256,7 @@ namespace IptvPlayer.Services
             return m.Success ? m.Groups["v"].Value : null;
         }
 
-        /// <summary>
-        /// Декодирование байт с определением кодировки (UTF-8, UTF-8 BOM, Windows-1251).
-        /// ВАЖНО: для распознавания Windows-1251 в проект должен быть подключен пакет
-        /// NuGet "System.Text.Encoding.CodePages" — без него ветка 1251 тихо откатится
-        /// на Encoding.Default (UTF-8) и кириллица в именах каналов может отображаться
-        /// некорректно (сам список каналов при этом всё равно будет найден).
-        /// </summary>
+
         private static string Decode(byte[] bytes)
         {
             if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)

@@ -4,16 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Нормализация имён каналов для сопоставления M3U ↔ XMLTV: убирает шум,
-/// из-за которого одно и то же название пишется по-разному у провайдера
-/// плейлиста и в XMLTV: регистр, "ё"/"е", суффиксы HD/FHD/4K, таймшифт
-/// "+2"/"+4", региональные уточнения в скобках, хвостовые коды стран и
-/// маркеры потока (orig/50/60), лишнюю пунктуацию/пробелы.
-/// "РБК HD" и "РБК", "НТВ +2" и "НТВ", "France 24 FR" и "France 24"
-/// после нормализации дают одну и ту же строку "рбк"/"нтв"/"france 24".
-/// Вынесено из EPGService (частично покрывается unit-тестами).
-/// </summary>
+
 public static class EpgNameNormalizer
 {
 
@@ -59,27 +50,15 @@ public static class EpgNameNormalizer
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Cache = new();
 
-    /// <summary>Базовая нормализация: весь шум убран, включая таймшифт и скобки.</summary>
+
     internal static string Normalize(string? name)
         => NormalizeCached('n', name, false, false);
 
-    /// <summary>
-    /// Как Normalize, но таймшифт-суффикс "+2"/"+4" в конце
-    /// СОХРАНЯЕТСЯ ("первый канал 2" != "первый канал"). Нужен для строгого
-    /// ключа таблицы epg-name-map: провайдер выдаёт таймшифт-версиям
-    /// собственные tvg-id, и строгий ключ даёт каналу его родное
-    /// расписание, а не базовое со сдвигом.
-    /// </summary>
+
     internal static string NormalizePreservingTimeshift(string? name)
         => NormalizeCached('t', name, false, true);
 
-    /// <summary>
-    /// Как Normalize, но НЕ трогает содержимое скобок — только
-    /// убирает суффикс качества и служебный ".ru"/".ua". Нужен, чтобы
-    /// отличить "разница только в качестве" (HD/4K/SD) от "разница ещё в
-    /// чём-то" (например регион в скобках) ДО того, как скобки стёрты —
-    /// см. EpgSourceMerger.BuildNameIndex.
-    /// </summary>
+
     internal static string NormalizeKeepQualifiers(string? name)
         => NormalizeCached('q', name, true, false);
 
@@ -129,13 +108,7 @@ public static class EpgNameNormalizer
         return StripTrailingMarkers(s);
     }
 
-    /// <summary>
-    /// Срезает с конца уже нормализованного названия хвостовые токены,
-    /// которые не являются частью имени канала: коды стран (см.
-    /// TrailingCountryCodes) и маркеры варианта потока (см.
-    /// TrailingStreamMarkers). Режем только пока перед обрезаемым токеном
-    /// есть ещё хотя бы одно слово — "360" или "BBC" дальше резать нельзя.
-    /// </summary>
+
     private static string StripTrailingMarkers(string normalized)
     {
         if (string.IsNullOrEmpty(normalized))
@@ -163,7 +136,7 @@ public static class EpgNameNormalizer
         return string.Join(" ", tokens, 0, keep);
     }
 
-    /// <summary>Приоритет качества потока в названии (0 — не указано).</summary>
+
     internal static int GetQualityRank(string rawName)
     {
         var best = 0;

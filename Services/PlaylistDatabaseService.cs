@@ -14,30 +14,26 @@ public interface IPlaylistCacheService
     Task<PlaylistCache?> LoadAsync(int playlistId);
     Task SaveAsync(int playlistId, PlaylistCache cache);
 
-    /// <summary>Удаляет кэш плейлиста — при удалении плейлиста из настроек.</summary>
+
     Task DeleteAsync(int playlistId);
 
-    /// <summary>Все выученные соответствия «канал XMLTV → канал плейлиста».</summary>
+
     Task<List<PlaylistDatabaseService.EpgAlias>> GetEpgAliasesAsync();
 
-    /// <summary>Перезаписывает пакет выученных соответствий (по ключу имени XMLTV).</summary>
+
     Task UpsertEpgAliasesAsync(IReadOnlyList<PlaylistDatabaseService.EpgAlias> aliases);
 
-    /// <summary>Пользовательские правки каналов плейлиста (перенос группы/удаление).</summary>
+
     Task<List<PlaylistDatabaseService.ChannelOverride>> GetChannelOverridesAsync(int playlistId);
 
-    /// <summary>Добавляет/обновляет правку канала (ключ — playlist_id + stream_url).</summary>
+
     Task UpsertChannelOverrideAsync(PlaylistDatabaseService.ChannelOverride overrideEntry);
 
-    /// <summary>Удаляет правки по stream_url — восстановление каналов после очистки.</summary>
+
     Task DeleteChannelOverridesAsync(int playlistId, IReadOnlyList<string> streamUrls);
 }
 
-/// <summary>
-/// Хранит кэш разобранного плейлиста в SQLite (iptvplayer_cache.db).
-/// Заменяет прежнее JSON-хранилище для производительности:
-/// пакетная вставка, SQL-фильтры, нет десериализации всего файла при запуске.
-/// </summary>
+
 public class PlaylistDatabaseService : IPlaylistCacheService
 {
     private static readonly string CacheDirectory = Path.Combine(
@@ -121,6 +117,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         }
     }
 
+    // Load playlist cache from SQLite
     public async Task<PlaylistCache?> LoadAsync(int playlistId)
     {
         try
@@ -190,6 +187,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         }
     }
 
+    // Save playlist cache to SQLite
     public async Task SaveAsync(int playlistId, PlaylistCache cache)
     {
         try
@@ -256,6 +254,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         }
     }
 
+    // Delete playlist cache
     public Task DeleteAsync(int playlistId)
     {
         try
@@ -275,9 +274,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Разовая миграция: читает старый JSON-файл, записывает в SQLite, удаляет JSON.
-    /// </summary>
+
     private async Task<PlaylistCache?> TryMigrateFromJsonAsync(int playlistId, SqliteConnection connection)
     {
         var path = playlistId == 1 && !File.Exists(LegacyCacheFilePath)
@@ -357,12 +354,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         }
     }
 
-    /// <summary>
-    /// Убирает поле "key" из кэшируемого запроса портала: при отправке запроса
-    /// VideoPortalService подставляет актуальный ключ из source.PortalKey, так
-    /// что хранить его в БД не нужно (и небезопасно — БД пишется открытым
-    /// текстом). При ошибке разбора возвращается исходная строка.
-    /// </summary>
+
     private static string? StripPortalKey(string? portalRequest)
     {
         if (string.IsNullOrEmpty(portalRequest))
@@ -390,15 +382,10 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         }
     }
 
-    /// <summary>
-    /// Выученное соответствие «канал XMLTV → канал плейлиста»: ключ — мягко
-    /// нормализованное display-name канала XMLTV (EpgNameNormalizer.Normalize),
-    /// значение — id канала в XMLTV и StreamUrl нашего канала. Пишется только
-    /// для однозначных совпадений при обновлении EPG (см. EPGService),
-    /// применяется в MatchChannel после tvg-id и до таблицы имя-&gt;tvg-id.
-    /// </summary>
+
     public sealed record EpgAlias(string Key, string XmlTvId, string StreamUrl);
 
+    // Load learned EPG aliases
     public async Task<List<EpgAlias>> GetEpgAliasesAsync()
     {
         var result = new List<EpgAlias>();
@@ -423,10 +410,8 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         return result;
     }
 
-    /// <summary>
-    /// Пакетно перезаписывает псевдонимы (INSERT OR REPLACE): повторно
-    /// выученное имя канала XMLTV указывает на новый канал плейлиста.
-    /// </summary>
+
+    // Save learned EPG aliases
     public async Task UpsertEpgAliasesAsync(IReadOnlyList<EpgAlias> aliases)
     {
         if (aliases.Count == 0)
@@ -469,12 +454,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         }
     }
 
-    /// <summary>
-    /// Пользовательская правка канала поверх плейлиста: перенос в другую группу
-    /// (NewGroup) и/или удаление из списка (IsDeleted). Ключ — stream_url
-    /// (Id канала нестабилен и пересоздаётся при каждом парсинге); tvg_id и имя —
-    /// снимок для fallback-матчинга при смене провайдером адреса потока.
-    /// </summary>
+
     public sealed record ChannelOverride(
         int PlaylistId,
         string StreamUrl,
@@ -485,6 +465,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         bool IsDeleted,
         DateTime CreatedAtUtc);
 
+    // Load channel move/remove overrides
     public async Task<List<ChannelOverride>> GetChannelOverridesAsync(int playlistId)
     {
         var result = new List<ChannelOverride>();
@@ -521,6 +502,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         return result;
     }
 
+    // Save single channel override
     public async Task UpsertChannelOverrideAsync(ChannelOverride overrideEntry)
     {
         try
@@ -549,6 +531,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
         }
     }
 
+    // Delete channel overrides by URL
     public async Task DeleteChannelOverridesAsync(int playlistId, IReadOnlyList<string> streamUrls)
     {
         if (streamUrls.Count == 0)

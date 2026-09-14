@@ -4,17 +4,7 @@ using System.Text;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Скрытие курсора НАД ВИДЕО в fullscreen. Курсором окна видеомоста
-/// (Microsoft.UI.Content.DesktopChildSiteBridge) из нашего потока управлять
-/// не получается никак (SetCursor/WM_SETCURSOR/класс окна — сайт рисует сам),
-/// поэтому обход: пока курсор должен быть спрятан, окно моста делается
-/// прозрачным для МЫШИ (WS_EX_TRANSPARENT) — hit-test проваливается к
-/// XAML-подложке под видео, где работает ProtectedCursor. Видео продолжает
-/// рисоваться, меняется только маршрутизация указателя.
-/// События движения до XAML при этом могут не доходить, поэтому пробуждение
-/// (движение мыши) отслеживаем опросом GetCursorPos каждые 16 мс.
-/// </summary>
+
 public sealed class CursorHider : IDisposable
 {
     private const string VideoBridgeClass = "Microsoft.UI.Content.DesktopChildSiteBridge";
@@ -121,7 +111,7 @@ public sealed class CursorHider : IDisposable
 
     private static volatile bool _hidden;
 
-    /// <summary>Спрятать курсор над видео (idempotent).</summary>
+
     public void Hide()
     {
         _hidden = true;
@@ -156,17 +146,13 @@ public sealed class CursorHider : IDisposable
             _bridges.Count);
     }
 
-    /// <summary>Вернуть обычную мышь над видео (idempotent).</summary>
+
     public void Show()
     {
         Show(restoreMouse: true);
     }
 
-    /// <summary>
-    /// Показ без восстановления мыши: остановить скрытие курсора, но окно
-    /// моста оставить прозрачным (для окна двойного клика — оба клика должны
-    /// попасть в XAML-подложку, иначе DoubleTapped не собирается).
-    /// </summary>
+
     public void Show(bool restoreMouse)
     {
         _hidden = false;
@@ -218,7 +204,7 @@ public sealed class CursorHider : IDisposable
         return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
     }
 
-    /// <summary>Снять прозрачность окна моста (после окна двойного клика).</summary>
+
     public void RestoreMouse()
     {
         foreach (var bridge in _bridges)

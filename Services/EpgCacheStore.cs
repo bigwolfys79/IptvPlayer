@@ -9,15 +9,7 @@ using Serilog;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Быстрый дисковый кэш распарсенного XMLTV: MemoryPack (бинарная
-/// сериализация кодогенерацией, без рефлексии) + Brotli (встроен в .NET,
-/// отдельных нативных dll нет). Пришёл на смену прежнему JSON-кэшу:
-/// 400k+ программ читаются за доли секунды вместо секунд, файл на диске
-/// в разы меньше. Файлы лежат в %LocalAppData%\IptvPlayer\cache,
-/// ClearAll() (кнопка "Обновить EPG") удаляет их все.
-/// Вся работа с диском — из пула потоков: UI-поток не блокируется.
-/// </summary>
+
 public static class EpgCacheStore
 {
     private static readonly string CacheDir = Path.Combine(
@@ -38,14 +30,7 @@ public static class EpgCacheStore
         }
     }
 
-    /// <summary>
-    /// Удаляет кэш-файлы осиротевших источников: после правки списка EPG
-    /// источников старые .mpck.br (десятки мегабайт каждый) иначе остаются
-    /// на диске навсегда. Вызывается при загрузке EPG; ключи — те же, что
-    /// в ReadAsync/WriteAsync (в XmlTvService это "xmltv:{url}:{daysBack}").
-    /// Заодно подчищает легаси *.json от давно удалённого JSON-кэша EPG;
-    /// других .json в этом каталоге нет.
-    /// </summary>
+
     public static void CleanupOrphans(IEnumerable<string> liveKeys)
     {
         try
@@ -82,10 +67,7 @@ public static class EpgCacheStore
         }
     }
 
-    /// <summary>
-    /// Удаляет все .mpck.br файлы — кнопка "Обновить EPG" должна заставить
-    /// источники перекачаться по сети, а не взять их с диска.
-    /// </summary>
+
     public static void ClearAll()
     {
         try
@@ -103,11 +85,7 @@ public static class EpgCacheStore
         }
     }
 
-    /// <summary>
-    /// Ключ кэша слитого EPG для набора источников (URL в порядке
-    /// приоритета слияния). Публичный, чтобы EPGService считал его и для
-    /// чтения/записи, и для списка живых ключей в CleanupOrphans.
-    /// </summary>
+
     public static string MergedKeyFor(IEnumerable<string> sourceUrls)
     {
         var joined = string.Join("|", sourceUrls);
@@ -115,10 +93,7 @@ public static class EpgCacheStore
         return $"epgmerged:{hash}";
     }
 
-    /// <summary>
-    /// Читает произвольную запись кэша (например, MergedEpgCache).
-    /// null — промах (нет файла/битый/ошибка).
-    /// </summary>
+
     public static async Task<T?> ReadRecordAsync<T>(string key) where T : class
     {
         return await Task.Run(() =>
@@ -146,10 +121,7 @@ public static class EpgCacheStore
         }).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Записывает произвольную запись кэша. Ошибки проглатываются:
-    /// отсутствие места на диске не должно ломать воспроизведение.
-    /// </summary>
+
     public static Task WriteRecordAsync<T>(string key, T value) where T : class
     {
         return Task.Run(() =>
@@ -179,10 +151,7 @@ public static class EpgCacheStore
         return Path.Combine(CacheDir, hash + ".mpck.br");
     }
 
-    /// <summary>
-    /// Читает кэш источника. null — промах (файла нет, битый, устаревший
-    /// формат или другая ошибка чтения — вызывающий перекачает источник).
-    /// </summary>
+
     public static async Task<CachedXmlTv?> ReadAsync(string key)
     {
         return await Task.Run(() =>
@@ -218,11 +187,7 @@ public static class EpgCacheStore
         }).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Записывает кэш источника (сжатие ~quality 4: быстрое, а текст XMLTV
-    /// и так сжимается в разы). Ошибки проглатываются: отсутствие места на
-    /// диске не должно ломать воспроизведение.
-    /// </summary>
+
     public static Task WriteAsync(string key, CachedXmlTv value)
     {
         return Task.Run(() =>

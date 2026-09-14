@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.21.0
+- **Version:** 1.21.1
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -84,6 +84,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Program recording (up to 3 parallel)
 - Scheduled recordings
 - Settings export/import (with encryption)
+- Adaptive layout when the window is resized smaller: player toolbars scale down automatically, the channel list collapses on narrow windows and comes back when widened; the hub cards scale as a whole
 
 ### Infrastructure
 - Release: unpackaged build for classic installer

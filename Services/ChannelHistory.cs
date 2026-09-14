@@ -4,12 +4,7 @@ using IptvPlayer.ViewModels;
 
 namespace IptvPlayer.Services;
 
-/// <summary>
-/// Сессионная история просмотра для кнопки «предыдущий канал» (аналог
-/// кнопки «назад» пульта). Повторный выбор того же канала подряд не
-/// попадает в историю; глубина ограничена, чтобы объекты каналов не
-/// удерживались бесконечно. Чистая логика — покрыта unit-тестами.
-/// </summary>
+
 public sealed class ChannelHistory
 {
     private readonly List<ChannelViewModel> _entries = new();
@@ -20,7 +15,7 @@ public sealed class ChannelHistory
 
     public bool CanGoBack => _entries.Count > 0;
 
-    /// <summary>Запоминает канал как «предыдущий» (вызывается до смены текущего).</summary>
+
     public void Record(ChannelViewModel channel)
     {
         if (channel == null)
@@ -41,7 +36,7 @@ public sealed class ChannelHistory
         }
     }
 
-    /// <summary>Забирает последний канал из истории (или null, если пусто).</summary>
+
     public ChannelViewModel? Pop()
     {
         if (_entries.Count == 0)
@@ -54,6 +49,6 @@ public sealed class ChannelHistory
         return last;
     }
 
-    /// <summary>Очищает историю (например, при переключении плейлиста).</summary>
+
     public void Clear() => _entries.Clear();
 }

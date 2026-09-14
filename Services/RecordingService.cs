@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
-/// <summary>Идёт сейчас запись с этого URL потока.</summary>
+
 public sealed class ActiveRecording
 {
     public Guid Id { get; init; } = Guid.NewGuid();
@@ -19,22 +19,10 @@ public sealed class ActiveRecording
     public int? DurationSec { get; init; }
 }
 
-/// <summary>
-/// Запись IPTV-потока в файл силой ffmpeg.exe, который лежит рядом с
-/// приложением (tools/ffmpeg.exe в проекте; DLL те же, что и для
-/// FFmpegInteropX — совпадают мажорные версии). Копирование потока без
-/// перекодирования (-c copy) в MPEG-TS: нагрузка на CPU ~нулевая, а файл
-/// остаётся воспроизводимым даже при резком обрыве записи.
-///
-/// Поддерживает несколько параллельных записей (лимит MaxConcurrent —
-/// это IPTV: слишком много одновременных сессий одного провайдера
-/// нередко режется его лимитами). Останов = Kill процесса:
-/// неполный TS валиден. Папка записей настраивается; null —
-/// «Видео\IptvPlayer».
-/// </summary>
+
 public sealed class RecordingService
 {
-    /// <summary>Максимальное число одновременных записей (лимит сессий провайдера).</summary>
+
     public const int MaxConcurrent = 3;
 
     private readonly ILogger<RecordingService> _logger;
@@ -46,13 +34,13 @@ public sealed class RecordingService
         _logger = logger;
     }
 
-    /// <summary>Меняется при старте/завершении/остановке любой записи (для UI).</summary>
+
     public event EventHandler? RecordingsChanged;
 
-    /// <summary>Идёт ли хоть одна запись прямо сейчас.</summary>
+
     public bool IsActive => PruneExited() > 0;
 
-    /// <summary>Текущие записи (для списка в UI).</summary>
+
     public IReadOnlyList<ActiveRecording> Active
     {
         get
@@ -65,7 +53,7 @@ public sealed class RecordingService
         }
     }
 
-    /// <summary>Идёт ли запись этого потока (кнопка REC на конкретном канале).</summary>
+
     public bool IsRecordingStream(string? streamUrl)
     {
         if (string.IsNullOrEmpty(streamUrl))
@@ -79,7 +67,7 @@ public sealed class RecordingService
         }
     }
 
-    /// <summary>Канал сейчас пишется (по имени, для расписаний).</summary>
+
     public bool IsRecordingChannel(string channelName)
     {
         lock (_gate)
@@ -90,11 +78,7 @@ public sealed class RecordingService
         }
     }
 
-    /// <summary>
-    /// Запускает запись потока. durationSec = null — до ручной остановки.
-    /// recordsFolder = null — «Видео\IptvPlayer». Возвращает описание записи
-    /// или null, если ffmpeg недоступен или достигнут лимит параллельных записей.
-    /// </summary>
+
     public ActiveRecording? Start(
         string streamUrl,
         string fileNameBase,
@@ -199,7 +183,7 @@ public sealed class RecordingService
         }
     }
 
-    /// <summary>Останавливает запись по id (файл остаётся валидным TS).</summary>
+
     public void Stop(Guid id)
     {
         Process? process;
@@ -219,7 +203,7 @@ public sealed class RecordingService
         RecordingsChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Останавливает все записи (закрытие приложения).</summary>
+
     public void StopAll()
     {
         List<Process> processes;
@@ -240,11 +224,7 @@ public sealed class RecordingService
         }
     }
 
-    /// <summary>
-    /// Аккуратная остановка: 'q' в stdin — ffmpeg сам дописывает заголовки
-    /// TS и завершается (ждём до 3 с); не вышло — Kill (неполный TS всё
-    /// равно валиден, это запасной путь).
-    /// </summary>
+
     private void TryStopProcess(Process? process)
     {
         if (process is not { HasExited: false })
@@ -277,14 +257,11 @@ public sealed class RecordingService
         }
     }
 
-    /// <summary>Папка записей по умолчанию (для кнопки «Открыть папку»).</summary>
+
     public static string DefaultFolder => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "IptvPlayer");
 
-    /// <summary>
-    /// Внутри lock(_gate): убирает самозавершившиеся процессы и возвращает
-    /// число живых записей.
-    /// </summary>
+
     private int PruneExited()
     {
         var dead = _active.Where(kv => kv.Value.Proc.HasExited).Select(kv => kv.Key).ToList();
@@ -295,7 +272,7 @@ public sealed class RecordingService
         return _active.Count;
     }
 
-    /// <summary>Имя файла из названия канала/передачи без запрещённых символов.</summary>
+
     private static string SanitizeFileName(string name)
     {
         var s = Regex.Replace(name, @"[\\/:*?""<>|]", "_").Trim();

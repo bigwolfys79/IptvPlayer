@@ -8,9 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.ViewModels;
 
-/// <summary>
-/// Избранное, напоминания, записи по расписанию, запись эфира, пауза архива, возврат в эфир.
-/// </summary>
+
 public partial class MainPageViewModel
 {
     [RelayCommand]

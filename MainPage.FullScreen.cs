@@ -23,19 +23,11 @@ using Windows.UI.Core;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Полноэкранный режим и показ/скрытие оверлея по движению мыши.
-/// Вынесено из MainPage.xaml.cs (MVVM-этап 3: разбиение code-behind по зонам).
-/// </summary>
+
 public sealed partial class MainPage
 {
-    /// <summary>
-    /// Включает/выключает полноэкранный режим: переключает настоящий OS-уровневый
-    /// presenter окна (без рамки, без заголовка — MainWindow.SetOsFullScreen) и
-    /// сворачивает боковые панели страницы. В fullscreen список каналов, кнопки
-    /// плеера, вызов EPG и кнопка выхода доступны через автоскрывающийся оверлей
-    /// (см. RootGrid_PointerMoved / ShowFullScreenOverlay / HideFullScreenOverlay).
-    /// </summary>
+
+
     private void SetFullScreenMode(bool enable)
     {
         _isFullScreen = enable;
@@ -120,23 +112,13 @@ public sealed partial class MainPage
         Serilog.Log.Information("FullScreen-DIAG: итого {Ms:F0} мс", swTotal.Elapsed.TotalMilliseconds);
     }
 
-    /// <summary>
-    /// Принудительная пересборка компоновки видео-острова: мгновенно
-    /// скрываем и показываем MediaPlayerElement. Лечит смещение видео после
-    /// смены presenter'а (окно fullscreen ↔ оконное), когда DComp-остров
-    /// продолжал рисовать по старым координатам.
-    /// </summary>
+
     private void ForceVideoRelayout()
     {
         MediaPlayer.Visibility = Visibility.Collapsed;
         DispatcherQueue.TryEnqueue(() => MediaPlayer.Visibility = Visibility.Visible);
     }
 
-    /// <summary>
-    /// Движение мыши в fullscreen-режиме показывает оверлей (список каналов,
-    /// кнопки плеера, EPG, выход) и сбрасывает таймер автоскрытия. Вне
-    /// fullscreen-режима не делает ничего.
-    /// </summary>
 
     private Windows.Foundation.Point _lastOverlayPointerPosition = new(-1, -1);
 
@@ -170,12 +152,7 @@ public sealed partial class MainPage
         _overlayHideTimer.Start();
     }
 
-    /// <summary>
-    /// Движение мыши над областью видео в ОКОННОМ режиме показывает компактный
-    /// оверлей управления (громкость/пауза архива/EPG/fullscreen) и сбрасывает
-    /// общий таймер автоскрытия. Защита от "синтетических" PointerMoved — как в
-    /// RootGrid_PointerMoved, но координаты относительно области видео.
-    /// </summary>
+
     private void VideoArea_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
         if (_isFullScreen)
@@ -199,13 +176,7 @@ public sealed partial class MainPage
         _overlayHideTimer.Start();
     }
 
-    /// <summary>
-    /// Колесо мыши над областью видео регулирует громкость (шаг 5% на метку
-    /// колеса). Показывает соответствующий режиму оверлей, чтобы изменение
-    /// было видно на слайдере. Событие всплывает до RootGrid даже из-под
-    /// оверлеев, поэтому один обработчик покрывает и оконный, и полноэкранный
-    /// режимы; колесо НЕ над видео (список каналов, EPG) игнорируется.
-    /// </summary>
+
     private void RootGrid_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
 

@@ -6,24 +6,13 @@ using WinRT;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// D3D11 Video Processor (ID3D11VideoDevice / ID3D11VideoContext) для
-    /// рендер-пути frame server. Один экземпляр на девайс; потоко-безопасность
-    /// не требуется — вызывается с того же фонового потока кадров, что и
-    /// FrameServerRenderer.
-    ///
-    /// Через VideoProcessorBlt кадр масштабируется видеопроцессором драйвера:
-    /// на NVIDIA/Intel драйвер при этом подставляет свой апскейл (RTX VSR /
-    /// Intel VSR), если он включён в панели драйвера; иначе выполняется
-    /// аппаратное (билинейное) масштабирование. Публичного признака «VSR
-    /// активна» в API нет — факт применения виден только по картинке.
-    /// Интероп — по образцу Direct3DInterop: сырые вызовы vtable без COM-обёрток.
-    /// </summary>
+
+
     internal sealed unsafe class VideoProcessorInterop : IDisposable
     {
         private static readonly Guid IidId3d11Texture2D = new("6F15AAF2-D208-4E89-9AB4-489535D34F9C");
 
-        /// <summary>IDirect3DDxgiInterfaceAccess — доступ к DXGI-объекту под WinRT-обёрткой IDirect3DSurface.</summary>
+
         private static readonly Guid IidDxgiInterfaceAccess = new("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1");
 
         private const int DxgiFormatB8G8R8A8UNorm = 87;
@@ -32,16 +21,16 @@ namespace IptvPlayer.Services
 
         private readonly ILogger _logger;
 
-        /// <summary>ID3D11VideoDevice*.</summary>
+
         private IntPtr _videoDevice;
 
-        /// <summary>ID3D11VideoContext*.</summary>
+
         private IntPtr _videoContext;
 
-        /// <summary>ID3D11VideoProcessorEnumerator*.</summary>
+
         private IntPtr _enumerator;
 
-        /// <summary>ID3D11VideoProcessor*.</summary>
+
         private IntPtr _processor;
 
         private VideoProcessorInterop(ILogger logger)
@@ -49,11 +38,7 @@ namespace IptvPlayer.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Пытается создать видеопроцессор для указанного D3D11-девайса.
-        /// Возвращает null, если девайс/драйвер не поддерживает Video Processor
-        /// для BGRA — это штатная ситуация, фолбэк на шейдерный путь.
-        /// </summary>
+
         public static VideoProcessorInterop? TryCreate(IntPtr nativeDevice, ILogger logger)
         {
             if (nativeDevice == IntPtr.Zero)
@@ -80,8 +65,7 @@ namespace IptvPlayer.Services
             var iidVideoDevice = new Guid("10EC4D5B-975A-4689-B9E4-D0AAC30FE333");
             _videoDevice = QueryInterfaceRaw(nativeDevice, iidVideoDevice);
 
-            // ID3D11Device::GetImmediateContext — vtable[40].
-            // через QueryInterface получить нельзя.
+
             var getImmediateContext =
                 (delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, void>)(*(IntPtr**)nativeDevice)[40];
             IntPtr context = IntPtr.Zero;
@@ -101,9 +85,7 @@ namespace IptvPlayer.Services
                 Marshal.Release(context);
             }
 
-            // Создаём энумератор под апскейл BGRA: вход — разрешение потока
-            // (ширины/высоты уточняются в Blt через SourceRect, здесь только
-            // согласованные ненулевые значения), выход — размер окна.
+
             var desc = new VideoProcessorContentDesc
             {
                 InputFrameFormat = 0,
@@ -144,11 +126,7 @@ namespace IptvPlayer.Services
                 "VideoProcessorInterop: D3D11 Video Processor создан (аппаратный путь доступен).");
         }
 
-        /// <summary>
-        /// Извлекает нативный ID3D11Texture2D* из WinRT-обёртки IDirect3DSurface
-        /// через IDirect3DDxgiInterfaceAccess::GetInterface. Возвращает null при
-        /// неудаче (владелец обёртки не освобождается).
-        /// </summary>
+
         public static IntPtr GetTextureFromSurface(IDirect3DSurface surface)
         {
             try
@@ -176,11 +154,7 @@ namespace IptvPlayer.Services
             }
         }
 
-        /// <summary>
-        /// Создаёт (при необходимости) выходную BGRA-текстуру размера окна,
-        /// output view для неё и WinRT-поверхность для отрисовки в Win2D.
-        /// Возвращает поверхность; при неудаче — null (однократный откат).
-        /// </summary>
+
         public IDirect3DSurface? EnsureOutput(IntPtr nativeDevice, int width, int height)
         {
             if (_outputTexture != IntPtr.Zero && _outputWidth == width && _outputHeight == height)
@@ -238,11 +212,7 @@ namespace IptvPlayer.Services
             return _outputSurface;
         }
 
-        /// <summary>
-        /// VideoProcessorBlt: кадр из входной текстуры масштабируется в
-        /// выходную по заданным прямоугольникам (src — полный кадр, dst —
-        /// вписанный по режиму Stretch; выходящее за окно обрезается).
-        /// </summary>
+
         public void Blt(IntPtr inputTexture, int frameW, int frameH, Rect dst, int outW, int outH)
         {
             var inputViewDesc = new VideoProcessorInputViewDesc
@@ -264,14 +234,12 @@ namespace IptvPlayer.Services
             }
             try
             {
-                // Прямоугольники выставляются каждый кадр: размеры потока и окна
-                // могут меняться независимо (смена канала / ресайз).
+
+
                 var srcRect = new RawRect(0, 0, frameW, frameH);
                 var dstRect = new RawRect((int)dst.X, (int)dst.Y, (int)(dst.X + dst.Width), (int)(dst.Y + dst.Height));
 
-                // Драйвер не принимает rect'ы вне границ output view
-                // (режим UniformToFill даёт отрицательные координаты):
-                // клипуем dst по окну и соразмерно подрезаем src.
+
                 float kx = frameW / dst.Width;
                 float ky = frameH / dst.Height;
                 int clipL = Math.Max(0, -dstRect.Left);
@@ -294,21 +262,19 @@ namespace IptvPlayer.Services
                         *(IntPtr**)_videoContext)[30];
                 setStreamSourceRect(_videoContext, _processor, 0, 1, &srcRect);
 
-                // DestRect потока задаёт размещение кадра в выходной текстуре;
-                // без него поток растягивается на весь output view.
+
                 var setStreamDestRect =
                     (delegate* unmanaged[Stdcall]<IntPtr, IntPtr, uint, int, RawRect*, void>)(
                         *(IntPtr**)_videoContext)[31];
                 setStreamDestRect(_videoContext, _processor, 0, 1, &dstRect);
 
-                // TargetRect выхода — клип по границам окна (случай выхода
-                // dst-ректа за пределы в режиме UniformToFill).
+
                 var setOutputTargetRect =
                     (delegate* unmanaged[Stdcall]<IntPtr, IntPtr, int, RawRect*, void>)(
                         *(IntPtr**)_videoContext)[13];
                 setOutputTargetRect(_videoContext, _processor, 1, &dstRect);
 
-                // Прогрессивный вход (декодированный кадр, без интерлейса).
+
                 var setStreamFrameFormat =
                     (delegate* unmanaged[Stdcall]<IntPtr, IntPtr, uint, int, void>)(
                         *(IntPtr**)_videoContext)[27];
@@ -360,7 +326,7 @@ namespace IptvPlayer.Services
 
         private static IDirect3DSurface WrapTextureAsSurface(IntPtr texture)
         {
-            var iid = new Guid("CAFCB56C-6AC3-4889-BF47-9E23BBD260EC"); // IID_IDXGISurface
+            var iid = new Guid("CAFCB56C-6AC3-4889-BF47-9E23BBD260EC");
             var dxgiSurface = QueryInterfaceStatic(texture, iid);
             try
             {
@@ -435,8 +401,7 @@ namespace IptvPlayer.Services
             public uint Usage;
         }
 
-        // D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC: FourCC=0 — формат из ресурса,
-        // ViewDimension (1 = Texture2D), затем union D3D11_TEX2D_VPIV {MipSlice, ArraySlice}.
+
         [StructLayout(LayoutKind.Sequential)]
         private struct VideoProcessorInputViewDesc
         {
@@ -446,8 +411,7 @@ namespace IptvPlayer.Services
             public uint ArraySlice;
         }
 
-        // D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC: ViewDimension (1 = Texture2D),
-        // затем union D3D11_TEX2D_VPOV {MipSlice}.
+
         [StructLayout(LayoutKind.Sequential)]
         private struct VideoProcessorOutputViewDesc
         {
@@ -455,7 +419,7 @@ namespace IptvPlayer.Services
             public uint MipSlice;
         }
 
-        // D3D11_VIDEO_PROCESSOR_STREAM из d3d11.h: 11 полей, x64 — 72 байта.
+
         [StructLayout(LayoutKind.Sequential)]
         private struct VideoProcessorStream
         {
@@ -489,7 +453,7 @@ namespace IptvPlayer.Services
             public int Bottom;
         }
 
-        /// <summary>Прямоугольник назначения в пикселях окна.</summary>
+
         public readonly struct Rect
         {
             public Rect(float x, float y, float width, float height)

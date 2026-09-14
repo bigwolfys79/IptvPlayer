@@ -11,11 +11,7 @@ using Microsoft.UI.Xaml;
 
 namespace IptvPlayer.ViewModels;
 
-/// <summary>
-/// Корневая ViewModel страницы (этап 2 MVVM): списки каналов, выбранный канал,
-/// вложенные ViewModel и команды — избранное, напоминания, расписание записей,
-/// запись канала, пауза архива, возврат к эфиру, показ/скрытие EPG, фильтрация.
-/// </summary>
+
 public partial class MainPageViewModel : ObservableObject
 {
     private static string AllGroupsOption => L.T("Vse_Gruppy");
@@ -27,7 +23,7 @@ public partial class MainPageViewModel : ObservableObject
     private readonly IVideoPortalService _videoPortalService;
     private readonly Services.VodResumeStore _vodResumeStore;
 
-    /// <summary>Позиции досмотра VOD — в кэш-БД, не в settings.json.</summary>
+
     private readonly Dictionary<string, VodResumePosition> _vodResumePositions = new();
     private readonly ILogger<MainPageViewModel> _logger;
 
@@ -39,10 +35,10 @@ public partial class MainPageViewModel : ObservableObject
         set => SetProperty(ref _epgViewModel, value);
     }
 
-    /// <summary>Управление воспроизведением (плееры, архив, громкость).</summary>
+
     public PlayerViewModel Player { get; }
 
-    /// <summary>Запись каналов/передач через ffmpeg.exe.</summary>
+
     public RecordingService Recording { get; }
 
     private ObservableCollection<ChannelViewModel> _channels = new();
@@ -179,7 +175,7 @@ public partial class MainPageViewModel : ObservableObject
 
     private string _selectedContentType = AllContentTypesOption;
 
-    /// <summary>Выбранный тип контента (fid категории) в комбобоксе портала.</summary>
+
     public string SelectedContentType
     {
         get => _selectedContentType;
@@ -194,26 +190,26 @@ public partial class MainPageViewModel : ObservableObject
 
     private ObservableCollection<string> _contentTypes = new();
 
-    /// <summary>Типы контента из manifest (Фильмы, Сериалы и т.д.).</summary>
+
     public ObservableCollection<string> ContentTypes
     {
         get => _contentTypes;
         set => SetProperty(ref _contentTypes, value);
     }
 
-    /// <summary>Показывать ли комбобокс типа контента (только для портальных источников).</summary>
+
     public Visibility IsContentTypeFilterVisible => _isPortalSource && ContentTypes.Count > 1
         ? Visibility.Visible
         : Visibility.Collapsed;
 
-    /// <summary>Показывать ли комбобокс групп (только для M3U-источников).</summary>
+
     public Visibility IsGroupFilterVisible => !_isPortalSource
         ? Visibility.Visible
         : Visibility.Collapsed;
 
     private bool _isFilterLoading;
 
-    /// <summary>Идёт ли серверная загрузка фильтра (показать прогресс-индикатор).</summary>
+
     public bool IsFilterLoading
     {
         get => _isFilterLoading;
@@ -222,10 +218,7 @@ public partial class MainPageViewModel : ObservableObject
 
     private bool _isPlaylistLoading;
 
-    /// <summary>
-    /// Идёт ли загрузка/перекачка плейлиста или каталога портала
-    /// (старт и переключение) — показывать оверлей с кольцом загрузки.
-    /// </summary>
+
     public bool IsPlaylistLoading
     {
         get => _isPlaylistLoading;
@@ -234,7 +227,7 @@ public partial class MainPageViewModel : ObservableObject
 
     private string _playlistLoadingText = "";
 
-    /// <summary>Текст оверлея загрузки: какой плейлист сейчас загружается.</summary>
+
     public string PlaylistLoadingText
     {
         get => _playlistLoadingText;
@@ -257,16 +250,12 @@ public partial class MainPageViewModel : ObservableObject
         set => SetProperty(ref _recordError, value);
     }
 
-    /// <summary>
-    /// Каноническая копия настроек на сессию. Наполняется в InitializeAsync
-    /// кодом представления; ViewModel управляет избранном, напоминаниями,
-    /// последним каналом и при необходимости сохраняет.
-    /// </summary>
+
     public AppSettings AppSettings { get; set; } = new();
 
     private DateTime? _sleepTimerEndTime;
 
-    /// <summary>Время срабатывания таймера сна (UTC) или null, если не активен.</summary>
+
     public DateTime? SleepTimerEndTime
     {
         get => _sleepTimerEndTime;
@@ -280,10 +269,10 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
-    /// <summary>Активен ли таймер сна.</summary>
+
     public bool IsSleepTimerActive => _sleepTimerEndTime != null;
 
-    /// <summary>Оставшееся время в формате mm:ss или null.</summary>
+
     public string? SleepTimerRemainingText
     {
         get
@@ -295,7 +284,7 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
-    /// <summary>Запускает таймер сна на указанное количество минут.</summary>
+
     public void StartSleepTimer(int minutes)
     {
         if (minutes <= 0)
@@ -308,7 +297,7 @@ public partial class MainPageViewModel : ObservableObject
         _logger.LogInformation("Таймер сна запущен на {Minutes} мин, сработает в {EndTime:HH:mm:ss}.", minutes, SleepTimerEndTime.Value.ToLocalTime());
     }
 
-    /// <summary>Останавливает таймер сна.</summary>
+
     public void StopSleepTimer()
     {
         if (_sleepTimerEndTime == null) return;
@@ -316,10 +305,7 @@ public partial class MainPageViewModel : ObservableObject
         _logger.LogInformation("Таймер сна остановлен.");
     }
 
-    /// <summary>
-    /// Проверка каждую секунду — не пора ли остановить воспроизведение.
-    /// Вызывается из секундного таймера в code-behind.
-    /// </summary>
+
     public void CheckSleepTimer()
     {
         if (_sleepTimerEndTime == null) return;
@@ -334,31 +320,31 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
-    /// <summary>Сменилось состояние записи — обновить кнопки в панелях.</summary>
+
     public event EventHandler? RecordingChanged;
 
-    /// <summary>Переключена видимость EPG-оверлея — представление двигает панель.</summary>
+
     public event EventHandler? EpgVisibilityChanged;
 
-    /// <summary>Пользователь изменил настройку — код-behind должен запустить дебаунс-таймер.</summary>
+
     public event EventHandler? SettingsSaveRequested;
 
-    /// <summary>Нужно показать тост-напоминание — код-behind показывает UI-тост.</summary>
+
     public event EventHandler<ProgramReminder>? ReminderToastRequested;
 
-    /// <summary>Список каналов/фильтр изменился — код-behind перестраивает группы оверлея.</summary>
+
     public event EventHandler? FilterChanged;
 
-    /// <summary>Нужно проскроллить EPG к текущей программе — код-behind вызывает ScrollIntoView.</summary>
+
     public event EventHandler? ScrollToProgramRequested;
 
-    /// <summary>Ошибка при попытке воспроизвести архив — код-behind показывает StreamError.</summary>
+
     public event EventHandler<string>? ArchivePlayErrorRequested;
 
-    /// <summary>Таймер сна истёк — код-behind останавливает воспроизведение.</summary>
+
     public event EventHandler? SleepTimerExpired;
 
-    /// <summary>Изменилось состояние таймера сна — код-behind обновляет UI.</summary>
+
     public event EventHandler? SleepTimerChanged;
 
     public MainPageViewModel(
@@ -468,10 +454,7 @@ public partial class MainPageViewModel : ObservableObject
 
     private Dictionary<string, List<ChannelViewModel>>? _portalSeasonGroups;
 
-    /// <summary>
-    /// Соседние сезоны сериала портала (включая сам канал), отсортированные
-    /// по номерам сезонов. Один элемент — фильм/сериал без пометки сезона.
-    /// </summary>
+
     public List<ChannelViewModel> GetPortalSeasonSiblings(ChannelViewModel channel)
     {
         if (string.IsNullOrEmpty(channel.PortalRequest))
@@ -520,11 +503,7 @@ public partial class MainPageViewModel : ObservableObject
         return groups;
     }
 
-    /// <summary>
-    /// «Название. Сезон 3. (2021)» → («Название», (3, 3));
-    /// «Название. Сезон 1-7» → («Название», (1, 7)).
-    /// BaseName null — пометки сезона нет (фильм/сериал одной карточкой).
-    /// </summary>
+
     internal static (string? BaseName, (int From, int To)? Season) ParsePortalSeasonName(string name)
     {
         var match = System.Text.RegularExpressions.Regex.Match(
@@ -550,29 +529,14 @@ public partial class MainPageViewModel : ObservableObject
     private static (int From, int To) SeasonSortKey(string name) =>
         ParsePortalSeasonName(name).Season ?? (int.MaxValue, int.MaxValue);
 
-    /// <summary>
-    /// Пересобирает список и группы после изменения настроек родительского
-    /// контроля (или истечения временной разблокировки): если выбранная
-    /// группа оказалась скрыта — сбрасываем на «Все группы».
-    /// </summary>
 
-
-    /// <summary>
-    /// UI показывает диалог PIN (с выбором длительности отключения запроса)
-    /// и возвращает: null — отменено; -1 — только этот канал (до
-    /// переключения); 0 — «до выключения»; n>0 — минут.
-    /// </summary>
     public event Func<ChannelViewModel, Task<int?>>? ParentalUnlockRequested;
 
-    /// <summary>Внешняя точка для путей запуска вне команды (автопродолжение).</summary>
+
     public Task<bool> CanPlayChannelAsync(ChannelViewModel channel)
         => EnsureChannelAllowedAsync(channel);
 
-    /// <summary>
-    /// Разрешён ли запуск канала: группы из списка блокировки при включённом
-    /// контроле требуют PIN. При верном PIN сразу offered длительность
-    /// отключения запроса и канал запускается.
-    /// </summary>
+
     private async Task<bool> EnsureChannelAllowedAsync(ChannelViewModel channel)
     {
 
@@ -623,23 +587,19 @@ public partial class MainPageViewModel : ObservableObject
         return true;
     }
 
-    /// <summary>Лимит исчерпан во время просмотра — остановить воспроизведение.</summary>
+
     public event EventHandler? DailyLimitReached;
 
-    /// <summary>Попытка запуска при исчерпанном лимите — показать сообщение.</summary>
+
     public event EventHandler? DailyLimitBlocked;
 
-    /// <summary>«Лимит уже объявлен» — событие остановки поднимается один раз за день.</summary>
+
     private bool _dailyLimitAnnounced;
 
-    /// <summary>Накопленные, но ещё не записанные на диск секунды просмотра.</summary>
+
     private int _unsavedWatchedSeconds;
 
-    /// <summary>
-    /// Учёт секунды активного просмотра (вызывается из секундного таймера
-    /// code-behind, когда плеер реально играет). Запись настроек на диск —
-    /// раз в минуту накопления, чтобы не писать файл каждую секунду.
-    /// </summary>
+
     public void AddPlaybackWatchTime(int seconds)
     {
         var settings = AppSettings;
@@ -672,11 +632,7 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Пересчитывает DisplayedChannels с учётом текста поиска, выбранного типа
-    /// контента (портал) или группы (M3U), жанра и года.
-    /// Избранные каналы всегда стоят первыми.
-    /// </summary>
+
     public void FilterChannels()
     {
         var query = SearchQuery?.Trim() ?? string.Empty;
@@ -743,9 +699,7 @@ public partial class MainPageViewModel : ObservableObject
         FilterChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// Пересобирает список групп для GroupFilterComboBox на основе текущих Channels.
-    /// </summary>
+
     public void RefreshGroups(string? previouslySelected = null)
     {
         var groups = Channels
@@ -832,7 +786,7 @@ public partial class MainPageViewModel : ObservableObject
         ChannelCountText = string.Format(L.T("Kanalov_0"), Channels.Count, Channels.Count);
     }
 
-    /// <summary>История просмотра для кнопки/клавиши «предыдущий канал».</summary>
+
     public ChannelHistory ChannelHistory { get; } = new();
 
     private bool _navigatingBack;
@@ -857,10 +811,7 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Обработчик клика по каналу: останавливает текущее воспроизведение
-    /// (если это другой канал или архив), запускает прямой эфир, загружает EPG.
-    /// </summary>
+
     [RelayCommand]
     private async Task SelectAndPlayChannelAsync(ChannelViewModel channel)
     {
@@ -902,10 +853,7 @@ public partial class MainPageViewModel : ObservableObject
         ScrollToProgramRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>
-    /// Клик по передаче в списке EPG: уже начавшаяся передача запускается в архиве
-    /// (timeshift) с её начала. Будущие передачи недоступны.
-    /// </summary>
+
     [RelayCommand]
     private async Task PlayArchiveEntryAsync(EPGEntry entry)
     {
@@ -938,14 +886,11 @@ public partial class MainPageViewModel : ObservableObject
         }
     }
 
-    /// <summary>
-    /// Запуск канала/фильма: обычный канал — прямой эфир как раньше; элемент
-    /// портала — воспроизведение в режиме VOD (пауза без рестарта потока).
-    /// </summary>
+
     public async Task<bool> PlayChannelAsync(ChannelViewModel channel)
         => await PlayChannelAsync(channel, interactive: true);
 
-    /// <summary>Показ/скрытие EPG-оверлея.</summary>
+
     [RelayCommand]
     private void ToggleEpg()
     {
@@ -953,7 +898,7 @@ public partial class MainPageViewModel : ObservableObject
         EpgVisibilityChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>Непосредственное сохранение канонической копии настроек.</summary>
+
     public async Task SaveSettingsAsync()
     {
         try

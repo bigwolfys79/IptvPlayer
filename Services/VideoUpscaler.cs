@@ -3,17 +3,8 @@ using System.Collections.Generic;
 
 namespace IptvPlayer.Services
 {
-    /// <summary>
-    /// Пресеты улучшения картинки («апскейлер») — цепочки видео-фильтров
-    /// FFmpeg, применяемые через VideoConfig.FFmpegVideoFilters при открытии
-    /// потока или живьём через FFmpegMediaSource.SetFFmpegVideoFilters
-    /// (тот же механизм, что и нормализация громкости).
-    ///
-    /// Состав пресетов подобран по фильтрам, реально присутствующим в бандл-
-    /// сборке FFmpeg 8.1.2 (avfilter-11.dll): unsharp, hqdn3d, xbr и
-    /// качественные флаги масштабирования. Нейросетевого dnn_processing в
-    /// этой сборке нет (требуется FFmpeg с libopenvino/libtensorflow).
-    /// </summary>
+
+
     public static class VideoUpscaler
     {
         public const string Off = "Off";
@@ -21,22 +12,13 @@ namespace IptvPlayer.Services
         public const string Denoise = "Denoise";
         public const string SdUpscale = "SdUpscale";
 
-        /// <summary>Все режимы в порядке следования в меню кнопки.</summary>
+
         public static readonly IReadOnlyList<string> AllModes = new[]
         {
             Off, Sharp, Denoise, SdUpscale
         };
 
-        /// <summary>
-        /// Цепочка видео-фильтров для режима; null — фильтры не нужны.
-        ///
-        /// ВАЖНО: все фильтры должны сохранять размер кадра. FFmpegInteropX
-        /// фиксирует разрешение выхода по дескриптору потока при открытии и
-        /// любой кадр иного размера (например, после xbr=2) сжимает обратно
-        /// к исходному (UncompressedVideoSampleProvider.InitializeScalerIfRequired)
-        /// — эффект масштабирования стирается. Усиление резкости/чистка
-        /// работают честно.
-        /// </summary>
+
         public static string? GetFilters(string? mode) => mode switch
         {
 
@@ -49,9 +31,7 @@ namespace IptvPlayer.Services
             _ => null
         };
 
-        /// <summary>
-        /// Валидирует значение настроек: неизвестное значение трактуется как Off.
-        /// </summary>
+
         public static string Normalize(string? mode)
         {
             foreach (var m in AllModes)

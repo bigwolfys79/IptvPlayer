@@ -7,9 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Обработчики диалогов настроек.
-/// </summary>
+
 public sealed partial class MainPage : Page
 {
     private async void PlaybackSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -21,6 +19,7 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    // Open diagnostics dialog
     private async void DiagnosticsMenu_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Dialogs.DiagnosticsDialog(
@@ -40,6 +39,7 @@ public sealed partial class MainPage : Page
                 settings.TempDiagnosticsEnabled));
     }
 
+    // Open interface settings dialog
     private async void InterfaceSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Dialogs.InterfaceSettingsDialog(
@@ -49,6 +49,7 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    // Open EPG settings dialog
     private async void EpgSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Dialogs.EpgSettingsDialog(
@@ -57,6 +58,7 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    // Open playlist settings dialog
     private async void PlaylistSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Dialogs.PlaylistSettingsDialog(
@@ -75,12 +77,14 @@ public sealed partial class MainPage : Page
         UpdatePlaylistMenu();
     }
 
+    // Open recording settings dialog
     private async void RecordingSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Dialogs.RecordingSettingsDialog(ViewModel, _settingsService);
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    // Open parental control dialog
     private async void ParentalSettingsButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Dialogs.ParentalControlDialog(
@@ -90,12 +94,14 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    // Open license status dialog
     private async void LicenseMenu_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new Dialogs.LicenseStatusDialog();
         await dialog.ShowAsync(((FrameworkElement)sender).XamlRoot);
     }
 
+    // Open about dialog
     private async void AboutButton_Click(object sender, RoutedEventArgs e)
     {
 

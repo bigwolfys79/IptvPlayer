@@ -6,13 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer;
 
-/// <summary>
-/// Воспроизведение локальных видеофайлов (карточка «Видео» на хабе):
-/// файл превращается в «канал» и играется тем же конвейером, что и VOD
-/// портала — StartPlaybackAsync(isVod: true). Позиция досмотра хранится
-/// в VodResumeStore под именем файла; в историю каналов и EPG файл не
-/// попадает.
-/// </summary>
+
 public sealed partial class MainPage
 {
     private LocalVideoFile? _localVideoFile;
