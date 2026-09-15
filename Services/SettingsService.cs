@@ -33,26 +33,26 @@ public class SettingsService : ISettingsService
         _logger = logger;
     }
 
-        public Task<AppSettings> LoadAsync()
+        public async Task<AppSettings> LoadAsync()
         {
             try
             {
                 if (_cached != null)
                 {
-                    return Task.FromResult(_cached);
+                    return _cached;
                 }
 
                 if (!File.Exists(SettingsPath))
                 {
                     _cached = new AppSettings();
-                    return Task.FromResult(_cached);
+                    return _cached;
                 }
 
-                var json = File.ReadAllText(SettingsPath);
+                var json = await File.ReadAllTextAsync(SettingsPath).ConfigureAwait(false);
                 var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
                 UnprotectSecrets(settings);
                 _cached = settings;
-                return Task.FromResult(settings);
+                return _cached;
             }
             catch (Exception ex)
             {
@@ -64,12 +64,12 @@ public class SettingsService : ISettingsService
                 {
                     _logger.LogWarning("Настройки восстановлены из {Backup}.", restored.Value.path);
                     _cached = restored.Value.settings;
-                    return Task.FromResult(_cached);
+                    return _cached;
                 }
 
                 _logger.LogWarning("Резервной копии нет — используются значения по умолчанию (файл на диске не перезаписывается до первой успешной загрузки).");
                 _cached = new AppSettings();
-                return Task.FromResult(_cached);
+                return _cached;
             }
         }
 
@@ -128,8 +128,7 @@ public class SettingsService : ISettingsService
                     {
                         if (File.Exists(SettingsPath))
                         {
-
-                            File.Copy(SettingsPath, SettingsPath + ".prev", overwrite: true);
+                            await Task.Run(() => File.Copy(SettingsPath, SettingsPath + ".prev", overwrite: true)).ConfigureAwait(false);
                         }
                         File.Move(tempPath, SettingsPath, overwrite: true);
                         break;

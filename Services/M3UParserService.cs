@@ -205,15 +205,15 @@ namespace IptvPlayer.Services
             var name = comma >= 0 ? body[(comma + 1)..].Trim() : body.Trim();
             var attrsPart = comma >= 0 ? body[..comma] : body;
 
-            var tvgId = GetAttribute(attrsPart, "tvg-id");
-            var logo = GetAttribute(attrsPart, "tvg-logo");
-            var groupTitle = GetAttribute(attrsPart, "group-title");
+            var attrs = ParseAttributes(attrsPart);
+            attrs.TryGetValue("tvg-id", out var tvgId);
+            attrs.TryGetValue("tvg-logo", out var logo);
+            attrs.TryGetValue("group-title", out var groupTitle);
             groupFromTitle = groupTitle is not null;
             var group = groupTitle ?? fallbackGroup;
 
-            var recRaw = GetAttribute(attrsPart, "tvg-rec")
-                ?? GetAttribute(attrsPart, "catchup-days")
-                ?? GetAttribute(attrsPart, "catchup");
+            attrs.TryGetValue("tvg-rec", out var recRaw);
+            recRaw ??= attrs.GetValueOrDefault("catchup-days") ?? attrs.GetValueOrDefault("catchup");
             var catchupDays = 0;
             if (!string.IsNullOrEmpty(recRaw))
             {
@@ -239,21 +239,73 @@ namespace IptvPlayer.Services
         }
 
 
-        private static string? GetAttribute(string line, string key)
+        // Single-pass attribute scanner: parses key="value" and key=value pairs once per line
+        private static Dictionary<string, string> ParseAttributes(string line)
         {
+            var attrs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             if (string.IsNullOrEmpty(line))
             {
-                return null;
+                return attrs;
             }
 
-            var m = Regex.Match(line, $@"(?:^|[\s])(?:{Regex.Escape(key)})\s*=\s*""(?<v>[^""]*)""", RegexOptions.IgnoreCase);
-            if (m.Success)
+            var i = 0;
+            while (i < line.Length)
             {
-                return m.Groups["v"].Value;
+                while (i < line.Length && (char.IsWhiteSpace(line[i]) || line[i] == ','))
+                {
+                    i++;
+                }
+
+                var keyStart = i;
+                while (i < line.Length && line[i] != '=' && !char.IsWhiteSpace(line[i]))
+                {
+                    i++;
+                }
+                var key = line[keyStart..i];
+                while (i < line.Length && char.IsWhiteSpace(line[i]))
+                {
+                    i++;
+                }
+
+                if (key.Length == 0 || i >= line.Length || line[i] != '=')
+                {
+                    continue;
+                }
+                i++;
+                while (i < line.Length && char.IsWhiteSpace(line[i]))
+                {
+                    i++;
+                }
+
+                string value;
+                if (i < line.Length && (line[i] == '"' || line[i] == '\''))
+                {
+                    var quote = line[i];
+                    var valStart = ++i;
+                    while (i < line.Length && line[i] != quote)
+                    {
+                        i++;
+                    }
+                    value = line[valStart..i];
+                    if (i < line.Length)
+                    {
+                        i++;
+                    }
+                }
+                else
+                {
+                    var valStart = i;
+                    while (i < line.Length && line[i] != ',' && !char.IsWhiteSpace(line[i]))
+                    {
+                        i++;
+                    }
+                    value = line[valStart..i];
+                }
+
+                attrs[key] = value;
             }
 
-            m = Regex.Match(line, $@"(?:^|[\s])(?:{Regex.Escape(key)})\s*=\s*(?<v>[^\s,""']+)", RegexOptions.IgnoreCase);
-            return m.Success ? m.Groups["v"].Value : null;
+            return attrs;
         }
 
 

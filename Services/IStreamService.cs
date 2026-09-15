@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Media.Playback;
 using IptvPlayer.Models;
@@ -18,7 +19,9 @@ namespace IptvPlayer.Services
 
     public interface IStreamService
     {
-        Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig config, bool isVod = false);
+        Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig config, bool isVod = false, CancellationToken ct = default);
+
+        void ReleasePlayer(MediaPlayer? player);
 
 
         double? ProxyMeasuredBitrate { get; }

@@ -79,8 +79,8 @@
                 </Button>
                 <StackPanel Grid.Column="3" Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind Name}" FontSize="14" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{x:Bind CurrentProgramTitle, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
-                    <ProgressBar Value="{x:Bind CurrentProgramProgress, Mode=OneWay}"
+                    <TextBlock x:Phase="1" Text="{x:Bind CurrentProgramTitle, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                    <ProgressBar x:Phase="1" Value="{x:Bind CurrentProgramProgress, Mode=OneWay}"
                                  Maximum="1" Minimum="0"
                                  Height="3" CornerRadius="1.5" Padding="0" Margin="0,1,0,0"
                                  Visibility="{x:Bind HasCurrentProgram, Converter={StaticResource BoolToVisConverter}, Mode=OneWay}" />
@@ -131,7 +131,7 @@
                                         MinWidth="180"
                                         MaxWidth="300"
                                         QueryIcon="Find"
-                                        Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay}" />
+                                        Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <Button x:Name="AddChannelButton" 
                                 Width="36" Height="36" 
                                 x:Uid="Dobavit_Kanal_Vruchnuyu"
@@ -671,7 +671,7 @@
                             <Path Data="M8,4 V8 L11,10"
                                   Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" />
                             <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
-                                  Fill="#B39DDB" Stretch="Uniform"
+                                  Fill="{ThemeResource SleepLavenderBrush}" Stretch="Uniform"
                                   Width="6" Height="6"
                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                   Margin="0,0,-1,-1" />
@@ -1160,7 +1160,7 @@
                             <Path Data="M8,4 V8 L11,10"
                                   Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3" />
                             <Path Data="M12.8,10.2 A5.6,5.6 0 1 1 6,2.4 A4.5,4.5 0 1 0 12.8,10.2 Z"
-                                  Fill="#B39DDB" Stretch="Uniform"
+                                  Fill="{ThemeResource SleepLavenderBrush}" Stretch="Uniform"
                                   Width="7" Height="7"
                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                   Margin="0,0,-1,-1" />
@@ -1219,7 +1219,7 @@
             <TextBlock x:Name="StatsText"
                        FontFamily="Consolas"
                        FontSize="13"
-                       Foreground="#FFE8E8E8"
+                       Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                        Text="—" />
         </Border>
 

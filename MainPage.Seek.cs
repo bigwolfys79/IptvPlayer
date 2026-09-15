@@ -84,6 +84,7 @@ public sealed partial class MainPage : Page
         _badgeHideTimer ??= DispatcherQueue.CreateTimer();
         _badgeHideTimer.Stop();
         _badgeHideTimer.Interval = TimeSpan.FromMilliseconds(900);
+        _badgeHideTimer.Tick -= BadgeHideTimer_Tick;
         _badgeHideTimer.Tick += BadgeHideTimer_Tick;
         _badgeHideTimer.Start();
     }
@@ -515,6 +516,15 @@ public sealed partial class MainPage : Page
                         !ViewModel.EpgViewModel.IsLoading;
 
         EmptyChannelEPGState.Visibility = showEmpty ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UnsubscribeEpgEmptyStateChannel()
+    {
+        if (_epgEmptyStateChannel != null)
+        {
+            _epgEmptyStateChannel.EPGEntries.CollectionChanged -= OnEpgEntriesChanged;
+            _epgEmptyStateChannel = null;
+        }
     }
 
     private void OnEpgEntriesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)

@@ -39,6 +39,9 @@ public sealed partial class MainPage : Page
     private PlaylistSource? _activePlaylist;
 
     private System.Threading.CancellationTokenSource? _playlistLoadCts;
+
+    // Generation guard: only the newest playlist load may mutate shared state
+    private int _playlistLoadGeneration;
     private readonly IStreamService _streamService;
     private readonly ChannelRepository _channelRepository;
     private readonly ILogger<MainPage> _logger;
@@ -106,220 +109,48 @@ public sealed partial class MainPage : Page
             services.GetRequiredService<ILogger<FrameServerRenderer>>());
         ViewModel = services.GetRequiredService<MainPageViewModel>();
 
-        Player.PlayerChanged += (s, e) =>
-        {
+        Player.PlayerChanged += OnPlayerChangedApplyRenderer;
+        Player.ArchiveStateChanged += OnPlayerArchiveStateChanged;
 
-            void ApplyPlayer()
-            {
-                var player = Player.Player;
-                MediaPlayer.SetMediaPlayer(player);
-
-                _frameServerRenderer.Detach();
-                if (player != null &&
-                    ViewModel.AppSettings.FrameServerRender)
-                {
-                    var diag = _streamService.CurrentDiagnostics;
-                    _frameServerRenderer.Attach(FrameServerPanel, player,
-                        diag?.VideoWidth ?? 0, diag?.VideoHeight ?? 0);
-                }
-            }
-
-            if (DispatcherQueue.HasThreadAccess)
-            {
-                ApplyPlayer();
-            }
-            else
-            {
-                DispatcherQueue.TryEnqueue(ApplyPlayer);
-            }
-        };
-        Player.ArchiveStateChanged += (s, e) =>
-            DispatcherQueue.TryEnqueue(UpdateArchiveBanner);
-
-        Player.VodStateChanged += (s, e) =>
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                UpdateVodQualityButtons();
-                UpdateArchivePauseButton();
-            });
+        Player.VodStateChanged += OnPlayerVodStateChanged;
 
         ViewModel.PortalEpisodePickRequested += OnPortalEpisodePickRequested;
 
 
         ViewModel.VodResumePromptRequested += OnVodResumePromptRequested;
-        ViewModel.RecordingChanged += (s, e) =>
-            DispatcherQueue.TryEnqueue(UpdateRecordButtons);
+        ViewModel.RecordingChanged += OnRecordingChangedUpdateButtons;
 
 
-        ViewModel.ParentalUnlockRequested += channel => ShowParentalPinDialogAsync(channel);
+        ViewModel.ParentalUnlockRequested += OnParentalUnlockRequested;
 
 
-        ViewModel.DailyLimitBlocked += (s, e) =>
-            DispatcherQueue.TryEnqueue(async () => await ShowDailyLimitDialogAsync());
-        ViewModel.DailyLimitReached += (s, e) =>
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                StopPlayback();
-                _ = ShowDailyLimitDialogAsync();
-            });
-        ViewModel.EpgVisibilityChanged += (s, e) =>
-            DispatcherQueue.TryEnqueue(ApplyEpgVisibility);
+        ViewModel.DailyLimitBlocked += OnDailyLimitBlocked;
+        ViewModel.DailyLimitReached += OnDailyLimitReached;
+        ViewModel.EpgVisibilityChanged += OnEpgVisibilityChanged;
 
 
-        ViewModel.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(ViewModel.SelectedChannel))
-            {
-                DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
-            }
-        };
-        ViewModel.EpgViewModel.EpgReloaded += (s, e) =>
-            DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
-        ViewModel.EpgViewModel.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(ViewModel.EpgViewModel.IsLoading))
-            {
-                DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
-            }
-        };
-        Player.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName is not (nameof(PlayerViewModel.IsBuffering) or nameof(PlayerViewModel.StreamError)))
-            {
-                return;
-            }
-
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                BufferProgress.Visibility = Player.IsBuffering ? Visibility.Visible : Visibility.Collapsed;
-                StreamErrorText.Text = Player.StreamError ?? string.Empty;
-                StreamErrorCard.Visibility = string.IsNullOrEmpty(Player.StreamError)
-                    ? Visibility.Collapsed
-                    : Visibility.Visible;
-
-                if (!string.IsNullOrEmpty(Player.StreamError) &&
-                    ViewModel.SelectedChannel != null &&
-                    Player.CurrentPlayerChannelId == ViewModel.SelectedChannel.Id)
-                {
-                    ViewModel.SelectedChannel.IsPlaying = false;
-                }
-            });
-        };
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        ViewModel.EpgViewModel.EpgReloaded += OnEpgReloaded;
+        ViewModel.EpgViewModel.PropertyChanged += OnEpgViewModelPropertyChanged;
+        Player.PropertyChanged += OnPlayerPropertyChangedBuffering;
 
 
-        Player.PropertyChanged += (s, e) =>
-        {
-            if (e.PropertyName == nameof(PlayerViewModel.IsMuted))
-            {
-                DispatcherQueue.TryEnqueue(UpdateMuteButtons);
-            }
-        };
+        Player.PropertyChanged += OnPlayerPropertyChangedMuted;
 
-        Player.PlayerChanged += (s, e) =>
-        {
-            _bufferingStallCount = 0;
-            if (Player.Player != null)
-            {
-                _channelSessionStartUtc = DateTime.UtcNow;
-                _bufferingStartedAtUtc = null;
-                Player.Player.BufferingStarted += (ps, pe) =>
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        _bufferingStallCount++;
-                        _bufferingStartedAtUtc = DateTime.UtcNow;
+        Player.PlayerChanged += OnPlayerChangedAttachBuffering;
 
 
-                        Log.Information("Буферизация начата (простой #{Count}).", _bufferingStallCount);
-                        UpdateStatsOverlay();
-                    });
-                Player.Player.BufferingEnded += (ps, pe) =>
-                    DispatcherQueue.TryEnqueue(() =>
-                    {
-                        var duration = _bufferingStartedAtUtc is { } at
-                            ? (DateTime.UtcNow - at).TotalSeconds
-                            : -1;
-                        _bufferingStartedAtUtc = null;
-                        Log.Information("Буферизация окончена: длилась {Duration:N1} с.", duration);
-                        UpdateStatsOverlay();
-                    });
-            }
-        };
-
-
-        ViewModel.RecordingChanged += (s, e) =>
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                UpdateRecordButtons();
-                if (!string.IsNullOrEmpty(ViewModel.RecordError))
-                {
-                    ShowStreamError(ViewModel.RecordError);
-                    ViewModel.RecordError = null;
-                }
-            });
-        ViewModel.FilterChanged += (s, e) =>
-        {
-            DispatcherQueue.TryEnqueue(() =>
-            {
-
-                _syncingListSelection = true;
-                try
-                {
-                    ChannelsListView.SelectedItem = ViewModel.SelectedChannel;
-                    PosterGridView.SelectedItem = ViewModel.SelectedChannel;
-
-                    OverlayChannelsListView.SelectedItem = ViewModel.SelectedChannel;
-                }
-                finally
-                {
-                    _syncingListSelection = false;
-                }
-
-            });
-
-            DispatcherQueue.TryEnqueue(async () => await ScrollSelectedChannelIntoViewAsync());
-        };
-        ViewModel.ReminderToastRequested += (s, e) =>
-            ShowReminderToast(e);
-        ViewModel.SettingsSaveRequested += (s, e) =>
-        {
-            _settingsSaveDebounceTimer.Stop();
-            _settingsSaveDebounceTimer.Start();
-        };
-        ViewModel.ScrollToProgramRequested += (s, e) =>
-            DispatcherQueue.TryEnqueue(async () => await ScrollToCurrentProgramAsync());
-        ViewModel.ArchivePlayErrorRequested += (s, e) =>
-            DispatcherQueue.TryEnqueue(() => ShowStreamError(e));
-        ViewModel.SleepTimerExpired += (s, e) =>
-            DispatcherQueue.TryEnqueue(() =>
-            {
-
-                App.AllowClose = true;
-                switch (ViewModel.AppSettings.SleepTimerAction)
-                {
-                    case "Exit":
-                        _logger.LogInformation("Таймер сна: закрываю приложение.");
-                        MainWindow.Instance?.Close();
-                        break;
-                    case "Shutdown":
-                        _logger.LogInformation("Таймер сна: выключаю компьютер.");
-                        if (!TryShutdownPc())
-                        {
-
-
-                            _logger.LogWarning("Таймер сна: shutdown.exe не запустился, закрываю только приложение.");
-                        }
-                        MainWindow.Instance?.Close();
-                        break;
-                    default:
-                        StopPlayback();
-                        _logger.LogInformation("Воспроизведение остановлено по таймеру сна.");
-                        break;
-                }
-            });
-        ViewModel.SleepTimerChanged += (s, e) =>
-            DispatcherQueue.TryEnqueue(UpdateSleepTimerDisplays);
+        ViewModel.RecordingChanged += OnRecordingChangedShowError;
+        ViewModel.FilterChanged += OnFilterChanged;
+        ViewModel.ReminderToastRequested += OnReminderToastRequested;
+        ViewModel.SettingsSaveRequested += OnSettingsSaveRequested;
+        ViewModel.ScrollToProgramRequested += OnScrollToProgramRequested;
+        ViewModel.ArchivePlayErrorRequested += OnArchivePlayErrorRequested;
+        ViewModel.SleepTimerExpired += OnSleepTimerExpired;
+        ViewModel.SleepTimerChanged += OnSleepTimerChanged;
 
         InitializeComponent();
+
 
         RootGrid.SizeChanged += OnRootLayoutSizeChanged;
         WindowedVideoOverlay.SizeChanged += OnRootLayoutSizeChanged;
@@ -341,8 +172,7 @@ public sealed partial class MainPage : Page
         };
         Unloaded += (s, e) =>
         {
-            ViewModel.PortalEpisodePickRequested -= OnPortalEpisodePickRequested;
-            ViewModel.VodResumePromptRequested -= OnVodResumePromptRequested;
+            UnsubscribeViewModelEvents();
             _overlayHideTimer.Stop();
             _currentProgramRefreshTimer.Stop();
             _archivePositionTimer.Stop();
@@ -351,6 +181,8 @@ public sealed partial class MainPage : Page
             _settingsSaveDebounceTimer.Stop();
             _channelNumberInputTimer.Stop();
             StopPlayback();
+            _frameServerRenderer.Detach();
+            _frameServerRenderer.Dispose();
         };
 
         _currentProgramRefreshTimer.Tick += (s, e) =>
@@ -427,7 +259,10 @@ public sealed partial class MainPage : Page
             _ = SaveVolumeToSettingsAsync();
         };
 
-        MainWindow.Instance!.Closed += (_, _) =>
+        var mainWindow = MainWindow.Instance;
+        if (mainWindow != null)
+        {
+            mainWindow.Closed += async (_, _) =>
         {
             try
             {
@@ -437,7 +272,7 @@ public sealed partial class MainPage : Page
                 _archivePositionTimer.Stop();
                 _archiveSeekDebounceTimer.Stop();
 
-                var placement = MainWindow.Instance.CapturePlacement();
+                var placement = mainWindow.CapturePlacement();
                 if (placement != null)
                 {
                     ViewModel.AppSettings.WindowPlacement = placement;
@@ -458,31 +293,276 @@ public sealed partial class MainPage : Page
                     })
                     .ToList();
 
-                ViewModel.SaveSettingsAsync().GetAwaiter().GetResult();
-
-                Task.Run(() => ViewModel.FlushVodResumePositionsAsync())
-                    .GetAwaiter().GetResult();
+                await ViewModel.SaveSettingsAsync();
+                await ViewModel.FlushVodResumePositionsAsync();
 
                 ViewModel.Recording.StopAll();
 
-                if (Player.Player != null)
-                {
-                    Player.Player.Source = null;
-                    Player.Player.Dispose();
-                }
+                Player.Stop();
             }
-            catch
+            catch (Exception ex)
             {
-
+                Serilog.Log.Error(ex, "Ошибка при сохранении состояния перед выходом.");
             }
 
             App.Tray?.Dispose();
             App.Tray = null;
             Serilog.Log.CloseAndFlush();
 
-            Environment.Exit(0);
-        };
+                Environment.Exit(0);
+            };
+        }
     }
+
+        // Named handlers so Unloaded can unsubscribe from singleton VMs
+        private void OnPlayerChangedApplyRenderer(object? s, EventArgs e)
+        {
+            void ApplyPlayer()
+            {
+                var player = Player.Player;
+                MediaPlayer.SetMediaPlayer(player);
+
+                _frameServerRenderer.Detach();
+                if (player != null &&
+                    ViewModel.AppSettings.FrameServerRender)
+                {
+                    var diag = _streamService.CurrentDiagnostics;
+                    _frameServerRenderer.Attach(FrameServerPanel, player,
+                        diag?.VideoWidth ?? 0, diag?.VideoHeight ?? 0);
+                }
+            }
+
+            if (DispatcherQueue.HasThreadAccess)
+            {
+                ApplyPlayer();
+            }
+            else
+            {
+                DispatcherQueue.TryEnqueue(ApplyPlayer);
+            }
+        }
+
+        private void OnPlayerArchiveStateChanged(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(UpdateArchiveBanner);
+
+        private void OnPlayerVodStateChanged(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                UpdateVodQualityButtons();
+                UpdateArchivePauseButton();
+            });
+
+        private void OnRecordingChangedUpdateButtons(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(UpdateRecordButtons);
+
+        private Task<int?> OnParentalUnlockRequested(ChannelViewModel channel) =>
+            ShowParentalPinDialogAsync(channel);
+
+        private void OnDailyLimitBlocked(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(async () => await ShowDailyLimitDialogAsync());
+
+        private void OnDailyLimitReached(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                StopPlayback();
+                _ = ShowDailyLimitDialogAsync();
+            });
+
+        private void OnEpgVisibilityChanged(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(ApplyEpgVisibility);
+
+        private void OnViewModelPropertyChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ViewModel.SelectedChannel))
+            {
+                DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
+            }
+        }
+
+        private void OnEpgReloaded(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
+
+        private void OnEpgViewModelPropertyChanged(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ViewModel.EpgViewModel.IsLoading))
+            {
+                DispatcherQueue.TryEnqueue(UpdateEpgEmptyState);
+            }
+        }
+
+        private void OnPlayerPropertyChangedBuffering(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is not (nameof(PlayerViewModel.IsBuffering) or nameof(PlayerViewModel.StreamError)))
+            {
+                return;
+            }
+
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                BufferProgress.Visibility = Player.IsBuffering ? Visibility.Visible : Visibility.Collapsed;
+                StreamErrorText.Text = Player.StreamError ?? string.Empty;
+                StreamErrorCard.Visibility = string.IsNullOrEmpty(Player.StreamError)
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
+
+                if (!string.IsNullOrEmpty(Player.StreamError) &&
+                    ViewModel.SelectedChannel != null &&
+                    Player.CurrentPlayerChannelId == ViewModel.SelectedChannel.Id)
+                {
+                    ViewModel.SelectedChannel.IsPlaying = false;
+                }
+            });
+        }
+
+        private void OnPlayerPropertyChangedMuted(object? s, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.IsMuted))
+            {
+                DispatcherQueue.TryEnqueue(UpdateMuteButtons);
+            }
+        }
+
+        private void OnPlayerChangedAttachBuffering(object? s, EventArgs e)
+        {
+            _bufferingStallCount = 0;
+            if (Player.Player != null)
+            {
+                _channelSessionStartUtc = DateTime.UtcNow;
+                _bufferingStartedAtUtc = null;
+                Player.Player.BufferingStarted += (_, _) =>
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        _bufferingStallCount++;
+                        _bufferingStartedAtUtc = DateTime.UtcNow;
+
+                        Log.Information("Буферизация начата (простой #{Count}).", _bufferingStallCount);
+                        UpdateStatsOverlay();
+                    });
+                Player.Player.BufferingEnded += (_, _) =>
+                    DispatcherQueue.TryEnqueue(() =>
+                    {
+                        var duration = _bufferingStartedAtUtc is { } at
+                            ? (DateTime.UtcNow - at).TotalSeconds
+                            : -1;
+                        _bufferingStartedAtUtc = null;
+                        Log.Information("Буферизация окончена: длилась {Duration:N1} с.", duration);
+                        UpdateStatsOverlay();
+                    });
+            }
+        }
+
+        private void OnRecordingChangedShowError(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                UpdateRecordButtons();
+                if (!string.IsNullOrEmpty(ViewModel.RecordError))
+                {
+                    ShowStreamError(ViewModel.RecordError);
+                    ViewModel.RecordError = null;
+                }
+            });
+
+        private void OnFilterChanged(object? s, EventArgs e)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _syncingListSelection = true;
+                try
+                {
+                    ChannelsListView.SelectedItem = ViewModel.SelectedChannel;
+                    PosterGridView.SelectedItem = ViewModel.SelectedChannel;
+
+                    OverlayChannelsListView.SelectedItem = ViewModel.SelectedChannel;
+                }
+                finally
+                {
+                    _syncingListSelection = false;
+                }
+            });
+
+            DispatcherQueue.TryEnqueue(async () => await ScrollSelectedChannelIntoViewAsync());
+        }
+
+        private void OnReminderToastRequested(object? s, ProgramReminder e) => ShowReminderToast(e);
+
+        private void OnSettingsSaveRequested(object? s, EventArgs e)
+        {
+            _settingsSaveDebounceTimer.Stop();
+            _settingsSaveDebounceTimer.Start();
+        }
+
+        private void OnScrollToProgramRequested(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(async () => await ScrollToCurrentProgramAsync());
+
+        private void OnArchivePlayErrorRequested(object? s, string e) =>
+            DispatcherQueue.TryEnqueue(() => ShowStreamError(e));
+
+        private void OnSleepTimerExpired(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                App.AllowClose = true;
+                switch (ViewModel.AppSettings.SleepTimerAction)
+                {
+                    case "Exit":
+                        _logger.LogInformation("Таймер сна: закрываю приложение.");
+                        MainWindow.Instance?.Close();
+                        break;
+                    case "Shutdown":
+                        _logger.LogInformation("Таймер сна: выключаю компьютер.");
+                        if (!TryShutdownPc())
+                        {
+                            _logger.LogWarning("Таймер сна: shutdown.exe не запустился, закрываю только приложение.");
+                        }
+                        MainWindow.Instance?.Close();
+                        break;
+                    default:
+                        StopPlayback();
+                        _logger.LogInformation("Воспроизведение остановлено по таймеру сна.");
+                        break;
+                }
+            });
+
+        private void OnSleepTimerChanged(object? s, EventArgs e) =>
+            DispatcherQueue.TryEnqueue(UpdateSleepTimerDisplays);
+
+        private void UnsubscribeViewModelEvents()
+        {
+            Player.PlayerChanged -= OnPlayerChangedApplyRenderer;
+            Player.ArchiveStateChanged -= OnPlayerArchiveStateChanged;
+            Player.VodStateChanged -= OnPlayerVodStateChanged;
+            Player.PropertyChanged -= OnPlayerPropertyChangedBuffering;
+            Player.PropertyChanged -= OnPlayerPropertyChangedMuted;
+            Player.PlayerChanged -= OnPlayerChangedAttachBuffering;
+
+            ViewModel.PortalEpisodePickRequested -= OnPortalEpisodePickRequested;
+            ViewModel.VodResumePromptRequested -= OnVodResumePromptRequested;
+            ViewModel.RecordingChanged -= OnRecordingChangedUpdateButtons;
+            ViewModel.RecordingChanged -= OnRecordingChangedShowError;
+            ViewModel.ParentalUnlockRequested -= OnParentalUnlockRequested;
+            ViewModel.DailyLimitBlocked -= OnDailyLimitBlocked;
+            ViewModel.DailyLimitReached -= OnDailyLimitReached;
+            ViewModel.EpgVisibilityChanged -= OnEpgVisibilityChanged;
+            ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            ViewModel.EpgViewModel.EpgReloaded -= OnEpgReloaded;
+            ViewModel.EpgViewModel.PropertyChanged -= OnEpgViewModelPropertyChanged;
+            ViewModel.FilterChanged -= OnFilterChanged;
+            ViewModel.ReminderToastRequested -= OnReminderToastRequested;
+            ViewModel.SettingsSaveRequested -= OnSettingsSaveRequested;
+            ViewModel.ScrollToProgramRequested -= OnScrollToProgramRequested;
+            ViewModel.ArchivePlayErrorRequested -= OnArchivePlayErrorRequested;
+            ViewModel.SleepTimerExpired -= OnSleepTimerExpired;
+            ViewModel.SleepTimerChanged -= OnSleepTimerChanged;
+
+            UnsubscribeEpgEmptyStateChannel();
+
+            if (_hotkeysAttached && XamlRoot?.Content is UIElement root)
+            {
+                root.PreviewKeyDown -= OnPagePreviewKeyDown;
+                _hotkeysAttached = false;
+            }
+        }
+
+
 
 
     protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)

@@ -439,7 +439,7 @@ public partial class App : Application
             }
 
             var settingsService = App.Services.GetRequiredService<ISettingsService>();
-            var settings = settingsService.LoadAsync().GetAwaiter().GetResult();
+            var settings = await settingsService.LoadAsync();
             Log.Information("OnLaunched: ShowHubOnStartup={Hub}", settings.ShowHubOnStartup);
 
             var target = settings.ShowHubOnStartup ? typeof(HubPage) : typeof(MainPage);

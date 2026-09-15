@@ -391,8 +391,8 @@ public sealed partial class MainPage : Page
 
     private void ToggleMiniPlayer()
     {
-        MainWindow.Instance!.ToggleMiniPlayer();
-        var mini = MainWindow.Instance.IsMiniPlayer;
+        MainWindow.Instance?.ToggleMiniPlayer();
+        var mini = MainWindow.Instance?.IsMiniPlayer ?? false;
 
         if (mini && !_panelsHiddenForMini)
         {

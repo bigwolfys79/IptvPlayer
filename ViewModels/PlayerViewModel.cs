@@ -308,6 +308,10 @@ public partial class PlayerViewModel : ObservableObject
 
         Stop();
         var generation = _playbackGeneration;
+        _zapCts?.Cancel();
+        _zapCts?.Dispose();
+        _zapCts = new System.Threading.CancellationTokenSource();
+        var zapCts = _zapCts;
 
         StreamError = null;
         IsBuffering = true;
@@ -326,7 +330,7 @@ public partial class PlayerViewModel : ObservableObject
                 streamSettings.FrameServerRender);
             try
             {
-                var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod);
+                var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod, zapCts.Token);
             if (generation != _playbackGeneration)
             {
 
@@ -336,8 +340,8 @@ public partial class PlayerViewModel : ObservableObject
                     channel.Name, generation, _playbackGeneration);
                 try
                 {
-                    player.Source = null;
-                    player.Dispose();
+                    player.MediaFailed -= OnMediaFailed;
+                    _streamService.ReleasePlayer(player);
                 }
                 catch
                 {
@@ -432,6 +436,12 @@ public partial class PlayerViewModel : ObservableObject
             ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
             VodStateChanged?.Invoke(this, EventArgs.Empty);
         }
+        catch (OperationCanceledException) when (generation != _playbackGeneration || zapCts.IsCancellationRequested)
+        {
+            // Stale or cancelled zap — not an error
+            _logger.LogInformation("StartPlaybackAsync: запуск «{Channel}» отменён.", channel.Name);
+            channel.IsPlaying = false;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "StartPlaybackAsync: канал {ChannelId}, url {Url}.", channel.Id, streamUrl);
@@ -448,6 +458,9 @@ public partial class PlayerViewModel : ObservableObject
     private readonly Windows.System.Display.DisplayRequest _displayRequest = new();
 
     private int _playbackGeneration;
+
+    // Cancelled on Stop()/new playback so a hung stream open can't linger
+    private System.Threading.CancellationTokenSource? _zapCts;
 
     private void EnsureDisplayRequest()
     {
@@ -488,6 +501,7 @@ public partial class PlayerViewModel : ObservableObject
     public void Stop()
     {
         _playbackGeneration++;
+        try { _zapCts?.Cancel(); } catch (ObjectDisposedException) { }
         ReleaseDisplayRequest();
         if (Player == null)
         {
@@ -514,31 +528,8 @@ public partial class PlayerViewModel : ObservableObject
         ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
         VodStateChanged?.Invoke(this, EventArgs.Empty);
 
-        try
-        {
-            var teardown = System.Diagnostics.Stopwatch.StartNew();
-            player.Pause();
-            player.MediaFailed -= OnMediaFailed;
-            player.Source = null;
-            player.Dispose();
-
-
-            teardown.Stop();
-            if (teardown.Elapsed.TotalMilliseconds > 100)
-            {
-                _logger.LogWarning(
-                    "Stop: освобождение плеера заняло {Ms:F0} мс (нативный teardown на UI-потоке).",
-                    teardown.Elapsed.TotalMilliseconds);
-            }
-            else
-            {
-                _logger.LogInformation("Stop: освобождение плеера заняло {Ms:F0} мс.", teardown.Elapsed.TotalMilliseconds);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Stop: не удалось освободить плеер.");
-        }
+        player.MediaFailed -= OnMediaFailed;
+        _streamService.ReleasePlayer(player);
     }
 
 
@@ -771,11 +762,18 @@ public partial class PlayerViewModel : ObservableObject
             args.Error, args.ExtendedErrorCode,
             string.IsNullOrEmpty(args.ErrorMessage) ? string.Empty : $", {args.ErrorMessage}");
 
+        try
+        {
         var errorMsg = args.ErrorMessage ?? args.Error.ToString();
         var diagnostic = await _streamService.DiagnoseStreamUrl(_lastStreamUrl);
 
         StreamError = $"{L.T("Oshibka_Vosproizvedeniya")}{errorMsg}\n\n{string.Format(L.T("Diagnostika_Prefiks_0"), diagnostic)}";
         IsBuffering = false;
         ResetArchiveState();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "OnMediaFailed: не удалось показать диагностику ошибки потока.");
+        }
     }
 }

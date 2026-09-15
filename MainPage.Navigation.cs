@@ -131,10 +131,20 @@ public sealed partial class MainPage : Page
             ViewModel.ClearPortalInfo();
         }
 
+        _playlistLoadGeneration++;
         _playlistLoadCts?.Cancel();
         _playlistLoadCts = new System.Threading.CancellationTokenSource();
+        var generation = _playlistLoadGeneration;
         var channels = await LoadPlaylistChannelsWithOverlayAsync(playlist, _playlistLoadCts.Token);
+        if (generation != _playlistLoadGeneration)
+        {
+            return;
+        }
         channels = await ApplyChannelOverridesAsync(channels);
+        if (generation != _playlistLoadGeneration)
+        {
+            return;
+        }
 
         var channelId = 1;
         foreach (var channel in channels)
@@ -300,12 +310,7 @@ public sealed partial class MainPage : Page
 
         await Task.Yield();
 
-        var waited = 0;
-        for (var i = 0; i < 15 && OverlayChannelsListView.ItemsPanelRoot == null; i++)
-        {
-            await Task.Delay(100);
-            waited += 100;
-        }
+        var waited = await WaitForItemsPanelAsync(OverlayChannelsListView, TimeSpan.FromSeconds(1.5));
 
         Serilog.Log.Debug(
             "OverlayList: прокрутка к «{Channel}» — панель списка {PanelState} (ожидали {Waited} мс), Items {Count}",
@@ -317,6 +322,33 @@ public sealed partial class MainPage : Page
         OverlayChannelsListView.ScrollIntoView(channel, ScrollIntoViewAlignment.Leading);
     }
 
+    // Poll ItemsPanelRoot with a dispatcher timer (no thread sleeps)
+    private static async Task<int> WaitForItemsPanelAsync(ItemsControl list, TimeSpan timeout)
+    {
+        if (list.ItemsPanelRoot != null)
+        {
+            return 0;
+        }
+
+        var waited = 0;
+        var stepMs = 50;
+        var tcs = new TaskCompletionSource();
+        var timer = list.DispatcherQueue.CreateTimer();
+        timer.Interval = TimeSpan.FromMilliseconds(stepMs);
+        timer.Tick += (s, e) =>
+        {
+            waited += stepMs;
+            if (list.ItemsPanelRoot != null || waited >= timeout.TotalMilliseconds)
+            {
+                timer.Stop();
+                tcs.TrySetResult();
+            }
+        };
+        timer.Start();
+        await tcs.Task;
+        return waited;
+    }
+
 
     private async Task ScrollChannelIntoViewAsync(ListView list)
     {
@@ -326,7 +358,7 @@ public sealed partial class MainPage : Page
         }
 
         await Task.Yield();
-        await Task.Delay(150);
+        await WaitForItemsPanelAsync(list, TimeSpan.FromSeconds(1.5));
 
         list.ScrollIntoView(ViewModel.SelectedChannel);
         await Task.Delay(50);

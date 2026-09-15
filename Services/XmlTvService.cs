@@ -213,9 +213,32 @@ public class XmlTvService : IXmlTvService
         var windowEnd = now.AddDays(DaysAhead + 1);
         var dataSavedAtUtc = DateTime.UtcNow;
         XmlTvLoadResult parsed;
-        await using (System.IO.Stream stream = await DownloadAsync(url, ct))
+        // Streaming: sniff gzip magic, decompress/parse without buffering the whole file
+        HttpResponseMessage? response = null;
+        try
         {
-            parsed = await Task.Run(() => ParseXmlTv(stream, windowStart, windowEnd), ct);
+            response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
+            var raw = await response.Content.ReadAsStreamAsync(ct);
+
+            var b0 = raw.ReadByte();
+            var b1 = raw.ReadByte();
+            if (b0 < 0 || b1 < 0)
+            {
+                throw new InvalidDataException("Пустой ответ EPG-источника.");
+            }
+
+            System.IO.Stream source = new PrefixStream(new byte[] { (byte)b0, (byte)b1 }, raw);
+            if (b0 == 0x1F && b1 == 0x8B)
+            {
+                source = new GZipStream(source, CompressionMode.Decompress);
+            }
+
+            parsed = await Task.Run(() => ParseXmlTv(source, windowStart, windowEnd), ct);
+        }
+        finally
+        {
+            response?.Dispose();
         }
 
         _logger.LogInformation(
@@ -230,31 +253,58 @@ public class XmlTvService : IXmlTvService
         };
     }
 
-    private async Task<System.IO.Stream> DownloadAsync(string url, CancellationToken ct)
+    // Stream that replays a small read prefix before the inner stream
+    private sealed class PrefixStream : System.IO.Stream
     {
-        using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
+        private readonly byte[] _prefix;
+        private int _prefixPos;
+        private readonly System.IO.Stream _inner;
+        private bool _disposed;
 
-        var raw = await response.Content.ReadAsStreamAsync(ct);
-
-        var buffer = new MemoryStream();
-        await raw.CopyToAsync(buffer, ct);
-        buffer.Position = 0;
-
-        var bytes = buffer.GetBuffer();
-        var isGzip = buffer.Length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B;
-        if (!isGzip)
+        public PrefixStream(byte[] prefix, System.IO.Stream inner)
         {
-            return buffer;
+            _prefix = prefix;
+            _inner = inner;
         }
 
-        var decompressed = new MemoryStream();
-        await using (var gzip = new GZipStream(buffer, CompressionMode.Decompress))
+        public override bool CanRead => !_disposed;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count)
         {
-            await gzip.CopyToAsync(decompressed, ct);
+            if (_prefixPos < _prefix.Length)
+            {
+                var n = Math.Min(count, _prefix.Length - _prefixPos);
+                Array.Copy(_prefix, _prefixPos, buffer, offset, n);
+                _prefixPos += n;
+                return n;
+            }
+            return _inner.Read(buffer, offset, count);
         }
-        decompressed.Position = 0;
-        return decompressed;
+        public override async System.Threading.Tasks.Task<int> ReadAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken ct)
+        {
+            if (_prefixPos < _prefix.Length)
+            {
+                var n = Math.Min(count, _prefix.Length - _prefixPos);
+                Array.Copy(_prefix, _prefixPos, buffer, offset, n);
+                _prefixPos += n;
+                return n;
+            }
+            return await _inner.ReadAsync(buffer, offset, count, ct);
+        }
+        public override long Seek(long offset, System.IO.SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        protected override void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (disposing) _inner.Dispose();
+            base.Dispose(disposing);
+        }
     }
 
 

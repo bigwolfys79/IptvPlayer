@@ -44,11 +44,18 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     private static readonly string LegacyCacheFilePath = Path.Combine(CacheDirectory, "playlist_cache.json");
 
     private readonly ILogger<PlaylistDatabaseService> _logger;
+    private Task? _initTask;
 
     public PlaylistDatabaseService(ILogger<PlaylistDatabaseService> logger)
     {
         _logger = logger;
-        InitializeDatabase();
+    }
+
+    // Lazy async schema init — keeps constructor off the UI thread
+    private Task InitializeAsync()
+    {
+        _initTask ??= Task.Run(InitializeDatabase);
+        return _initTask;
     }
 
     private void InitializeDatabase()
@@ -109,7 +116,10 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                 altCmd.CommandText = "ALTER TABLE playlists ADD COLUMN portal_key TEXT";
                 altCmd.ExecuteNonQuery();
             }
-            catch {  }
+            catch (SqliteException)
+            {
+                // Column already exists
+            }
         }
         catch (Exception ex)
         {
@@ -120,6 +130,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Load playlist cache from SQLite
     public async Task<PlaylistCache?> LoadAsync(int playlistId)
     {
+        await InitializeAsync();
         try
         {
             using var connection = new SqliteConnection($"Data Source={DbPath}");
@@ -190,6 +201,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Save playlist cache to SQLite
     public async Task SaveAsync(int playlistId, PlaylistCache cache)
     {
+        await InitializeAsync();
         try
         {
             Directory.CreateDirectory(CacheDirectory);
@@ -216,31 +228,37 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             await deleteCmd.ExecuteNonQueryAsync();
 
 
-            const int batchSize = 500;
-            for (var offset = 0; offset < cache.Channels.Count; offset += batchSize)
-            {
-                var batch = cache.Channels.GetRange(offset, Math.Min(batchSize, cache.Channels.Count - offset));
-                var insertCmd = connection.CreateCommand();
-                insertCmd.CommandText =
-                    "INSERT INTO channels (playlist_id, name, stream_url, logo_url, \"group\", tvg_id, catchup_days, portal_request, description, year, genre) " +
-                    "VALUES ($pid, $name, $url, $logo, $group, $tvg, $catchup, $portal, $desc, $year, $genre)";
+            // Prepared command reused for all rows
+            var insertCmd = connection.CreateCommand();
+            insertCmd.CommandText =
+                "INSERT INTO channels (playlist_id, name, stream_url, logo_url, \"group\", tvg_id, catchup_days, portal_request, description, year, genre) " +
+                "VALUES ($pid, $name, $url, $logo, $group, $tvg, $catchup, $portal, $desc, $year, $genre)";
+            var pPid = insertCmd.Parameters.Add("$pid", SqliteType.Integer);
+            var pName = insertCmd.Parameters.Add("$name", SqliteType.Text);
+            var pUrl = insertCmd.Parameters.Add("$url", SqliteType.Text);
+            var pLogo = insertCmd.Parameters.Add("$logo", SqliteType.Text);
+            var pGroup = insertCmd.Parameters.Add("$group", SqliteType.Text);
+            var pTvg = insertCmd.Parameters.Add("$tvg", SqliteType.Text);
+            var pCatchup = insertCmd.Parameters.Add("$catchup", SqliteType.Integer);
+            var pPortal = insertCmd.Parameters.Add("$portal", SqliteType.Text);
+            var pDesc = insertCmd.Parameters.Add("$desc", SqliteType.Text);
+            var pYear = insertCmd.Parameters.Add("$year", SqliteType.Integer);
+            var pGenre = insertCmd.Parameters.Add("$genre", SqliteType.Text);
+            pPid.Value = playlistId;
 
-                foreach (var ch in batch)
-                {
-                    insertCmd.Parameters.Clear();
-                    insertCmd.Parameters.AddWithValue("$pid", playlistId);
-                    insertCmd.Parameters.AddWithValue("$name", ch.Name);
-                    insertCmd.Parameters.AddWithValue("$url", (object?)ch.StreamUrl ?? DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("$logo", (object?)ch.LogoUrl ?? DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("$group", (object?)ch.Group ?? DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("$tvg", (object?)ch.TvgId ?? DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("$catchup", ch.CatchupDays);
-                    insertCmd.Parameters.AddWithValue("$portal", (object?)StripPortalKey(ch.PortalRequest) ?? DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("$desc", (object?)ch.Description ?? DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("$year", ch.Year);
-                    insertCmd.Parameters.AddWithValue("$genre", (object?)ch.Genre ?? DBNull.Value);
-                    await insertCmd.ExecuteNonQueryAsync();
-                }
+            foreach (var ch in cache.Channels)
+            {
+                pName.Value = ch.Name;
+                pUrl.Value = (object?)ch.StreamUrl ?? DBNull.Value;
+                pLogo.Value = (object?)ch.LogoUrl ?? DBNull.Value;
+                pGroup.Value = (object?)ch.Group ?? DBNull.Value;
+                pTvg.Value = (object?)ch.TvgId ?? DBNull.Value;
+                pCatchup.Value = ch.CatchupDays;
+                pPortal.Value = (object?)StripPortalKey(ch.PortalRequest) ?? DBNull.Value;
+                pDesc.Value = (object?)ch.Description ?? DBNull.Value;
+                pYear.Value = ch.Year;
+                pGenre.Value = (object?)ch.Genre ?? DBNull.Value;
+                await insertCmd.ExecuteNonQueryAsync();
             }
 
             await transaction.CommitAsync();
@@ -255,23 +273,22 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     }
 
     // Delete playlist cache
-    public Task DeleteAsync(int playlistId)
+    public async Task DeleteAsync(int playlistId)
     {
         try
         {
             using var connection = new SqliteConnection($"Data Source={DbPath}");
-            connection.Open();
+            await connection.OpenAsync();
 
             var cmd = connection.CreateCommand();
             cmd.CommandText = "DELETE FROM channels WHERE playlist_id = $id; DELETE FROM channel_overrides WHERE playlist_id = $id; DELETE FROM playlists WHERE id = $id;";
             cmd.Parameters.AddWithValue("$id", playlistId);
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Не удалось удалить кэш плейлиста {PlaylistId} из SQLite.", playlistId);
         }
-        return Task.CompletedTask;
     }
 
 
@@ -388,6 +405,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Load learned EPG aliases
     public async Task<List<EpgAlias>> GetEpgAliasesAsync()
     {
+        await InitializeAsync();
         var result = new List<EpgAlias>();
         try
         {
@@ -414,6 +432,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Save learned EPG aliases
     public async Task UpsertEpgAliasesAsync(IReadOnlyList<EpgAlias> aliases)
     {
+        await InitializeAsync();
         if (aliases.Count == 0)
         {
             return;
@@ -468,6 +487,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Load channel move/remove overrides
     public async Task<List<ChannelOverride>> GetChannelOverridesAsync(int playlistId)
     {
+        await InitializeAsync();
         var result = new List<ChannelOverride>();
         try
         {
@@ -505,6 +525,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Save single channel override
     public async Task UpsertChannelOverrideAsync(ChannelOverride overrideEntry)
     {
+        await InitializeAsync();
         try
         {
             using var connection = new SqliteConnection($"Data Source={DbPath}");
@@ -534,6 +555,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Delete channel overrides by URL
     public async Task DeleteChannelOverridesAsync(int playlistId, IReadOnlyList<string> streamUrls)
     {
+        await InitializeAsync();
         if (streamUrls.Count == 0)
         {
             return;

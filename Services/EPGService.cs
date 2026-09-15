@@ -28,6 +28,9 @@ namespace IptvPlayer.Services
 
         private Dictionary<string, List<EPGEntry>> _entriesByChannelId = new(StringComparer.OrdinalIgnoreCase);
 
+        // Per-channel match result cache: avoids repeated normalizer runs on misses
+        private Dictionary<int, (List<EPGEntry> Entries, MatchMethod Method)>? _matchCache;
+
         private Dictionary<string, List<EPGEntry>> _entriesByNormalizedName = new(StringComparer.OrdinalIgnoreCase);
 
         private Dictionary<string, string> _iconsByChannelId = new(StringComparer.OrdinalIgnoreCase);
@@ -66,6 +69,23 @@ namespace IptvPlayer.Services
         private readonly object _loadingTaskGate = new();
 
         private System.Threading.CancellationTokenSource _loadCts = new();
+
+        // Cancel in-flight load and swap CTS under the gate (fixes dispose race)
+        private void CancelAndReplaceLoadCts()
+        {
+            System.Threading.CancellationTokenSource old;
+            lock (_loadingTaskGate)
+            {
+                old = _loadCts;
+                _loadCts = new System.Threading.CancellationTokenSource();
+            }
+            try
+            {
+                old.Cancel();
+            }
+            catch (ObjectDisposedException) { }
+            old.Dispose();
+        }
 
         private readonly DispatcherQueue? _uiDispatcher;
 
@@ -237,18 +257,16 @@ namespace IptvPlayer.Services
             }
             if (inFlight != null)
             {
-                _loadCts.Cancel();
+                CancelAndReplaceLoadCts();
                 try
                 {
                     await inFlight;
                 }
-                catch
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
                 {
-
-
+                    _logger.LogWarning(ex, "Предыдущая загрузка EPG завершилась с ошибкой.");
                 }
-                _loadCts.Dispose();
-                _loadCts = new System.Threading.CancellationTokenSource();
             }
 
             await EnsureEpgLoadedAsync(force: true);
@@ -267,17 +285,16 @@ namespace IptvPlayer.Services
             }
             if (inFlight != null)
             {
-                _loadCts.Cancel();
+                CancelAndReplaceLoadCts();
                 try
                 {
                     await inFlight;
                 }
-                catch
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
                 {
-
+                    _logger.LogWarning(ex, "Предыдущая загрузка EPG завершилась с ошибкой.");
                 }
-                _loadCts.Dispose();
-                _loadCts = new System.Threading.CancellationTokenSource();
             }
 
             await EnsureEpgLoadedAsync(force: true);
@@ -298,7 +315,18 @@ namespace IptvPlayer.Services
 
         private (List<EPGEntry> Entries, MatchMethod Method) MatchChannel(ChannelViewModel channel)
         {
+            if (_matchCache is { } cache && cache.TryGetValue(channel.Id, out var cachedMatch))
+            {
+                return cachedMatch;
+            }
 
+            var result = MatchChannelCore(channel);
+            StoreMatch(channel, result);
+            return result;
+        }
+
+        private (List<EPGEntry> Entries, MatchMethod Method) MatchChannelCore(ChannelViewModel channel)
+        {
             if (!string.IsNullOrWhiteSpace(channel.TvgId) &&
                 _entriesByChannelId.TryGetValue(channel.TvgId, out var byId))
             {
@@ -335,6 +363,11 @@ namespace IptvPlayer.Services
             }
 
             return (new List<EPGEntry>(), MatchMethod.None);
+        }
+
+        private void StoreMatch(ChannelViewModel channel, (List<EPGEntry> Entries, MatchMethod Method) result)
+        {
+            (_matchCache ??= new Dictionary<int, (List<EPGEntry>, MatchMethod)>())[channel.Id] = result;
         }
 
 
@@ -538,6 +571,7 @@ namespace IptvPlayer.Services
 
                 _entriesByChannelId = byChannel;
                 _entriesByNormalizedName = nameIndex;
+                _matchCache = null;
                 _iconsByChannelId = iconsByChannelId;
                 _epgLoaded = true;
                 _lastSuccessfulLoad = DateTime.Now;
@@ -605,6 +639,7 @@ namespace IptvPlayer.Services
 
             _entriesByChannelId = byChannel;
             _entriesByNormalizedName = nameIndex;
+            _matchCache = null;
             _iconsByChannelId = icons;
             _epgLoaded = true;
             _lastSuccessfulLoad = DateTime.Now;
@@ -833,7 +868,8 @@ namespace IptvPlayer.Services
                         case MatchMethod.Name:
                             matchedByName++;
                             TryLearnAlias(learned, channel, entries);
-                            break;                        default:
+                            break;
+                        default:
                             unmatched.Add(channel.Name);
                             break;
                     }

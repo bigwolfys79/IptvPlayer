@@ -124,7 +124,51 @@ namespace IptvPlayer.Services
 
         public string? CurrentVideoFilter { get; private set; }
 
-        public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig streamConfig, bool isVod = false)
+        // Serialized background teardown: off the UI thread, but a new stream open
+        // waits for the previous player's native dispose to finish
+        private System.Threading.Tasks.Task _disposeQueue = System.Threading.Tasks.Task.CompletedTask;
+
+        public System.Threading.Tasks.Task DisposeQueue => _disposeQueue;
+
+        public void ReleasePlayer(MediaPlayer? player)
+        {
+            if (player is null)
+            {
+                return;
+            }
+
+            LiveSources.TryGetValue(player, out var source);
+            LiveSources.Remove(player);
+            try
+            {
+                player.Pause();
+                player.Source = null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ReleasePlayer: не удалось отвязать источник.");
+            }
+
+            _disposeQueue = System.Threading.Tasks.Task.Run(() =>
+            {
+                var teardown = System.Diagnostics.Stopwatch.StartNew();
+                try
+                {
+                    source?.Dispose();
+                    player.Dispose();
+                    teardown.Stop();
+                    _logger.LogInformation("ReleasePlayer: нативный teardown занял {Ms:F0} мс (фон).",
+                        teardown.Elapsed.TotalMilliseconds);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "ReleasePlayer: не удалось освободить плеер.");
+                }
+            });
+        }
+
+
+        public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig streamConfig, bool isVod = false, CancellationToken ct = default)
         {
             MediaPlayer player;
             try
@@ -210,7 +254,9 @@ namespace IptvPlayer.Services
                         actualUrl);
                 }
 
-                var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig);
+                ct.ThrowIfCancellationRequested();
+                await _disposeQueue.ConfigureAwait(continueOnCapturedContext: false);
+                var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig).AsTask(ct);
                 player.Source = ffmpegSource.CreateMediaPlaybackItem();
                 LiveSources.Add(player, ffmpegSource);
                 if (!string.IsNullOrEmpty(normFilter))
@@ -281,6 +327,17 @@ namespace IptvPlayer.Services
         }
 
 
+        // Shared client: avoids TCP/TLS setup and socket exhaustion per call
+        private static readonly System.Net.Http.HttpClient DiagnosticHttpClient = CreateDiagnosticHttpClient();
+
+        private static System.Net.Http.HttpClient CreateDiagnosticHttpClient()
+        {
+            var http = new System.Net.Http.HttpClient();
+            http.Timeout = TimeSpan.FromSeconds(10);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("IptvPlayer/1.0");
+            return http;
+        }
+
         public async Task<string> DiagnoseStreamUrl(string? streamUrl)
         {
             if (string.IsNullOrWhiteSpace(streamUrl))
@@ -297,10 +354,7 @@ namespace IptvPlayer.Services
 
             try
             {
-                using var http = new System.Net.Http.HttpClient();
-                http.Timeout = TimeSpan.FromSeconds(10);
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("IptvPlayer/1.0");
-
+                using var http = CreateDiagnosticHttpClient();
                 using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, streamUrl);
                 using var response = await http.SendAsync(request, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
 
