@@ -309,7 +309,7 @@ public partial class PlayerViewModel : ObservableObject
         Stop();
         var generation = _playbackGeneration;
         _zapCts?.Cancel();
-        _zapCts?.Dispose();
+        // No Dispose: token may still be registered in an in-flight CreatePlayerAsync
         _zapCts = new System.Threading.CancellationTokenSource();
         var zapCts = _zapCts;
 
@@ -761,6 +761,12 @@ public partial class PlayerViewModel : ObservableObject
             "MediaPlayer.MediaFailed: Status={Status}, Code=0x{Code:x}{Message}",
             args.Error, args.ExtendedErrorCode,
             string.IsNullOrEmpty(args.ErrorMessage) ? string.Empty : $", {args.ErrorMessage}");
+
+        // Stale handler from a released player must not clobber the new playback state
+        if (!ReferenceEquals(sender, Player))
+        {
+            return;
+        }
 
         try
         {

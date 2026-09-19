@@ -46,9 +46,9 @@ namespace IptvPlayer.Services
                 return null;
             }
 
+            var vp = new VideoProcessorInterop(logger);
             try
             {
-                var vp = new VideoProcessorInterop(logger);
                 vp.Initialize(nativeDevice);
                 return vp;
             }
@@ -56,9 +56,10 @@ namespace IptvPlayer.Services
             {
                 logger.LogInformation(ex,
                     "VideoProcessorInterop: видеопроцессор недоступен, остаёмся на шейдерном пути.");
+                // Dispose is idempotent, safe on partial initialization
+                vp.Dispose();
                 return null;
-            }
-        }
+            }        }
 
         private void Initialize(IntPtr nativeDevice)
         {

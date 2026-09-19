@@ -60,10 +60,6 @@ namespace IptvPlayer.Services
         private Dictionary<string, string> _logoByTvgId = new(StringComparer.OrdinalIgnoreCase);
 
         private bool _epgLoaded;
-        private DateTime _lastSuccessfulLoad = DateTime.MinValue;
-        private readonly TimeSpan _minReloadInterval = TimeSpan.FromMinutes(5);
-
-        private bool _skipLogged;
 
         private Task? _loadingTask;
         private readonly object _loadingTaskGate = new();
@@ -439,8 +435,6 @@ namespace IptvPlayer.Services
 
         private Task EnsureEpgLoadedAsync(bool force = false)
         {
-            var now = DateTime.Now;
-
             lock (_loadingTaskGate)
             {
                 if (_loadingTask != null)
@@ -449,21 +443,14 @@ namespace IptvPlayer.Services
                     return _loadingTask;
                 }
 
-                if (_epgLoaded && !force && (now - _lastSuccessfulLoad) < _minReloadInterval)
-                {
-                    if (!_skipLogged)
-                    {
-                        _skipLogged = true;
-                        _logger.LogInformation(
-                            "Пропуск перезагрузки EPG: успешно загружено {LoadedAt:HH:mm:ss}, интервал {Interval} не прошёл.",
-                            _lastSuccessfulLoad, _minReloadInterval);
-                    }
-                    return Task.CompletedTask;
-                }
-
                 if (_epgLoaded && !force)
                 {
                     return Task.CompletedTask;
+                }
+
+                if (force)
+                {
+                    _logger.LogInformation("Перезагрузка EPG по запросу (force).");
                 }
 
                 _loadingTask = DoEnsureEpgLoadedAsync();
@@ -477,8 +464,8 @@ namespace IptvPlayer.Services
             try
             {
 
-
-                LoadTvgIdNameMap();
+                // File I/O off the caller thread
+                var mapTask = Task.Run(LoadTvgIdNameMap);
 
                 var settings = await _settingsService.LoadAsync().ConfigureAwait(false);
                 var enabledSources = settings.GetActiveEpgSources()
@@ -489,14 +476,17 @@ namespace IptvPlayer.Services
                     .Select(set => set.Where(s => s.IsEnabled).Select(s => s.Url).ToArray())
                     .Where(urls => urls.Length > 0)
                     .Select(urls => EpgCacheStore.MergedKeyFor(urls));
-                EpgCacheStore.CleanupOrphans(
-                    settings.EpgSources
-                        .Concat(settings.Playlists.SelectMany(p => p.EpgSources))
+                // File I/O off the caller thread
+                await Task.Run(() =>
+                    EpgCacheStore.CleanupOrphans(
+                        settings.EpgSources
+                            .Concat(settings.Playlists.SelectMany(p => p.EpgSources))
 
 
-                        .Select(s => $"xmltv:{s.Url}:{settings.EpgArchiveDaysBack}")
-                        .Concat(sourceSets)
-                        .Distinct(StringComparer.Ordinal));
+                            .Select(s => $"xmltv:{s.Url}:{settings.EpgArchiveDaysBack}")
+                            .Concat(sourceSets)
+                            .Distinct(StringComparer.Ordinal))).ConfigureAwait(false);
+                await mapTask.ConfigureAwait(false);
 
                 TimeSpan maxAge = settings.EpgRefreshDays > 0
                     ? TimeSpan.FromDays(settings.EpgRefreshDays)
@@ -553,6 +543,15 @@ namespace IptvPlayer.Services
                 var results = await Task.WhenAll(loadTasks).ConfigureAwait(false);
                 var sourceResults = results.Where(r => r != null).Select(r => r!).ToList();
 
+                if (enabledSources.Count > 0 && sourceResults.Count == 0)
+                {
+                    // All sources failed — leave _epgLoaded unset so the next call retries
+                    _logger.LogWarning(
+                        "Ни один из {Count} источников EPG не загрузился — EPG останется пустым, будет повторная попытка.",
+                        enabledSources.Count);
+                    return;
+                }
+
                 var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger)).ConfigureAwait(false);
 
                 if (sourceResults.Count == enabledSources.Count)
@@ -574,8 +573,6 @@ namespace IptvPlayer.Services
                 _matchCache = null;
                 _iconsByChannelId = iconsByChannelId;
                 _epgLoaded = true;
-                _lastSuccessfulLoad = DateTime.Now;
-                _skipLogged = false;
 
                 var totalEntries = byChannel.Values.Sum(list => list.Count);
                 _logger.LogInformation(
@@ -642,8 +639,6 @@ namespace IptvPlayer.Services
             _matchCache = null;
             _iconsByChannelId = icons;
             _epgLoaded = true;
-            _lastSuccessfulLoad = DateTime.Now;
-            _skipLogged = false;
 
             _logger.LogInformation(
                 "Слитый EPG взят из кэша слияния: источников {Sources}, каналов с программами: {Channels}, всего программ: {Entries} — без загрузки источников и слияния.",

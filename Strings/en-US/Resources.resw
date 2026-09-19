@@ -3162,4 +3162,10 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Vvod_Pin_Pole" xml:space="preserve">
     <value>PIN</value>
   </data>
+  <data name="Pokazyvat_Glavnoe_Menyu_Pri_Zapuske" xml:space="preserve">
+    <value>Show main menu on startup</value>
+  </data>
+  <data name="Pri_Vyklyuchenii_Srazu_Otkryvaetsya_Poslednij_Kanal" xml:space="preserve">
+    <value>When disabled, the app opens the last channel immediately</value>
+  </data>
 </root>

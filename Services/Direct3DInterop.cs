@@ -45,17 +45,26 @@ namespace IptvPlayer.Services
                 IntPtr.Zero, 1, 0, D3D11CreateDeviceBgraSupport | D3D11CreateDeviceVideoSupport,
                 (IntPtr)fl, 3, 7, out var device, IntPtr.Zero, out var context);
             Marshal.ThrowExceptionForHR(hr);
-            _ = context;
+            // D3D11CreateDevice returns an AddRef'd immediate context we never use
+            if (context != IntPtr.Zero)
+            {
+                Marshal.Release(context);
+            }
 
             var iid = IidIdxgiDevice;
             var dxgiDevice = QueryInterfaceRaw(device, iid);
-            hr = CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice, out var inspectable);
-            Marshal.ThrowExceptionForHR(hr);
-            Marshal.Release(dxgiDevice);
-
-            var d3dDevice = WinRT.MarshalInspectable<IDirect3DDevice>.FromAbi(inspectable);
-            Marshal.Release(inspectable);
-            return (device, d3dDevice);
+            try
+            {
+                hr = CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice, out var inspectable);
+                Marshal.ThrowExceptionForHR(hr);
+                var d3dDevice = WinRT.MarshalInspectable<IDirect3DDevice>.FromAbi(inspectable);
+                Marshal.Release(inspectable);
+                return (device, d3dDevice);
+            }
+            finally
+            {
+                Marshal.Release(dxgiDevice);
+            }
         }
 
 

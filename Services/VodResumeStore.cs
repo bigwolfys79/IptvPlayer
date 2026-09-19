@@ -105,6 +105,8 @@ public class VodResumeStore
 
     public async Task SaveAllAsync(IReadOnlyDictionary<string, VodResumePosition> positions)
     {
+        // Defensive snapshot before first await: caller may mutate the live dictionary
+        var snapshot = new Dictionary<string, VodResumePosition>(positions);
         await _saveGate.WaitAsync();
         try
         {
@@ -128,7 +130,7 @@ public class VodResumeStore
                 var at = cmd.Parameters.Add("$at", SqliteType.Text);
                 var pid = cmd.Parameters.Add("$pid", SqliteType.Integer);
 
-                foreach (var (k, p) in positions)
+                foreach (var (k, p) in snapshot)
                 {
                     key.Value = k;
                     pos.Value = p.PositionSeconds;
@@ -141,7 +143,7 @@ public class VodResumeStore
             }
 
 
-            var keys = positions.Keys.ToArray();
+            var keys = snapshot.Keys.ToArray();
             var delete = connection.CreateCommand();
             delete.Transaction = (SqliteTransaction)transaction;
             delete.CommandText = $@"

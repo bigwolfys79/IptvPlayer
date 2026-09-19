@@ -92,6 +92,9 @@ public sealed partial class MainPage : Page
 
     public MainPageViewModel ViewModel { get; }
 
+    // Last known channel list width, read by MainWindow on close (window cannot access the page)
+    internal static double? LastChannelListWidth;
+
     public MainPage()
     {
 
@@ -181,6 +184,11 @@ public sealed partial class MainPage : Page
             _settingsSaveDebounceTimer.Stop();
             _channelNumberInputTimer.Stop();
             StopPlayback();
+            LastChannelListWidth = _isFullScreen
+                ? _channelListExpandedWidth
+                : Math.Max(0, ChannelListColumn.ActualWidth);
+            ReleaseCursorHider();
+            CancelPendingSeek();
             _frameServerRenderer.Detach();
             _frameServerRenderer.Dispose();
         };
@@ -259,64 +267,15 @@ public sealed partial class MainPage : Page
             _ = SaveVolumeToSettingsAsync();
         };
 
-        var mainWindow = MainWindow.Instance;
-        if (mainWindow != null)
-        {
-            mainWindow.Closed += async (_, _) =>
-        {
-            try
-            {
-                _overlayHideTimer.Stop();
-                _volumeSaveDebounceTimer.Stop();
-                _settingsSaveDebounceTimer.Stop();
-                _archivePositionTimer.Stop();
-                _archiveSeekDebounceTimer.Stop();
-
-                var placement = mainWindow.CapturePlacement();
-                if (placement != null)
-                {
-                    ViewModel.AppSettings.WindowPlacement = placement;
-                }
-                ViewModel.AppSettings.ChannelListWidth = _isFullScreen
-                    ? _channelListExpandedWidth
-                    : Math.Max(0, ChannelListColumn.ActualWidth);
-                ViewModel.AppSettings.Volume = Player.LastUserVolume ?? 1.0;
-
-                ViewModel.AppSettings.InterruptedRecordings = ViewModel.Recording.Active
-                    .Select(r => new Models.InterruptedRecording
-                    {
-                        ChannelName = r.ChannelName,
-                        ProgramName = r.ChannelName,
-                        EndTime = r.DurationSec is > 0
-                            ? r.StartedAt.AddSeconds(r.DurationSec.Value)
-                            : null
-                    })
-                    .ToList();
-
-                await ViewModel.SaveSettingsAsync();
-                await ViewModel.FlushVodResumePositionsAsync();
-
-                ViewModel.Recording.StopAll();
-
-                Player.Stop();
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "Ошибка при сохранении состояния перед выходом.");
-            }
-
-            App.Tray?.Dispose();
-            App.Tray = null;
-            Serilog.Log.CloseAndFlush();
-
-                Environment.Exit(0);
-            };
-        }
+        // Window-close save/exit logic lives in MainWindow (single per-window handler)
     }
 
         // Named handlers so Unloaded can unsubscribe from singleton VMs
         private void OnPlayerChangedApplyRenderer(object? s, EventArgs e)
         {
+            // New channel/stream — drop pending archive seek from the previous one
+            CancelPendingSeek();
+
             void ApplyPlayer()
             {
                 var player = Player.Player;
@@ -773,11 +732,7 @@ public sealed partial class MainPage : Page
                 channel.Id = channelId++;
             }
 
-            foreach (var channel in initialChannels)
-            {
-
-                await _channelRepository.AddChannelAsync(channel);
-            }
+            await _channelRepository.AddChannelsAsync(initialChannels);
 
             var channels = await _epgService.GetChannelsAsync();
             ViewModel.Channels = new ObservableCollection<ChannelViewModel>(channels);
@@ -1027,17 +982,7 @@ public sealed partial class MainPage : Page
 
     private void ApplyTheme(string theme)
     {
-        var elementTheme = theme switch
-        {
-            "Dark" => ElementTheme.Dark,
-            "Light" => ElementTheme.Light,
-            _ => ElementTheme.Default
-        };
-
-        if (MainWindow.Instance?.Content is FrameworkElement root)
-        {
-            root.RequestedTheme = elementTheme;
-        }
+        App.ApplyAppTheme(theme);
 
         UpdateMuteButtons();
         UpdateRecordButtons();

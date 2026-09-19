@@ -149,8 +149,19 @@ namespace IptvPlayer.Services
                 _logger.LogWarning(ex, "ReleasePlayer: не удалось отвязать источник.");
             }
 
-            _disposeQueue = System.Threading.Tasks.Task.Run(() =>
+            var prev = _disposeQueue;
+            _disposeQueue = System.Threading.Tasks.Task.Run(async () =>
             {
+                // Serialize teardown: wait for the previous player's dispose first
+                try
+                {
+                    await prev.ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Previous teardown already logged its own failure
+                }
+
                 var teardown = System.Diagnostics.Stopwatch.StartNew();
                 try
                 {
@@ -277,10 +288,18 @@ namespace IptvPlayer.Services
                             $"{a.CodecName} {a.ChannelLayout} {a.SampleRate}Hz {a.Bitrate/1000}kbps"))
                         : " (аудио не обнаружено)");
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex, "FFmpeg не смог открыть поток {Url}, откат на системный плеер.", streamUrl);
-                player.Source = MediaSource.CreateFromUri(new Uri(streamUrl));
+                try
+                {
+                    player.Source = MediaSource.CreateFromUri(new Uri(streamUrl));
+                }
+                catch (Exception fallbackEx)
+                {
+                    _logger.LogWarning(fallbackEx,
+                        "Откат на системный плеер не удался для {Url} — возвращаем плеер без источника.", streamUrl);
+                }
 
                 CurrentDiagnostics = new PlaybackDiagnostics { SystemSourceFallback = true };
             }
@@ -354,9 +373,8 @@ namespace IptvPlayer.Services
 
             try
             {
-                using var http = CreateDiagnosticHttpClient();
                 using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, streamUrl);
-                using var response = await http.SendAsync(request, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+                using var response = await DiagnosticHttpClient.SendAsync(request, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
 
                 var status = (int)response.StatusCode;
                 if (status == 200)

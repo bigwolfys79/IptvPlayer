@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace IptvPlayer.Services;
 
@@ -17,6 +18,7 @@ public sealed class LocalStreamProxy : IDisposable
     private const int WindowSamples = 5;
 
     private readonly HttpClient _http;
+    private readonly Microsoft.Extensions.Logging.ILogger<LocalStreamProxy> _logger;
     private readonly object _gate = new();
     private readonly Queue<double> _window = new();
     private TcpListener? _listener;
@@ -24,11 +26,11 @@ public sealed class LocalStreamProxy : IDisposable
     private long _totalBytes;
     private long _lastSampleBytes;
     private readonly System.Diagnostics.Stopwatch _sampleClock = System.Diagnostics.Stopwatch.StartNew();
-    private int _activeConnections;
     private string _baseUrl = "";
 
-    public LocalStreamProxy()
+    public LocalStreamProxy(Microsoft.Extensions.Logging.ILogger<LocalStreamProxy> logger)
     {
+        _logger = logger;
         _http = new HttpClient(new SocketsHttpHandler
         {
 
@@ -184,10 +186,6 @@ public sealed class LocalStreamProxy : IDisposable
         using (client)
         {
             client.NoDelay = true;
-            lock (_gate)
-            {
-                _activeConnections++;
-            }
 
             try
             {
@@ -230,16 +228,13 @@ public sealed class LocalStreamProxy : IDisposable
                     await ProxyBodyAsync(stream, response, ct);
                 }
             }
-            catch (Exception)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-
+                // Shutting down — expected
             }
-            finally
+            catch (Exception ex)
             {
-                lock (_gate)
-                {
-                    _activeConnections--;
-                }
+                _logger.LogDebug(ex, "Proxy connection failed.");
             }
         }
     }

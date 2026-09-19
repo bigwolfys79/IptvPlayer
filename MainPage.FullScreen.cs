@@ -52,6 +52,7 @@ public sealed partial class MainPage
             if (ChannelListColumn.ActualWidth > 0)
             {
                 _channelListExpandedWidth = ChannelListColumn.ActualWidth;
+                LastChannelListWidth = _channelListExpandedWidth;
             }
             ChannelListColumn.MinWidth = 0;
             ChannelListColumn.Width = new GridLength(0);

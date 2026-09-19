@@ -200,13 +200,16 @@ public sealed partial class MainPage
         }
 
         var index = ViewModel.SelectedChannel is { } current ? channels.IndexOf(current) : -1;
+        int next;
         if (index < 0)
         {
-
-
-            index = offset >= 0 ? -1 : 0;
+            // No selection: jump to first/last instead of wrapping around a bogus index
+            next = offset > 0 ? 0 : channels.Count - 1;
         }
-        var next = (index + offset + channels.Count) % channels.Count;
+        else
+        {
+            next = (index + offset + channels.Count) % channels.Count;
+        }
 
         var channel = channels[next];
         ViewModel.SelectAndPlayChannelCommand.Execute(channel);

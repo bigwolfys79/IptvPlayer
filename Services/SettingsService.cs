@@ -28,6 +28,9 @@ public class SettingsService : ISettingsService
     private AppSettings? _cached;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
 
+    // Shared snapshot for synchronous readers (window placement, tray options)
+    public static AppSettings? Current { get; private set; }
+
     public SettingsService(ILogger<SettingsService> logger)
     {
         _logger = logger;
@@ -42,9 +45,17 @@ public class SettingsService : ISettingsService
                     return _cached;
                 }
 
+                // Another instance (e.g. App bootstrap) already loaded settings
+                if (Current != null)
+                {
+                    _cached = Current;
+                    return _cached;
+                }
+
                 if (!File.Exists(SettingsPath))
                 {
                     _cached = new AppSettings();
+                    Current = _cached;
                     return _cached;
                 }
 
@@ -52,6 +63,7 @@ public class SettingsService : ISettingsService
                 var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
                 UnprotectSecrets(settings);
                 _cached = settings;
+                Current = _cached;
                 return _cached;
             }
             catch (Exception ex)
@@ -64,11 +76,13 @@ public class SettingsService : ISettingsService
                 {
                     _logger.LogWarning("Настройки восстановлены из {Backup}.", restored.Value.path);
                     _cached = restored.Value.settings;
+                    Current = _cached;
                     return _cached;
                 }
 
                 _logger.LogWarning("Резервной копии нет — используются значения по умолчанию (файл на диске не перезаписывается до первой успешной загрузки).");
                 _cached = new AppSettings();
+                Current = _cached;
                 return _cached;
             }
         }
@@ -122,24 +136,34 @@ public class SettingsService : ISettingsService
                 var tempPath = SettingsPath + ".tmp";
                 await File.WriteAllTextAsync(tempPath, json).ConfigureAwait(false);
 
-                for (var attempt = 1; ; attempt++)
+                try
                 {
-                    try
+                    for (var attempt = 1; ; attempt++)
                     {
-                        if (File.Exists(SettingsPath))
+                        try
                         {
-                            await Task.Run(() => File.Copy(SettingsPath, SettingsPath + ".prev", overwrite: true)).ConfigureAwait(false);
+                            if (File.Exists(SettingsPath))
+                            {
+                                await Task.Run(() => File.Copy(SettingsPath, SettingsPath + ".prev", overwrite: true)).ConfigureAwait(false);
+                            }
+                            File.Move(tempPath, SettingsPath, overwrite: true);
+                            break;
                         }
-                        File.Move(tempPath, SettingsPath, overwrite: true);
-                        break;
+                        catch (IOException) when (attempt < 5)
+                        {
+                            await Task.Delay(200 * attempt).ConfigureAwait(false);
+                        }
                     }
-                    catch (IOException) when (attempt < 5)
-                    {
-                        await Task.Delay(200 * attempt).ConfigureAwait(false);
-                    }
+                }
+                catch
+                {
+                    // Remove leftover temp file when all move attempts failed
+                    TryDeleteFile(tempPath);
+                    throw;
                 }
 
                 _cached = settings;
+                Current = settings;
             }
             catch (Exception ex)
             {
@@ -151,6 +175,22 @@ public class SettingsService : ISettingsService
                 _saveLock.Release();
             }
         }
+
+    // Best-effort temp file cleanup
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // Ignore — cleanup is best effort
+        }
+    }
 
     private static AppSettings ProtectSecrets(AppSettings settings)
     {
@@ -176,26 +216,42 @@ public class SettingsService : ISettingsService
         return clone;
     }
 
-    private static void UnprotectSecrets(AppSettings settings)
+    private void UnprotectSecrets(AppSettings settings)
     {
         foreach (var playlist in settings.Playlists)
         {
-            playlist.Url = SecretProtector.Unprotect(playlist.Url) ?? string.Empty;
+            playlist.Url = UnprotectOrKeep(playlist.Url);
             if (playlist.PortalKey != null)
             {
-                playlist.PortalKey = SecretProtector.Unprotect(playlist.PortalKey);
+                playlist.PortalKey = UnprotectOrKeep(playlist.PortalKey);
             }
             foreach (var epg in playlist.EpgSources)
             {
-                epg.Url = SecretProtector.Unprotect(epg.Url) ?? epg.Url;
+                epg.Url = UnprotectOrKeep(epg.Url);
             }
         }
 
         foreach (var epg in settings.EpgSources)
         {
-            epg.Url = SecretProtector.Unprotect(epg.Url) ?? epg.Url;
+            epg.Url = UnprotectOrKeep(epg.Url);
         }
     }
+
+    // Keep original dpapi: value on failure — never write null/empty over it
+    private string? UnprotectKeepOriginal(string? value)
+    {
+        var result = SecretProtector.Unprotect(value);
+        if (result == null && value != null)
+        {
+            _logger.LogWarning("Расшифровка защищённого значения не удалась — исходное значение сохранено без изменений.");
+            return value;
+        }
+
+        return result;
+    }
+
+    // Non-null wrapper for direct field assignment
+    private string UnprotectOrKeep(string? value) => UnprotectKeepOriginal(value) ?? string.Empty;
 
     private sealed class NullableDateTimeConverter : JsonConverter<DateTime?>
     {

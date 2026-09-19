@@ -135,6 +135,9 @@ public sealed partial class EpisodePickerDialog : UserControl
 
         EpisodesCountText.Text = string.Format(L.T("Seriy_0"), _flick.Episodes.Count, _flick.Episodes.Count);
 
+        // No episodes — "play first" would dereference a null episode
+        PlayFirstButton.IsEnabled = _flick.Episodes.Count > 0;
+
         if (Episodes.Count > 0)
         {
             EpisodesList.ScrollIntoView(Episodes[0]);

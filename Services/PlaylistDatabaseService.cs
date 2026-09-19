@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -151,7 +152,8 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             }
 
             var formatVersion = reader.GetInt32(0);
-            var savedAtUtc = DateTime.Parse(reader.GetString(1));
+            var savedAtUtc = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind);
             var portalKeyHash = reader.IsDBNull(2) ? null : reader.GetString(2);
             await reader.CloseAsync();
 
@@ -275,15 +277,29 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Delete playlist cache
     public async Task DeleteAsync(int playlistId)
     {
+        await InitializeAsync();
         try
         {
             using var connection = new SqliteConnection($"Data Source={DbPath}");
             await connection.OpenAsync();
+            await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync();
 
-            var cmd = connection.CreateCommand();
-            cmd.CommandText = "DELETE FROM channels WHERE playlist_id = $id; DELETE FROM channel_overrides WHERE playlist_id = $id; DELETE FROM playlists WHERE id = $id;";
-            cmd.Parameters.AddWithValue("$id", playlistId);
-            await cmd.ExecuteNonQueryAsync();
+            foreach (var table in new[] { "channels", "channel_overrides" })
+            {
+                var cmd = connection.CreateCommand();
+                cmd.Transaction = transaction;
+                cmd.CommandText = $"DELETE FROM {table} WHERE playlist_id = $id";
+                cmd.Parameters.AddWithValue("$id", playlistId);
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            var metaCmd = connection.CreateCommand();
+            metaCmd.Transaction = transaction;
+            metaCmd.CommandText = "DELETE FROM playlists WHERE id = $id";
+            metaCmd.Parameters.AddWithValue("$id", playlistId);
+            await metaCmd.ExecuteNonQueryAsync();
+
+            await transaction.CommitAsync();
         }
         catch (Exception ex)
         {
@@ -393,7 +409,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                 .ToDictionary(p => p.Name, p => p.Value);
             return JsonSerializer.Serialize(withoutKey);
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
         {
             return portalRequest;
         }
@@ -511,7 +527,8 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                     reader.IsDBNull(3) ? null : reader.GetString(3),
                     reader.IsDBNull(4) ? null : reader.GetString(4),
                     reader.GetInt32(5) != 0,
-                    DateTime.Parse(reader.GetString(6))));
+                    DateTime.Parse(reader.GetString(6), CultureInfo.InvariantCulture,
+                        DateTimeStyles.RoundtripKind)));
             }
         }
         catch (Exception ex)

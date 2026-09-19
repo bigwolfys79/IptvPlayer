@@ -53,7 +53,9 @@ public partial class MainPageViewModel
 
     public Task FlushVodResumePositionsAsync()
     {
-        return _vodResumeStore.SaveAllAsync(_vodResumePositions);
+        // Snapshot: live dictionary may be mutated by UI while save runs on a pool thread
+        return _vodResumeStore.SaveAllAsync(
+            new Dictionary<string, VodResumePosition>(_vodResumePositions));
     }
 
     public async Task LoadVodResumePositionsAsync()
@@ -78,7 +80,9 @@ public partial class MainPageViewModel
         try
         {
             await _settingsService.SaveAsync(AppSettings);
-            await _vodResumeStore.SaveAllAsync(_vodResumePositions);
+            // Snapshot: avoid enumerating live dictionary concurrently with UI mutations
+            await _vodResumeStore.SaveAllAsync(
+                new Dictionary<string, VodResumePosition>(_vodResumePositions));
             _logger.LogInformation("Позиции просмотра перенесены из settings.json в БД ({Count} шт.).",
                 _vodResumePositions.Count);
         }
@@ -148,7 +152,8 @@ public partial class MainPageViewModel
         if ((DateTime.Now - _lastVodResumeSaveRequest).TotalSeconds >= 5)
         {
             _lastVodResumeSaveRequest = DateTime.Now;
-            _ = _vodResumeStore.SaveAllAsync(_vodResumePositions);
+            _ = _vodResumeStore.SaveAllAsync(
+                new Dictionary<string, VodResumePosition>(_vodResumePositions));
         }
     }
 
@@ -220,6 +225,13 @@ public partial class MainPageViewModel
             finally
             {
                 Player.IsBuffering = false;
+            }
+
+            if (flick.Episodes.Count == 0)
+            {
+                _logger.LogWarning("Портал: «{Name}» не вернул ни одного эпизода.", channel.Name);
+                Player.StreamError = string.Format(L.T("Portal_Ne_Otdal_Potok_0"), channel.Name);
+                return false;
             }
 
             var episode = flick.Episodes[0];

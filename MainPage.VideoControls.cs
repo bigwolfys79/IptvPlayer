@@ -189,30 +189,46 @@ public sealed partial class MainPage : Page
 
     private async void UpscalerItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.MenuFlyoutItem item &&
-            item.Tag is string mode)
+        try
         {
-            await Player.SetVideoUpscalerAsync(mode);
+            if (sender is Microsoft.UI.Xaml.Controls.MenuFlyoutItem item &&
+                item.Tag is string mode)
+            {
+                await Player.SetVideoUpscalerAsync(mode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Переключение режима апскейла не удалось.");
+            Player.StreamError = ex.Message;
         }
     }
 
 
     private async void FrameServerItem_Click(object sender, RoutedEventArgs e)
     {
-        var enable = !ViewModel.AppSettings.FrameServerRender;
-        ViewModel.AppSettings.FrameServerRender = enable;
-        VideoOverlayFrameServerItem.IsChecked = enable;
-        OverlayFrameServerItem.IsChecked = enable;
-        FrameServerPanel.Visibility = enable ? Visibility.Visible : Visibility.Collapsed;
-
-        _settingsSaveDebounceTimer.Stop();
-        _settingsSaveDebounceTimer.Start();
-
-        _logger.LogInformation("Рендер-апскейл (frame server): {State}.", enable ? "вкл" : "выкл");
-
-        if (ViewModel.SelectedChannel is { } channel)
+        try
         {
-            await ViewModel.PlayChannelAsync(channel);
+            var enable = !ViewModel.AppSettings.FrameServerRender;
+            ViewModel.AppSettings.FrameServerRender = enable;
+            VideoOverlayFrameServerItem.IsChecked = enable;
+            OverlayFrameServerItem.IsChecked = enable;
+            FrameServerPanel.Visibility = enable ? Visibility.Visible : Visibility.Collapsed;
+
+            _settingsSaveDebounceTimer.Stop();
+            _settingsSaveDebounceTimer.Start();
+
+            _logger.LogInformation("Рендер-апскейл (frame server): {State}.", enable ? "вкл" : "выкл");
+
+            if (ViewModel.SelectedChannel is { } channel)
+            {
+                await ViewModel.PlayChannelAsync(channel);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Переключение frame server рендера не удалось.");
+            Player.StreamError = ex.Message;
         }
     }
 

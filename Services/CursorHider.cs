@@ -24,6 +24,7 @@ public sealed class CursorHider : IDisposable
     private DateTime _lastClickUtc = DateTime.MinValue;
     private DateTime _clickWatchUntil = DateTime.MinValue;
     private bool _buttonWasDown;
+    private volatile bool _hidden;
 
     public CursorHider(IntPtr mainHwnd, Action wake, Action wakeByClick, Action wakeByDoubleClick, Action<int> wheel)
     {
@@ -107,9 +108,6 @@ public sealed class CursorHider : IDisposable
             };
         }
     }
-
-
-    private static volatile bool _hidden;
 
 
     public void Hide()

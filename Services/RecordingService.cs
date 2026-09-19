@@ -104,6 +104,14 @@ public sealed class RecordingService
             }
         }
 
+        // ffmpeg args are built by string concat; quotes/newlines in URL would inject args
+        if (streamUrl.IndexOfAny(['"', '\'', '\r', '\n']) >= 0)
+        {
+            _logger.LogWarning(
+                "StreamUrl содержит недопустимые символы (кавычки/переводы строк) — запись не запущена.");
+            return null;
+        }
+
         try
         {
             var dir = string.IsNullOrWhiteSpace(recordsFolder)
@@ -168,6 +176,7 @@ public sealed class RecordingService
                 }
                 _logger.LogInformation("Запись завершена (код {ExitCode}): {Path}",
                     ((Process)s!).ExitCode, exitedPath);
+                ((Process)s!).Dispose();
                 RecordingsChanged?.Invoke(this, EventArgs.Empty);
             };
 
@@ -267,7 +276,9 @@ public sealed class RecordingService
         var dead = _active.Where(kv => kv.Value.Proc.HasExited).Select(kv => kv.Key).ToList();
         foreach (var id in dead)
         {
+            var proc = _active[id].Proc;
             _active.Remove(id);
+            proc.Dispose();
         }
         return _active.Count;
     }

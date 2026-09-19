@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using IptvPlayer.Converters;
 using IptvPlayer.Models;
@@ -184,25 +185,18 @@ public partial class EpgViewModel : ObservableObject
 
     public void SetChannels(IEnumerable<ChannelViewModel> channels)
     {
-        Channels.Clear();
-        foreach (var channel in channels)
-        {
-            Channels.Add(channel);
-        }
+        // Wholesale replacement: INPC property, no CollectionChanged subscribers or XAML bindings
+        Channels = new ObservableCollection<ChannelViewModel>(channels);
         ApplyFilter();
     }
 
     public void ApplyFilter(string? query = null)
     {
-        FilteredChannels.Clear();
         var filtered = string.IsNullOrEmpty(query)
             ? Channels
             : Channels.Where(c => c.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
 
-        foreach (var channel in filtered)
-        {
-            FilteredChannels.Add(channel);
-        }
+        FilteredChannels = new ObservableCollection<ChannelViewModel>(filtered);
     }
 
     public void ApplyEPGSource()
@@ -381,16 +375,31 @@ public partial class EpgViewModel : ObservableObject
     }
 
 
+    private int _refreshLightRuns;
+
     public async Task RefreshCurrentProgramsLightAsync()
     {
-        if (IsLoading)
+        if (IsLoading || Interlocked.CompareExchange(ref _refreshLightRuns, 1, 0) != 0)
         {
-
-
             return;
         }
 
-        var now = DateTime.Now;
+        try
+        {
+            await RefreshCurrentProgramsLightCoreAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "RefreshCurrentProgramsLightAsync: не удалось обновить текущие программы.");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _refreshLightRuns, 0);
+        }
+    }
+
+    private async Task RefreshCurrentProgramsLightCoreAsync()
+    {
         var processed = 0;
 
         foreach (var channel in Channels)

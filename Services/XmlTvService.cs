@@ -175,9 +175,15 @@ public class XmlTvService : IXmlTvService
             {
                 head.Position = 0;
                 var decompressed = new MemoryStream();
+                var decBuffer = new byte[16 * 1024];
+                // Incremental decompression: stop as soon as 64 KB are available
                 await using (var gzip = new GZipStream(head, CompressionMode.Decompress))
                 {
-                    await gzip.CopyToAsync(decompressed, ct);
+                    while (decompressed.Length < 64 * 1024 &&
+                           (read = await gzip.ReadAsync(decBuffer.AsMemory(0, decBuffer.Length), ct)) > 0)
+                    {
+                        decompressed.Write(decBuffer, 0, read);
+                    }
                 }
                 content = System.Text.Encoding.UTF8.GetString(
                     decompressed.GetBuffer(), 0, (int)Math.Min(decompressed.Length, 64 * 1024));

@@ -43,8 +43,15 @@ public static class EpgCacheStore
             {
                 if (!live.Contains(Path.GetFileName(file)))
                 {
-                    File.Delete(file);
-                    Log.Information("Удалён осиротевший кэш EPG {File}.", Path.GetFileName(file));
+                    try
+                    {
+                        File.Delete(file);
+                        Log.Information("Удалён осиротевший кэш EPG {File}.", Path.GetFileName(file));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Не удалось удалить осиротевший кэш EPG {File}.", file);
+                    }
                 }
             }
 
@@ -74,7 +81,14 @@ public static class EpgCacheStore
         {
             foreach (var file in Directory.EnumerateFiles(CacheDir, "*.mpck.br"))
             {
-                File.Delete(file);
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "Не удалось удалить кэш EPG {File}.", file);
+                }
             }
         }
         catch (Exception ex)
@@ -129,7 +143,7 @@ public static class EpgCacheStore
             try
             {
                 var path = PathForKey(key);
-                var tmp = path + ".tmp";
+                var tmp = $"{path}.{Guid.NewGuid():N}.tmp";
                 var bytes = MemoryPackSerializer.Serialize(value);
                 using (var file = File.Create(tmp))
                 using (var brotli = new BrotliStream(file, CompressionLevel.Fastest))
@@ -195,7 +209,7 @@ public static class EpgCacheStore
             try
             {
                 var path = PathForKey(key);
-                var tmp = path + ".tmp";
+                var tmp = $"{path}.{Guid.NewGuid():N}.tmp";
                 var bytes = MemoryPackSerializer.Serialize(value);
                 using (var file = File.Create(tmp))
                 using (var brotli = new BrotliStream(file, CompressionLevel.Fastest))

@@ -234,7 +234,7 @@ public partial class MainPageViewModel : ObservableObject
         set => SetProperty(ref _playlistLoadingText, value);
     }
 
-    private string _channelCountText = "Каналов: 0";
+    private string _channelCountText = "";
 
     public string ChannelCountText
     {
@@ -379,10 +379,13 @@ public partial class MainPageViewModel : ObservableObject
         };
     }
 
+    private bool _isSelectingChannel;
+
     private System.Threading.CancellationTokenSource? _searchDebounceCts;
 
     private void OnSearchQueryChanged(string value)
     {
+        // No Dispose: token may still be registered in the pending Task.Delay
         _searchDebounceCts?.Cancel();
         _searchDebounceCts = new System.Threading.CancellationTokenSource();
         var token = _searchDebounceCts.Token;
@@ -687,14 +690,7 @@ public partial class MainPageViewModel : ObservableObject
 
         filtered = filtered.OrderByDescending(c => c.IsFavorite);
 
-        var selected = SelectedChannel;
-
         DisplayedChannels = new ObservableCollection<ChannelViewModel>(filtered);
-
-        if (selected != null && SelectedChannel == null && DisplayedChannels.Contains(selected))
-        {
-            SelectedChannel = selected;
-        }
 
         FilterChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -814,6 +810,25 @@ public partial class MainPageViewModel : ObservableObject
 
     [RelayCommand]
     private async Task SelectAndPlayChannelAsync(ChannelViewModel channel)
+    {
+        // Reentrancy guard: double click must not open two PIN dialogs or duplicate side effects
+        if (_isSelectingChannel)
+        {
+            return;
+        }
+
+        _isSelectingChannel = true;
+        try
+        {
+            await SelectAndPlayChannelCoreAsync(channel);
+        }
+        finally
+        {
+            _isSelectingChannel = false;
+        }
+    }
+
+    private async Task SelectAndPlayChannelCoreAsync(ChannelViewModel channel)
     {
         if (!await EnsureChannelAllowedAsync(channel))
         {

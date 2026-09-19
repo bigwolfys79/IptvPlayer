@@ -44,6 +44,7 @@ public static class EpgNameNormalizer
         ["hd"] = 2,
         ["fhd"] = 3,
         ["full hd"] = 3,
+        ["fullhd"] = 3,
         ["4k"] = 4,
         ["uhd"] = 4,
     };

@@ -185,12 +185,62 @@ namespace IptvPlayer.Dialogs
             _renamingPlaylist = ReferenceEquals(_renamingPlaylist, item.Playlist) ? null : item.Playlist;
             RebuildPlaylistItems();
 
-            if (_renamingPlaylist != null && PlaylistsList.FindName("NameEditBox") is TextBox box)
+            if (_renamingPlaylist != null)
             {
-                box.Text = _renamingPlaylist.Name;
+                var editingItem = PlaylistItems.FirstOrDefault(i => ReferenceEquals(i.Playlist, _renamingPlaylist));
+                if (editingItem != null)
+                {
+                    FocusEditingNameBox(editingItem);
+                }
+            }
+        }
+
+        // NameEditBox lives in a DataTemplate — resolve it via the visual tree, not FindName
+        private void FocusEditingNameBox(PlaylistListItem item)
+        {
+            void TryFocus()
+            {
+                if (PlaylistsList.ContainerFromItem(item) is not FrameworkElement container)
+                {
+                    return;
+                }
+
+                var box = FindDescendantByName(container, "NameEditBox") as TextBox;
+                if (box == null)
+                {
+                    return;
+                }
+
+                box.Text = item.Playlist.Name;
                 box.SelectAll();
                 _ = box.Focus(FocusState.Programmatic);
             }
+
+            TryFocus();
+
+            // Template may not be realized right after rebuild — retry next dispatcher pass
+            DispatcherQueue.TryEnqueue(TryFocus);
+        }
+
+        private static FrameworkElement? FindDescendantByName(DependencyObject root, string name)
+        {
+            var count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
+            for (var i = 0; i < count; i++)
+            {
+                var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+                if (child is FrameworkElement { Name: var childName } element && childName == name)
+                {
+                    return element;
+                }
+
+                var nested = FindDescendantByName(child, name);
+                if (nested != null)
+                {
+                    return nested;
+                }
+            }
+
+            return null;
         }
 
 

@@ -18,6 +18,8 @@ public static class L
     public static void SetLanguage(string lang)
     {
         Lang = string.IsNullOrEmpty(lang) ? "ru" : lang;
+        // Cached strings are language-bound — must not survive a switch
+        Cache.Clear();
         try
         {
             _context = GetManager().CreateResourceContext();

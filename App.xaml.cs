@@ -77,6 +77,7 @@ public partial class App : Application
         AppSettings initialSettings;
         try
         {
+            // Bootstrap load: ctor cannot await; seeds SettingsService.Current for all sync readers
             initialSettings = new SettingsService(NullLogger<SettingsService>.Instance)
                 .LoadAsync().GetAwaiter().GetResult();
         }
@@ -124,6 +125,23 @@ public partial class App : Application
 
     private const string OutputTemplate =
         "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
+
+
+    // Shared theme switch (MainPage + HubPage interface settings)
+    public static void ApplyAppTheme(string theme)
+    {
+        var elementTheme = theme switch
+        {
+            "Dark" => ElementTheme.Dark,
+            "Light" => ElementTheme.Light,
+            _ => ElementTheme.Default
+        };
+
+        if (_window?.Content is FrameworkElement root)
+        {
+            root.RequestedTheme = elementTheme;
+        }
+    }
 
 
     public static bool TempDiagnosticsEnabled { get; set; }
@@ -272,7 +290,12 @@ public partial class App : Application
         }
 
         e.Handled = TempDiagnosticsEnabled;
-        Serilog.Log.CloseAndFlush();
+
+        // Flush only when the app is actually going down; keep the logger alive otherwise
+        if (!e.Handled)
+        {
+            Serilog.Log.CloseAndFlush();
+        }
     }
 
 
@@ -398,10 +421,11 @@ public partial class App : Application
         Log.Information("OnLaunched: UsageType={Type}, DaysRemaining={Days}, IsExpired={Expired}",
             license.UsageType, license.DaysRemaining, license.IsExpired);
 
+        // Create the window once — license dialog shows over it, then the same window continues
+        _window = new MainWindow();
+
         if (license.IsExpired)
         {
-
-            _window = new MainWindow();
             _window.Activate();
 
             var dialog = new Dialogs.LicenseExpiredDialog();
@@ -420,7 +444,6 @@ public partial class App : Application
             Log.Information("Лицензия активирована из диалога — продолжаем запуск.");
         }
 
-        _window = new MainWindow();
         (_window as MainWindow)?.RestorePlacement();
         _window.Activate();
         StartUiHangWatchdog();

@@ -117,6 +117,11 @@ public sealed partial class HubPage : Page
 
     private async void HubPage_Loaded(object sender, RoutedEventArgs e)
     {
+        // Resubscribe on every Loaded — Unloaded removes the handler
+        if (MainWindow.Instance != null)
+        {
+            MainWindow.Instance.Activated += MainWindow_Activated;
+        }
 
         if (_initialized)
         {
@@ -269,9 +274,6 @@ public sealed partial class HubPage : Page
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _clockTimer.Tick += (_, _) => SetGreeting();
         _clockTimer.Start();
-
-        if (MainWindow.Instance != null)
-            MainWindow.Instance.Activated += MainWindow_Activated;
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs e)
@@ -657,7 +659,7 @@ public sealed partial class HubPage : Page
 
 
             viewModel.AppSettings = await _settingsService.LoadAsync();
-            var d = new Dialogs.InterfaceSettingsDialog(viewModel, _settingsService, _ => { });
+            var d = new Dialogs.InterfaceSettingsDialog(viewModel, _settingsService, App.ApplyAppTheme);
             await d.ShowAsync(Content.XamlRoot);
 
             UpdateLocalizedTexts();

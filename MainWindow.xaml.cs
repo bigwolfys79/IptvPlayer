@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.Graphics;
 using IptvPlayer.Models;
 using IptvPlayer.Services;
+using IptvPlayer.ViewModels;
 
 namespace IptvPlayer;
 
@@ -36,8 +37,7 @@ public sealed partial class MainWindow : Window
             bool closeToTray;
             try
             {
-                var settings = App.Services.GetRequiredService<ISettingsService>().LoadAsync().GetAwaiter().GetResult();
-                closeToTray = settings.CloseToTray;
+                closeToTray = SettingsService.Current?.CloseToTray ?? false;
             }
             catch
             {
@@ -52,6 +52,20 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
+            // Persist window position on real close (Closed may not save if exit is abrupt)
+            try
+            {
+                var placement = CapturePlacement();
+                if (placement != null && SettingsService.Current is { } settings)
+                {
+                    settings.WindowPlacement = placement;
+                }
+            }
+            catch
+            {
+                // Placement save is best effort
+            }
+
             App.TryStartPendingUpdateInstall();
 
             MinimizeHook?.Dispose();
@@ -59,13 +73,14 @@ public sealed partial class MainWindow : Window
             App.Tray = null;
         };
 
+        Closed += OnWindowClosed;
+
         MinimizeHook = new MinimizeToTrayHook(this, () =>
         {
             bool minimizeToTray;
             try
             {
-                var settings = App.Services.GetRequiredService<ISettingsService>().LoadAsync().GetAwaiter().GetResult();
-                minimizeToTray = settings.MinimizeToTray;
+                minimizeToTray = SettingsService.Current?.MinimizeToTray ?? false;
             }
             catch
             {
@@ -102,6 +117,56 @@ public sealed partial class MainWindow : Window
 
 
     public bool IsMiniPlayer => _miniPlayer;
+
+
+    // Moved from MainPage ctor: save state and exit once, per window (not per page instance)
+    private async void OnWindowClosed(object sender, WindowEventArgs args)
+    {
+        try
+        {
+            var vm = App.Services.GetRequiredService<MainPageViewModel>();
+
+            var placement = CapturePlacement();
+            if (placement != null)
+            {
+                vm.AppSettings.WindowPlacement = placement;
+            }
+            vm.AppSettings.Volume = vm.Player.LastUserVolume ?? 1.0;
+
+            if (MainPage.LastChannelListWidth is { } channelListWidth)
+            {
+                vm.AppSettings.ChannelListWidth = channelListWidth;
+            }
+
+            vm.AppSettings.InterruptedRecordings = vm.Recording.Active
+                .Select(r => new Models.InterruptedRecording
+                {
+                    ChannelName = r.ChannelName,
+                    ProgramName = r.ChannelName,
+                    EndTime = r.DurationSec is > 0
+                        ? r.StartedAt.AddSeconds(r.DurationSec.Value)
+                        : null
+                })
+                .ToList();
+
+            await App.Services.GetRequiredService<ISettingsService>().SaveAsync(vm.AppSettings);
+            await vm.FlushVodResumePositionsAsync();
+
+            vm.Recording.StopAll();
+
+            vm.Player.Stop();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Ошибка при сохранении состояния перед выходом.");
+        }
+
+        App.Tray?.Dispose();
+        App.Tray = null;
+        Serilog.Log.CloseAndFlush();
+
+        Environment.Exit(0);
+    }
 
 
     public bool IsAlwaysOnTop =>
@@ -185,9 +250,11 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-
-            var settingsService = App.Services.GetRequiredService<ISettingsService>();
-            var settings = settingsService.LoadAsync().GetAwaiter().GetResult();
+            var settings = SettingsService.Current;
+            if (settings == null)
+            {
+                return;
+            }
             var saved = settings.WindowPlacement;
             if (saved == null || saved.Width < 200 || saved.Height < 200)
             {

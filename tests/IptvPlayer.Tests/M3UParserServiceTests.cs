@@ -1,3 +1,4 @@
+using System.Text;
 using IptvPlayer.Services;
 
 namespace IptvPlayer.Tests;
@@ -141,5 +142,42 @@ public class M3UParserServiceTests
         var content = "#EXTM3U\n#EXTINF:-1 tvg-id=plain.id,Канал\nhttp://example.com/1.m3u8\n";
         var ch = Assert.Single(CreateParser().ParseContent(content));
         Assert.Equal("plain.id", ch.TvgId);
+    }
+
+    [Fact]
+    public void ParseContent_DanglingEqualsAfterComma_DoesNotHang()
+    {
+        var content = "#EXTM3U\n#EXTINF:-1 tvg-id=\"1\",=x,Name\nhttp://example.com/1.m3u8\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Equal("Name", ch.Name);
+        Assert.Equal("1", ch.TvgId);
+    }
+
+    [Fact]
+    public void ParseContent_ExtinfWithoutDuration_IsParsed()
+    {
+        var content = "#EXTM3U\n#EXTINF:,Title\nhttp://example.com/1.m3u8\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Equal("Title", ch.Name);
+        Assert.Equal("http://example.com/1.m3u8", ch.StreamUrl);
+    }
+
+    [Fact]
+    public async Task ParseContent_Utf16LeBom_IsDecoded()
+    {
+        var text = "#EXTM3U\n#EXTINF:-1,Канал\nhttp://example.com/1.m3u8\n";
+        var bytes = new byte[] { 0xFF, 0xFE }.Concat(Encoding.Unicode.GetBytes(text)).ToArray();
+        var tempFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + ".m3u");
+        try
+        {
+            File.WriteAllBytes(tempFile, bytes);
+            var channels = await CreateParser().ParseFromFileAsync(tempFile);
+            var ch = Assert.Single(channels);
+            Assert.Equal("Канал", ch.Name);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
@@ -44,9 +45,9 @@ namespace IptvPlayer.Services
                 return false;
             }
 
+            var inputTexture = VideoProcessorInterop.GetTextureFromSurface(frameSurface);
             try
             {
-                var inputTexture = VideoProcessorInterop.GetTextureFromSurface(frameSurface);
                 if (inputTexture == IntPtr.Zero)
                 {
                     _logger.LogInformation(
@@ -99,6 +100,14 @@ namespace IptvPlayer.Services
                     "FrameServerVideoProcessor: ошибка Video Processor, откат на шейдерный путь.");
                 DisposeInterop();
                 return false;
+            }
+            finally
+            {
+                // GetTextureFromSurface returns an AddRef'd raw texture
+                if (inputTexture != IntPtr.Zero)
+                {
+                    Marshal.Release(inputTexture);
+                }
             }
         }
 

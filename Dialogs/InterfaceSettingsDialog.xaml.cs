@@ -124,11 +124,11 @@ namespace IptvPlayer.Dialogs
 
             ShowHubOnStartupToggle.Toggled -= ShowHubOnStartupToggle_Toggled;
             ShowHubOnStartupToggle.IsOn = settings.ShowHubOnStartup;
-            ShowHubOnStartupToggle.Header = "Показывать главное меню при запуске";
+            ShowHubOnStartupToggle.Header = L.T("Pokazyvat_Glavnoe_Menyu_Pri_Zapuske");
             ShowHubOnStartupToggle.OnContent = L.T("Vkl");
             ShowHubOnStartupToggle.OffContent = L.T("Vykl");
             ShowHubOnStartupToggle.Toggled += ShowHubOnStartupToggle_Toggled;
-            ShowHubOnStartupHint.Text = "При выключении приложение сразу открывает последний канал";
+            ShowHubOnStartupHint.Text = L.T("Pri_Vyklyuchenii_Srazu_Otkryvaetsya_Poslednij_Kanal");
 
         }
 
@@ -179,6 +179,9 @@ namespace IptvPlayer.Dialogs
             }
 
             await _settingsService.SaveAsync(appSettings);
+
+            // Apply language now that the string cache is cleared on switch
+            L.SetLanguage(appSettings.Language);
 
             _applyTheme(theme);
 

@@ -18,7 +18,7 @@ public sealed partial class HubWrapPanel : Panel
         var constraintWidth = double.IsFinite(availableSize.Width) ? availableSize.Width : double.PositiveInfinity;
         double lineW = 0, lineH = 0, totalH = 0, maxW = 0;
 
-        foreach (FrameworkElement child in Children)
+        foreach (var child in Children.OfType<FrameworkElement>())
         {
             child.Measure(availableSize);
             var w = child.DesiredSize.Width;

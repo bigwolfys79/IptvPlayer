@@ -41,11 +41,11 @@ public static class SecretProtector
                 DataProtectionScope.CurrentUser);
             return Encoding.UTF8.GetString(decrypted);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-
-
-            return string.Empty;
+            // Null signals failure so callers keep the original protected value
+            Serilog.Log.Warning(ex, "DPAPI: не удалось расшифровать значение.");
+            return null;
         }
     }
 

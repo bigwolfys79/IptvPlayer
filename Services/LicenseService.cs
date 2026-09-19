@@ -114,7 +114,11 @@ public static class LicenseService
     }
 
 
-    public static string GetHwidCode() => FormatHwidCode(ComputeHardwareHash());
+    // HWID computed once — WMI query is expensive
+    private static readonly Lazy<string> HwidCode = new(() => FormatHwidCode(ComputeHardwareHash()));
+    private static readonly Lazy<string> HardwareId = new(() => Convert.ToBase64String(ComputeHardwareHash()));
+
+    public static string GetHwidCode() => HwidCode.Value;
 
 
     public static ActivationResult Activate(string licenseText)
@@ -134,12 +138,15 @@ public static class LicenseService
         }
 
 
-        if (!string.IsNullOrEmpty(data.Hwid) &&
-            !string.Equals(data.Hwid, GetHwidCode(), StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(data.Hwid))
         {
-            Log.Warning("Лицензия выпущена для другой машины: license={LicenseHwid}, this={CurrentHwid}",
-                data.Hwid, GetHwidCode());
-            return ActivationResult.Fail(ActivationError.WrongMachine);
+            var currentHwid = GetHwidCode();
+            if (!string.Equals(data.Hwid, currentHwid, StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Warning("Лицензия выпущена для другой машины: license={LicenseHwid}, this={CurrentHwid}",
+                    data.Hwid, currentHwid);
+                return ActivationResult.Fail(ActivationError.WrongMachine);
+            }
         }
 
         if (data.ExpiryUtc.HasValue && DateTime.UtcNow >= data.ExpiryUtc.Value)
@@ -274,7 +281,7 @@ public static class LicenseService
     }
 
     private static string GenerateHardwareId()
-        => Convert.ToBase64String(ComputeHardwareHash());
+        => HardwareId.Value;
 
 
     private static string FormatHwidCode(byte[] hash)
@@ -403,17 +410,8 @@ public static class LicenseService
         return Convert.ToBase64String(encrypted);
     }
 
+    // HKCU first (writable without admin), HKLM only as legacy fallback
     private static string? ReadRegString(string valueName)
-    {
-        try
-        {
-            return Registry.GetValue($@"HKEY_LOCAL_MACHINE\{RegPath}", valueName, null)?.ToString();
-        }
-        catch { return null; }
-    }
-
-
-    private static string? ReadFirstAvailable(string valueName)
     {
         try
         {
@@ -429,11 +427,18 @@ public static class LicenseService
         catch { return null; }
     }
 
+
+    private static string? ReadFirstAvailable(string valueName)
+    {
+        return ReadRegString(valueName);
+    }
+
+    // Writes go to HKCU only — HKLM requires admin rights
     private static void WriteRegString(string valueName, string value)
     {
         try
         {
-            using var key = Registry.LocalMachine.CreateSubKey(RegPath);
+            using var key = Registry.CurrentUser.CreateSubKey(UserRegPath);
             key?.SetValue(valueName, value, RegistryValueKind.String);
         }
         catch (Exception ex)

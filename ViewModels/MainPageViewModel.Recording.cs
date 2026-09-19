@@ -11,6 +11,9 @@ namespace IptvPlayer.ViewModels;
 
 public partial class MainPageViewModel
 {
+    // In-memory start-failure counters for scheduled recordings (channel|start -> attempts)
+    private readonly System.Collections.Generic.Dictionary<string, int> _scheduledRecordingFailures = new();
+
     [RelayCommand]
     private void ToggleFavorite(ChannelViewModel channel)
     {
@@ -213,8 +216,27 @@ public partial class MainPageViewModel
 
             if (started != null)
             {
+                _scheduledRecordingFailures.Remove(ScheduledRecordingKey(rec));
                 AppSettings.ScheduledRecordings.RemoveAt(i);
                 changed = true;
+                continue;
+            }
+
+            // Give up after 3 consecutive failed start attempts to avoid endless retry loop
+            var key = ScheduledRecordingKey(rec);
+            var failures = _scheduledRecordingFailures.TryGetValue(key, out var count) ? count + 1 : 1;
+            if (failures >= 3)
+            {
+                _scheduledRecordingFailures.Remove(key);
+                _logger.LogWarning(
+                    "Запись «{Channel} — {Program}» не стартовала 3 раза — снимаю с расписания.",
+                    rec.ChannelName, rec.ProgramName);
+                AppSettings.ScheduledRecordings.RemoveAt(i);
+                changed = true;
+            }
+            else
+            {
+                _scheduledRecordingFailures[key] = failures;
             }
         }
 
@@ -224,6 +246,9 @@ public partial class MainPageViewModel
             ApplyReminderFlags();
         }
     }
+
+    private static string ScheduledRecordingKey(ScheduledRecording rec)
+        => $"{rec.ChannelName}|{rec.StartTime:O}";
 
     [RelayCommand]
     private void RemoveScheduledRecording(ScheduledRecording rec)

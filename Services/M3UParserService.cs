@@ -18,7 +18,7 @@ namespace IptvPlayer.Services
         private static readonly HttpClient _httpClient = CreateHttpClient();
 
         private static readonly Regex ExtinfStartRegex =
-            new(@"^\s*#\s*EXTINF\s*:\s*-?[0-9]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            new(@"^\s*#\s*EXTINF\s*:", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         static M3UParserService()
         {
@@ -63,7 +63,7 @@ namespace IptvPlayer.Services
                 throw new ArgumentException("Некорректный URL плейлиста.", nameof(playlistUrl));
             }
 
-            HttpResponseMessage response;
+            HttpResponseMessage? response = null;
             try
             {
                 response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -81,29 +81,32 @@ namespace IptvPlayer.Services
                 throw new InvalidOperationException($"Превышено время ожидания при загрузке плейлиста '{playlistUrl}'.", ex);
             }
 
-            if (!response.IsSuccessStatusCode)
+            using (response)
             {
-                throw new InvalidOperationException(
-                    $"Сервер плейлиста вернул ошибку {(int)response.StatusCode} ({response.StatusCode}) для '{playlistUrl}'.");
+                if (!response!.IsSuccessStatusCode)
+                {
+                    throw new InvalidOperationException(
+                        $"Сервер плейлиста вернул ошибку {(int)response.StatusCode} ({response.StatusCode}) для '{playlistUrl}'.");
+                }
+
+                var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+
+                var content = await Task.Run(() => Decode(bytes));
+                var channels = await Task.Run(() => ParseContent(content));
+
+                if (channels.Count == 0)
+                {
+
+                    var preview = content.Length > 200 ? content[..200] : content;
+                    preview = preview.Replace("\r", " ").Replace("\n", " ").Trim();
+                    throw new InvalidOperationException(
+                        "В ответе сервера не найдено ни одного канала — похоже, вместо плейлиста " +
+                        "пришла страница-заглушка (проверьте ссылку и не блокирует ли провайдер запросы " +
+                        $"без авторизации/с этого IP). Начало ответа: \"{preview}\"");
+                }
+
+                return channels;
             }
-
-            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-
-            var content = await Task.Run(() => Decode(bytes));
-            var channels = await Task.Run(() => ParseContent(content));
-
-            if (channels.Count == 0)
-            {
-
-                var preview = content.Length > 200 ? content[..200] : content;
-                preview = preview.Replace("\r", " ").Replace("\n", " ").Trim();
-                throw new InvalidOperationException(
-                    "В ответе сервера не найдено ни одного канала — похоже, вместо плейлиста " +
-                    "пришла страница-заглушка (проверьте ссылку и не блокирует ли провайдер запросы " +
-                    $"без авторизации/с этого IP). Начало ответа: \"{preview}\"");
-            }
-
-            return channels;
         }
 
 
@@ -269,6 +272,11 @@ namespace IptvPlayer.Services
 
                 if (key.Length == 0 || i >= line.Length || line[i] != '=')
                 {
+                    // Skip dangling '=' to guarantee loop progress
+                    if (key.Length == 0 && i < line.Length && line[i] == '=')
+                    {
+                        i++;
+                    }
                     continue;
                 }
                 i++;
@@ -314,6 +322,16 @@ namespace IptvPlayer.Services
             if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
             {
                 return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetString(bytes, 3, bytes.Length - 3);
+            }
+
+            // UTF-16 BOMs
+            if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            {
+                return Encoding.Unicode.GetString(bytes, 2, bytes.Length - 2);
+            }
+            if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            {
+                return Encoding.BigEndianUnicode.GetString(bytes, 2, bytes.Length - 2);
             }
 
             try

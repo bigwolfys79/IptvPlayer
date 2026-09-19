@@ -189,6 +189,15 @@ public sealed partial class MainPage
         SetProtectedCursor(MediaPlayer, null);
     }
 
+    // Release low-level mouse hook + timer on page unload
+    internal void ReleaseCursorHider()
+    {
+        _cursorHider?.Show();
+        _cursorHider?.Dispose();
+        _cursorHider = null;
+        _cursorHidden = false;
+    }
+
 
     private void HideCursorOverVideo()
     {
@@ -383,6 +392,7 @@ public sealed partial class MainPage
             if (ChannelListColumn.ActualWidth > 0)
             {
                 _channelListExpandedWidth = ChannelListColumn.ActualWidth;
+                LastChannelListWidth = _channelListExpandedWidth;
             }
             ChannelListColumn.MinWidth = 0;
             ChannelListColumn.Width = new GridLength(0);

@@ -9,6 +9,7 @@ namespace IptvPlayer.Services
         Task<List<ChannelViewModel>> GetAllChannelsAsync();
         Task<ChannelViewModel?> GetChannelByIdAsync(int id);
         Task AddChannelAsync(ChannelViewModel channel);
+        Task AddChannelsAsync(IEnumerable<ChannelViewModel> channels);
 
 
         Task Clear();

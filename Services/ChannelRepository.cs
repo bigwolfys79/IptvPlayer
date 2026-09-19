@@ -27,7 +27,10 @@ namespace IptvPlayer.Services
             {
                 if (_indexDirty)
                 {
-                    _byId = _channels.ToDictionary(c => c.Id);
+                    // First wins on duplicate Ids — ToDictionary would throw
+                    _byId = _channels
+                        .GroupBy(c => c.Id)
+                        .ToDictionary(g => g.Key, g => g.First());
                     _indexDirty = false;
                 }
                 return Task.FromResult(_byId.GetValueOrDefault(id));
@@ -39,6 +42,16 @@ namespace IptvPlayer.Services
             lock (_gate)
             {
                 _channels.Add(channel);
+                _indexDirty = true;
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task AddChannelsAsync(IEnumerable<ChannelViewModel> channels)
+        {
+            lock (_gate)
+            {
+                _channels.AddRange(channels);
                 _indexDirty = true;
             }
             return Task.CompletedTask;

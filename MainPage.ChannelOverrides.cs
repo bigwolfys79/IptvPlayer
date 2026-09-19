@@ -172,8 +172,12 @@ public sealed partial class MainPage : Page
             }
         }
 
+        var wasSelected = ReferenceEquals(ViewModel.SelectedChannel, channel);
         ViewModel.Channels.Remove(channel);
-        ViewModel.SelectedChannel = null;
+        if (wasSelected)
+        {
+            ViewModel.SelectedChannel = null;
+        }
 
         try
         {
@@ -195,10 +199,7 @@ public sealed partial class MainPage : Page
     private async Task RebuildChannelRepositoryAsync(string? movedFromGroup = null, string? movedToGroup = null)
     {
         await _channelRepository.Clear();
-        foreach (var channel in ViewModel.Channels)
-        {
-            await _channelRepository.AddChannelAsync(channel);
-        }
+        await _channelRepository.AddChannelsAsync(ViewModel.Channels);
 
         ViewModel.EpgViewModel.SetChannels(ViewModel.Channels.ToList());
         ViewModel.UpdateChannelCountText();

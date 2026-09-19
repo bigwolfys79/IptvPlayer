@@ -153,10 +153,7 @@ public sealed partial class MainPage : Page
         }
 
         await _channelRepository.Clear();
-        foreach (var channel in channels)
-        {
-            await _channelRepository.AddChannelAsync(channel);
-        }
+        await _channelRepository.AddChannelsAsync(channels);
 
         ViewModel.Channels = new ObservableCollection<ChannelViewModel>(channels);
 

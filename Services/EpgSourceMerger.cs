@@ -28,7 +28,10 @@ public static class EpgSourceMerger
                 iconsByChannelId.TryAdd(channelId, iconUrl);
             }
 
-            foreach (var entry in sourceResult.Entries)
+            // Sort by start time so overlap can be checked in O(log n)
+            var sortedEntries = sourceResult.Entries.OrderBy(e => e.StartTime).ToList();
+
+            foreach (var entry in sortedEntries)
             {
                 if (!byChannel.TryGetValue(entry.ChannelId, out var list))
                 {
@@ -36,19 +39,17 @@ public static class EpgSourceMerger
                     byChannel[entry.ChannelId] = list;
                 }
 
-                var overlapsExisting = list.Any(existing =>
-                    entry.StartTime < existing.EndTime && existing.StartTime < entry.EndTime);
-
-                if (!overlapsExisting)
+                if (!OverlapsAccepted(list, entry.StartTime, entry.EndTime))
                 {
-                    list.Add(entry);
+                    // Keep list sorted by start time for binary search
+                    var pos = list.BinarySearch(entry, StartTimeComparer.Instance);
+                    if (pos < 0)
+                    {
+                        pos = ~pos;
+                    }
+                    list.Insert(pos, entry);
                 }
             }
-        }
-
-        foreach (var list in byChannel.Values)
-        {
-            list.Sort((a, b) => a.StartTime.CompareTo(b.StartTime));
         }
 
         logger.LogInformation(
@@ -58,6 +59,37 @@ public static class EpgSourceMerger
             byChannel.Values.Sum(l => l.Count(e => string.IsNullOrEmpty(e.Description))));
 
         return (byChannel, iconsByChannelId, BuildNameIndex(byChannel, logger));
+    }
+
+
+    private sealed class StartTimeComparer : IComparer<EPGEntry>
+    {
+        public static readonly StartTimeComparer Instance = new();
+
+        public int Compare(EPGEntry? x, EPGEntry? y) => x!.StartTime.CompareTo(y!.StartTime);
+    }
+
+
+    // Accepted entries are pairwise non-overlapping and sorted by start time,
+    // so only the earliest entry still open at 'start' can overlap the candidate
+    private static bool OverlapsAccepted(List<EPGEntry> sorted, DateTime start, DateTime end)
+    {
+        int lo = 0, hi = sorted.Count - 1, idx = -1;
+        while (lo <= hi)
+        {
+            var mid = lo + ((hi - lo) / 2);
+            if (sorted[mid].EndTime > start)
+            {
+                idx = mid;
+                hi = mid - 1;
+            }
+            else
+            {
+                lo = mid + 1;
+            }
+        }
+
+        return idx >= 0 && sorted[idx].StartTime < end;
     }
 
 

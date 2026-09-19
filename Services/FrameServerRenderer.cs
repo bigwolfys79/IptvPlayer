@@ -128,6 +128,24 @@ namespace IptvPlayer.Services
                 _panel.SwapChain = null;
                 _panel = null;
             }
+            WaitForRenderComplete();
+        }
+
+        // Detach/Dispose run on the UI thread while Render may still be in flight
+        // on the media thread; wait (bounded) before touching shared D3D resources
+        private void WaitForRenderComplete()
+        {
+            var deadline = Environment.TickCount64 + 500;
+            while (Interlocked.CompareExchange(ref _drawing, 1, 1) != 0)
+            {
+                if (Environment.TickCount64 >= deadline)
+                {
+                    _logger.LogWarning(
+                        "FrameServerRenderer: рендер не завершился за 500 мс — продолжаем освобождение ресурсов.");
+                    break;
+                }
+                Thread.Sleep(1);
+            }
         }
 
         public void Dispose()

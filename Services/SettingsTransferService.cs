@@ -25,6 +25,7 @@ public class SettingsTransferService
         s.StatsOverlayVisible = false;
         s.SleepTimerMinutes = 0;
         s.RecordingsFolder = null;
+        s.UpdateCheckUrl = null;
     }
 
 
@@ -74,18 +75,32 @@ public class SettingsTransferService
             throw new InvalidDataException("Это не файл экспорта IptvPlayer.");
         }
 
-        var salt = Convert.FromBase64String(envelope.Salt);
-        var nonce = Convert.FromBase64String(envelope.Nonce);
-        var tag = Convert.FromBase64String(envelope.Tag);
-        var cipher = Convert.FromBase64String(envelope.Data);
-        var key = Rfc2898DeriveBytes.Pbkdf2(
-            password, salt, envelope.Iterations, HashAlgorithmName.SHA256, 32);
+        if (envelope.Iterations < 100_000 || envelope.Iterations > 1_000_000)
+        {
+            throw new InvalidDataException("Недопустимое число итераций PBKDF2 в файле экспорта.");
+        }
 
-        var plain = new byte[cipher.Length];
+        var plain = Array.Empty<byte>();
         try
         {
+            var salt = Convert.FromBase64String(envelope.Salt);
+            var nonce = Convert.FromBase64String(envelope.Nonce);
+            var tag = Convert.FromBase64String(envelope.Tag);
+            var cipherBytes = Convert.FromBase64String(envelope.Data);
+            plain = new byte[cipherBytes.Length];
+            var key = Rfc2898DeriveBytes.Pbkdf2(
+                password, salt, envelope.Iterations, HashAlgorithmName.SHA256, 32);
+
             using var aes = new AesGcm(key, 16);
-            aes.Decrypt(nonce, cipher, tag, plain);
+            aes.Decrypt(nonce, cipherBytes, tag, plain);
+        }
+        catch (FormatException ex)
+        {
+            throw new InvalidDataException("Файл экспорта повреждён (некорректное кодирование данных).", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidDataException("Файл экспорта повреждён (некорректные параметры шифрования).", ex);
         }
         catch (CryptographicException)
         {

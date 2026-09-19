@@ -15,11 +15,17 @@ public static class AppIcons
     private static readonly Brush White = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
 
 
+    private static Brush? _lightFgBrush;
+
     private static Brush Fg()
     {
-        return (MainWindow.Instance?.Content as FrameworkElement)?.ActualTheme == ElementTheme.Light
-            ? new SolidColorBrush(Color.FromArgb(0xE6, 0x00, 0x00, 0x00))
-            : White;
+        // Cache the light-theme brush — allocating per call is wasteful
+        if ((MainWindow.Instance?.Content as FrameworkElement)?.ActualTheme == ElementTheme.Light)
+        {
+            return _lightFgBrush ??= new SolidColorBrush(Color.FromArgb(0xE6, 0x00, 0x00, 0x00));
+        }
+
+        return White;
     }
 
 

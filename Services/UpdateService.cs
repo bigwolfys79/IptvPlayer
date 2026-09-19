@@ -76,20 +76,44 @@ public class UpdateService : IUpdateService
                 downloadUrl = null;
                 if (root.TryGetProperty("assets", out var assets) && assets.GetArrayLength() > 0)
                 {
-                    var asset = assets[0];
-                    if (asset.TryGetProperty("browser_download_url", out var assetUrl))
+                    System.Text.Json.JsonElement? chosen = null;
+                    foreach (var asset in assets.EnumerateArray())
                     {
-                        downloadUrl = assetUrl.GetString();
+                        var name = asset.TryGetProperty("name", out var assetName)
+                            ? assetName.GetString()
+                            : null;
+                        if (string.IsNullOrEmpty(name) ||
+                            !name.Contains("IptvPlayer-Setup-", StringComparison.OrdinalIgnoreCase) ||
+                            !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        chosen = asset;
+                        if (name.Contains("-x64", StringComparison.OrdinalIgnoreCase))
+                        {
+                            break;
+                        }
                     }
 
-                    if (asset.TryGetProperty("digest", out var digest) &&
-                        digest.GetString() is { } d && d.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
+                    if (chosen is { } assetElement)
                     {
-                        sha256 = d["sha256:".Length..];
+                        if (assetElement.TryGetProperty("browser_download_url", out var assetUrl))
+                        {
+                            downloadUrl = assetUrl.GetString();
+                        }
+
+                        if (assetElement.TryGetProperty("digest", out var digest) &&
+                            digest.GetString() is { } d && d.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            sha256 = d["sha256:".Length..];
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("В релизе не найден подходящий ассет установщика (IptvPlayer-Setup-*.exe) — обновление не скачиваем.");
                     }
                 }
-
-                downloadUrl ??= root.TryGetProperty("html_url", out var html) ? html.GetString() : null;
             }
             else
             {
@@ -166,6 +190,11 @@ public class UpdateService : IUpdateService
                 System.IO.File.Delete(path);
                 throw new InvalidOperationException(L.T("Kontrolnaya_Summa_Ustanovshchika_Ne_Sovpala_Obnovlenie"));
             }
+        }
+        else
+        {
+            // No digest published by the release — do not block the update
+            _logger.LogWarning("У релиза нет digest/sha256 — установка без проверки целостности.");
         }
 
         _logger.LogInformation("Обновление {Version} скачано: {Path} (sha256 {Sha}).",

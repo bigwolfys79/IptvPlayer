@@ -192,9 +192,17 @@ public sealed partial class MainPage : Page
 
     private async void VodQualityMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuFlyoutItem { Tag: string quality })
+        try
         {
-            await Player.SwitchVodQualityAsync(quality);
+            if (sender is MenuFlyoutItem { Tag: string quality })
+            {
+                await Player.SwitchVodQualityAsync(quality);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Переключение качества VOD не удалось.");
+            Player.StreamError = ex.Message;
         }
     }
 
@@ -288,7 +296,15 @@ public sealed partial class MainPage : Page
 
         if (!ReferenceEquals(sibling, Player.VodChannel))
         {
-            await ViewModel.PlayChannelAsync(sibling, interactive: false);
+            try
+            {
+                await ViewModel.PlayChannelAsync(sibling, interactive: false);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Переключение сезона VOD «{Season}» не удалось.", sibling.Name);
+                Player.StreamError = ex.Message;
+            }
         }
     }
 
@@ -302,7 +318,15 @@ public sealed partial class MainPage : Page
 
         if (index != Player.CurrentVodEpisodeIndex)
         {
-            await Player.PlayVodEpisodeAsync(index);
+            try
+            {
+                await Player.PlayVodEpisodeAsync(index);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Воспроизведение серии VOD #{Index} не удалось.", index + 1);
+                Player.StreamError = ex.Message;
+            }
         }
     }
 
@@ -462,7 +486,27 @@ public sealed partial class MainPage : Page
         var target = _activeSeekSlider.Value;
         _activeSeekSlider = null;
 
-        _ = Player.SeekArchiveAsync(target);
+        _ = SeekArchiveSafeAsync(target);
+    }
+
+    // Drop pending archive seek (channel/stream changed or page unloaded)
+    private void CancelPendingSeek()
+    {
+        _archiveSeekDebounceTimer.Stop();
+        _activeSeekSlider = null;
+        Player.IsArchiveSeeking = false;
+    }
+
+    private async Task SeekArchiveSafeAsync(double target)
+    {
+        try
+        {
+            await Player.SeekArchiveAsync(target);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Отложенный seek архива на {Target} с не удался.", target);
+        }
     }
 
     private void ApplyEpgVisibility()

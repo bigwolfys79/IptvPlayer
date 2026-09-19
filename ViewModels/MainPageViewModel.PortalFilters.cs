@@ -163,6 +163,7 @@ public partial class MainPageViewModel
         var fid = ResolveCurrentFid();
         if (fid <= 0) return;
 
+        // No Dispose: token may still be registered in an in-flight request
         _filterLoadCts?.Cancel();
         _filterLoadCts = new CancellationTokenSource();
         var ct = _filterLoadCts.Token;

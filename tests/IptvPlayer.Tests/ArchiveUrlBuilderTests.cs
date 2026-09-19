@@ -34,6 +34,26 @@ public class ArchiveUrlBuilderTests
     }
 
     [Fact]
+    public void BuildUrl_WithFragment_DropsFragmentAndAddsQuery()
+    {
+        var url = ArchiveUrlBuilder.BuildUrl("http://example.com/stream.m3u8#chunklist", new DateTime(2026, 1, 1, 12, 0, 0));
+
+        Assert.StartsWith("http://example.com/stream.m3u8?", url);
+        Assert.DoesNotContain("#", url);
+        Assert.Contains("utc=", url);
+        Assert.Contains("lutc=", url);
+    }
+
+    [Fact]
+    public void BuildUrl_WithQueryAndFragment_AddsAmpersandBeforeFragment()
+    {
+        var url = ArchiveUrlBuilder.BuildUrl("http://example.com/stream.m3u8?token=abc#seg", new DateTime(2026, 1, 1, 12, 0, 0));
+
+        Assert.StartsWith("http://example.com/stream.m3u8?token=abc&", url);
+        Assert.DoesNotContain("#", url);
+    }
+
+    [Fact]
     public void BuildUrl_LutcIsNow()
     {
         var before = DateTimeOffset.Now.ToUnixTimeSeconds();
