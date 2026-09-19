@@ -25,7 +25,7 @@ public sealed class MinimizeToTrayHook : IDisposable
 
     private IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam, nuint idSubclass, IntPtr refData)
     {
-        if (msg == WM_SIZE && lParam == (IntPtr)SIZE_MINIMIZED)
+        if (msg == WM_SIZE && wParam == (IntPtr)SIZE_MINIMIZED)
         {
             try
             {

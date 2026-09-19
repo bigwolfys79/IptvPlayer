@@ -172,6 +172,11 @@ public sealed partial class LicenseExpiredDialog : UserControl
         try
         {
             var email = "bigwolfys@gmail.com";
+            if (email.Contains('\r') || email.Contains('\n') || email.Contains('"'))
+            {
+                return;
+            }
+
             var subject = Uri.EscapeDataString("IptvPlayer - License Inquiry");
             var body = Uri.EscapeDataString(
                 $"IptvPlayer v{AboutDialog.GetAppVersion()}\n" +

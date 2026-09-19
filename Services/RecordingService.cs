@@ -112,6 +112,15 @@ public sealed class RecordingService
             return null;
         }
 
+        // Strict URL whitelist: only stream schemes reach ffmpeg argv
+        if (!Uri.TryCreate(streamUrl, UriKind.Absolute, out var streamUri) ||
+            streamUri.Scheme is not ("http" or "https" or "rtmp" or "rtmps" or "rtsp" or "rtp" or "udp" or "mms"))
+        {
+            _logger.LogWarning("StreamUrl не является поддерживаемым URL ({Scheme}) — запись не запущена.", streamUri?.Scheme);
+            return null;
+        }
+        var streamUrlArg = streamUri.AbsoluteUri;
+
         try
         {
             var dir = string.IsNullOrWhiteSpace(recordsFolder)

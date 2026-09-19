@@ -156,22 +156,21 @@ public sealed partial class MainPage
 
             case VirtualKey.Escape:
 
-                if (_cameFromHub && Frame.CanGoBack)
+                // Leave fullscreen first; only then close overlays / return to hub
+                if (_isFullScreen)
                 {
-                    Frame.GoBack();
+                    SetFullScreenMode(false);
                     e.Handled = true;
-                    break;
                 }
-
-                if (ViewModel.IsEpgVisible)
+                else if (ViewModel.IsEpgVisible)
                 {
                     ViewModel.IsEpgVisible = false;
                     ApplyEpgVisibility();
                     e.Handled = true;
                 }
-                else if (_isFullScreen)
+                else if (_cameFromHub && Frame.CanGoBack)
                 {
-                    SetFullScreenMode(false);
+                    Frame.GoBack();
                     e.Handled = true;
                 }
                 break;

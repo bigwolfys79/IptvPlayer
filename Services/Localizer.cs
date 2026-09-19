@@ -22,6 +22,15 @@ public static class L
         Cache.Clear();
         try
         {
+            // Affects x:Uid resolution of pages loaded after the switch
+            Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = Lang == "en" ? "en-US" : "ru-RU";
+        }
+        catch (System.Exception ex)
+        {
+            Serilog.Log.Warning(ex, "PrimaryLanguageOverride недоступен.");
+        }
+        try
+        {
             _context = GetManager().CreateResourceContext();
             _context.QualifierValues["language"] = Lang == "en" ? "en-US" : "ru-RU";
         }

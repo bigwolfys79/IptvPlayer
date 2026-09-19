@@ -180,12 +180,45 @@ namespace IptvPlayer.Dialogs
 
             await _settingsService.SaveAsync(appSettings);
 
+            var languageChanged = !string.Equals(L.Lang, appSettings.Language, StringComparison.OrdinalIgnoreCase);
+
             // Apply language now that the string cache is cleared on switch
             L.SetLanguage(appSettings.Language);
 
             _applyTheme(theme);
 
             CloseDialog();
+
+            if (languageChanged)
+            {
+                ReloadCurrentPage();
+            }
+        }
+
+        // Fresh page instance resolves x:Uid strings in the new language
+        private static void ReloadCurrentPage()
+        {
+            try
+            {
+                if (App.MainWindow is not MainWindow window || window.AppFrame.Content is not { } content)
+                {
+                    return;
+                }
+
+                var frame = window.AppFrame;
+                var type = content.GetType();
+                frame.Navigate(type);
+
+                // Drop the stale pre-switch instance from the back stack
+                if (frame.BackStack.Count > 0 && frame.BackStack[^1].SourcePageType == type)
+                {
+                    frame.BackStack.RemoveAt(frame.BackStack.Count - 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Не удалось перезагрузить страницу после смены языка.");
+            }
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)

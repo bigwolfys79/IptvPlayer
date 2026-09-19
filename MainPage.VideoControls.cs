@@ -341,7 +341,7 @@ public sealed partial class MainPage : Page
             Process.Start(new ProcessStartInfo
             {
                 FileName = "shutdown.exe",
-                Arguments = "/s /t 0",
+                ArgumentList = { "/s", "/t", "0" },
                 UseShellExecute = false,
                 CreateNoWindow = true
             });
