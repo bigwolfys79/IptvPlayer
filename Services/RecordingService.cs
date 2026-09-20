@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -104,7 +105,7 @@ public sealed class RecordingService
             }
         }
 
-        // ffmpeg args are built by string concat; quotes/newlines in URL would inject args
+        // Hygiene: odd URLs would just confuse ffmpeg, reject early
         if (streamUrl.IndexOfAny(['"', '\'', '\r', '\n']) >= 0)
         {
             _logger.LogWarning(
@@ -131,14 +132,7 @@ public sealed class RecordingService
             var safe = SanitizeFileName(fileNameBase);
             var path = Path.Combine(dir, $"{safe} {DateTime.Now:yyyy-MM-dd HHmmss}.ts");
 
-            var args = "-hide_banner -loglevel error -y " +
-                       $"-i \"{streamUrl}\" -c copy -f mpegts \"{path}\"";
-            if (durationSec is > 0)
-            {
-                args += $" -t {durationSec}";
-            }
-
-            var psi = new ProcessStartInfo(exe, args)
+            var psi = new ProcessStartInfo(exe)
             {
                 CreateNoWindow = true,
                 UseShellExecute = false,
@@ -146,6 +140,23 @@ public sealed class RecordingService
                 RedirectStandardOutput = true,
                 RedirectStandardInput = true
             };
+            // ArgumentList handles quoting/escaping; no shell, no string concat
+            psi.ArgumentList.Add("-hide_banner");
+            psi.ArgumentList.Add("-loglevel");
+            psi.ArgumentList.Add("error");
+            psi.ArgumentList.Add("-y");
+            psi.ArgumentList.Add("-i");
+            psi.ArgumentList.Add(streamUrlArg);
+            psi.ArgumentList.Add("-c");
+            psi.ArgumentList.Add("copy");
+            psi.ArgumentList.Add("-f");
+            psi.ArgumentList.Add("mpegts");
+            psi.ArgumentList.Add(path);
+            if (durationSec is > 0)
+            {
+                psi.ArgumentList.Add("-t");
+                psi.ArgumentList.Add(durationSec.Value.ToString(CultureInfo.InvariantCulture));
+            }
 
             var process = Process.Start(psi);
             if (process == null)
