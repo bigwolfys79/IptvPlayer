@@ -217,10 +217,10 @@
                             <SvgImageSource UriSource="ms-appx:///Assets/Icons/playlists.svg"/>
                         </Image.Source>
                     </Image>
-                    <TextBlock x:Uid="Pleylisty" FontSize="18" FontWeight="SemiBold"
+                    <TextBlock x:Uid="Pleylisty" x:Name="HubPlaylistsTitle" FontSize="18" FontWeight="SemiBold"
                                Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
-                    <TextBlock x:Uid="Upravlyayte_Pleylistami" FontSize="12"
+                    <TextBlock x:Uid="Upravlyayte_Pleylistami" x:Name="HubPlaylistsSubtitle" FontSize="12"
                                Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
@@ -245,10 +245,10 @@
                             <SvgImageSource UriSource="ms-appx:///Assets/Icons/portal.svg"/>
                         </Image.Source>
                     </Image>
-                    <TextBlock x:Uid="Portal" FontSize="18" FontWeight="SemiBold"
+                    <TextBlock x:Uid="Portal" x:Name="HubPortalTitle" FontSize="18" FontWeight="SemiBold"
                                Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
-                    <TextBlock x:Uid="Portal_Card_Subtitle" FontSize="12"
+                    <TextBlock x:Uid="Portal_Card_Subtitle" x:Name="HubPortalSubtitle" FontSize="12"
                                Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
@@ -271,10 +271,10 @@
                     <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="44"
                                Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                Margin="0,0,0,16"/>
-                    <TextBlock x:Uid="Video_Card" FontSize="18" FontWeight="SemiBold"
+                    <TextBlock x:Uid="Video_Card" x:Name="HubVideoTitle" FontSize="18" FontWeight="SemiBold"
                                Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
-                    <TextBlock x:Uid="Video_Card_Subtitle" FontSize="12"
+                    <TextBlock x:Uid="Video_Card_Subtitle" x:Name="HubVideoSubtitle" FontSize="12"
                                Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
@@ -299,10 +299,10 @@
                             <SvgImageSource UriSource="ms-appx:///Assets/Icons/settings.svg"/>
                         </Image.Source>
                     </Image>
-                    <TextBlock x:Uid="Nastroyki_Card" FontSize="18" FontWeight="SemiBold"
+                    <TextBlock x:Uid="Nastroyki_Card" x:Name="HubSettingsTitle" FontSize="18" FontWeight="SemiBold"
                                Foreground="{ThemeResource HubFgBrush}" HorizontalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>
-                    <TextBlock x:Uid="Yazyk_Interfeys_Vosproizv" FontSize="12"
+                    <TextBlock x:Uid="Yazyk_Interfeys_Vosproizv" x:Name="HubLanguageHint" FontSize="12"
                                Foreground="{ThemeResource HubFgSoftBrush}" HorizontalAlignment="Center"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" MaxWidth="230"/>

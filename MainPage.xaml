@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:IptvPlayer"
+    xmlns:services="using:IptvPlayer.Services"
     xmlns:ictrl="using:IptvPlayer.Controls"
     xmlns:vm="using:IptvPlayer.ViewModels"
     xmlns:vmModels="using:IptvPlayer.Models"
@@ -639,17 +640,17 @@
                             x:Uid="Nastroyki">
                         <Button.Flyout>
                             <MenuFlyout>
-                                <MenuFlyoutItem x:Uid="Vosproizvedenie" Click="PlaybackSettingsButton_Click"/>
-                                <MenuFlyoutItem x:Uid="Interfeys" Click="InterfaceSettingsButton_Click"/>
+                                <MenuFlyoutItem x:Uid="Vosproizvedenie" x:Name="SettingsPlaybackItem" Click="PlaybackSettingsButton_Click"/>
+                                <MenuFlyoutItem x:Uid="Interfeys" x:Name="SettingsInterfaceItem" Click="InterfaceSettingsButton_Click"/>
                                 <MenuFlyoutItem Text="EPG" Click="EpgSettingsButton_Click"/>
-                                <MenuFlyoutItem x:Uid="Pleylist" Click="PlaylistSettingsButton_Click"/>
-                                <MenuFlyoutItem x:Uid="Zapisi" Click="RecordingSettingsButton_Click"/>
-                                <MenuFlyoutItem x:Uid="Roditelskiy_Kontrol" Click="ParentalSettingsButton_Click"/>
-                                <MenuFlyoutItem x:Uid="Diagnostika" Click="DiagnosticsMenu_Click"/>
+                                <MenuFlyoutItem x:Uid="Pleylist" x:Name="SettingsPlaylistItem" Click="PlaylistSettingsButton_Click"/>
+                                <MenuFlyoutItem x:Uid="Zapisi" x:Name="SettingsRecordingItem" Click="RecordingSettingsButton_Click"/>
+                                <MenuFlyoutItem x:Uid="Roditelskiy_Kontrol" x:Name="SettingsParentalItem" Click="ParentalSettingsButton_Click"/>
+                                <MenuFlyoutItem x:Uid="Diagnostika" x:Name="SettingsDiagnosticsItem" Click="DiagnosticsMenu_Click"/>
                                 <MenuFlyoutSubItem x:Name="SwitchPlaylistSubMenu" x:Uid="Smenit_Pleylist"/>
                                 <MenuFlyoutSeparator/>
-                                <MenuFlyoutItem x:Uid="Litsenziya" Click="LicenseMenu_Click"/>
-                                <MenuFlyoutItem x:Uid="O_Programme" Click="AboutButton_Click"/>
+                                <MenuFlyoutItem x:Uid="Litsenziya" x:Name="SettingsLicenseItem" Click="LicenseMenu_Click"/>
+                                <MenuFlyoutItem x:Uid="O_Programme" x:Name="SettingsAboutItem" Click="AboutButton_Click"/>
                             </MenuFlyout>
                         </Button.Flyout>
                         <Grid Width="16" Height="16">
@@ -809,7 +810,7 @@
                                                           Width="14" Height="14" Stretch="Uniform"
                                                           Fill="{ThemeResource AccentFillColorDefaultBrush}"
                                                           Visibility="{x:Bind CanPlayArchive, Converter={StaticResource BoolToVisConverter}}"
-                                                          x:Uid="Smotret_S_Nachala_Arkhiv" />
+                                                          ToolTipService.ToolTip="{x:Bind services:LocX.T('Smotret_S_Nachala_Arkhiv.ToolTipService.ToolTip')}" />
                                                     <Button x:Name="ReminderButton"
                                                             Width="32" Height="32"
                                                             Padding="0"
@@ -817,7 +818,7 @@
                                                             BorderThickness="0"
                                                             Click="ReminderButton_Click"
                                                             Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
-                                                            x:Uid="Napomnit_O_Peredache">
+                                                            ToolTipService.ToolTip="{x:Bind services:LocX.T('Napomnit_O_Peredache.ToolTipService.ToolTip')}">
                                                         <Grid Width="14" Height="14">
                                                             <Path Data="M8,1.7 C5.5,1.7 3.8,3.9 3.8,6.5 V9.1 L2.2,11.7 H13.8 L12.2,9.1 V6.5 C12.2,3.9 10.5,1.7 8,1.7 Z M6.7,13 A1.35,1.35 0 0 0 9.3,13 Z"
                                                                   Fill="{x:Bind HasReminder, Converter={StaticResource BoolToLiveColorConverter}, Mode=OneWay}"
@@ -831,7 +832,7 @@
                                                             BorderThickness="0"
                                                             Click="ScheduleRecordButton_Click"
                                                             Visibility="{x:Bind CanPlayArchive, Converter={StaticResource InverseBoolToVisConverter}}"
-                                                            x:Uid="Zapisat_Peredachu">
+                                                            ToolTipService.ToolTip="{x:Bind services:LocX.T('Zapisat_Peredachu.ToolTipService.ToolTip')}">
                                                         <Grid Width="14" Height="14">
                                                             <Ellipse StrokeThickness="1.5"
                                                                      Stroke="{x:Bind HasScheduleRecord, Converter={StaticResource BoolToRecordColorConverter}, Mode=OneWay}" />

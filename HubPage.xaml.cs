@@ -38,6 +38,7 @@ public sealed partial class HubPage : Page
     public HubPage()
     {
         InitializeComponent();
+        ApplyXamlLocalization();
         _settingsService = App.Services.GetRequiredService<ISettingsService>();
         _vodResumeStore = App.Services.GetRequiredService<VodResumeStore>();
         Loaded += HubPage_Loaded;

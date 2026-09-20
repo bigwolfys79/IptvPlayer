@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 
 
@@ -130,13 +130,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Aktiven_Pleylist_0" xml:space="preserve">
 
-    <value>Playlist \\"{0}\\" is now active.</value>
+    <value>Playlist \"{0}\" is now active.</value>
 
   </data>
 
   <data name="Aktivirovat.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Активировать</value>
+    <value>Activate</value>
 
   </data>
 
@@ -304,7 +304,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Dobavit_Istochnik_EPG.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Добавить источник EPG</value>
+    <value>Add EPG source</value>
 
   </data>
 
@@ -322,7 +322,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Dobavit_Kanal_Vruchnuyu.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Добавить канал вручную</value>
+    <value>Add channel manually</value>
 
   </data>
 
@@ -436,7 +436,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Eta_Peredacha_Eshche_Ne_Nachalas" xml:space="preserve">
 
-    <value>This programme has not started yet.</value>
+    <value>This program has not started yet.</value>
 
   </data>
 
@@ -472,7 +472,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Gromkost_Ili_Koleso_Myshi_Nad_Video.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Громкость (или колесо мыши над видео)</value>
+    <value>Volume (or mouse wheel over video)</value>
 
   </data>
 
@@ -574,7 +574,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Istochniki_EPG_Etogo_Pleylista.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Источники EPG этого плейлиста</value>
+    <value>EPG sources of this playlist</value>
 
   </data>
 
@@ -652,7 +652,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Kanal_0_Zakryt_Roditelskim_Kontrolem_Vvedite" xml:space="preserve">
 
-    <value>Channel \\"{0}\\" is locked by parental control. Enter the PIN and choose how long to allow viewing.</value>
+    <value>Channel \"{0}\" is locked by parental control. Enter the PIN and choose how long to allow viewing.</value>
 
   </data>
 
@@ -820,13 +820,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Napomnit_O_Peredache.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Напомнить о передаче</value>
+    <value>Remind me about this program</value>
 
   </data>
 
   <data name="Napomnit_O_Peredache_Lbl" xml:space="preserve">
 
-    <value>Remind me</value>
+    <value>Remind me about this program</value>
 
   </data>
 
@@ -862,7 +862,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Nastroyki_I_Kesh_0_IptvPlayer" xml:space="preserve">
 
-    <value>Settings and cache: {0}\\IptvPlayer</value>
+    <value>Settings and cache: {0}\IptvPlayer</value>
 
   </data>
 
@@ -952,7 +952,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Ne_Udalos_Sozdat_Papku_0_Proverte" xml:space="preserve">
 
-    <value>Could not create \\"{0}\\" — check the path and permissions.</value>
+    <value>Could not create \"{0}\" — check the path and permissions.</value>
 
   </data>
 
@@ -994,13 +994,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
 <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo.Text" xml:space="preserve">
 
-    <value>No programme data for this channel</value>
+    <value>No program data for this channel</value>
 
   </data>
 
   <data name="Net_Dannykh_O_Programmakh_Dlya_Etogo_Lbl" xml:space="preserve">
 
-    <value>No programme data for this channel</value>
+    <value>No program data for this channel</value>
 
   </data>
 
@@ -1156,7 +1156,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Otmenit_Taymer.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Отменить таймер</value>
+    <value>Cancel timer</value>
 
   </data>
 
@@ -1258,7 +1258,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Pauza_Arkhiv.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Пауза (архив)</value>
+    <value>Pause (archive)</value>
 
   </data>
 
@@ -1276,7 +1276,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Pereimenovat.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Переименовать</value>
+    <value>Rename</value>
 
   </data>
 
@@ -1288,13 +1288,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Pereklyuchenie_Na_0" xml:space="preserve">
 
-    <value>Switching to \\"{0}\\"...</value>
+    <value>Switching to \"{0}\"...</value>
 
   </data>
 
   <data name="Peremotka_Arkhiva_Otpustite_Polzunok_Dlya_Perekhoda.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Перемотка архива (отпустите ползунок для перехода)</value>
+    <value>Archive seeking (release the slider to jump)</value>
 
   </data>
 
@@ -1306,7 +1306,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Peremotka_Video_Otpustite_Polzunok.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Перемотка видео (отпустите ползунок)</value>
+    <value>Video seeking (release the slider)</value>
 
   </data>
 
@@ -1336,13 +1336,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Pleylist_0_Dobavlen" xml:space="preserve">
 
-    <value>Playlist \\"{0}\\" added.</value>
+    <value>Playlist \"{0}\" added.</value>
 
   </data>
 
   <data name="Pleylist_0_Udalen" xml:space="preserve">
 
-    <value>Playlist \\"{0}\\" removed.</value>
+    <value>Playlist \"{0}\" removed.</value>
 
   </data>
 
@@ -1360,7 +1360,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Pleylist_Pereimenovan_V_0" xml:space="preserve">
 
-    <value>Playlist renamed to \\"{0}\\".</value>
+    <value>Playlist renamed to \"{0}\".</value>
 
   </data>
 
@@ -1378,7 +1378,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Po_Istechenii_Taymera_0" xml:space="preserve">
 
-    <value>When the timer ends: {1}.</value>
+    <value>When the timer ends: {0}.</value>
 
   </data>
 
@@ -1474,7 +1474,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Povtornoe_Nazhatie_Udalit_Pleylist_0_Vmeste" xml:space="preserve">
 
-    <value>Clicking again will remove playlist \\"{0}\\" and its local cache.</value>
+    <value>Clicking again will remove playlist \"{0}\" and its local cache.</value>
 
   </data>
 
@@ -1486,7 +1486,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Predydushchiy_Kanal_Backspace.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Предыдущий канал (Backspace)</value>
+    <value>Previous channel (Backspace)</value>
 
   </data>
 
@@ -1606,7 +1606,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Razvernut_Pleer_Na_Ves_Ekran.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Развернуть плеер на весь экран</value>
+    <value>Expand player to full screen</value>
 
   </data>
 
@@ -1618,19 +1618,19 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Razvernut_Pleer_Na_Ves_Ekran_Lbl" xml:space="preserve">
 
-    <value>Maximize player</value>
+    <value>Full screen</value>
 
   </data>
 
   <data name="Rezhim_Otobrazheniya_0_V" xml:space="preserve">
 
-    <value>Video mode: {1} (V)</value>
+    <value>Video mode: {0} (V)</value>
 
   </data>
 
   <data name="Rezhim_Otobrazheniya_V.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Режим отображения (V)</value>
+    <value>Display mode (V)</value>
 
   </data>
 
@@ -1654,7 +1654,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Sbrosit_Filtry.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Сбросить фильтры</value>
+    <value>Reset filters</value>
 
   </data>
 
@@ -1678,7 +1678,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Seriya.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Серия</value>
+    <value>Episode</value>
 
   </data>
 
@@ -1714,7 +1714,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Sezon_2.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Сезон</value>
+    <value>Season</value>
 
   </data>
 
@@ -1828,7 +1828,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Smotret_S_Nachala_Arkhiv.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Смотреть с начала (архив)</value>
+    <value>Watch from the start (archive)</value>
 
   </data>
 
@@ -1864,7 +1864,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Sokhranit_Imya.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Сохранить имя</value>
+    <value>Save name</value>
 
   </data>
 
@@ -2194,7 +2194,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Vernutsya_K_Pryamomu_Efiru.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Вернуться к прямому эфиру</value>
+    <value>Back to live</value>
 
   </data>
 
@@ -2218,7 +2218,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Vid_Spisok_Postery.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Вид: список / постеры</value>
+    <value>View: list / posters</value>
 
   </data>
 
@@ -2410,7 +2410,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Vyyti_Iz_Polnoekrannogo_Rezhima.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Выйти из полноэкранного режима</value>
+    <value>Exit full screen</value>
 
   </data>
 
@@ -2523,13 +2523,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="Zapisat_Peredachu.ToolTipService.ToolTip" xml:space="preserve">
 
-    <value>Записать передачу</value>
+    <value>Record program</value>
 
   </data>
 
   <data name="Zapisat_Peredachu_Lbl" xml:space="preserve">
 
-    <value>Record programme</value>
+    <value>Record program</value>
 
   </data>
 
@@ -2617,9 +2617,7 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Diagnostika_Menyu" xml:space="preserve">
     <value>Diagnostics</value>
   </data>
-  <data name="Faylovyy_Log" xml:space="preserve">
-    <value>File log</value>
-  </data>
+  
   <data name="Diagnostika_Lbl" xml:space="preserve">
     <value>Diagnostics</value>
   </data>
@@ -2921,7 +2919,7 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>Remaining today: {0} min</value>
   </data>
   <data name="Dnevnoy_Limit_Ischerpan" xml:space="preserve">
-    <value>The daily watch limit ({0} min) has been reached. Watching will be available in {1} h, after midnight.</value>
+    <value>The daily watch limit ({0} min) has been reached. Watching will be available after midnight, in {1} h.</value>
   </data>
 <data name="HK_F1" xml:space="preserve">
     <value>This help</value>
@@ -2976,7 +2974,7 @@ Serilog (logging), Inno Setup (installer)</value>
   </data>
   <data name="Udalit_Istochnik_EPG_Lbl" xml:space="preserve">
 
-    <value>Delete EPG source</value>
+    <value>Remove EPG source</value>
 
   </data>
 
@@ -3013,19 +3011,19 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="1_Den_Nazad" xml:space="preserve">
 
-    <value>1 day back</value>
+    <value>1 day ago</value>
 
   </data>
 
   <data name="3_Dnya_Nazad" xml:space="preserve">
 
-    <value>3 days back</value>
+    <value>3 days ago</value>
 
   </data>
 
   <data name="7_Dney_Nazad" xml:space="preserve">
 
-    <value>7 days back</value>
+    <value>7 days ago</value>
 
   </data>
   <data name="Usilenie_Gromkosti.Text" xml:space="preserve">
@@ -3153,12 +3151,8 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Vse_Pravki_Ochishcheny" xml:space="preserve">
     <value>All overrides cleared. Reloading playlist…</value>
   </data>
-  <data name="Roditelskiy_Kontrol_Lbl" xml:space="preserve">
-    <value>Parental control</value>
-  </data>
-  <data name="Otmena_Lbl" xml:space="preserve">
-    <value>Cancel</value>
-  </data>
+  
+  
   <data name="Vvod_Pin_Pole" xml:space="preserve">
     <value>PIN</value>
   </data>
@@ -3168,4 +3162,5 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Pri_Vyklyuchenii_Srazu_Otkryvaetsya_Poslednij_Kanal" xml:space="preserve">
     <value>When disabled, the app opens the last channel immediately</value>
   </data>
+  
 </root>

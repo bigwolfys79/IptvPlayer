@@ -207,7 +207,9 @@ namespace IptvPlayer.Dialogs
 
                 var frame = window.AppFrame;
                 var type = content.GetType();
-                frame.Navigate(type);
+                // Keep navigation context (playlist, _cameFromHub) across the reload
+                var parameter = (content as MainPage)?.LastNavigationParameter;
+                frame.Navigate(type, parameter);
 
                 // Drop the stale pre-switch instance from the back stack
                 if (frame.BackStack.Count > 0 && frame.BackStack[^1].SourcePageType == type)

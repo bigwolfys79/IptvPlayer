@@ -1,15 +1,13 @@
-using Microsoft.Windows.ApplicationModel.Resources;
+using System.Xml.Linq;
 
 namespace IptvPlayer.Services;
 
 
+// Runtime string resolution reads Strings/<lang>/Resources.resw directly:
+// MRT Core resource-context language override is broken in unpackaged builds (0x80073B17)
 public static class L
 {
-    private static ResourceManager? _manager;
-    private static ResourceContext? _context;
-
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Cache = new();
-
+    private static System.Collections.Generic.IDictionary<string, string>? _table;
     public static string Lang { get; private set; } = "ru";
 
     public static bool IsRussian => Lang != "en";
@@ -18,8 +16,6 @@ public static class L
     public static void SetLanguage(string lang)
     {
         Lang = string.IsNullOrEmpty(lang) ? "ru" : lang;
-        // Cached strings are language-bound — must not survive a switch
-        Cache.Clear();
         try
         {
             // Affects x:Uid resolution of pages loaded after the switch
@@ -29,39 +25,41 @@ public static class L
         {
             Serilog.Log.Warning(ex, "PrimaryLanguageOverride недоступен.");
         }
-        try
-        {
-            _context = GetManager().CreateResourceContext();
-            _context.QualifierValues["language"] = Lang == "en" ? "en-US" : "ru-RU";
-        }
-        catch (System.Exception ex)
-        {
-
-
-            Serilog.Log.Warning(ex, "MRT-ресурсы недоступны, локализация отключена.");
-            _manager = null;
-            _context = null;
-        }
+        _table = LoadResw(PathFor(Lang));
     }
 
 
     public static string T(string key)
     {
-        return Cache.GetOrAdd(key, static k =>
-        {
-            try
-            {
-                var manager = _manager ?? GetManager();
-                var context = _context ?? manager.CreateResourceContext();
-                var value = manager.MainResourceMap.GetValue("Resources/" + k, context)?.ValueAsString;
-                return string.IsNullOrEmpty(value) ? k : value;
-            }
-            catch
-            {
-                return k;
-            }
-        });
+        if (_table is null)
+            _table = LoadResw(PathFor(Lang));
+        if (_table is not null && _table.TryGetValue(key, out var value) && !string.IsNullOrEmpty(value))
+            return value;
+        return key;
     }
 
-    private static ResourceManager GetManager() => _manager ??= new ResourceManager();
+    private static string PathFor(string lang) =>
+        System.IO.Path.Combine(AppContext.BaseDirectory, "Strings", lang == "en" ? "en-US" : "ru-RU", "Resources.resw");
+
+    private static System.Collections.Generic.IDictionary<string, string>? LoadResw(string path)
+    {
+        try
+        {
+            var root = XDocument.Load(path).Root ?? throw new System.InvalidOperationException("empty resw");
+            var dict = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.Ordinal);
+            foreach (var data in root.Elements("data"))
+            {
+                var name = (string?)data.Attribute("name");
+                var value = (string?)data.Element("value");
+                if (!string.IsNullOrEmpty(name) && value is not null)
+                    dict[name] = value;
+            }
+            return dict;
+        }
+        catch (System.Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Resw не прочитан: {Path}", path);
+            return null;
+        }
+    }
 }

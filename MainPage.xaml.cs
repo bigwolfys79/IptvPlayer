@@ -154,6 +154,7 @@ public sealed partial class MainPage : Page
 
         InitializeComponent();
 
+        ApplyXamlLocalization();
 
         RootGrid.SizeChanged += OnRootLayoutSizeChanged;
         WindowedVideoOverlay.SizeChanged += OnRootLayoutSizeChanged;
@@ -524,9 +525,13 @@ public sealed partial class MainPage : Page
 
 
 
+    // Preserved for in-place reloads (e.g. language switch) so navigation context survives
+    public object? LastNavigationParameter { get; private set; }
+
     protected override void OnNavigatedTo(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
+        LastNavigationParameter = e.Parameter;
 
         if (e.Parameter is PlaylistSource playlist)
         {

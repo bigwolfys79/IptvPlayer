@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 
 
@@ -862,7 +862,7 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   <data name="Nastroyki_I_Kesh_0_IptvPlayer" xml:space="preserve">
 
-    <value>Настройки и кэш: {0}\\IptvPlayer</value>
+    <value>Настройки и кэш: {0}\IptvPlayer</value>
 
   </data>
 
@@ -2617,9 +2617,7 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Diagnostika_Menyu" xml:space="preserve">
     <value>Диагностика</value>
   </data>
-  <data name="Faylovyy_Log" xml:space="preserve">
-    <value>Файловый лог</value>
-  </data>
+  
   <data name="Diagnostika_Lbl" xml:space="preserve">
     <value>Диагностика</value>
   </data>
@@ -3153,12 +3151,8 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Vse_Pravki_Ochishcheny" xml:space="preserve">
     <value>Все правки очищены. Перезагружаю плейлист…</value>
   </data>
-  <data name="Roditelskiy_Kontrol_Lbl" xml:space="preserve">
-    <value>Родительский контроль</value>
-  </data>
-  <data name="Otmena_Lbl" xml:space="preserve">
-    <value>Отмена</value>
-  </data>
+  
+  
   <data name="Vvod_Pin_Pole" xml:space="preserve">
     <value>PIN</value>
   </data>
@@ -3168,4 +3162,5 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Pri_Vyklyuchenii_Srazu_Otkryvaetsya_Poslednij_Kanal" xml:space="preserve">
     <value>При выключении приложение сразу открывает последний канал</value>
   </data>
+  
 </root>

@@ -167,7 +167,16 @@ public sealed partial class MainPage : Page
             Stretch.UniformToFill => L.T("Stretch_Oberezat"),
             _ => L.T("Stretch_Vpisat")
         };
-        var tooltip = string.Format(L.T("Rezhim_Otobrazheniya_0_V"), mode);
+        // Broken resource format must not kill page init
+        string tooltip;
+        try
+        {
+            tooltip = string.Format(L.T("Rezhim_Otobrazheniya_0_V"), mode);
+        }
+        catch (FormatException)
+        {
+            tooltip = mode;
+        }
         ToolTipService.SetToolTip(VideoOverlayStretchButton, tooltip);
         ToolTipService.SetToolTip(OverlayStretchButton, tooltip);
     }
