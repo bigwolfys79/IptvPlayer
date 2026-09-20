@@ -174,34 +174,36 @@ HLS-timeshift не ищется на лету, поэтому перемотка
 
 ## 13. Разбиение на partial-файлы
 
-**MainPage** (3133 → 1374 строк):
+**MainPage** (4841 строк суммарно):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `MainPage.xaml.cs` | 1109 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
-| `MainPage.Portal.cs` | 296 | Portal API методы |
-| `MainPage.Settings.cs` | 106 | Диалоги настроек |
-| `MainPage.Navigation.cs` | 383 | Переключение плейлистов, навигация |
-| `MainPage.VideoControls.cs` | 536 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
-| `MainPage.ChannelOverrides.cs` | 257 | Правки каналов: перенос/удаление, применение overrides, PIN-подтверждение |
-| `MainPage.Seek.cs` | 718 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, родительский контроль (PIN-диалог, дневной лимит) |
-| `MainPage.LocalVideo.cs` | 38 | Локальные видеофайлы: выбор файла, запуск |
-| `MainPage.FullScreen.cs` | 259 | Полноэкранный режим |
-| `MainPage.Hotkeys.cs` | 375 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
-| `MainPage.Overlays.cs` | 466 | Оверлеи |
-| `MainPage.StatsOverlay.cs` | 193 | Статистика |
+| `MainPage.xaml.cs` | 1086 | Поля, конструктор, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.Portal.cs` | 260 | Portal API методы |
+| `MainPage.Settings.cs` | 112 | Диалоги настроек |
+| `MainPage.Navigation.cs` | 386 | Переключение плейлистов, навигация |
+| `MainPage.VideoControls.cs` | 525 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
+| `MainPage.ChannelOverrides.cs` | 273 | Правки каналов: перенос/удаление, применение overrides, PIN-подтверждение |
+| `MainPage.Seek.cs` | 762 | VOD seek/quality/season/episode, Archive seek, индикатор паузы, EPG, Fullscreen, родительский контроль (PIN-диалог, дневной лимит) |
+| `MainPage.LocalVideo.cs` | 32 | Локальные видеофайлы: выбор файла, запуск |
+| `MainPage.FullScreen.cs` | 231 | Полноэкранный режим |
+| `MainPage.Hotkeys.cs` | 351 | Горячие клавиши (описания — в справке F1, см. HOTKEYS-SYNC) |
+| `MainPage.Overlays.cs` | 553 | Оверлеи |
+| `MainPage.StatsOverlay.cs` | 178 | Статистика |
+| `MainPage.Localization.cs` | 92 | Локализация x:Uid-элементов через L.T (PrimaryLanguageOverride недоступен в unpackaged) |
 
-**HubPage** (990 строк):
-
-| Файл | Строк | Содержимое |
-|---|---|---|
-| `HubPage.xaml.cs` | 990 | Экран запуска: приветствие, карточки, кастомные flyout-меню, справка горячих клавиш (F1) |
-
-**MainPageViewModel** (1873 строк):
+**HubPage** (1025 строк суммарно):
 
 | Файл | Строк | Содержимое |
 |---|---|---|
-| `MainPageViewModel.cs` | 1017 | Инициализация, фильтры, категории, EPG, SaveSettings, родительский контроль (EnsureChannelAllowedAsync) |
-| `MainPageViewModel.PortalFilters.cs` | 275 | Portal API + фильтры портала |
-| `MainPageViewModel.Recording.cs` | 284 | Запись, напоминания, избранное, архив |
-| `MainPageViewModel.VodResume.cs` | 297 | VOD resume, PlayChannelAsync (interactive) |
+| `HubPage.xaml.cs` | 1005 | Экран запуска: приветствие, карточки, кастомные flyout-меню, справка горячих клавиш (F1) |
+| `HubPage.Localization.cs` | 20 | Локализация x:Uid-элементов через L.T |
+
+**MainPageViewModel** (1793 строк суммарно):
+
+| Файл | Строк | Содержимое |
+|---|---|---|
+| `MainPageViewModel.cs` | 930 | Инициализация, фильтры, категории, EPG, SaveSettings, родительский контроль (EnsureChannelAllowedAsync) |
+| `MainPageViewModel.PortalFilters.cs` | 261 | Portal API + фильтры портала |
+| `MainPageViewModel.Recording.cs` | 307 | Запись, напоминания, избранное, архив |
+| `MainPageViewModel.VodResume.cs` | 295 | VOD resume, PlayChannelAsync (interactive) |

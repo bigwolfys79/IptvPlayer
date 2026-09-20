@@ -174,34 +174,36 @@ Semi-automatic update (`Services/UpdateService` + `MainPage.RunAutoUpdateCheckAs
 
 ## 13. Partial File Split
 
-**MainPage** (3133 → 1374 lines):
+**MainPage** (4841 lines total):
 
 | File | Lines | Content |
 |---|---|---|
-| `MainPage.xaml.cs` | 1109 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
-| `MainPage.Portal.cs` | 296 | Portal API methods |
-| `MainPage.Settings.cs` | 106 | Settings dialogs |
-| `MainPage.Navigation.cs` | 383 | Playlist switching, navigation |
-| `MainPage.VideoControls.cs` | 536 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
-| `MainPage.ChannelOverrides.cs` | 257 | Move/remove channel, overrides apply, PIN approval dialog |
-| `MainPage.Seek.cs` | 718 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, parental control (PIN dialog, daily watch limit) |
-| `MainPage.LocalVideo.cs` | 38 | Local video files: file picking, playback start |
-| `MainPage.FullScreen.cs` | 259 | Fullscreen mode |
-| `MainPage.Hotkeys.cs` | 375 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
-| `MainPage.Overlays.cs` | 466 | Overlays |
-| `MainPage.StatsOverlay.cs` | 193 | Statistics |
+| `MainPage.xaml.cs` | 1086 | Fields, constructor, InitializeAsync, OnNavigatedTo, Overlays, ToggleFullScreen |
+| `MainPage.Portal.cs` | 260 | Portal API methods |
+| `MainPage.Settings.cs` | 112 | Settings dialogs |
+| `MainPage.Navigation.cs` | 386 | Playlist switching, navigation |
+| `MainPage.VideoControls.cs` | 525 | Volume/Mute, Stretch, Sleep timer, Mini player, Always-on-top, Favorite/Reminder/Record |
+| `MainPage.ChannelOverrides.cs` | 273 | Move/remove channel, overrides apply, PIN approval dialog |
+| `MainPage.Seek.cs` | 762 | VOD seek/quality/season/episode, Archive seek, pause indicator, EPG, Fullscreen, parental control (PIN dialog, daily watch limit) |
+| `MainPage.LocalVideo.cs` | 32 | Local video files: file picking, playback start |
+| `MainPage.FullScreen.cs` | 231 | Fullscreen mode |
+| `MainPage.Hotkeys.cs` | 351 | Hotkeys (descriptions — F1 help, see HOTKEYS-SYNC) |
+| `MainPage.Overlays.cs` | 553 | Overlays |
+| `MainPage.StatsOverlay.cs` | 178 | Statistics |
+| `MainPage.Localization.cs` | 92 | x:Uid localization via L.T (PrimaryLanguageOverride unavailable in unpackaged builds) |
 
-**HubPage** (990 lines):
-
-| File | Lines | Content |
-|---|---|---|
-| `HubPage.xaml.cs` | 990 | Launch screen: greeting, cards, custom flyout menus, hotkey help (F1) |
-
-**MainPageViewModel** (1873 lines):
+**HubPage** (1025 lines total):
 
 | File | Lines | Content |
 |---|---|---|
-| `MainPageViewModel.cs` | 1017 | Initialization, filters, categories, EPG, SaveSettings, parental control (EnsureChannelAllowedAsync) |
-| `MainPageViewModel.PortalFilters.cs` | 275 | Portal API + portal filters |
-| `MainPageViewModel.Recording.cs` | 284 | Recording, reminders, favorites, archive |
-| `MainPageViewModel.VodResume.cs` | 297 | VOD resume, PlayChannelAsync (interactive) |
+| `HubPage.xaml.cs` | 1005 | Launch screen: greeting, cards, custom flyout menus, hotkey help (F1) |
+| `HubPage.Localization.cs` | 20 | x:Uid localization via L.T |
+
+**MainPageViewModel** (1793 lines total):
+
+| File | Lines | Content |
+|---|---|---|
+| `MainPageViewModel.cs` | 930 | Initialization, filters, categories, EPG, SaveSettings, parental control (EnsureChannelAllowedAsync) |
+| `MainPageViewModel.PortalFilters.cs` | 261 | Portal API + portal filters |
+| `MainPageViewModel.Recording.cs` | 307 | Recording, reminders, favorites, archive |
+| `MainPageViewModel.VodResume.cs` | 295 | VOD resume, PlayChannelAsync (interactive) |

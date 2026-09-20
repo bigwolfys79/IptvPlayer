@@ -126,30 +126,40 @@ public sealed partial class MainWindow : Window
         {
             var vm = App.Services.GetRequiredService<MainPageViewModel>();
 
-            var placement = CapturePlacement();
-            if (placement != null)
+            // Close from HubPage: VM may still hold untouched defaults — persist the loaded snapshot
+            var settings = SettingsService.Current;
+            if (settings != null)
             {
-                vm.AppSettings.WindowPlacement = placement;
-            }
-            vm.AppSettings.Volume = vm.Player.LastUserVolume ?? 1.0;
-
-            if (MainPage.LastChannelListWidth is { } channelListWidth)
-            {
-                vm.AppSettings.ChannelListWidth = channelListWidth;
-            }
-
-            vm.AppSettings.InterruptedRecordings = vm.Recording.Active
-                .Select(r => new Models.InterruptedRecording
+                var placement = CapturePlacement();
+                if (placement != null)
                 {
-                    ChannelName = r.ChannelName,
-                    ProgramName = r.ChannelName,
-                    EndTime = r.DurationSec is > 0
-                        ? r.StartedAt.AddSeconds(r.DurationSec.Value)
-                        : null
-                })
-                .ToList();
+                    settings.WindowPlacement = placement;
+                }
+                settings.Volume = vm.Player.LastUserVolume ?? 1.0;
 
-            await App.Services.GetRequiredService<ISettingsService>().SaveAsync(vm.AppSettings);
+                if (MainPage.LastChannelListWidth is { } channelListWidth)
+                {
+                    settings.ChannelListWidth = channelListWidth;
+                }
+
+                settings.InterruptedRecordings = vm.Recording.Active
+                    .Select(r => new Models.InterruptedRecording
+                    {
+                        ChannelName = r.ChannelName,
+                        ProgramName = r.ChannelName,
+                        EndTime = r.DurationSec is > 0
+                            ? r.StartedAt.AddSeconds(r.DurationSec.Value)
+                            : null
+                    })
+                    .ToList();
+
+                await App.Services.GetRequiredService<ISettingsService>().SaveAsync(settings);
+            }
+            else
+            {
+                Serilog.Log.Warning("Сохранение при закрытии пропущено: настройки не были загружены.");
+            }
+
             await vm.FlushVodResumePositionsAsync();
 
             vm.Recording.StopAll();

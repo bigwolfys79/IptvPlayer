@@ -31,6 +31,9 @@ public class SettingsService : ISettingsService
     // Shared snapshot for synchronous readers (window placement, tray options)
     public static AppSettings? Current { get; private set; }
 
+    // Outcome of the latest LoadAsync — bootstrap load runs before Serilog exists
+    public static string? LastLoadNotice { get; private set; }
+
     public SettingsService(ILogger<SettingsService> logger)
     {
         _logger = logger;
@@ -54,6 +57,7 @@ public class SettingsService : ISettingsService
 
                 if (!File.Exists(SettingsPath))
                 {
+                    LastLoadNotice = "settings.json отсутствует — использованы настройки по умолчанию.";
                     _cached = new AppSettings();
                     Current = _cached;
                     return _cached;
@@ -64,6 +68,7 @@ public class SettingsService : ISettingsService
                 UnprotectSecrets(settings);
                 _cached = settings;
                 Current = _cached;
+                LastLoadNotice = null;
                 return _cached;
             }
             catch (Exception ex)
@@ -75,11 +80,13 @@ public class SettingsService : ISettingsService
                 if (restored != null)
                 {
                     _logger.LogWarning("Настройки восстановлены из {Backup}.", restored.Value.path);
+                    LastLoadNotice = $"Настройки не читаются ({ex.GetType().Name}: {ex.Message}) — восстановлены из {restored.Value.path}.";
                     _cached = restored.Value.settings;
                     Current = _cached;
                     return _cached;
                 }
 
+                LastLoadNotice = $"Настройки не читаются ({ex.GetType().Name}: {ex.Message}) — резервной копии нет, использованы значения по умолчанию.";
                 _logger.LogWarning("Резервной копии нет — используются значения по умолчанию (файл на диске не перезаписывается до первой успешной загрузки).");
                 _cached = new AppSettings();
                 Current = _cached;

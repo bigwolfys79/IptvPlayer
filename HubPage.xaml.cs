@@ -137,6 +137,8 @@ public sealed partial class HubPage : Page
         try
         {
             _settings = await _settingsService.LoadAsync();
+            // Keep VM settings real even if MainPage never opens (close-time save)
+            App.Services.GetRequiredService<ViewModels.MainPageViewModel>().AppSettings = _settings;
 
             if (_settings.Playlists.Count == 0)
             {

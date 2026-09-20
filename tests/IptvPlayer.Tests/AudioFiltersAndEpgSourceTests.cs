@@ -21,7 +21,7 @@ public class AudioFilterTests
     public void GetAudioFilters_WithoutBoost_ReturnsBaseChain(int boostPercent)
     {
         var filters = StreamService.GetAudioFilters("Dynamic", true, boostPercent);
-        Assert.Equal("dynaudnorm=f=30:g=5:m=12:p=0.95", filters);
+        Assert.Equal("dynaudnorm=f=150:g=5:m=12:p=0.95", filters);
     }
 
     [Fact]
@@ -31,10 +31,10 @@ public class AudioFilterTests
     }
 
     [Theory]
-    [InlineData("Dynamic", true, 150, "dynaudnorm=f=30:g=5:m=12:p=0.95,volume=1.5")]
-    [InlineData("Dynamic", true, 200, "dynaudnorm=f=30:g=5:m=12:p=0.95,volume=2")]
+    [InlineData("Dynamic", true, 150, "dynaudnorm=f=150:g=5:m=12:p=0.95,volume=1.5")]
+    [InlineData("Dynamic", true, 200, "dynaudnorm=f=150:g=5:m=12:p=0.95,volume=2")]
     [InlineData("Loudness", true, 125, "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,asetpts=N/SR/TB,volume=1.25")]
-    [InlineData("Loudness", false, 150, "dynaudnorm=f=30:g=5:m=12:p=0.95,volume=1.5")]
+    [InlineData("Loudness", false, 150, "dynaudnorm=f=150:g=5:m=12:p=0.95,volume=1.5")]
     public void GetAudioFilters_Boost_AppendedAfterNormalization(
         string mode, bool allowLoudness, int boostPercent, string expected)
     {
@@ -112,6 +112,8 @@ public class XmlTvValidationTests
             new HttpClient(new StubHandler(Array.Empty<byte>()) { StatusCode = HttpStatusCode.NotFound }));
         var error = await service.ValidateEpgSourceAsync("http://stub");
         Assert.NotNull(error);
-        Assert.StartsWith("Epg_Proverka_Status_0", error, StringComparison.Ordinal);
+        // L.T resolves resw directly since 1.21.4 — assert the formatted status, locale-neutral parts
+        Assert.Contains("HTTP", error, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("404", error, StringComparison.Ordinal);
     }
 }

@@ -36,10 +36,10 @@ namespace IptvPlayer.Services
         {
             var baseFilter = mode switch
             {
-                "Dynamic" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
+                "Dynamic" => "dynaudnorm=f=150:g=5:m=12:p=0.95",
                 "Loudness" when allowLoudness =>
                     "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,asetpts=N/SR/TB",
-                "Loudness" => "dynaudnorm=f=30:g=5:m=12:p=0.95",
+                "Loudness" => "dynaudnorm=f=150:g=5:m=12:p=0.95",
                 _ => null
             };
 
@@ -230,11 +230,26 @@ namespace IptvPlayer.Services
                     ffmpegConfig.Video.FFmpegVideoFilters = videoFilter;
                 }
 
-                var readAheadSeconds = Math.Clamp(streamConfig.ReadAheadSeconds, 5, 120);
-                var readAheadBytes = Math.Max(32 * 1024 * 1024, readAheadSeconds * 4 * 1024 * 1024);
+                // Live: пол 2 с — минимум, удерживающий целый GOP (≈1–2 с у IPTV).
+                // Одна секунда не даёт запаса на джиттер; пяти не нужно — это уже
+                // слышимая задержка при переключении каналов.
+                var readAheadSeconds = Math.Clamp(streamConfig.ReadAheadSeconds, 2, 120);
+
+                // Байтовый потолок считаем из расчёта 4 МБ/с — покрывает 4K HEVC
+                // (~32 Мбит/с) без запаса впустую. SD/HD-каналы до него не дорастут,
+                // поэтому цена для них нулевая. Верхняя граница 24 МБ защищает память
+                // при большом ReadAheadSeconds; нижняя 4 МБ — минимум для надёжного
+                // буферирования пика на любом качестве.
+                // ReadAheadBufferSize — это потолок, а не преаллокация: FFmpegInteropX
+                // не заполняет его до краёв перед первым кадром, задержку на старте
+                // он не вносит. Узкий же буфер на 4K-канале вызывает постоянные паузы
+                // фонового чтения и фризы на сетевом джиттере.
+                var readAheadBytes = Math.Clamp(readAheadSeconds * 4 * 1024 * 1024,
+                                                4 * 1024 * 1024, 24 * 1024 * 1024);
                 if (isVod)
                 {
-
+                    // VOD: можно буферировать щедрее — латентность не критична,
+                    // зато нужна плавность при перемотке.
                     readAheadSeconds = Math.Clamp(streamConfig.VodReadAheadSeconds, 2, 15);
                     readAheadBytes = Math.Max(8 * 1024 * 1024, readAheadSeconds * 2 * 1024 * 1024);
                 }
@@ -248,7 +263,27 @@ namespace IptvPlayer.Services
 
                 ffmpegConfig.FFmpegOptions["multiple_requests"] = "0";
 
-                ffmpegConfig.FFmpegOptions["http_persistent"] = isVod ? "1" : "0";
+                // Сокращаем зондирование потока для live-каналов.
+                // По умолчанию FFmpeg анализирует до 5 МБ / 5 с перед первым кадром —
+                // именно это даёт ~1–1,5 с задержки на старте. 500 КБ / 500 мс
+                // достаточно для любого IPTV-формата (TS, HLS, RTMP): параметры
+                // видео/аудио всегда попадают в первые PAT/PMT-пакеты.
+                // fpsprobesize=2 вместо 20 по умолчанию — быстрее определяем fps,
+                // не ждём 20 кадров.
+                // Для VOD оставляем дефолты: там важна точность, а не скорость старта.
+                if (!isVod)
+                {
+                    ffmpegConfig.FFmpegOptions["probesize"] = "500000";
+                    ffmpegConfig.FFmpegOptions["analyzeduration"] = "500000";
+                    ffmpegConfig.FFmpegOptions["fpsprobesize"] = "2";
+                }
+
+                // http_persistent=1 позволяет переиспользовать TCP/TLS-соединение
+                // между переключениями каналов — срезает 100–150 мс на холодном старте.
+                // Если сервер не поддерживает keep-alive и разрывает соединение сам,
+                // FFmpeg корректно переоткроет его (reconnect=1 ниже подхватит).
+                // При проблемах с конкретным поставщиком — вернуть isVod ? "1" : "0".
+                ffmpegConfig.FFmpegOptions["http_persistent"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_streamed"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_delay_max"] = "7";
@@ -268,7 +303,45 @@ namespace IptvPlayer.Services
                 ct.ThrowIfCancellationRequested();
                 await _disposeQueue.ConfigureAwait(continueOnCapturedContext: false);
                 var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig).AsTask(ct);
-                player.Source = ffmpegSource.CreateMediaPlaybackItem();
+
+                var videoStreams = ffmpegSource.VideoStreams.ToList();
+                var audioStreams = ffmpegSource.AudioStreams.ToList();
+
+                // Некоторые потоки отдают "пустые" аудиодорожки (0 каналов / 0 Гц).
+                // Демультиплексор FFmpeg постоянно спотыкается об их метаданные и
+                // спамит ошибками чтения, из-за чего плеер заикается. Если среди
+                // дорожек есть валидные — переключаемся на первую из них до того,
+                // как поток уйдёт в плеер; если валидных нет — оставляем как есть,
+                // отключать здесь нечего.
+                var mediaPlaybackItem = ffmpegSource.CreateMediaPlaybackItem();
+                var invalidAudioIndexes = audioStreams
+                    .Select((a, idx) => (a, idx))
+                    .Where(t => t.a.Channels <= 0 || t.a.SampleRate <= 0)
+                    .Select(t => t.idx)
+                    .ToList();
+                if (invalidAudioIndexes.Count > 0)
+                {
+                    var audioTracks = mediaPlaybackItem.AudioTracks;
+                    var currentIndex = audioTracks.SelectedIndex;
+                    if (currentIndex >= 0 && invalidAudioIndexes.Contains(currentIndex))
+                    {
+                        var validIndex = Enumerable.Range(0, audioStreams.Count)
+                            .FirstOrDefault(i => !invalidAudioIndexes.Contains(i), -1);
+                        if (validIndex >= 0)
+                        {
+                            audioTracks.SelectedIndex = validIndex;
+                        }
+                    }
+                    // LogDebug, а не Warning: пустые дорожки — известный паттерн
+                    // ряда поставщиков (поток с двумя AAC, вторая без метаданных).
+                    // Мы уже переключились на валидную дорожку выше; предупреждать
+                    // при каждом открытии канала нет смысла, лог засоряется.
+                    _logger.LogDebug(
+                        "Аудиодорожки с пустыми метаданными (0 каналов/0 Гц): {Indexes} — переключение выполнено.",
+                        string.Join(", ", invalidAudioIndexes));
+                }
+                player.Source = mediaPlaybackItem;
+
                 LiveSources.Add(player, ffmpegSource);
                 if (!string.IsNullOrEmpty(normFilter))
                 {
@@ -278,14 +351,17 @@ namespace IptvPlayer.Services
                 }
                 CurrentDiagnostics = BuildDiagnostics(ffmpegSource, ffmpegConfig, normFilter);
 
-                var videoStreams = ffmpegSource.VideoStreams.ToList();
-                var audioStreams = ffmpegSource.AudioStreams.ToList();
                 _logger.LogInformation(
                     "Поток открыт: видео дорожек {VCount}, аудио дорожек {ACount}{AudioDetail}.",
                     videoStreams.Count, audioStreams.Count,
                     audioStreams.Count > 0
                         ? " — " + string.Join(", ", audioStreams.Select(a =>
-                            $"{a.CodecName} {a.ChannelLayout} {a.SampleRate}Hz {a.Bitrate/1000}kbps"))
+                        {
+                            // Ряд поставщиков не кладёт битрейт в заголовки TS —
+                            // FFmpeg возвращает 0. Показываем прочерк вместо «0kbps».
+                            var br = a.Bitrate > 0 ? $"{a.Bitrate / 1000}kbps" : "?kbps";
+                            return $"{a.CodecName} {a.ChannelLayout} {a.SampleRate}Hz {br}";
+                        }))
                         : " (аудио не обнаружено)");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

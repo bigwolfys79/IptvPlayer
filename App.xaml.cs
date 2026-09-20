@@ -111,6 +111,12 @@ public partial class App : Application
                 encoding: System.Text.Encoding.UTF8)
             .CreateLogger();
 
+        // Bootstrap load runs before Serilog — surface its outcome now
+        if (SettingsService.LastLoadNotice is { } loadNotice)
+        {
+            Log.Warning("Загрузка настроек при старте: {Notice}", loadNotice);
+        }
+
         var services = new ServiceCollection();
         ConfigureServices(services);
         Services = services.BuildServiceProvider();
