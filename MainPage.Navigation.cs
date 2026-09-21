@@ -45,7 +45,7 @@ public sealed partial class MainPage : Page
                     PrimaryButtonText = L.T("Prodolzhit"),
                     CloseButtonText = L.T("Smotret_Snachala")
                 };
-                resumeCompletion.SetResult(await dialog.ShowAsync() == ContentDialogResult.Primary);
+                resumeCompletion.SetResult(await DialogQueue.ShowAsync(dialog) == ContentDialogResult.Primary);
             }
             catch (Exception ex)
             {

@@ -45,6 +45,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     private static readonly string LegacyCacheFilePath = Path.Combine(CacheDirectory, "playlist_cache.json");
 
     private readonly ILogger<PlaylistDatabaseService> _logger;
+    private readonly object _initGate = new();
     private Task? _initTask;
 
     public PlaylistDatabaseService(ILogger<PlaylistDatabaseService> logger)
@@ -55,8 +56,11 @@ public class PlaylistDatabaseService : IPlaylistCacheService
     // Lazy async schema init — keeps constructor off the UI thread
     private Task InitializeAsync()
     {
-        _initTask ??= Task.Run(InitializeDatabase);
-        return _initTask;
+        lock (_initGate)
+        {
+            // Atomic check-then-assign: concurrent first calls must share one init
+            return _initTask ??= Task.Run(InitializeDatabase);
+        }
     }
 
     private void InitializeDatabase()

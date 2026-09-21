@@ -99,7 +99,7 @@ namespace IptvPlayer.Dialogs
                 Content = this
             };
             _hostDialog = dialog;
-            await dialog.ShowAsync();
+            await DialogQueue.ShowAsync(dialog);
         }
 
         private async Task LoadAsync()
@@ -692,7 +692,7 @@ namespace IptvPlayer.Dialogs
                     PrimaryButtonText = L.T("OK"),
                     CloseButtonText = L.T("Otmena_Lbl")
                 };
-                var pinResult = await pinDialog.ShowAsync();
+                var pinResult = await DialogQueue.ShowAsync(pinDialog);
                 var pin = (pinDialog.Content as PasswordBox)?.Password;
                 if (pinResult != ContentDialogResult.Primary ||
                     !ParentalControlService.VerifyPin(_viewModel.AppSettings, pin))
@@ -767,7 +767,7 @@ namespace IptvPlayer.Dialogs
                 Content = panel,
                 CloseButtonText = L.T("Zakryt")
             };
-            await dialog.ShowAsync();
+            await DialogQueue.ShowAsync(dialog);
         }
 
 
@@ -823,7 +823,7 @@ namespace IptvPlayer.Dialogs
                     CloseButtonText = L.T("Otmena_Lbl"),
                     DefaultButton = ContentDialogButton.Primary
                 };
-                if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                if (await DialogQueue.ShowAsync(dialog) != ContentDialogResult.Primary)
                 {
                     _ = ReshowHostAsync();
                     return null;
@@ -877,7 +877,7 @@ namespace IptvPlayer.Dialogs
                     CloseButtonText = L.T("Otmena_Lbl"),
                     DefaultButton = ContentDialogButton.Close
                 };
-                return await dialog.ShowAsync() == ContentDialogResult.Primary;
+                return await DialogQueue.ShowAsync(dialog) == ContentDialogResult.Primary;
             }
             finally
             {
@@ -890,7 +890,7 @@ namespace IptvPlayer.Dialogs
         {
             if (_hostDialog != null)
             {
-                await _hostDialog.ShowAsync();
+                await DialogQueue.ShowAsync(_hostDialog);
             }
         }
 
@@ -903,7 +903,7 @@ namespace IptvPlayer.Dialogs
                 Content = message,
                 CloseButtonText = L.T("Ponyatno")
             };
-            await dialog.ShowAsync();
+            await DialogQueue.ShowAsync(dialog);
         }
 
         private async void ExportSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -1041,7 +1041,7 @@ namespace IptvPlayer.Dialogs
                 SecondaryButtonText = L.T("Dobavit_Pleylisty"),
                 CloseButtonText = L.T("Otmena_Lbl")
             };
-            var result = await modeDialog.ShowAsync();
+            var result = await DialogQueue.ShowAsync(modeDialog);
             if (result == ContentDialogResult.None)
             {
                 _ = ReshowHostAsync();

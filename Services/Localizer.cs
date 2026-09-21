@@ -23,7 +23,10 @@ public static class L
         }
         catch (System.Exception ex)
         {
-            Serilog.Log.Warning(ex, "PrimaryLanguageOverride недоступен.");
+            // Unpackaged builds reject mid-session overrides; language still applies
+            // via L.T + page reload, x:Uid resources update after app restart
+            Serilog.Log.Debug(ex,
+                "PrimaryLanguageOverride не применился — язык применён через L.T, x:Uid-ресурсы обновятся после перезапуска.");
         }
         _table = LoadResw(PathFor(Lang));
     }

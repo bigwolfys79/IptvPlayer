@@ -31,7 +31,7 @@ public sealed partial class LicenseStatusDialog : UserControl
             CloseButtonText = L.T("Zakryt")
         };
         _hostDialog = dialog;
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
     }
 
 

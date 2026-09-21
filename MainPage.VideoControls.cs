@@ -331,7 +331,7 @@ public sealed partial class MainPage : Page
             }
         };
 
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
         UpdateSleepTimerDisplays();
     }
 

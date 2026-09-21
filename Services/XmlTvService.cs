@@ -17,6 +17,9 @@ public class XmlTvService : IXmlTvService
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(3);
 
+    // HttpClient.Timeout covers headers only (ResponseHeadersRead) — cap body+parse explicitly
+    private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(5);
+
     private const int DefaultDaysBack = 3;
     private const int DaysAhead = 3;
 
@@ -214,6 +217,10 @@ public class XmlTvService : IXmlTvService
 
     private async Task<XmlTvLoadResult> DownloadAndParseAsync(string url, int daysBack, CancellationToken ct)
     {
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(DownloadTimeout);
+        var downloadCt = timeoutCts.Token;
+
         var now = DateTime.Now;
         var windowStart = now.Date.AddDays(-Math.Max(0, daysBack));
         var windowEnd = now.AddDays(DaysAhead + 1);
@@ -223,9 +230,9 @@ public class XmlTvService : IXmlTvService
         HttpResponseMessage? response = null;
         try
         {
-            response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, downloadCt);
             response.EnsureSuccessStatusCode();
-            var raw = await response.Content.ReadAsStreamAsync(ct);
+            var raw = await response.Content.ReadAsStreamAsync(downloadCt);
 
             var b0 = raw.ReadByte();
             var b1 = raw.ReadByte();
@@ -240,7 +247,7 @@ public class XmlTvService : IXmlTvService
                 source = new GZipStream(source, CompressionMode.Decompress);
             }
 
-            parsed = await Task.Run(() => ParseXmlTv(source, windowStart, windowEnd), ct);
+            parsed = await Task.Run(() => ParseXmlTv(source, windowStart, windowEnd), downloadCt);
         }
         finally
         {
@@ -443,13 +450,13 @@ public class XmlTvService : IXmlTvService
         if (string.IsNullOrEmpty(channelId) || string.IsNullOrEmpty(startRaw) || string.IsNullOrEmpty(stopRaw)
             || !TryParseXmlTvDate(startRaw, out var start) || !TryParseXmlTvDate(stopRaw, out var stop))
         {
-            reader.Skip();
+            SkipProgramme(reader);
             return null;
         }
 
         if (stop < windowStart || start > windowEnd)
         {
-            reader.Skip();
+            SkipProgramme(reader);
             return null;
         }
 
@@ -508,6 +515,25 @@ public class XmlTvService : IXmlTvService
         };
 
         return entry;
+    }
+
+    // reader.Skip() lands past the closing tag, so the outer loop's Read() would
+    // swallow the next <programme> — consume children up to EndElement instead
+    private static void SkipProgramme(XmlReader reader)
+    {
+        if (reader.IsEmptyElement)
+        {
+            return;
+        }
+
+        var programmeDepth = reader.Depth;
+        while (reader.Read())
+        {
+            if (reader.NodeType == XmlNodeType.EndElement && reader.Depth == programmeDepth)
+            {
+                return;
+            }
+        }
     }
 
     private static bool TryParseXmlTvDate(string raw, out DateTime result)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -29,7 +30,8 @@ namespace IptvPlayer.Services
         private Dictionary<string, List<EPGEntry>> _entriesByChannelId = new(StringComparer.OrdinalIgnoreCase);
 
         // Per-channel match result cache: avoids repeated normalizer runs on misses
-        private Dictionary<int, (List<EPGEntry> Entries, MatchMethod Method)>? _matchCache;
+        // (written from both UI and Task.Run paths — must be concurrent)
+        private ConcurrentDictionary<int, (List<EPGEntry> Entries, MatchMethod Method)>? _matchCache;
 
         private Dictionary<string, List<EPGEntry>> _entriesByNormalizedName = new(StringComparer.OrdinalIgnoreCase);
 
@@ -63,6 +65,11 @@ namespace IptvPlayer.Services
 
         private Task? _loadingTask;
         private readonly object _loadingTaskGate = new();
+
+        // Cooldown after a full-load failure so dead EPG servers are not hammered
+        // by every caller; DateTime.MinValue never collides with UtcNow comparisons
+        private DateTime _lastLoadFailureUtc = DateTime.MinValue;
+        private static readonly TimeSpan LoadFailureCooldown = TimeSpan.FromMinutes(2);
 
         private System.Threading.CancellationTokenSource _loadCts = new();
 
@@ -363,7 +370,7 @@ namespace IptvPlayer.Services
 
         private void StoreMatch(ChannelViewModel channel, (List<EPGEntry> Entries, MatchMethod Method) result)
         {
-            (_matchCache ??= new Dictionary<int, (List<EPGEntry>, MatchMethod)>())[channel.Id] = result;
+            (_matchCache ??= new ConcurrentDictionary<int, (List<EPGEntry>, MatchMethod)>())[channel.Id] = result;
         }
 
 
@@ -445,6 +452,12 @@ namespace IptvPlayer.Services
 
                 if (_epgLoaded && !force)
                 {
+                    return Task.CompletedTask;
+                }
+
+                if (!force && DateTime.UtcNow - _lastLoadFailureUtc < LoadFailureCooldown)
+                {
+                    // Recent full-load failure — back off instead of re-hitting dead servers
                     return Task.CompletedTask;
                 }
 
@@ -545,10 +558,11 @@ namespace IptvPlayer.Services
 
                 if (enabledSources.Count > 0 && sourceResults.Count == 0)
                 {
-                    // All sources failed — leave _epgLoaded unset so the next call retries
+                    // All sources failed — back off, the next call retries after the cooldown
+                    _lastLoadFailureUtc = DateTime.UtcNow;
                     _logger.LogWarning(
-                        "Ни один из {Count} источников EPG не загрузился — EPG останется пустым, будет повторная попытка.",
-                        enabledSources.Count);
+                        "Ни один из {Count} источников EPG не загрузился — EPG останется пустым, повторная попытка не раньше {Cooldown:F0} мин.",
+                        enabledSources.Count, LoadFailureCooldown.TotalMinutes);
                     return;
                 }
 

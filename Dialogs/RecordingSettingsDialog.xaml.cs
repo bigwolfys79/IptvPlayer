@@ -38,7 +38,7 @@ public sealed partial class RecordingSettingsDialog : UserControl
         };
         _hostDialog = dialog;
         LoadSection();
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
 
         _viewModel.Recording.RecordingsChanged -= OnRecordingsChanged;
     }

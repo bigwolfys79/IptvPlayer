@@ -44,7 +44,7 @@ public sealed partial class ParentalControlDialog : UserControl
             CloseButtonText = L.T("Zakryt")
         };
         _hostDialog = dialog;
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
     }
 
     private AppSettings Settings => _viewModel.AppSettings;

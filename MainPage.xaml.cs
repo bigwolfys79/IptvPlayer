@@ -27,8 +27,6 @@ namespace IptvPlayer;
 
 public sealed partial class MainPage : Page
 {
-    private static string AllGroupsOption => L.T("Vse_Gruppy");
-
     private readonly IM3UParserService _m3uParserService;
     private readonly IVideoPortalService _videoPortalService;
     private readonly IUpdateService _updateService;
@@ -184,6 +182,9 @@ public sealed partial class MainPage : Page
             _reminderTimer.Stop();
             _settingsSaveDebounceTimer.Stop();
             _channelNumberInputTimer.Stop();
+            _volumeSaveDebounceTimer.Stop();
+            _badgeHideTimer?.Stop();
+            _actionToastHideTimer?.Stop();
             StopPlayback();
             LastChannelListWidth = _isFullScreen
                 ? _channelListExpandedWidth
@@ -498,6 +499,7 @@ public sealed partial class MainPage : Page
             ViewModel.VodResumePromptRequested -= OnVodResumePromptRequested;
             ViewModel.RecordingChanged -= OnRecordingChangedUpdateButtons;
             ViewModel.RecordingChanged -= OnRecordingChangedShowError;
+            ViewModel.Recording.RecordingsChanged -= OnRecordingsChanged_InstallUpdate;
             ViewModel.ParentalUnlockRequested -= OnParentalUnlockRequested;
             ViewModel.DailyLimitBlocked -= OnDailyLimitBlocked;
             ViewModel.DailyLimitReached -= OnDailyLimitReached;
@@ -605,7 +607,7 @@ public sealed partial class MainPage : Page
                 PrimaryButtonText = L.T("Prodolzhit"),
                 CloseButtonText = L.T("Net")
             };
-            var resume = await dialog.ShowAsync();
+            var resume = await DialogQueue.ShowAsync(dialog);
 
             var toResume = ViewModel.AppSettings.InterruptedRecordings.ToList();
             ViewModel.AppSettings.InterruptedRecordings.Clear();
@@ -913,7 +915,7 @@ public sealed partial class MainPage : Page
             DefaultButton = ContentDialogButton.Primary
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await DialogQueue.ShowAsync(dialog) != ContentDialogResult.Primary)
         {
 
 
@@ -939,7 +941,7 @@ public sealed partial class MainPage : Page
                 Content = L.T("Idet_Zapis_Peredach_Obnovlenie_Ustanovitsya_Avtomaticheski"),
                 CloseButtonText = L.T("Ponyatno")
             };
-            await info.ShowAsync();
+            await DialogQueue.ShowAsync(info);
             return;
         }
 
@@ -1037,7 +1039,8 @@ public sealed partial class MainPage : Page
             {
                 var newChannel = new ChannelViewModel
                 {
-                    Id = ViewModel.Channels.Count + 1,
+                    // Max+1: deleting channels leaves gaps, Count+1 would collide with existing Ids
+                    Id = ViewModel.Channels.Count == 0 ? 1 : ViewModel.Channels.Max(c => c.Id) + 1,
                     Name = name,
                     IsLive = false,
                     StreamUrl = urlBox.Text.Trim()
@@ -1049,7 +1052,7 @@ public sealed partial class MainPage : Page
             }
         };
 
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
     }
 
 

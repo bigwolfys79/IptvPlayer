@@ -150,7 +150,7 @@ public sealed partial class MainPage : Page
             PrimaryButtonText = L.T("Udalit_Lbl"),
             CloseButtonText = L.T("Otmena_Lbl")
         };
-        if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+        if (await DialogQueue.ShowAsync(confirm) != ContentDialogResult.Primary)
         {
             return;
         }
@@ -239,7 +239,7 @@ public sealed partial class MainPage : Page
         };
         var errorText = new TextBlock
         {
-            Text = L.T("Nevernyy_Pin"),
+            Text = L.T("Nevernyy_PIN"),
             Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             Visibility = Visibility.Collapsed
         };
@@ -256,7 +256,7 @@ public sealed partial class MainPage : Page
             CloseButtonText = L.T("Otmena_Lbl")
         };
 
-        while (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        while (await DialogQueue.ShowAsync(dialog) == ContentDialogResult.Primary)
         {
             if (ParentalControlService.VerifyPin(ViewModel.AppSettings, pinBox.Password))
             {

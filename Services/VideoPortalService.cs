@@ -162,7 +162,7 @@ public class VideoPortalService : IVideoPortalService
 
 
         var semaphore = new SemaphoreSlim(4);
-        var categoryTasks = new List<Task>();
+        var categoryTasks = new List<Task<List<PortalCatalogItem>?>>();
 
         foreach (var category in categoryArray.EnumerateArray())
         {
@@ -197,7 +197,13 @@ public class VideoPortalService : IVideoPortalService
                 await semaphore.WaitAsync(ct);
                 try
                 {
-                    await LoadCategoryAsync(source, key, req, cat, null, result, ct);
+                    return await LoadCategoryAsync(source, key, req, cat, null, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // One bad category must not discard the whole catalog
+                    _logger.LogWarning(ex, "Портал: категория «{Category}» не загрузилась — пропускаем.", cat);
+                    return null;
                 }
                 finally
                 {
@@ -206,7 +212,15 @@ public class VideoPortalService : IVideoPortalService
             }, ct));
         }
 
-        await Task.WhenAll(categoryTasks);
+        var loaded = await Task.WhenAll(categoryTasks);
+        foreach (var items in loaded)
+        {
+            if (items is { Count: > 0 })
+            {
+                result.AddRange(items);
+            }
+        }
+
         _logger.LogInformation("Портал {Url}: каталог загружен, элементов: {Count}.", SecretProtector.Mask(source.Url), result.Count);
         return result;
     }
@@ -270,7 +284,7 @@ public class VideoPortalService : IVideoPortalService
 
             var genreValue = genreId.GetValueOrDefault();
             var sb = new System.Text.StringBuilder("{");
-            sb.Append($"\"key\":\"{key}\"");
+            sb.Append($"\"key\":{JsonSerializer.Serialize(key)}");
             sb.Append(",\"filter\":\"on\"");
             if (hasGenre)
             {
@@ -278,7 +292,7 @@ public class VideoPortalService : IVideoPortalService
             }
             if (hasYear)
             {
-                sb.Append($",\"years\":\"{yearOrRange}\"");
+                sb.Append($",\"years\":{JsonSerializer.Serialize(yearOrRange)}");
             }
             sb.Append(",\"offset\":0,\"limit\":0}");
             filterRequest = sb.ToString();
@@ -286,7 +300,7 @@ public class VideoPortalService : IVideoPortalService
         else
         {
 
-            filterRequest = $"{{\"key\":\"{key}\",\"cmd\":\"flicks\",\"fid\":{fid},\"offset\":0,\"limit\":0}}";
+            filterRequest = $"{{\"key\":{JsonSerializer.Serialize(key)},\"cmd\":\"flicks\",\"fid\":{fid},\"offset\":0,\"limit\":0}}";
         }
 
         var label = BuildFilterLabel(genreId, yearOrRange);
@@ -295,8 +309,8 @@ public class VideoPortalService : IVideoPortalService
             genreId?.ToString() ?? "-", yearOrRange ?? "-", fid,
             (hasGenre || hasYear) ? "filter" : "category");
 
-        await LoadCategoryAsync(source, key, filterRequest, label,
-            hasGenre ? GetGenreTitle(genreId.GetValueOrDefault()) : null, result, ct);
+        result.AddRange(await LoadCategoryAsync(source, key, filterRequest, label,
+            hasGenre ? GetGenreTitle(genreId.GetValueOrDefault()) : null, ct));
         return result;
     }
 
@@ -323,10 +337,11 @@ public class VideoPortalService : IVideoPortalService
     };
 
 
-    private async Task LoadCategoryAsync(
+    private async Task<List<PortalCatalogItem>> LoadCategoryAsync(
         PlaylistSource source, string key, string requestJson, string categoryTitle,
-        string? genre, List<PortalCatalogItem> result, CancellationToken ct)
+        string? genre, CancellationToken ct)
     {
+        var result = new List<PortalCatalogItem>();
         var offset = 0;
         var total = (int?)null;
         var pages = 0;
@@ -346,7 +361,7 @@ public class VideoPortalService : IVideoPortalService
                     "Портал: категория «{Category}» — сервер вернул невалидный JSON " +
                     "(часто последняя пустая страница): {Error}. Сохраняем {Count} уже загруженных элементов.",
                     categoryTitle, ex.Message, result.Count);
-                return;
+                return result;
             }
             using (response)
             {
@@ -355,7 +370,7 @@ public class VideoPortalService : IVideoPortalService
                 if (items is not { } itemArray)
                 {
                     _logger.LogWarning("Портал: категория «{Category}» — в ответе нет массива items.", categoryTitle);
-                    return;
+                    return result;
                 }
 
                 var added = 0;
@@ -407,14 +422,14 @@ public class VideoPortalService : IVideoPortalService
 
                 if (added == 0 || !hasNext)
                 {
-                    return;
+                    return result;
                 }
 
                 offset += added;
 
                 if (total.HasValue && offset >= total.Value)
                 {
-                    return;
+                    return result;
                 }
 
                 _logger.LogInformation(
@@ -425,6 +440,7 @@ public class VideoPortalService : IVideoPortalService
         _logger.LogWarning(
             "Портал: категория «{Category}» прервана после {MaxPages} страниц (защита от бесконечной пагинации).",
             categoryTitle, MaxPagesPerCategory);
+        return result;
     }
 
     public async Task<PortalFlickResult> ResolveEpisodesAsync(PlaylistSource source, string requestJson, CancellationToken ct = default)
@@ -623,7 +639,7 @@ public class VideoPortalService : IVideoPortalService
             }
         }
 
-        var manifest = await PostAsync(source, "manifest.json", $"{{\"key\":\"{key}\"}}", ct);
+        var manifest = await PostAsync(source, "manifest.json", $"{{\"key\":{JsonSerializer.Serialize(key)}}}", ct);
 
         lock (_manifestCacheLock)
         {

@@ -107,6 +107,13 @@ public class VodResumeStore
     {
         // Defensive snapshot before first await: caller may mutate the live dictionary
         var snapshot = new Dictionary<string, VodResumePosition>(positions);
+
+        if (snapshot.Count == 0)
+        {
+            // Empty in-memory state is transient (list not loaded yet) — never wipe stored positions
+            return;
+        }
+
         await _saveGate.WaitAsync();
         try
         {
@@ -154,16 +161,7 @@ public class VodResumeStore
                 delete.Parameters.Add($"$k{i}", SqliteType.Text).Value = keys[i];
             }
 
-            if (keys.Length > 0)
-            {
-                await delete.ExecuteNonQueryAsync();
-            }
-            else
-            {
-                delete.CommandText = "DELETE FROM vod_resume";
-                delete.Parameters.Clear();
-                await delete.ExecuteNonQueryAsync();
-            }
+            await delete.ExecuteNonQueryAsync();
 
             await transaction.CommitAsync();
         }

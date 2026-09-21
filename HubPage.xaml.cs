@@ -187,7 +187,7 @@ public sealed partial class HubPage : Page
             SetGreeting(welcomeBack: _introPlayed);
             SetupClockTimer();
             SetupFlyoutShadow();
-            await AnimateIn();
+            await AnimateInAsync();
 
             Serilog.Log.Information("HubPage_Loaded: завершено (Live={Live}, VOD={VOD})",
                 _lastWatchedPlaylist != null, _vodResumeItems.Count);
@@ -285,7 +285,7 @@ public sealed partial class HubPage : Page
             CloseFlyout();
     }
 
-    private async System.Threading.Tasks.Task AnimateIn()
+    private async System.Threading.Tasks.Task AnimateInAsync()
     {
         MainPanel.Opacity = 0;
         MainPanel.Visibility = Visibility.Visible;
@@ -438,7 +438,7 @@ public sealed partial class HubPage : Page
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot
         };
-        var choice = await dialog.ShowAsync();
+        var choice = await DialogQueue.ShowAsync(dialog);
 
         if (choice == ContentDialogResult.Primary || choice == ContentDialogResult.Secondary)
             await OpenPlaylistSettingsAsync();
@@ -708,7 +708,7 @@ public sealed partial class HubPage : Page
             DefaultButton = ContentDialogButton.Primary
         };
 
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+        if (await DialogQueue.ShowAsync(dialog) != ContentDialogResult.Primary)
         {
 
             App.PendingUpdateSetupPath = setupPath;
@@ -724,7 +724,7 @@ public sealed partial class HubPage : Page
                 Content = L.T("Idet_Zapis_Peredach_Obnovlenie_Ustanovitsya_Avtomaticheski"),
                 CloseButtonText = L.T("Ponyatno")
             };
-            await info.ShowAsync();
+            await DialogQueue.ShowAsync(info);
             return;
         }
 
@@ -817,17 +817,17 @@ public sealed partial class HubPage : Page
 
     private void InfoButton_Click(object sender, RoutedEventArgs e)
     {
-        ShowHotkeysDialog();
+        _ = ShowHotkeysDialogAsync();
     }
 
     private void InfoAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        ShowHotkeysDialog();
+        _ = ShowHotkeysDialogAsync();
     }
 
 
-    private async void ShowHotkeysDialog()
+    private async System.Threading.Tasks.Task ShowHotkeysDialogAsync()
     {
         var rows = new (string Key, string DescKey)[]
         {
@@ -900,7 +900,7 @@ public sealed partial class HubPage : Page
             DefaultButton = ContentDialogButton.Close,
             XamlRoot = Content.XamlRoot
         };
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
     }
 
     private void PlaylistsButton_Click(object sender, RoutedEventArgs e)

@@ -128,17 +128,11 @@ public sealed class LocalStreamProxy : IDisposable
     {
         try
         {
-
-
-            int port;
-            var probe = new TcpListener(IPAddress.Loopback, 0);
-            probe.Start();
-            port = ((IPEndPoint)probe.LocalEndpoint).Port;
-            probe.Stop();
-
+            // Port 0 + single Start: no probe-then-bind window for another process to steal the port
             _cts = new CancellationTokenSource();
-            _listener = new TcpListener(IPAddress.Loopback, port);
+            _listener = new TcpListener(IPAddress.Loopback, 0);
             _listener.Start(8);
+            var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
             _baseUrl = $"http://127.0.0.1:{port}";
 
             _ = Task.Run(() => AcceptLoopAsync(_cts.Token));
@@ -394,7 +388,8 @@ public sealed class LocalStreamProxy : IDisposable
 
         foreach (var (name, values) in response.Headers)
         {
-            if (name.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase))
+            if (name.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("Connection", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }

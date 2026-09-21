@@ -64,7 +64,7 @@ public sealed partial class EpisodePickerDialog : UserControl
             Content = control
         };
         control._hostDialog = dialog;
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
         return control._result;
     }
 

@@ -48,7 +48,11 @@ public class UpdateService : IUpdateService
     {
         _settingsService = settingsService;
         _logger = logger;
-        Http.DefaultRequestHeaders.UserAgent.ParseAdd("IptvPlayer-UpdateCheck");
+        // Singleton registration — the UserAgent is set exactly once
+        if (Http.DefaultRequestHeaders.UserAgent.Count == 0)
+        {
+            Http.DefaultRequestHeaders.UserAgent.ParseAdd("IptvPlayer-UpdateCheck");
+        }
     }
 
     public async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct = default)

@@ -193,6 +193,7 @@ namespace IptvPlayer.Services
                 throw new InvalidOperationException($"Не удалось создать плеер для потока '{streamUrl}'.", ex);
             }
 
+            FFmpegMediaSource? createdSource = null;
             try
             {
             var ffmpegConfig = new MediaSourceConfig();
@@ -302,8 +303,8 @@ namespace IptvPlayer.Services
 
                 ct.ThrowIfCancellationRequested();
                 await _disposeQueue.ConfigureAwait(continueOnCapturedContext: false);
-                var ffmpegSource = await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig).AsTask(ct);
-
+                var ffmpegSource = createdSource =
+                    await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig).AsTask(ct);
                 var videoStreams = ffmpegSource.VideoStreams.ToList();
                 var audioStreams = ffmpegSource.AudioStreams.ToList();
 
@@ -366,6 +367,9 @@ namespace IptvPlayer.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Source may exist when the failure hit after CreateFromUriAsync
+                try { createdSource?.Dispose(); } catch { }
+
                 _logger.LogWarning(ex, "FFmpeg не смог открыть поток {Url}, откат на системный плеер.", streamUrl);
                 try
                 {
@@ -378,6 +382,14 @@ namespace IptvPlayer.Services
                 }
 
                 CurrentDiagnostics = new PlaybackDiagnostics { SystemSourceFallback = true };
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancelled open: the player never reaches the caller — dispose here
+                // or the native resources leak on every channel zap
+                try { createdSource?.Dispose(); } catch { }
+                try { player.Dispose(); } catch { }
+                throw;
             }
 
             player.Play();

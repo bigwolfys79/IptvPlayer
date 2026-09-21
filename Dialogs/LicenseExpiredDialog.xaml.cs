@@ -68,7 +68,7 @@ public sealed partial class LicenseExpiredDialog : UserControl
             CloseButtonText = L.T("Zakryt")
         };
         _hostDialog = dialog;
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
         return _activated;
     }
 

@@ -43,7 +43,7 @@ public sealed partial class MoveChannelDialog : UserControl
             Content = control
         };
         control._hostDialog = dialog;
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
         return control._result;
     }
 

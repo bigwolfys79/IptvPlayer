@@ -159,17 +159,7 @@ public partial class EpgViewModel : ObservableObject
             var activeSources = settings.GetActiveEpgSources();
             var enabledSources = activeSources.Where(s => s.IsEnabled).ToList();
 
-
-            if (enabledSources.Count == 0 && activeSources.Count > 0)
-            {
-                var fallback = activeSources.FirstOrDefault(s => s.Url.Contains("epg.one"));
-                if (fallback != null)
-                {
-                    fallback.IsEnabled = true;
-                    await _settingsService.SaveAsync(settings);
-                    enabledSources.Add(fallback);
-                }
-            }
+            // All sources disabled is a user decision — do not re-enable anything here
 
             EPGSources = enabledSources.Select(s => s.Url).ToList();
             if (EPGSources.Count > 0)

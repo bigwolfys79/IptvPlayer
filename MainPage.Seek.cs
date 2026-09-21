@@ -622,7 +622,7 @@ public sealed partial class MainPage : Page
         var errorText = new TextBlock
         {
             FontSize = 12,
-            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.OrangeRed),
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
             TextWrapping = TextWrapping.Wrap
         };
 
@@ -686,7 +686,7 @@ public sealed partial class MainPage : Page
         };
         dialog.Closed += (s, e) => tcs.TrySetResult(null);
         _pinDialog = dialog;
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
         _pinDialog = null;
         Serilog.Log.Information("PIN-диалог закрыт, результат: {Result}.", await tcs.Task);
         return await tcs.Task;
@@ -720,7 +720,7 @@ public sealed partial class MainPage : Page
             },
             CloseButtonText = L.T("Otmena_Lbl")
         };
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
     }
 
     private ContentDialog? _pinDialog;

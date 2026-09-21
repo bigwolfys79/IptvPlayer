@@ -40,7 +40,7 @@ namespace IptvPlayer.Dialogs
                 Content = this
             };
             _hostDialog = dialog;
-            await dialog.ShowAsync();
+            await DialogQueue.ShowAsync(dialog);
         }
 
         private async Task LoadAsync()

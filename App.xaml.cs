@@ -154,15 +154,26 @@ public partial class App : Application
 
     public static void SetFileLoggingEnabled(bool enabled)
     {
-        if (!enabled)
-        {
-            Log.Information("Файловый лог выключен в настройках.");
-        }
+        // Caller diagnostics: triple "enabled" events were observed with no "disabled" between
+        var wasEnabled = FileLogSwitch.MinimumLevel != FileLoggingDisabledLevel;
+        var caller = string.Join(" <- ", new System.Diagnostics.StackTrace(1, false)
+            .GetFrames()
+            .Select(f => f.GetMethod())
+            .OfType<System.Reflection.MethodBase>()
+            .Select(m => (Method: m, Type: m.DeclaringType))
+            .Where(x => x.Type?.FullName is { } fullName &&
+                        !fullName.StartsWith("Microsoft") &&
+                        !fullName.StartsWith("System"))
+            .Select(x => $"{x.Type?.Name}.{x.Method.Name}")
+            .Take(4));
+
+        Log.Information("Файловый лог: {Was} → {Now} (pid {Pid}); вызвал: {Caller}.",
+            wasEnabled ? "включён" : "выключен",
+            enabled ? "включён" : "выключен",
+            Environment.ProcessId,
+            caller.Length == 0 ? "<не определён>" : caller);
+
         FileLogSwitch.MinimumLevel = enabled ? LogEventLevel.Information : FileLoggingDisabledLevel;
-        if (enabled)
-        {
-            Log.Information("Файловый лог включён в настройках.");
-        }
     }
 
     private static void ConfigureServices(IServiceCollection services)

@@ -29,10 +29,18 @@ namespace IptvPlayer.Dialogs
         {
             TitleText.Text = L.T("Diagnostika_Lbl");
 
+            // Unsubscribe before init: XAML attribute already subscribes, and re-Shown
+            // dialogs must not re-fire handlers on the IsOn assignments below
+            StatsToggle.Toggled -= StatsToggle_Toggled;
+            ProxyToggle.Toggled -= ProxyToggle_Toggled;
+            FileLogToggle.Toggled -= FileLogToggle_Toggled;
+            TempDiagToggle.Toggled -= TempDiagToggle_Toggled;
+
             StatsToggle.IsOn = statsVisible;
             ProxyToggle.IsOn = settings.DiagnosticStreamProxy;
             FileLogToggle.IsOn = settings.FileLoggingEnabled;
             TempDiagToggle.IsOn = settings.TempDiagnosticsEnabled;
+
             StatsToggle.Toggled += StatsToggle_Toggled;
             ProxyToggle.Toggled += ProxyToggle_Toggled;
             FileLogToggle.Toggled += FileLogToggle_Toggled;
@@ -54,7 +62,7 @@ namespace IptvPlayer.Dialogs
                 XamlRoot = xamlRoot,
                 CloseButtonText = L.T("Zakryt_Lbl"),
             };
-            return _hostDialog.ShowAsync().AsTask();
+            return DialogQueue.ShowAsync(_hostDialog);
         }
 
         private void StatsToggle_Toggled(object sender, RoutedEventArgs e)

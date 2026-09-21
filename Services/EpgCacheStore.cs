@@ -67,6 +67,18 @@ public static class EpgCacheStore
                     Log.Debug(ex, "Не удалось удалить устаревший JSON-кэш {File}.", legacy);
                 }
             }
+
+            foreach (var tmp in Directory.EnumerateFiles(CacheDir, "*.tmp"))
+            {
+                try
+                {
+                    File.Delete(tmp);
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "Не удалось удалить временный файл кэша {File}.", tmp);
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -140,10 +152,10 @@ public static class EpgCacheStore
     {
         return Task.Run(() =>
         {
+            var path = PathForKey(key);
+            var tmp = $"{path}.{Guid.NewGuid():N}.tmp";
             try
             {
-                var path = PathForKey(key);
-                var tmp = $"{path}.{Guid.NewGuid():N}.tmp";
                 var bytes = MemoryPackSerializer.Serialize(value);
                 using (var file = File.Create(tmp))
                 using (var brotli = new BrotliStream(file, CompressionLevel.Fastest))
@@ -155,8 +167,24 @@ public static class EpgCacheStore
             catch (Exception ex)
             {
                 Log.Warning(ex, "Ошибка записи дискового кэша EPG ({Key}).", key);
+                TryDeleteFile(tmp);
             }
         });
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // Best effort
+        }
     }
 
     private static string PathForKey(string key)
@@ -206,10 +234,10 @@ public static class EpgCacheStore
     {
         return Task.Run(() =>
         {
+            var path = PathForKey(key);
+            var tmp = $"{path}.{Guid.NewGuid():N}.tmp";
             try
             {
-                var path = PathForKey(key);
-                var tmp = $"{path}.{Guid.NewGuid():N}.tmp";
                 var bytes = MemoryPackSerializer.Serialize(value);
                 using (var file = File.Create(tmp))
                 using (var brotli = new BrotliStream(file, CompressionLevel.Fastest))
@@ -221,6 +249,7 @@ public static class EpgCacheStore
             catch (Exception ex)
             {
                 Log.Warning(ex, "Ошибка записи дискового кэша EPG.");
+                TryDeleteFile(tmp);
             }
         });
     }

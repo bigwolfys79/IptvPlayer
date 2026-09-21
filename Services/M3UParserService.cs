@@ -17,6 +17,11 @@ namespace IptvPlayer.Services
     {
         private static readonly HttpClient _httpClient = CreateHttpClient();
 
+        private static readonly TimeSpan BodyTimeout = TimeSpan.FromMinutes(2);
+
+        // A playlist far above this size is a misbehaving server, not real data
+        private const int MaxPlaylistBytes = 64 * 1024 * 1024;
+
         private static readonly Regex ExtinfStartRegex =
             new(@"^\s*#\s*EXTINF\s*:", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
@@ -89,7 +94,12 @@ namespace IptvPlayer.Services
                         $"Сервер плейлиста вернул ошибку {(int)response.StatusCode} ({response.StatusCode}) для '{playlistUrl}'.");
                 }
 
-                var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+                // HttpClient.Timeout covers headers only (ResponseHeadersRead) — cap the
+                // body download explicitly so a hung server can't stall the load forever
+                using var bodyCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                bodyCts.CancelAfter(BodyTimeout);
+                await using var stream = await response.Content.ReadAsStreamAsync(bodyCts.Token);
+                var bytes = await ReadCappedAsync(stream, MaxPlaylistBytes, bodyCts.Token);
 
                 var content = await Task.Run(() => Decode(bytes));
                 var channels = await Task.Run(() => ParseContent(content));
@@ -107,6 +117,26 @@ namespace IptvPlayer.Services
 
                 return channels;
             }
+        }
+
+
+        private static async Task<byte[]> ReadCappedAsync(Stream stream, int maxBytes, CancellationToken ct)
+        {
+            var ms = new MemoryStream();
+            var buffer = new byte[81920];
+            int read;
+            while ((read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+            {
+                if (ms.Length + read > maxBytes)
+                {
+                    throw new InvalidOperationException(
+                        $"Плейлист превышает лимит {maxBytes / (1024 * 1024)} МБ — загрузка прервана.");
+                }
+
+                ms.Write(buffer, 0, read);
+            }
+
+            return ms.ToArray();
         }
 
 

@@ -39,7 +39,16 @@ public sealed class RecordingService
     public event EventHandler? RecordingsChanged;
 
 
-    public bool IsActive => PruneExited() > 0;
+    public bool IsActive
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return PruneExited() > 0;
+            }
+        }
+    }
 
 
     public IReadOnlyList<ActiveRecording> Active

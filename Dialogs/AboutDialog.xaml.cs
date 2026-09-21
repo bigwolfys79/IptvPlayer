@@ -57,7 +57,7 @@ public sealed partial class AboutDialog : UserControl
             CloseButtonText = L.T("Zakryt")
         };
         _hostDialog = dialog;
-        await dialog.ShowAsync();
+        await DialogQueue.ShowAsync(dialog);
     }
 
     internal static string GetAppVersion()

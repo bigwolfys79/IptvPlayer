@@ -54,7 +54,7 @@ public static class SecretProtector
         RegexOptions.Compiled);
 
     private static readonly Regex CredentialParamRegex = new(
-        "(username|password|token)=([^&\\s\"']+)",
+        "(username|password|token|key|pass)=([^&\\s\"']+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly Regex MediaUrlRegex = new(
