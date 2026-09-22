@@ -490,7 +490,8 @@
                 <Border.RenderTransform>
                     <ScaleTransform x:Name="WindowedOverlayScale" />
                 </Border.RenderTransform>
-                <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                <StackPanel Orientation="Vertical" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayPrevChannelButton"
                                                         Width="40" Height="40"
                                                         Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
@@ -558,19 +559,24 @@
                                    VerticalAlignment="Center" />
                     </StackPanel>
                     <ComboBox x:Name="WindowedVodSeasonCombo"
-                              Width="120" FontSize="12"
+                              Width="120" FontSize="12" Height="30" VerticalAlignment="Center"
                               Visibility="Collapsed"
                               SelectionChanged="VodSeasonCombo_SelectionChanged"
                               x:Uid="Sezon_2" />
                     <ComboBox x:Name="WindowedVodEpisodeCombo"
-                              Width="150" FontSize="12"
+                              Width="150" FontSize="12" Height="30" VerticalAlignment="Center"
                               Visibility="Collapsed"
                               SelectionChanged="VodEpisodeCombo_SelectionChanged"
                               x:Uid="Seriya" />
                     <Button x:Name="WindowedVodQualityButton"
-                            x:Uid="Avto" FontSize="12" Padding="12,4" MinWidth="56"
+                            x:Uid="Avto" FontSize="12" Padding="12,4" MinWidth="56" MinHeight="30" VerticalAlignment="Center"
                             Visibility="Collapsed"
                             />
+                    <Button x:Name="WindowedVodAudioTrackButton"
+                            FontSize="12" Padding="12,4" MinWidth="56" MinHeight="30" VerticalAlignment="Center"
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayMuteButton"
                             Width="36" Height="36"
                             Click="MuteButton_Click"
@@ -698,6 +704,7 @@
                               Width="16" Height="16" Stretch="Uniform"
                               Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.5" />
                     </Button>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -1089,19 +1096,22 @@
                                        VerticalAlignment="Center" />
                         </StackPanel>
                     <ComboBox x:Name="OverlayVodSeasonCombo"
-                              Width="120" FontSize="12"
+                              Width="140" FontSize="13" Height="34" VerticalAlignment="Center"
                               Visibility="Collapsed"
                               SelectionChanged="VodSeasonCombo_SelectionChanged"
                               x:Uid="Sezon_2" />
                     <ComboBox x:Name="OverlayVodEpisodeCombo"
-                              Width="150" FontSize="12"
+                              Width="170" FontSize="13" Height="34" VerticalAlignment="Center"
                               Visibility="Collapsed"
                               SelectionChanged="VodEpisodeCombo_SelectionChanged"
                               x:Uid="Seriya" />
                     <Button x:Name="OverlayVodQualityButton"
-                            x:Uid="Avto" FontSize="12" Padding="12,4" MinWidth="56"
+                            x:Uid="Avto" FontSize="13" Padding="12,4" MinWidth="56" MinHeight="34" VerticalAlignment="Center"
                             Visibility="Collapsed"
                             />
+                    <Button x:Name="OverlayVodAudioTrackButton"
+                            FontSize="13" Padding="12,4" MinWidth="56" MinHeight="34" VerticalAlignment="Center"
+                            Visibility="Collapsed" />
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayMuteButton"
                             Width="40" Height="40"
                             Margin="16,0,0,0"
@@ -1180,6 +1190,18 @@
                                        Margin="3.7,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
                             <Rectangle Fill="{ThemeResource OverlayFgBrush}" Width="2.4" Height="4.4" RadiusX="1.2"
                                        Margin="0,0,3.7,0" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlaySettingsButton"
+                            Width="44" Height="44"
+                            x:Uid="Nastroyki">
+                        <Grid Width="17" Height="17">
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,3.4,1.5,0" />
+                            <Ellipse Fill="{ThemeResource OverlayFgBrush}" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2.6,1.9,0,0" />
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,8.2,1.5,0" />
+                            <Ellipse Fill="{ThemeResource OverlayFgBrush}" Width="4.6" Height="4.6" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6.7,2.6,0" />
+                            <Rectangle Fill="{ThemeResource OverlayFgBrush}" Height="1.6" RadiusX="0.8" VerticalAlignment="Top" Margin="1.5,13,1.5,0" />
+                            <Ellipse Fill="{ThemeResource OverlayFgBrush}" Width="4.6" Height="4.6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6,11.5,0,0" />
                         </Grid>
                     </Button>
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayAlwaysOnTopButton"

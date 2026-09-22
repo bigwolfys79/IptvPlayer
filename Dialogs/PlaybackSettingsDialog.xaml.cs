@@ -161,6 +161,28 @@ namespace IptvPlayer.Dialogs
             {
                 BoostCombo.SelectedIndex = 0;
             }
+
+            AudioLangHeader.Text = L.T("Predpochitaemyy_Yazyk_Audio_Lbl");
+            AudioLangHint.Text = L.T("Vybirayetsya_Pervaya_Dorozhka_S_Etim_Yazykom_Lbl");
+            AudioLangCombo.Items.Clear();
+            foreach (var (label, code) in new[]
+                     {
+                         (L.T("Audio_Yazyk_Kak_V_Potoke"), ""),
+                         (L.T("Audio_Yazyk_Russkiy"), "rus"),
+                         (L.T("Audio_Yazyk_Ukrainskiy"), "ukr"),
+                         (L.T("Audio_Yazyk_Angliyskiy"), "eng"),
+                     })
+            {
+                AudioLangCombo.Items.Add(new ComboBoxItem { Content = label, Tag = code });
+                if (string.Equals(code, settings.PreferredAudioLanguage, StringComparison.OrdinalIgnoreCase))
+                {
+                    AudioLangCombo.SelectedIndex = AudioLangCombo.Items.Count - 1;
+                }
+            }
+            if (AudioLangCombo.SelectedIndex < 0)
+            {
+                AudioLangCombo.SelectedIndex = 0;
+            }
         }
 
         private void BufferSlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -206,6 +228,11 @@ namespace IptvPlayer.Dialogs
                 boost = boostPercent;
             }
             appSettings.AudioVolumeBoost = boost;
+
+            if (AudioLangCombo.SelectedItem is ComboBoxItem { Tag: string langCode })
+            {
+                appSettings.PreferredAudioLanguage = langCode;
+            }
 
             await _settingsService.SaveAsync(appSettings);
 

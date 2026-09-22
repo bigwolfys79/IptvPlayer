@@ -15,7 +15,8 @@ namespace IptvPlayer.Services
         int VodReadAheadSeconds,
         bool DiagnosticProxy = false,
         string? VideoUpscaler = null,
-        bool FrameServer = false);
+        bool FrameServer = false,
+        string? PreferredAudioLanguage = null);
 
     public interface IStreamService
     {
@@ -37,6 +38,17 @@ namespace IptvPlayer.Services
 
 
         Task<string> DiagnoseStreamUrl(string? streamUrl);
+
+
+        // Audio tracks of the stream currently attached to the player (portal VOD track picker)
+        System.Collections.Generic.IReadOnlyList<(int Index, string? Language)> GetAudioTracks(MediaPlayer? player);
+
+        int GetSelectedAudioTrackIndex(MediaPlayer? player);
+
+        bool TrySelectAudioTrack(MediaPlayer? player, int index);
+
+        // Quality renditions parsed from the VOD HLS master playlist (portal gives no variants dict for episodes)
+        bool TryGetVodMasterVariants(MediaPlayer? player, out System.Collections.Generic.Dictionary<string, string> variants);
 
     }
 }

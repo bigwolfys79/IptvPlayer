@@ -144,6 +144,7 @@ public sealed partial class MainPage : Page
         WindowedVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
 
         UpdateVodSeasonEpisodeCombos();
+        UpdateVodAudioTrackButtons();
 
         var epgVisible = Player.IsVodPlaying ? Visibility.Collapsed : Visibility.Visible;
         VideoOverlayEpgButton.Visibility = epgVisible;
@@ -188,6 +189,64 @@ public sealed partial class MainPage : Page
 
         OverlayVodQualityButton.Flyout = menu;
         WindowedVodQualityButton.Flyout = menuCopy;
+    }
+
+    private void UpdateVodAudioTrackButtons()
+    {
+        var visible = Player.IsVodPlaying && Player.AudioTrackLabels.Count > 1;
+        OverlayVodAudioTrackButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        WindowedVodAudioTrackButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (!visible)
+        {
+            return;
+        }
+
+        var title = L.T("Vybor_Audiodorozhki");
+        OverlayVodAudioTrackButton.Content = L.T("Audio_Dorozhka_Short");
+        WindowedVodAudioTrackButton.Content = L.T("Audio_Dorozhka_Short");
+        ToolTipService.SetToolTip(OverlayVodAudioTrackButton, title);
+        ToolTipService.SetToolTip(WindowedVodAudioTrackButton, title);
+
+        var menu = new MenuFlyout();
+        for (var i = 0; i < Player.AudioTrackLabels.Count; i++)
+        {
+            var index = i;
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = Player.AudioTrackLabels[i],
+                IsChecked = index == Player.CurrentAudioTrackIndex,
+                Tag = index
+            };
+            item.Click += VodAudioTrackMenuItem_Click;
+            menu.Items.Add(item);
+        }
+
+        var menuCopy = new MenuFlyout();
+        for (var i = 0; i < Player.AudioTrackLabels.Count; i++)
+        {
+            var index = i;
+            var item = new ToggleMenuFlyoutItem
+            {
+                Text = Player.AudioTrackLabels[i],
+                IsChecked = index == Player.CurrentAudioTrackIndex,
+                Tag = index
+            };
+            item.Click += VodAudioTrackMenuItem_Click;
+            menuCopy.Items.Add(item);
+        }
+
+        OverlayVodAudioTrackButton.Flyout = menu;
+        WindowedVodAudioTrackButton.Flyout = menuCopy;
+    }
+
+    private void VodAudioTrackMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem { Tag: int index })
+        {
+            Player.SelectAudioTrack(index);
+            // ToggleMenuFlyoutItem does not uncheck siblings — rebuild from the actual selection
+            UpdateVodAudioTrackButtons();
+        }
     }
 
     private async void VodQualityMenuItem_Click(object sender, RoutedEventArgs e)

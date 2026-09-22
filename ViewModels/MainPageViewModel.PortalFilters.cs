@@ -23,6 +23,10 @@ public partial class MainPageViewModel
     private List<PortalCategoryInfo> _portalCategories = new();
 
 
+    // Snapshot of the full portal catalog (all categories) captured before the first server-filtered load
+    private List<ChannelViewModel>? _portalFullCatalog;
+
+
     private bool _isPortalSource;
 
 
@@ -43,6 +47,8 @@ public partial class MainPageViewModel
         _portalGenreFilters = genres;
         _portalYearFilters = years;
         _portalCategories = categories;
+        _portalFullCatalog = null;
+        _portalCategoryIdsByFid.Clear();
         _isPortalSource = true;
 
         _suppressFilterLoad = true;
@@ -100,6 +106,8 @@ public partial class MainPageViewModel
         _portalGenreFilters.Clear();
         _portalYearFilters.Clear();
         _portalCategories.Clear();
+        _portalFullCatalog = null;
+        _portalCategoryIdsByFid.Clear();
         _isPortalSource = false;
 
         _suppressFilterLoad = true;
@@ -161,7 +169,45 @@ public partial class MainPageViewModel
         if (PortalSource == null) return;
 
         var fid = ResolveCurrentFid();
-        if (fid <= 0) return;
+
+        int? genreId = null;
+        var genreTitle = string.Empty;
+        if (!string.IsNullOrEmpty(SelectedGenre) && SelectedGenre != AllGenresOption)
+        {
+            var match = _portalGenreFilters.FirstOrDefault(
+                g => string.Equals(g.Title, SelectedGenre, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                genreId = match.Id;
+                genreTitle = match.Title;
+            }
+        }
+
+        string? yearRange = null;
+        if (!string.IsNullOrEmpty(SelectedYear) && SelectedYear != AllYearsOption)
+        {
+            yearRange = SelectedYear;
+        }
+
+        var hasFilters = genreId != null || yearRange != null;
+
+        if (fid <= 0 && !hasFilters)
+        {
+            // "All types" without filters — restore the full catalog snapshot
+            if (_portalFullCatalog is { Count: > 0 } full)
+            {
+                Channels = new ObservableCollection<ChannelViewModel>(full);
+                UpdateChannelCountText();
+                FilterChannels();
+            }
+            return;
+        }
+
+        // Capture the full catalog once, before the first server-filtered load replaces Channels
+        if (_portalFullCatalog == null && Channels.Count > 0)
+        {
+            _portalFullCatalog = Channels.ToList();
+        }
 
         // No Dispose: token may still be registered in an in-flight request
         _filterLoadCts?.Cancel();
@@ -172,27 +218,15 @@ public partial class MainPageViewModel
         _isLoadingFiltered = true;
         try
         {
-            int? genreId = null;
-            var genreTitle = string.Empty;
-            if (!string.IsNullOrEmpty(SelectedGenre) && SelectedGenre != AllGenresOption)
+            // Id set built locally from the snapshot avoids the slow network fallback
+            HashSet<long>? categoryIds = null;
+            if (hasFilters && fid > 0)
             {
-                var match = _portalGenreFilters.FirstOrDefault(
-                    g => string.Equals(g.Title, SelectedGenre, StringComparison.OrdinalIgnoreCase));
-                if (match != null)
-                {
-                    genreId = match.Id;
-                    genreTitle = match.Title;
-                }
-            }
-
-            string? yearRange = null;
-            if (!string.IsNullOrEmpty(SelectedYear) && SelectedYear != AllYearsOption)
-            {
-                yearRange = SelectedYear;
+                categoryIds = GetSnapshotCategoryIds(fid);
             }
 
             var items = await _videoPortalService.LoadFilteredAsync(
-                PortalSource, fid, genreId, yearRange, ct);
+                PortalSource, fid, genreId, yearRange, ct, categoryIds);
 
             if (ct.IsCancellationRequested) return;
 
@@ -238,24 +272,46 @@ public partial class MainPageViewModel
             }
         }
 
-        return _portalCategories.Count > 0 ? _portalCategories[0].Fid : 0;
+        // "All types" (or unmatched title) — no category constraint
+        return 0;
     }
 
 
-    private static int ExtractFidFromRequest(string? requestJson)
+    private readonly Dictionary<int, HashSet<long>> _portalCategoryIdsByFid = new();
+
+
+    // Builds the category id set from the full-catalog snapshot (zero network requests);
+    // empty result is not cached so a stale snapshot can retry via the service fallback
+    private HashSet<long> GetSnapshotCategoryIds(int fid)
     {
-        if (string.IsNullOrEmpty(requestJson)) return 0;
-        try
+        if (_portalCategoryIdsByFid.TryGetValue(fid, out var cached))
         {
-            using var doc = System.Text.Json.JsonDocument.Parse(requestJson);
-            if (doc.RootElement.TryGetProperty("fid", out var fidProp) &&
-                fidProp.ValueKind == System.Text.Json.JsonValueKind.Number &&
-                fidProp.TryGetInt32(out var fid))
+            return cached;
+        }
+
+        var ids = new HashSet<long>();
+        var title = _portalCategories.FirstOrDefault(c => c.Fid == fid)?.Title;
+        if (_portalFullCatalog is { Count: > 0 } snapshot && !string.IsNullOrEmpty(title))
+        {
+            foreach (var channel in snapshot)
             {
-                return fid;
+                if (!string.Equals(channel.Group, title, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (VideoPortalService.TryExtractItemId(channel.PortalRequest) is { } id)
+                {
+                    ids.Add(id);
+                }
             }
         }
-        catch (System.Text.Json.JsonException) { }
-        return 0;
+
+        if (ids.Count > 0)
+        {
+            _portalCategoryIdsByFid[fid] = ids;
+        }
+
+        return ids;
     }
 }

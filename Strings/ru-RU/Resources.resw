@@ -3162,5 +3162,40 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Pri_Vyklyuchenii_Srazu_Otkryvaetsya_Poslednij_Kanal" xml:space="preserve">
     <value>При выключении приложение сразу открывает последний канал</value>
   </data>
+  <data name="Predpochitaemyy_Yazyk_Audio" xml:space="preserve">
+    <value>Предпочитаемый язык аудио</value>
+  </data>
+  <data name="Predpochitaemyy_Yazyk_Audio_Lbl" xml:space="preserve">
+    <value>Предпочитаемый язык аудио</value>
+  </data>
+  <data name="Vybirayetsya_Pervaya_Dorozhka_S_Etim_Yazykom" xml:space="preserve">
+    <value>Если в потоке несколько аудиодорожек, автоматически выбирается первая дорожка с этим языком (по метаданным потока). Без метаданных остаётся дорожка по умолчанию. Применяется к новому воспроизведению.</value>
+  </data>
+  <data name="Vybirayetsya_Pervaya_Dorozhka_S_Etim_Yazykom_Lbl" xml:space="preserve">
+    <value>Если в потоке несколько аудиодорожек, автоматически выбирается первая дорожка с этим языком (по метаданным потока). Без метаданных остаётся дорожка по умолчанию. Применяется к новому воспроизведению.</value>
+  </data>
+  <data name="Audio_Yazyk_Kak_V_Potoke" xml:space="preserve">
+    <value>Как в потоке (по умолчанию)</value>
+  </data>
+  <data name="Audio_Yazyk_Russkiy" xml:space="preserve">
+    <value>Русский</value>
+  </data>
+  <data name="Audio_Yazyk_Ukrainskiy" xml:space="preserve">
+    <value>Українська</value>
+  </data>
+  <data name="Audio_Yazyk_Angliyskiy" xml:space="preserve">
+    <value>Английский</value>
+  </data>
+  <data name="Audio_Dorozhka_Short" xml:space="preserve">
+    <value>Аудио</value>
+  </data>
+  <data name="Vybor_Audiodorozhki" xml:space="preserve">
+    <value>Выбор аудиодорожки</value>
+  </data>
+  <data name="Audio_Dorozhka_N" xml:space="preserve">
+    <value>Дорожка {0}</value>
+  </data>
+
+
   
 </root>

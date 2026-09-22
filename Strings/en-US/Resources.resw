@@ -3162,5 +3162,40 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Pri_Vyklyuchenii_Srazu_Otkryvaetsya_Poslednij_Kanal" xml:space="preserve">
     <value>When disabled, the app opens the last channel immediately</value>
   </data>
+  <data name="Predpochitaemyy_Yazyk_Audio" xml:space="preserve">
+    <value>Preferred audio language</value>
+  </data>
+  <data name="Predpochitaemyy_Yazyk_Audio_Lbl" xml:space="preserve">
+    <value>Preferred audio language</value>
+  </data>
+  <data name="Vybirayetsya_Pervaya_Dorozhka_S_Etim_Yazykom" xml:space="preserve">
+    <value>If the stream has multiple audio tracks, the first track in this language is selected automatically (from stream metadata). Without language metadata the default track is kept. Applies to new playback.</value>
+  </data>
+  <data name="Vybirayetsya_Pervaya_Dorozhka_S_Etim_Yazykom_Lbl" xml:space="preserve">
+    <value>If the stream has multiple audio tracks, the first track in this language is selected automatically (from stream metadata). Without language metadata the default track is kept. Applies to new playback.</value>
+  </data>
+  <data name="Audio_Yazyk_Kak_V_Potoke" xml:space="preserve">
+    <value>As in stream (default)</value>
+  </data>
+  <data name="Audio_Yazyk_Russkiy" xml:space="preserve">
+    <value>Russian</value>
+  </data>
+  <data name="Audio_Yazyk_Ukrainskiy" xml:space="preserve">
+    <value>Ukrainian</value>
+  </data>
+  <data name="Audio_Yazyk_Angliyskiy" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="Audio_Dorozhka_Short" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Vybor_Audiodorozhki" xml:space="preserve">
+    <value>Select audio track</value>
+  </data>
+  <data name="Audio_Dorozhka_N" xml:space="preserve">
+    <value>Track {0}</value>
+  </data>
+
+
   
 </root>

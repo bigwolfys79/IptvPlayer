@@ -21,6 +21,9 @@ public class PortalCatalogItem
     public string? StreamUrl { get; set; }
     public string RequestJson { get; set; } = string.Empty;
 
+    // Portal's own flick id ("fid" field), used to intersect genre/year filter results with a category
+    public long ItemId { get; set; }
+
 
     public string? Description { get; set; }
 
@@ -101,7 +104,7 @@ public interface IVideoPortalService
 
     Task<List<PortalCatalogItem>> LoadFilteredAsync(
         PlaylistSource source, int fid, int? genreId, string? yearOrRange,
-        CancellationToken ct = default);
+        CancellationToken ct = default, IReadOnlySet<long>? categoryIds = null);
 
 
     Task<PortalFlickResult> ResolveEpisodesAsync(PlaylistSource source, string requestJson, CancellationToken ct = default);
@@ -270,10 +273,9 @@ public class VideoPortalService : IVideoPortalService
 
     public async Task<List<PortalCatalogItem>> LoadFilteredAsync(
         PlaylistSource source, int fid, int? genreId, string? yearOrRange,
-        CancellationToken ct = default)
+        CancellationToken ct = default, IReadOnlySet<long>? categoryIds = null)
     {
         var key = NormalizeKey(source);
-        var result = new List<PortalCatalogItem>();
 
         string filterRequest;
         var hasYear = !string.IsNullOrEmpty(yearOrRange);
@@ -309,9 +311,149 @@ public class VideoPortalService : IVideoPortalService
             genreId?.ToString() ?? "-", yearOrRange ?? "-", fid,
             (hasGenre || hasYear) ? "filter" : "category");
 
-        result.AddRange(await LoadCategoryAsync(source, key, filterRequest, label,
-            hasGenre ? GetGenreTitle(genreId.GetValueOrDefault()) : null, ct));
-        return result;
+        var items = await LoadCategoryAsync(source, key, filterRequest, label,
+            hasGenre ? GetGenreTitle(genreId.GetValueOrDefault()) : null, ct, parallelPages: true);
+
+        // Portal ignores fid when filter params are present (and vice versa), so constrain
+        // the filter result to the selected category client-side by flick id
+        if ((hasGenre || hasYear) && fid > 0)
+        {
+            var fromSnapshot = categoryIds is { Count: > 0 };
+            var ids = fromSnapshot ? categoryIds! : await GetCategoryItemIdsAsync(source, key, fid, ct);
+            var before = items.Count;
+            items = FilterByCategoryIds(items, ids!);
+            _logger.LogInformation(
+                "Портал: фильтр ограничен категорией fid={Fid}: {Before} → {After} (источник id: {Source}).",
+                fid, before, items.Count, fromSnapshot ? "снапшот" : "сеть");
+        }
+
+        return items;
+    }
+
+
+    public static List<PortalCatalogItem> FilterByCategoryIds(List<PortalCatalogItem> items, IReadOnlySet<long> categoryIds)
+    {
+        if (categoryIds.Count == 0)
+        {
+            // Category fetch failed or returned nothing — keep the unfiltered result
+            return items;
+        }
+
+        return items.Where(i => i.ItemId <= 0 || categoryIds.Contains(i.ItemId)).ToList();
+    }
+
+
+    // Extracts the portal's own flick id ("fid") from a request object like {"cmd":"flick","fid":144314}
+    public static long? TryExtractItemId(string? requestJson)
+    {
+        if (string.IsNullOrEmpty(requestJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(requestJson);
+            return GetLong(doc.RootElement, "fid");
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+
+    private static readonly Dictionary<(string Url, int Fid), (HashSet<long> Ids, DateTime LoadedAt)> _categoryIdsCache = new();
+    private static readonly object _categoryIdsCacheLock = new();
+    private static readonly TimeSpan CategoryIdsCacheTtl = TimeSpan.FromMinutes(30);
+    private const int CategoryIdsPageSize = 1000;
+    private const int MaxCategoryIdsItems = 200000;
+
+    private async Task<HashSet<long>> GetCategoryItemIdsAsync(PlaylistSource source, string key, int fid, CancellationToken ct)
+    {
+        var cacheKey = (source.Url ?? string.Empty, fid);
+        lock (_categoryIdsCacheLock)
+        {
+            if (_categoryIdsCache.TryGetValue(cacheKey, out var cached) &&
+                (DateTime.UtcNow - cached.LoadedAt) < CategoryIdsCacheTtl)
+            {
+                return cached.Ids;
+            }
+        }
+
+        var ids = new HashSet<long>();
+        var offset = 0;
+        while (offset < MaxCategoryIdsItems)
+        {
+            var request = $"{{\"key\":{JsonSerializer.Serialize(key)},\"cmd\":\"flicks\",\"fid\":{fid}," +
+                          $"\"offset\":{offset},\"limit\":{CategoryIdsPageSize}}}";
+
+            JsonDocument response;
+            try
+            {
+                response = await PostAsync(source, "flicks.json", request, ct);
+            }
+            catch (System.Text.Json.JsonException ex) when (offset > 0)
+            {
+                // Server sometimes emits broken JSON deep in pagination — keep partial id set
+                _logger.LogWarning(
+                    "Портал: id-набор категории fid={Fid} оборван на offset={Offset} (невалидный JSON): {Error}.",
+                    fid, offset, ex.Message);
+                break;
+            }
+            using (response)
+            {
+                var total = GetInt(response.RootElement, "count");
+                if (FindArray(response.RootElement, "items") is not { } itemArray)
+                {
+                    break;
+                }
+
+                var added = 0;
+                var hasNext = false;
+                foreach (var item in itemArray.EnumerateArray())
+                {
+                    if (item.ValueKind != JsonValueKind.Object)
+                    {
+                        continue;
+                    }
+
+                    if (string.Equals(GetString(item, "type"), "next", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasNext = true;
+                        continue;
+                    }
+
+                    if (GetLong(item, "fid") is { } id)
+                    {
+                        ids.Add(id);
+                        added++;
+                    }
+                }
+
+                if (added == 0 || !hasNext)
+                {
+                    break;
+                }
+
+                offset += added;
+                if (total.HasValue && offset >= total.Value)
+                {
+                    break;
+                }
+            }
+        }
+
+        _logger.LogInformation(
+            "Портал: собран id-набор категории fid={Fid}: {Count} элементов.",
+            fid, ids.Count);
+
+        lock (_categoryIdsCacheLock)
+        {
+            _categoryIdsCache[cacheKey] = (ids, DateTime.UtcNow);
+        }
+
+        return ids;
     }
 
     private static string BuildFilterLabel(int? genreId, string? yearOrRange)
@@ -337,10 +479,17 @@ public class VideoPortalService : IVideoPortalService
     };
 
 
+    private sealed record CategoryPage(List<PortalCatalogItem> Items, int? Total, bool HasNext);
+
     private async Task<List<PortalCatalogItem>> LoadCategoryAsync(
         PlaylistSource source, string key, string requestJson, string categoryTitle,
-        string? genre, CancellationToken ct)
+        string? genre, CancellationToken ct, bool parallelPages = false)
     {
+        if (parallelPages)
+        {
+            return await LoadCategoryParallelAsync(source, key, requestJson, categoryTitle, genre, ct);
+        }
+
         var result = new List<PortalCatalogItem>();
         var offset = 0;
         var total = (int?)null;
@@ -348,99 +497,175 @@ public class VideoPortalService : IVideoPortalService
 
         while (pages++ < MaxPagesPerCategory)
         {
-            var pageRequest = MergeKey(WithPaging(requestJson, offset, PageSize), key);
+            var page = await FetchCategoryPageAsync(source, key, requestJson, offset, categoryTitle, genre, ct);
+            result.AddRange(page.Items);
+            total ??= page.Total;
 
-            JsonDocument response;
-            try
+            var added = page.Items.Count;
+            if (added == 0 || !page.HasNext)
             {
-                response = await PostAsync(source, CommandEndpoint(pageRequest), pageRequest, ct);
-            }
-            catch (System.Text.Json.JsonException ex)
-            {
-                _logger.LogWarning(
-                    "Портал: категория «{Category}» — сервер вернул невалидный JSON " +
-                    "(часто последняя пустая страница): {Error}. Сохраняем {Count} уже загруженных элементов.",
-                    categoryTitle, ex.Message, result.Count);
                 return result;
             }
-            using (response)
+
+            offset += added;
+
+            if (total.HasValue && offset >= total.Value)
             {
-                total ??= GetInt(response.RootElement, "count");
-                var items = FindArray(response.RootElement, "items");
-                if (items is not { } itemArray)
-                {
-                    _logger.LogWarning("Портал: категория «{Category}» — в ответе нет массива items.", categoryTitle);
-                    return result;
-                }
-
-                var added = 0;
-                var hasNext = false;
-                foreach (var item in itemArray.EnumerateArray())
-                {
-                    if (item.ValueKind != JsonValueKind.Object)
-                    {
-                        continue;
-                    }
-
-                    var type = GetString(item, "type");
-                    if (string.Equals(type, "next", StringComparison.OrdinalIgnoreCase))
-                    {
-                        hasNext = true;
-                        continue;
-                    }
-
-                    if (string.Equals(type, "category", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    var name = GetString(item, "title");
-                    if (string.IsNullOrWhiteSpace(name))
-                    {
-                        continue;
-                    }
-
-                    var year = GetInt(item, "year");
-                    if (year > 0)
-                    {
-                        name = $"{name} ({year})";
-                    }
-
-                    result.Add(new PortalCatalogItem
-                    {
-                        Name = name!,
-                        Group = categoryTitle,
-                        LogoUrl = GetString(item, "img") ?? GetString(item, "imglr"),
-                        StreamUrl = GetString(item, "url"),
-                        RequestJson = GetObjectAsJson(item, "request") ?? string.Empty,
-                        Description = GetString(item, "description"),
-                        Year = year ?? 0,
-                        Genre = genre
-                    });
-                    added++;
-                }
-
-                if (added == 0 || !hasNext)
-                {
-                    return result;
-                }
-
-                offset += added;
-
-                if (total.HasValue && offset >= total.Value)
-                {
-                    return result;
-                }
-
-                _logger.LogInformation(
-                    "Портал: категория «{Category}» — загружено {Loaded}/{Total}.", categoryTitle, offset, total);
+                return result;
             }
+
+            _logger.LogInformation(
+                "Портал: категория «{Category}» — загружено {Loaded}/{Total}.", categoryTitle, offset, total);
         }
 
         _logger.LogWarning(
             "Портал: категория «{Category}» прервана после {MaxPages} страниц (защита от бесконечной пагинации).",
             categoryTitle, MaxPagesPerCategory);
         return result;
+    }
+
+
+    // Filter results can be large; sequential paging was latency-bound, so pages load concurrently
+    private static readonly SemaphoreSlim FilterPageSemaphore = new(4);
+
+    private async Task<List<PortalCatalogItem>> LoadCategoryParallelAsync(
+        PlaylistSource source, string key, string requestJson, string categoryTitle,
+        string? genre, CancellationToken ct)
+    {
+        var first = await FetchCategoryPageAsync(source, key, requestJson, 0, categoryTitle, genre, ct);
+        var total = first.Total;
+        if (first.Items.Count == 0 || !first.HasNext || total is not > PageSize)
+        {
+            return first.Items;
+        }
+
+        var pageCount = (int)Math.Ceiling(total.Value / (double)PageSize);
+        if (pageCount > MaxPagesPerCategory)
+        {
+            pageCount = MaxPagesPerCategory;
+        }
+
+        var pages = new List<PortalCatalogItem>[pageCount];
+        pages[0] = first.Items;
+        var tasks = new Task[pageCount - 1];
+        for (var p = 1; p < pageCount; p++)
+        {
+            var offset = p * PageSize;
+            var index = p;
+            tasks[p - 1] = Task.Run(async () =>
+            {
+                await FilterPageSemaphore.WaitAsync(ct);
+                try
+                {
+                    pages[index] =
+                        (await FetchCategoryPageAsync(source, key, requestJson, offset, categoryTitle, genre, ct)).Items;
+                }
+                finally
+                {
+                    FilterPageSemaphore.Release();
+                }
+            }, ct);
+        }
+
+        await Task.WhenAll(tasks);
+
+        var result = new List<PortalCatalogItem>(total.Value);
+        foreach (var page in pages)
+        {
+            if (page is { Count: > 0 })
+            {
+                result.AddRange(page);
+            }
+        }
+
+        return result;
+    }
+
+    private async Task<CategoryPage> FetchCategoryPageAsync(
+        PlaylistSource source, string key, string requestJson, int offset,
+        string categoryTitle, string? genre, CancellationToken ct)
+    {
+        var pageRequest = MergeKey(WithPaging(requestJson, offset, PageSize), key);
+
+        JsonDocument response;
+        try
+        {
+            response = await PostAsync(source, CommandEndpoint(pageRequest), pageRequest, ct);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogWarning(
+                "Портал: категория «{Category}» — сервер вернул невалидный JSON " +
+                "(часто последняя пустая страница): {Error}.",
+                categoryTitle, ex.Message);
+            return new CategoryPage(new List<PortalCatalogItem>(), null, false);
+        }
+
+        using (response)
+        {
+            var total = GetInt(response.RootElement, "count");
+            if (FindArray(response.RootElement, "items") is not { } itemArray)
+            {
+                _logger.LogWarning("Портал: категория «{Category}» — в ответе нет массива items.", categoryTitle);
+                return new CategoryPage(new List<PortalCatalogItem>(), total, false);
+            }
+
+            var (items, hasNext) = ParseCategoryItems(itemArray, categoryTitle, genre);
+            return new CategoryPage(items, total, hasNext);
+        }
+    }
+
+    private static (List<PortalCatalogItem> Items, bool HasNext) ParseCategoryItems(
+        JsonElement itemArray, string categoryTitle, string? genre)
+    {
+        var items = new List<PortalCatalogItem>();
+        var hasNext = false;
+        foreach (var item in itemArray.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var type = GetString(item, "type");
+            if (string.Equals(type, "next", StringComparison.OrdinalIgnoreCase))
+            {
+                hasNext = true;
+                continue;
+            }
+
+            if (string.Equals(type, "category", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var name = GetString(item, "title");
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            var year = GetInt(item, "year");
+            if (year > 0)
+            {
+                name = $"{name} ({year})";
+            }
+
+            items.Add(new PortalCatalogItem
+            {
+                Name = name!,
+                Group = categoryTitle,
+                LogoUrl = GetString(item, "img") ?? GetString(item, "imglr"),
+                StreamUrl = GetString(item, "url"),
+                RequestJson = GetObjectAsJson(item, "request") ?? string.Empty,
+                Description = GetString(item, "description"),
+                Year = year ?? 0,
+                Genre = genre,
+                ItemId = GetLong(item, "fid") ?? 0
+            });
+        }
+
+        return (items, hasNext);
     }
 
     public async Task<PortalFlickResult> ResolveEpisodesAsync(PlaylistSource source, string requestJson, CancellationToken ct = default)
@@ -708,6 +933,14 @@ public class VideoPortalService : IVideoPortalService
         value.ValueKind == JsonValueKind.Number &&
         value.TryGetInt32(out var i)
             ? i
+            : null;
+
+    private static long? GetLong(JsonElement element, string name) =>
+        element.ValueKind == JsonValueKind.Object &&
+        element.TryGetProperty(name, out var value) &&
+        value.ValueKind == JsonValueKind.Number &&
+        value.TryGetInt64(out var l)
+            ? l
             : null;
 
     private static string? GetObjectAsJson(JsonElement element, string name) =>

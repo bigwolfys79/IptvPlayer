@@ -53,7 +53,10 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - VOD playback with pause and seeking
 - Seasons and episodes with instant switching
 - Poster grid with search and filtering (genre, year, content type)
-- Quality selection (480p/720p/1080p/Auto)
+- Genre/year filters respect the selected category: "Movies + action" no longer shows series; "All types" searches the whole portal
+- Quality selection (480p/720p/1080p/Auto; portal episodes take renditions from the HLS master playlist, with an "Auto" entry)
+- "Audio" button on the player: shown when the stream has labeled audio tracks
+- Preferred audio language auto-selection (Settings → Playback)
 - Fast movie start (instant from catalog link)
 - VOD resume (position saving)
 - Portal key cache invalidation (SHA-256)

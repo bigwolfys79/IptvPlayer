@@ -158,6 +158,10 @@ public sealed partial class MainPage : Page
         WindowedVideoOverlay.SizeChanged += OnRootLayoutSizeChanged;
         FullScreenBottomBar.SizeChanged += OnRootLayoutSizeChanged;
 
+        // Fullscreen reuses the windowed settings flyout (single localized instance);
+        // only one overlay is visible at a time, so sharing is safe
+        OverlaySettingsButton.Flyout = VideoOverlaySettingsButton.Flyout;
+
         IsTabStop = true;
         Loaded += (s, e) => Focus(FocusState.Programmatic);
         Loaded += async (s, e) =>
@@ -304,13 +308,18 @@ public sealed partial class MainPage : Page
         }
 
         private void OnPlayerArchiveStateChanged(object? s, EventArgs e) =>
-            DispatcherQueue.TryEnqueue(UpdateArchiveBanner);
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                UpdateArchiveBanner();
+                UpdateOverlayScales();
+            });
 
         private void OnPlayerVodStateChanged(object? s, EventArgs e) =>
             DispatcherQueue.TryEnqueue(() =>
             {
                 UpdateVodQualityButtons();
                 UpdateArchivePauseButton();
+                UpdateOverlayScales();
             });
 
         private void OnRecordingChangedUpdateButtons(object? s, EventArgs e) =>

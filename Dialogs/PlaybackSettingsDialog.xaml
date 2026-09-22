@@ -76,6 +76,14 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                TextWrapping="Wrap"/>
                     <ComboBox x:Name="BoostCombo" HorizontalAlignment="Left" MinWidth="160"/>
+
+                    <TextBlock x:Name="AudioLangHeader" x:Uid="Predpochitaemyy_Yazyk_Audio" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="AudioLangHint"
+                               x:Uid="Vybirayetsya_Pervaya_Dorozhka_S_Etim_Yazykom"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <ComboBox x:Name="AudioLangCombo" HorizontalAlignment="Left" MinWidth="160"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

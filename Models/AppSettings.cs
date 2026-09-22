@@ -44,6 +44,10 @@ public class AppSettings
     public string AudioNormalization { get; set; } = "Dynamic";
 
 
+    // ISO-ish language codes in priority order, comma-separated ("rus,ukr,eng"); empty = keep stream default
+    public string PreferredAudioLanguage { get; set; } = "rus";
+
+
     public int AudioVolumeBoost { get; set; } = 100;
 
 

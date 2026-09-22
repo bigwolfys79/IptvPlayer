@@ -17,6 +17,20 @@ namespace IptvPlayer.Services
 
         private static readonly ConditionalWeakTable<MediaPlayer, FFmpegMediaSource> LiveSources = new();
 
+        private static readonly ConditionalWeakTable<MediaPlayer, MediaPlaybackItem> PlaybackItems = new();
+
+        private static readonly ConditionalWeakTable<MediaPlayer, Dictionary<string, string>> VodMasterVariants = new();
+
+        private static readonly HttpClient PlaylistHttpClient = CreatePlaylistHttpClient();
+
+        private static HttpClient CreatePlaylistHttpClient()
+        {
+            var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) IptvPlayer/1.0");
+            return client;
+        }
+
         private readonly ILogger<StreamService> _logger;
         private readonly LocalStreamProxy _proxy;
 
@@ -51,6 +65,241 @@ namespace IptvPlayer.Services
             }
 
             return baseFilter;
+        }
+
+
+        // Picks the first audio track matching the user's preferred language order ("rus,ukr,eng"); -1 keeps the stream default
+        public static int SelectPreferredAudioIndex(
+            IReadOnlyList<string?> languages, string? preferred, IReadOnlySet<int>? invalidIndexes = null)
+        {
+            if (string.IsNullOrWhiteSpace(preferred) || languages.Count == 0)
+            {
+                return -1;
+            }
+
+            var prefs = preferred
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(NormalizeLanguageCode)
+                .Where(c => !string.IsNullOrEmpty(c))
+                .Select(c => c!)
+                .ToList();
+            if (prefs.Count == 0)
+            {
+                return -1;
+            }
+
+            var normalized = languages.Select(NormalizeLanguageCode).ToList();
+            foreach (var pref in prefs)
+            {
+                for (var i = 0; i < normalized.Count; i++)
+                {
+                    if (invalidIndexes != null && invalidIndexes.Contains(i))
+                    {
+                        continue;
+                    }
+
+                    if (normalized[i] is { } lang && lang.StartsWith(pref, StringComparison.Ordinal))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+
+        private static string? NormalizeLanguageCode(string? lang)
+        {
+            if (string.IsNullOrWhiteSpace(lang))
+            {
+                return null;
+            }
+
+            var token = lang.Trim().ToLowerInvariant().Split('-', '_')[0];
+            return token switch
+            {
+                "ru" or "rus" or "russian" => "rus",
+                "uk" or "ua" or "ukr" or "ukrainian" => "ukr",
+                "en" or "eng" or "english" => "eng",
+                "de" or "deu" or "german" => "deu",
+                "fr" or "fra" or "french" => "fra",
+                "es" or "esp" or "spa" => "spa",
+                "it" or "ita" => "ita",
+                "pl" or "pol" => "pol",
+                "kk" or "kz" or "kaz" => "kaz",
+                "und" or "mis" => null,
+                _ => token
+            };
+        }
+
+
+        public IReadOnlyList<(int Index, string? Language)> GetAudioTracks(MediaPlayer? player)
+        {
+            if (player is null || !PlaybackItems.TryGetValue(player, out var item))
+            {
+                return Array.Empty<(int, string?)>();
+            }
+
+            var tracks = item.AudioTracks;
+            var result = new List<(int, string?)>(tracks.Count);
+            for (var i = 0; i < tracks.Count; i++)
+            {
+                result.Add((i, tracks[i].Language));
+            }
+
+            return result;
+        }
+
+
+        public int GetSelectedAudioTrackIndex(MediaPlayer? player)
+        {
+            if (player is null || !PlaybackItems.TryGetValue(player, out var item))
+            {
+                return -1;
+            }
+
+            return item.AudioTracks.SelectedIndex;
+        }
+
+
+        public bool TrySelectAudioTrack(MediaPlayer? player, int index)
+        {
+            if (player is null || !PlaybackItems.TryGetValue(player, out var item))
+            {
+                return false;
+            }
+
+            var tracks = item.AudioTracks;
+            if (index < 0 || index >= tracks.Count)
+            {
+                return false;
+            }
+
+            tracks.SelectedIndex = index;
+            return true;
+        }
+
+
+        public bool TryGetVodMasterVariants(MediaPlayer? player, out Dictionary<string, string> variants)
+        {
+            if (player is null || !VodMasterVariants.TryGetValue(player, out var stored))
+            {
+                variants = new Dictionary<string, string>();
+                return false;
+            }
+
+            variants = stored;
+            return variants.Count > 0;
+        }
+
+
+        // Portal episodes often expose a single HLS master URL (no portal-side variants dict);
+        // parse the master playlist so the quality switcher can offer its renditions
+        private async Task ProbeVodMasterVariantsAsync(MediaPlayer player, string streamUrl)
+        {
+            if (!streamUrl.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            try
+            {
+                var playlist = await PlaylistHttpClient.GetStringAsync(streamUrl);
+                var variants = ParseHlsMasterVariants(playlist, new Uri(streamUrl));
+                if (variants.Count > 0)
+                {
+                    VodMasterVariants.AddOrUpdate(player, variants);
+                    _logger.LogInformation(
+                        "Портал/VOD: из мастер-плейлиста извлечено вариантов качества: {Count}.",
+                        variants.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "VOD: не удалось разобрать мастер-плейлист {Url}.",
+                    SecretProtector.Mask(streamUrl));
+            }
+        }
+
+
+        public static Dictionary<string, string> ParseHlsMasterVariants(string playlist, Uri baseUrl)
+        {
+            var variants = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(playlist) || !playlist.StartsWith("#EXTM3U", StringComparison.Ordinal))
+            {
+                return variants;
+            }
+
+            string? resolution = null;
+            foreach (var rawLine in playlist.Split('\n'))
+            {
+                var line = rawLine.Trim();
+                if (line.StartsWith("#EXT-X-STREAM-INF", StringComparison.Ordinal))
+                {
+                    resolution = ParseHlsResolution(line);
+                    continue;
+                }
+
+                if (line.Length == 0 || line.StartsWith('#'))
+                {
+                    continue;
+                }
+
+                if (resolution is not null && TryResolveUri(line, baseUrl, out var uri))
+                {
+                    // Multiple renditions may share one resolution — first wins
+                    if (!variants.ContainsKey(resolution))
+                    {
+                        variants[resolution] = uri;
+                    }
+                    resolution = null;
+                }
+            }
+
+            return variants;
+        }
+
+
+        private static string? ParseHlsResolution(string streamInfLine)
+        {
+            var marker = "RESOLUTION=";
+            var start = streamInfLine.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (start < 0)
+            {
+                return null;
+            }
+
+            start += marker.Length;
+            var end = start;
+            while (end < streamInfLine.Length && (char.IsDigit(streamInfLine[end]) || streamInfLine[end] == 'x'))
+            {
+                end++;
+            }
+
+            var value = streamInfLine[start..end];
+            var parts = value.Split('x');
+            if (parts.Length != 2 || !int.TryParse(parts[0], out var width) || !int.TryParse(parts[1], out var height))
+            {
+                return null;
+            }
+
+            return height > 0 ? $"{height}p" : null;
+        }
+
+
+        private static bool TryResolveUri(string line, Uri baseUrl, out string resolved)
+        {
+            try
+            {
+                resolved = new Uri(baseUrl, line).ToString();
+                return true;
+            }
+            catch (UriFormatException)
+            {
+                resolved = string.Empty;
+                return false;
+            }
         }
 
 
@@ -341,9 +590,29 @@ namespace IptvPlayer.Services
                         "Аудиодорожки с пустыми метаданными (0 каналов/0 Гц): {Indexes} — переключение выполнено.",
                         string.Join(", ", invalidAudioIndexes));
                 }
+
+                // Auto-select the preferred audio language when the stream provides language metadata
+                var invalidSet = invalidAudioIndexes.Count > 0 ? invalidAudioIndexes.ToHashSet() : null;
+                var preferredAudioIndex = SelectPreferredAudioIndex(
+                    audioStreams.Select(a => (string?)a.Language).ToList(),
+                    streamConfig.PreferredAudioLanguage,
+                    invalidSet);
+                if (preferredAudioIndex >= 0 && preferredAudioIndex != mediaPlaybackItem.AudioTracks.SelectedIndex)
+                {
+                    mediaPlaybackItem.AudioTracks.SelectedIndex = preferredAudioIndex;
+                    _logger.LogInformation(
+                        "Аудиодорожка: выбран язык {Language} (дорожка {Index} из {Count}).",
+                        streamConfig.PreferredAudioLanguage, preferredAudioIndex + 1, audioStreams.Count);
+                }
+
                 player.Source = mediaPlaybackItem;
 
                 LiveSources.Add(player, ffmpegSource);
+                PlaybackItems.AddOrUpdate(player, mediaPlaybackItem);
+                if (isVod)
+                {
+                    await ProbeVodMasterVariantsAsync(player, streamUrl);
+                }
                 if (!string.IsNullOrEmpty(normFilter))
                 {
                     _logger.LogInformation(
@@ -361,7 +630,8 @@ namespace IptvPlayer.Services
                             // Ряд поставщиков не кладёт битрейт в заголовки TS —
                             // FFmpeg возвращает 0. Показываем прочерк вместо «0kbps».
                             var br = a.Bitrate > 0 ? $"{a.Bitrate / 1000}kbps" : "?kbps";
-                            return $"{a.CodecName} {a.ChannelLayout} {a.SampleRate}Hz {br}";
+                            var lang = string.IsNullOrWhiteSpace(a.Language) ? null : $" {a.Language}";
+                            return $"{a.CodecName} {a.ChannelLayout} {a.SampleRate}Hz {br}{lang}";
                         }))
                         : " (аудио не обнаружено)");
             }

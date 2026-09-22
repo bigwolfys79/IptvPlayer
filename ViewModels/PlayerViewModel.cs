@@ -106,6 +106,70 @@ public partial class PlayerViewModel : ObservableObject
 
     public event EventHandler? VodStateChanged;
 
+    private IReadOnlyList<string> _audioTrackLabels = Array.Empty<string>();
+
+
+    // Labels like "Track 1 (rus)" for the audio track picker on the player overlay
+    public IReadOnlyList<string> AudioTrackLabels
+    {
+        get => _audioTrackLabels;
+        private set => SetProperty(ref _audioTrackLabels, value);
+    }
+
+    private int _currentAudioTrackIndex;
+
+    public int CurrentAudioTrackIndex
+    {
+        get => _currentAudioTrackIndex;
+        private set => SetProperty(ref _currentAudioTrackIndex, value);
+    }
+
+
+    public void SelectAudioTrack(int index)
+    {
+        if (Player is null || !_streamService.TrySelectAudioTrack(Player, index))
+        {
+            return;
+        }
+
+        CurrentAudioTrackIndex = index;
+        _logger.LogInformation(
+            "Аудиодорожка: выбрана вручную дорожка {Index} из {Count}.", index + 1, AudioTrackLabels.Count);
+    }
+
+
+    private void RefreshAudioTracks()
+    {
+        if (Player is null)
+        {
+            AudioTrackLabels = Array.Empty<string>();
+            CurrentAudioTrackIndex = -1;
+            return;
+        }
+
+        var tracks = _streamService.GetAudioTracks(Player);
+
+        // Unlabeled multi-audio is usually one audio duplicated per HLS rendition (OttPlayer shows it
+        // as a single track) — a picker over identical tracks is meaningless, so hide it
+        var hasLanguage = tracks.Any(t => !string.IsNullOrWhiteSpace(t.Language));
+        if (tracks.Count > 1 && !hasLanguage)
+        {
+            AudioTrackLabels = Array.Empty<string>();
+            CurrentAudioTrackIndex = -1;
+            return;
+        }
+
+        var labels = new List<string>(tracks.Count);
+        foreach (var track in tracks)
+        {
+            var baseLabel = string.Format(L.T("Audio_Dorozhka_N"), track.Index + 1);
+            labels.Add(string.IsNullOrWhiteSpace(track.Language) ? baseLabel : $"{baseLabel} ({track.Language})");
+        }
+
+        AudioTrackLabels = labels;
+        CurrentAudioTrackIndex = _streamService.GetSelectedAudioTrackIndex(Player);
+    }
+
     private double _vodPositionSeconds;
     private double _vodDurationSeconds;
 
@@ -327,7 +391,8 @@ public partial class PlayerViewModel : ObservableObject
                 streamSettings.VodReadAheadSeconds,
                 streamSettings.DiagnosticStreamProxy,
                 streamSettings.VideoUpscaler,
-                streamSettings.FrameServerRender);
+                streamSettings.FrameServerRender,
+                streamSettings.PreferredAudioLanguage);
             try
             {
                 var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod, zapCts.Token);
@@ -364,6 +429,7 @@ public partial class PlayerViewModel : ObservableObject
             }
 
             Player = player;
+            RefreshAudioTracks();
             EnsureDisplayRequest();
             CurrentPlayerChannelId = channel.Id;
             IsArchivePlaying = archiveEntry != null;
@@ -389,8 +455,30 @@ public partial class PlayerViewModel : ObservableObject
                     CurrentVodEpisodeIndex = vodEpisodeIndex;
                 }
 
+                // Episodes often come as a single master.m3u8 without a portal variants dict —
+                // offer the renditions parsed from the master playlist, with the master itself as "Авто"
+                var masterApplied = false;
+                if (_vodVariantUrls.Count == 0 &&
+                    _streamService.TryGetVodMasterVariants(player, out var masterVariants))
+                {
+                    masterVariants["Авто"] = streamUrl;
+                    SetVodVariants(masterVariants);
+                    masterApplied = true;
+                }
+
                 VodQualities = OrderVodQualities(_vodVariantUrls.Keys);
-                CurrentVodQuality = VodQualities.Contains(vodQuality) ? vodQuality : null;
+                if (vodQuality is { } requested && VodQualities.Contains(requested))
+                {
+                    CurrentVodQuality = requested;
+                }
+                else if (vodQuality is null && masterApplied && _vodVariantUrls.ContainsKey("Авто"))
+                {
+                    CurrentVodQuality = "Авто";
+                }
+                else
+                {
+                    CurrentVodQuality = null;
+                }
 
                 if (resumePosition is { } resume && resume > TimeSpan.Zero)
                 {

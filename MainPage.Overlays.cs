@@ -47,6 +47,10 @@ public sealed partial class MainPage
         WindowedTopOverlay.Visibility = Visibility.Visible;
         WindowedTopOverlay.Opacity = 1;
 
+        // Scale may be stale: ApplyOverlayScale skips hidden overlays, so toolbar
+        // content changed (VOD controls etc.) while the overlay was invisible
+        UpdateOverlayScales();
+
         _windowedOverlayFadeAnimation.To = 1;
         _windowedOverlayFadeAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(150));
         Storyboard.SetTarget(_windowedOverlayFadeAnimation, WindowedVideoOverlay);
@@ -357,7 +361,7 @@ public sealed partial class MainPage
             return;
         }
 
-        var target = Math.Min(1.0, availableWidth / desiredWidth);
+        var target = Math.Min(1.0, (availableWidth - 4) / desiredWidth);
         var clamped = Math.Max(ToolbarMinScale, target);
         scale.ScaleX = clamped;
         scale.ScaleY = clamped;
@@ -491,6 +495,7 @@ public sealed partial class MainPage
         _overlayFadeStoryboard.Stop();
 
         FullScreenOverlay.Visibility = Visibility.Visible;
+        UpdateOverlayScales();
 
         _overlayFadeAnimation.To = 1;
         _overlayFadeAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(150));
