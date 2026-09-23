@@ -35,6 +35,9 @@ namespace IptvPlayer.Services
 
         private Dictionary<string, List<EPGEntry>> _entriesByNormalizedName = new(StringComparer.OrdinalIgnoreCase);
 
+        // Name index keyed by timeshift-preserving normalization ("нтв +2" stays distinct)
+        private Dictionary<string, List<EPGEntry>> _entriesByPreservedName = new(StringComparer.OrdinalIgnoreCase);
+
         private Dictionary<string, string> _iconsByChannelId = new(StringComparer.OrdinalIgnoreCase);
 
         private Dictionary<string, string> _tvgIdByStrictName = new(StringComparer.OrdinalIgnoreCase);
@@ -309,7 +312,8 @@ namespace IptvPlayer.Services
             TvgId,
             Alias,
             NameMap,
-            Name
+            Name,
+            Timeshift
         }
 
 
@@ -336,7 +340,12 @@ namespace IptvPlayer.Services
                 return (byId, MatchMethod.TvgId);
             }
 
-            if (!string.IsNullOrEmpty(channel.StreamUrl) &&
+            var hasShift = EpgNameNormalizer.TryGetTimeshiftHours(channel.Name, out var shiftHours, out var baseName);
+
+            // Skip auto-learned aliases for "+N" channels: the alias memorized
+            // the fuzzy base match and would shadow the shifted schedule
+            if (!hasShift &&
+                !string.IsNullOrEmpty(channel.StreamUrl) &&
                 _epgChannelIdByStreamUrl.TryGetValue(channel.StreamUrl, out var aliasedId) &&
                 _entriesByChannelId.TryGetValue(aliasedId, out var aliasedEntries))
             {
@@ -349,6 +358,27 @@ namespace IptvPlayer.Services
                 _entriesByChannelId.TryGetValue(strictId, out var strictEntries))
             {
                 return (strictEntries, MatchMethod.NameMap);
+            }
+
+            if (hasShift)
+            {
+                // XMLTV ships its own "+N" variant with exact times
+                if (!string.IsNullOrEmpty(strictKey) &&
+                    _entriesByPreservedName.TryGetValue(strictKey, out var ownVariant))
+                {
+                    return (ownVariant, MatchMethod.Timeshift);
+                }
+
+                // Derive from the base channel's schedule shifted by N hours
+                if (FindBaseEntries(baseName) is { Count: > 0 } baseEntries)
+                {
+                    return (shiftHours == 0
+                        ? baseEntries
+                        : CreateTimeshiftedEntries(baseEntries, shiftHours), MatchMethod.Timeshift);
+                }
+
+                // Falling back to the unshifted base schedule would show wrong times
+                return (new List<EPGEntry>(), MatchMethod.None);
             }
 
             var lenientKey = EpgNameNormalizer.Normalize(channel.Name);
@@ -366,6 +396,55 @@ namespace IptvPlayer.Services
             }
 
             return (new List<EPGEntry>(), MatchMethod.None);
+        }
+
+        private List<EPGEntry>? FindBaseEntries(string baseName)
+        {
+            var baseStrict = EpgNameNormalizer.NormalizePreservingTimeshift(baseName);
+            if (baseStrict.Length > 0 &&
+                _tvgIdByStrictName.TryGetValue(baseStrict, out var strictId) &&
+                _entriesByChannelId.TryGetValue(strictId, out var strictList))
+            {
+                return strictList;
+            }
+
+            var baseLenient = EpgNameNormalizer.Normalize(baseName);
+            if (baseLenient.Length > 0)
+            {
+                if (_tvgIdByLenientName.TryGetValue(baseLenient, out var lenientId) &&
+                    _entriesByChannelId.TryGetValue(lenientId, out var lenientList))
+                {
+                    return lenientList;
+                }
+
+                if (_entriesByNormalizedName.TryGetValue(baseLenient, out var byName))
+                {
+                    return byName;
+                }
+            }
+
+            return null;
+        }
+
+        internal static List<EPGEntry> CreateTimeshiftedEntries(List<EPGEntry> source, int shiftHours)
+        {
+            var copies = new List<EPGEntry>(source.Count);
+            foreach (var entry in source)
+            {
+                copies.Add(new EPGEntry
+                {
+                    EventId = $"{entry.EventId}_ts{shiftHours}",
+                    ChannelId = entry.ChannelId,
+                    ChannelName = entry.ChannelName,
+                    ProgramName = entry.ProgramName,
+                    Description = entry.Description,
+                    Category = entry.Category,
+                    StartTime = entry.StartTime.AddHours(shiftHours),
+                    EndTime = entry.EndTime.AddHours(shiftHours)
+                });
+            }
+
+            return copies;
         }
 
         private void StoreMatch(ChannelViewModel channel, (List<EPGEntry> Entries, MatchMethod Method) result)
@@ -566,7 +645,9 @@ namespace IptvPlayer.Services
                     return;
                 }
 
-                var (byChannel, iconsByChannelId, nameIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger)).ConfigureAwait(false);
+                // Delta-reuse keeps UI state on unchanged programmes
+                var previousByChannel = _entriesByChannelId;
+                var (byChannel, iconsByChannelId, nameIndex, preservedIndex) = await Task.Run(() => EpgSourceMerger.Merge(sourceResults, _logger, previousByChannel)).ConfigureAwait(false);
 
                 if (sourceResults.Count == enabledSources.Count)
                 {
@@ -584,6 +665,7 @@ namespace IptvPlayer.Services
 
                 _entriesByChannelId = byChannel;
                 _entriesByNormalizedName = nameIndex;
+                _entriesByPreservedName = preservedIndex;
                 _matchCache = null;
                 _iconsByChannelId = iconsByChannelId;
                 _epgLoaded = true;
@@ -645,11 +727,18 @@ namespace IptvPlayer.Services
                 cached.ByChannel, StringComparer.OrdinalIgnoreCase);
             var icons = new Dictionary<string, string>(
                 cached.IconsByChannelId, StringComparer.OrdinalIgnoreCase);
-            var nameIndex = await Task.Run(
-                () => EpgSourceMerger.BuildNameIndex(byChannel, _logger)).ConfigureAwait(false);
+            // Delta-reuse before the name indexes, same as the network path
+            var previousByChannel = _entriesByChannelId;
+            var (lenientIndex, preservedIndex) = await Task.Run(() =>
+            {
+                EpgSourceMerger.ApplyDeltaReuse(previousByChannel, byChannel, _logger);
+                return (EpgSourceMerger.BuildNameIndex(byChannel, _logger),
+                    EpgSourceMerger.BuildNameIndex(byChannel, _logger, preserveTimeshift: true));
+            }).ConfigureAwait(false);
 
             _entriesByChannelId = byChannel;
-            _entriesByNormalizedName = nameIndex;
+            _entriesByNormalizedName = lenientIndex;
+            _entriesByPreservedName = preservedIndex;
             _matchCache = null;
             _iconsByChannelId = icons;
             _epgLoaded = true;
@@ -847,6 +936,7 @@ namespace IptvPlayer.Services
             var matchedByAlias = 0;
             var matchedByMap = 0;
             var matchedByName = 0;
+            var matchedByTimeshift = 0;
             var unmatched = new List<string>();
             var learned = new List<PlaylistDatabaseService.EpgAlias>();
 
@@ -878,6 +968,10 @@ namespace IptvPlayer.Services
                             matchedByName++;
                             TryLearnAlias(learned, channel, entries);
                             break;
+                        case MatchMethod.Timeshift:
+                            // No alias learning: the shifted schedule is derived, not a source match
+                            matchedByTimeshift++;
+                            break;
                         default:
                             unmatched.Add(channel.Name);
                             break;
@@ -904,8 +998,8 @@ namespace IptvPlayer.Services
                 "Сопоставление плейлиста с XMLTV: каналов всего {Total}, без tvg-id {WithoutTvgId}, " +
                 "сопоставлено по tvg-id {ById}, по выученным псевдонимам {ByAlias}, " +
                 "по таблице имя->tvg-id {ByMap}, " +
-                "по названию (резервный путь) {ByName}, не сопоставлено вообще {Unmatched}. {UnmatchedSample}{IdSample}",
-                channels.Count, withoutTvgId, matchedById, matchedByAlias, matchedByMap, matchedByName, unmatched.Count,
+                "по названию (резервный путь) {ByName}, по таймшифту (+N) {ByTimeshift}, не сопоставлено вообще {Unmatched}. {UnmatchedSample}{IdSample}",
+                channels.Count, withoutTvgId, matchedById, matchedByAlias, matchedByMap, matchedByName, matchedByTimeshift, unmatched.Count,
                 unmatchedSample.Count > 0
                     ? $"Примеры несопоставленных каналов: {string.Join(", ", unmatchedSample.Select(n => $"\"{n}\""))}. "
                     : string.Empty,

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace IptvPlayer.Services;
@@ -20,6 +21,8 @@ public static class EpgNameNormalizer
     private static readonly Regex BarePlusRegex = new(@"\+(?!\d)", RegexOptions.Compiled);
 
     private static readonly Regex TrailingTimeshiftRegex = new(@"\+\s*\d{1,2}\s*$", RegexOptions.Compiled);
+
+    private static readonly Regex ParenTimeshiftRegex = new(@"\(\s*\+\s*(\d{1,2})\s*\)\s*$", RegexOptions.Compiled);
 
     private static readonly Regex KinozalAliasRegex = new(@"\bкинозал\b", RegexOptions.Compiled);
 
@@ -49,6 +52,19 @@ public static class EpgNameNormalizer
         ["uhd"] = 4,
     };
 
+    // "+N" possibly followed by parenthesized qualifiers, quality tokens, country
+    // codes or stream markers ("Россия 1 +2 (Белорецк)", "Первый канал +4 HD", "ITV4 +1 UK")
+    private static readonly Regex TimeshiftTailRegex = new(
+        @"\+\s*(\d{1,2})\s*(?:(?:\([^)]*\)|\b(?:" + BuildTailTokenAlternation() + @")\b)\s*)*$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static string BuildTailTokenAlternation() =>
+        string.Join("|", TrailingCountryCodes
+            .Concat(TrailingStreamMarkers)
+            .Concat(QualityRank.Keys)
+            .Select(Regex.Escape)
+            .OrderByDescending(t => t.Length));
+
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Cache = new();
 
 
@@ -62,6 +78,46 @@ public static class EpgNameNormalizer
 
     internal static string NormalizeKeepQualifiers(string? name)
         => NormalizeCached('q', name, true, false);
+
+
+    // Recognize a timeshift suffix and split it off: trailing "+N" ("НТВ +2"),
+    // "(+N)", or "+N" followed by parenthesized qualifiers ("Россия 1 +2 (Белорецк)")
+    internal static bool TryGetTimeshiftHours(string? name, out int shiftHours, out string baseName)
+    {
+        shiftHours = 0;
+        baseName = string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        var s = name.Trim();
+
+        var paren = ParenTimeshiftRegex.Match(s);
+        if (paren.Success)
+        {
+            if (!int.TryParse(paren.Groups[1].Value, out var parenHours) || parenHours > 12)
+            {
+                return false;
+            }
+
+            shiftHours = parenHours;
+            baseName = s[..paren.Index].Trim();
+            return true;
+        }
+
+        var trailing = TimeshiftTailRegex.Match(s);
+        if (trailing.Success &&
+            int.TryParse(trailing.Groups[1].Value, out var hours) &&
+            hours <= 12)
+        {
+            shiftHours = hours;
+            baseName = s[..trailing.Index].Trim();
+            return true;
+        }
+
+        return false;
+    }
 
     private static string NormalizeCached(char variant, string? name, bool keepQualifiers, bool keepTimeshift)
     {

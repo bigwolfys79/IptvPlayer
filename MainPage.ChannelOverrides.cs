@@ -126,7 +126,7 @@ public sealed partial class MainPage : Page
             _logger.LogWarning(ex, "Сохранение переноса канала «{Channel}».", channel.Name);
         }
 
-        await RebuildChannelRepositoryAsync(originalGroup, newGroup);
+        await RebuildChannelRepositoryAsync();
         ShowActionToast(string.Format(L.T("Kanal_Perenesen_V_Gruppu"), channel.Name, newGroup));
     }
 
@@ -160,24 +160,8 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        if (ReferenceEquals(ViewModel.SelectedChannel, channel))
-        {
-            try
-            {
-                ViewModel.Player.Stop();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Остановка плеера перед удалением канала «{Channel}».", channel.Name);
-            }
-        }
-
-        var wasSelected = ReferenceEquals(ViewModel.SelectedChannel, channel);
+        // Keep playback running even if the deleted channel was selected
         ViewModel.Channels.Remove(channel);
-        if (wasSelected)
-        {
-            ViewModel.SelectedChannel = null;
-        }
 
         try
         {
@@ -196,8 +180,10 @@ public sealed partial class MainPage : Page
 
 
     // Sync channel list after an edit
-    private async Task RebuildChannelRepositoryAsync(string? movedFromGroup = null, string? movedToGroup = null)
+    private async Task RebuildChannelRepositoryAsync()
     {
+        CaptureListAnchorIndex();
+
         await _channelRepository.Clear();
         await _channelRepository.AddChannelsAsync(ViewModel.Channels);
 
@@ -205,14 +191,55 @@ public sealed partial class MainPage : Page
         ViewModel.UpdateChannelCountText();
 
         var selectedGroup = ViewModel.SelectedGroup;
-        if (movedToGroup != null &&
-            string.Equals(selectedGroup?.Trim(), movedFromGroup?.Trim(), StringComparison.OrdinalIgnoreCase))
+
+        ViewModel.RefreshGroups(selectedGroup, keepFilters: true);
+        ViewModel.FilterChannels();
+        await RestoreListViewportAsync();
+    }
+
+    private int _rebuildAnchorIndex = -1;
+
+
+    // Anchor the viewport itself, not the playing channel: on repeated deletes
+    // the playing channel is already gone from the list and IndexOf returns -1
+    private void CaptureListAnchorIndex()
+    {
+        if (ChannelsListView.ItemsPanelRoot is ItemsStackPanel { FirstVisibleIndex: >= 0 } panel)
         {
-            selectedGroup = movedToGroup;
+            _rebuildAnchorIndex = panel.FirstVisibleIndex;
+            return;
+        }
+        _rebuildAnchorIndex = ViewModel.SelectedChannel is { } anchor
+            ? ViewModel.DisplayedChannels.IndexOf(anchor)
+            : -1;
+    }
+
+
+    // Keep viewport position when the playing channel is no longer in the list
+    private async Task RestoreListViewportAsync()
+    {
+        if (_rebuildAnchorIndex < 0)
+        {
+            return;
         }
 
-        ViewModel.RefreshGroups(selectedGroup);
-        ViewModel.FilterChannels();
+        var displayed = ViewModel.DisplayedChannels;
+        if (ViewModel.SelectedChannel is { } selected && displayed.Contains(selected))
+        {
+            _rebuildAnchorIndex = -1;
+            return;
+        }
+
+        var index = Math.Min(_rebuildAnchorIndex, displayed.Count - 1);
+        _rebuildAnchorIndex = -1;
+        if (index < 0)
+        {
+            return;
+        }
+
+        await Task.Yield();
+        await WaitForItemsPanelAsync(ChannelsListView, TimeSpan.FromSeconds(1.5));
+        ChannelsListView.ScrollIntoView(displayed[index], ScrollIntoViewAlignment.Leading);
     }
 
 

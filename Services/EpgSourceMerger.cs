@@ -13,9 +13,11 @@ public static class EpgSourceMerger
 
     public static (Dictionary<string, List<EPGEntry>> ByChannel,
                    Dictionary<string, string> IconsByChannelId,
-                   Dictionary<string, List<EPGEntry>> NameIndex) Merge(
+                   Dictionary<string, List<EPGEntry>> NameIndex,
+                   Dictionary<string, List<EPGEntry>> PreservedNameIndex) Merge(
         List<XmlTvLoadResult> sourceResults,
-        ILogger logger)
+        ILogger logger,
+        Dictionary<string, List<EPGEntry>>? previousByChannel = null)
     {
         var byChannel = new Dictionary<string, List<EPGEntry>>(StringComparer.OrdinalIgnoreCase);
         var iconsByChannelId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -58,7 +60,93 @@ public static class EpgSourceMerger
             byChannel.Values.Sum(l => l.Count(e => !string.IsNullOrEmpty(e.Description))),
             byChannel.Values.Sum(l => l.Count(e => string.IsNullOrEmpty(e.Description))));
 
-        return (byChannel, iconsByChannelId, BuildNameIndex(byChannel, logger));
+        // Delta-reuse before building the name index so it sees final instances
+        ApplyDeltaReuse(previousByChannel, byChannel, logger);
+
+        return (byChannel,
+            iconsByChannelId,
+            BuildNameIndex(byChannel, logger),
+            BuildNameIndex(byChannel, logger, preserveTimeshift: true));
+    }
+
+
+    // Reuse previous EPGEntry instances for unchanged programmes so UI state
+    // (IsCurrent/HasReminder/HasScheduleRecord) survives reloads; returns reused count
+    public static int ApplyDeltaReuse(
+        Dictionary<string, List<EPGEntry>>? previous,
+        Dictionary<string, List<EPGEntry>> current,
+        ILogger logger)
+    {
+        if (previous is null || previous.Count == 0 || current.Count == 0)
+        {
+            return 0;
+        }
+
+        var previousCount = 0;
+        foreach (var list in previous.Values)
+        {
+            previousCount += list.Count;
+        }
+
+        var oldByKey = new Dictionary<ChannelStartKey, EPGEntry>(previousCount, ChannelStartKeyComparer.Instance);
+        foreach (var (channelId, entries) in previous)
+        {
+            foreach (var entry in entries)
+            {
+                // First wins on duplicate (channelId, StartTime)
+                oldByKey.TryAdd(new ChannelStartKey(channelId, entry.StartTime), entry);
+            }
+        }
+
+        var reused = 0;
+        var total = 0;
+        foreach (var (channelId, entries) in current)
+        {
+            total += entries.Count;
+            for (var i = 0; i < entries.Count; i++)
+            {
+                if (oldByKey.TryGetValue(new ChannelStartKey(channelId, entries[i].StartTime), out var old) &&
+                    IsSameProgram(old, entries[i]))
+                {
+                    entries[i] = old;
+                    reused++;
+                }
+            }
+        }
+
+        if (reused > 0)
+        {
+            logger.LogInformation(
+                "Дельта-слияние EPG: переиспользовано {Reused} из {Total} программ ({Percent:F0}%).",
+                reused, total, total == 0 ? 0 : 100.0 * reused / total);
+        }
+
+        return reused;
+    }
+
+
+    private static bool IsSameProgram(EPGEntry a, EPGEntry b) =>
+        a.EndTime == b.EndTime &&
+        string.Equals(a.ProgramName, b.ProgramName, StringComparison.Ordinal) &&
+        string.Equals(a.Description, b.Description, StringComparison.Ordinal) &&
+        string.Equals(a.Category, b.Category, StringComparison.Ordinal) &&
+        string.Equals(a.ChannelName, b.ChannelName, StringComparison.Ordinal);
+
+
+    private readonly record struct ChannelStartKey(string ChannelId, DateTime StartTime);
+
+    private sealed class ChannelStartKeyComparer : IEqualityComparer<ChannelStartKey>
+    {
+        public static readonly ChannelStartKeyComparer Instance = new();
+
+        public bool Equals(ChannelStartKey x, ChannelStartKey y) =>
+            string.Equals(x.ChannelId, y.ChannelId, StringComparison.OrdinalIgnoreCase) &&
+            x.StartTime == y.StartTime;
+
+        public int GetHashCode(ChannelStartKey key) =>
+            HashCode.Combine(
+                StringComparer.OrdinalIgnoreCase.GetHashCode(key.ChannelId),
+                key.StartTime);
     }
 
 
@@ -95,7 +183,8 @@ public static class EpgSourceMerger
 
     public static Dictionary<string, List<EPGEntry>> BuildNameIndex(
         Dictionary<string, List<EPGEntry>> byChannel,
-        ILogger logger)
+        ILogger logger,
+        bool preserveTimeshift = false)
     {
         var groups = new Dictionary<string, List<(string ChannelId, string RawName, List<EPGEntry> Entries)>>(StringComparer.OrdinalIgnoreCase);
 
@@ -107,7 +196,9 @@ public static class EpgSourceMerger
             }
 
             var rawName = entries[0].ChannelName ?? string.Empty;
-            var normalized = EpgNameNormalizer.Normalize(rawName);
+            var normalized = preserveTimeshift
+                ? EpgNameNormalizer.NormalizePreservingTimeshift(rawName)
+                : EpgNameNormalizer.Normalize(rawName);
             if (string.IsNullOrEmpty(normalized))
             {
                 continue;

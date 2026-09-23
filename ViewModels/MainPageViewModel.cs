@@ -696,7 +696,7 @@ public partial class MainPageViewModel : ObservableObject
     }
 
 
-    public void RefreshGroups(string? previouslySelected = null)
+    public void RefreshGroups(string? previouslySelected = null, bool keepFilters = false)
     {
         var groups = Channels
             .Select(c => c.Group)
@@ -736,12 +736,12 @@ public partial class MainPageViewModel : ObservableObject
             }
 
 
-            if (!_isLoadingFiltered)
+            if (!_isLoadingFiltered && (!keepFilters || !Genres.Contains(SelectedGenre)))
             {
                 SelectedGenre = AllGenresOption;
             }
         }
-        else if (!_isLoadingFiltered)
+        else if (!_isLoadingFiltered && (!keepFilters || !Genres.Contains(SelectedGenre)))
         {
             SelectedGenre = AllGenresOption;
         }
@@ -765,12 +765,12 @@ public partial class MainPageViewModel : ObservableObject
                 Years.Add(year);
             }
 
-            if (!_isLoadingFiltered)
+            if (!_isLoadingFiltered && (!keepFilters || !Years.Contains(SelectedYear)))
             {
                 SelectedYear = AllYearsOption;
             }
         }
-        else if (!_isLoadingFiltered)
+        else if (!_isLoadingFiltered && (!keepFilters || !Years.Contains(SelectedYear)))
         {
             SelectedYear = AllYearsOption;
         }

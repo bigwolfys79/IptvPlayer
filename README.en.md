@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.21.8
+- **Version:** 1.21.9
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -80,6 +80,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - EPG settings: reminders, refresh period and archive depth (1/3/7 days back); EPG sources are configured per playlist
 - EPG source validation on add (head-of-feed download, gzip, XMLTV checks) and per-source status: last successful load or error text
 - Learned channel aliases: unambiguous "XMLTV name → playlist channel" matches are memorized and reused on subsequent EPG refreshes, even when the channel cannot be matched by tvg-id or name tables
+- Timeshift twin channels with a "+N" suffix ("Первый канал +2", "Россия 1 +4 (Алтай)", "Первый канал +4 HD"): if the variant exists in the EPG source, its exact schedule is used; otherwise the base channel's schedule is shifted by N hours. Unchanged programmes are reused across EPG refreshes, so reminders and current-programme highlighting are not reset
 - Program reminders
 - Favorite channels
 - Move a channel to another group and remove it from the list (right-click on a channel); edits survive playlist refresh, restoration lives in playlist settings; actions on channels of blocked groups require the PIN

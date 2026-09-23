@@ -430,6 +430,11 @@ namespace IptvPlayer.Services
 
         public async Task<MediaPlayer> CreatePlayerAsync(string streamUrl, PlaybackConfig streamConfig, bool isVod = false, CancellationToken ct = default)
         {
+            // Hard cap for the whole open: a silent dead server blocks the native read forever
+            using var openCts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(ct);
+            openCts.CancelAfter(TimeSpan.FromSeconds(45));
+            var openCt = openCts.Token;
+
             MediaPlayer player;
             try
             {
@@ -537,6 +542,9 @@ namespace IptvPlayer.Services
                 ffmpegConfig.FFmpegOptions["reconnect"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_streamed"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_delay_max"] = "7";
+                // Cap a single blocking connect/read (15 s, microseconds): a server that
+                // accepts TCP but never answers otherwise hangs the open until app restart
+                ffmpegConfig.FFmpegOptions["rw_timeout"] = "15000000";
 
                 var actualUrl = streamUrl;
                 if (streamConfig.DiagnosticProxy
@@ -550,10 +558,19 @@ namespace IptvPlayer.Services
                         actualUrl);
                 }
 
-                ct.ThrowIfCancellationRequested();
-                await _disposeQueue.ConfigureAwait(continueOnCapturedContext: false);
+                openCt.ThrowIfCancellationRequested();
+                try
+                {
+                    // New open must not wait forever on a stuck background teardown
+                    await _disposeQueue.WaitAsync(TimeSpan.FromSeconds(15), openCt)
+                        .ConfigureAwait(continueOnCapturedContext: false);
+                }
+                catch (TimeoutException)
+                {
+                    _logger.LogWarning("Dispose-очередь не освободилась за 15 с — открываю поток, не дожидаясь.");
+                }
                 var ffmpegSource = createdSource =
-                    await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig).AsTask(ct);
+                    await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig).AsTask(openCt);
                 var videoStreams = ffmpegSource.VideoStreams.ToList();
                 var audioStreams = ffmpegSource.AudioStreams.ToList();
 
