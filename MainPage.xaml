@@ -491,19 +491,7 @@
                     <ScaleTransform x:Name="WindowedOverlayScale" />
                 </Border.RenderTransform>
                 <StackPanel Orientation="Vertical" Spacing="6">
-                    <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayPrevChannelButton"
-                                                        Width="40" Height="40"
-                                                        Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
-                                                        x:Uid="Predydushchiy_Kanal_Backspace">
-                                            <Path Data="M12,3.5 L5,8.5 L12,13.5 Z" Fill="{ThemeResource OverlayFgBrush}" />
-                                        </Button>
-                                        <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayRecordButton"
-                                                        Width="40" Height="40"
-                                                        Command="{x:Bind ViewModel.ToggleRecordingCommand}"
-                                                        x:Uid="Zapisat_Kanal">
-                                            <Ellipse Width="14" Height="14" Fill="{ThemeResource RecRedBrush}" />
-                                        </Button>
+                    <StackPanel x:Name="VideoOverlayTopRow" Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Button x:Name="VideoOverlayBackToLiveButton"
                                                         x:Uid="V_Efir"
                                                         FontSize="12"
@@ -577,6 +565,18 @@
                             Visibility="Collapsed" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayPrevChannelButton"
+                            Width="40" Height="40"
+                            Command="{x:Bind ViewModel.GoToPreviousChannelCommand}"
+                            x:Uid="Predydushchiy_Kanal_Backspace">
+                        <Path Data="M12,3.5 L5,8.5 L12,13.5 Z" Fill="{ThemeResource OverlayFgBrush}" />
+                    </Button>
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayRecordButton"
+                            Width="40" Height="40"
+                            Command="{x:Bind ViewModel.ToggleRecordingCommand}"
+                            x:Uid="Zapisat_Kanal">
+                        <Ellipse Width="14" Height="14" Fill="{ThemeResource RecRedBrush}" />
+                    </Button>
                     <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="VideoOverlayMuteButton"
                             Width="36" Height="36"
                             Click="MuteButton_Click"

@@ -31,6 +31,15 @@ public sealed partial class MainPage
     private readonly Storyboard _windowedOverlayFadeStoryboard = new();
     private readonly DoubleAnimation _windowedOverlayFadeAnimation = new() { EnableDependentAnimation = true };
 
+    // Collapse the windowed overlay top row when no control in it is visible
+    // (live playlist channels keep a single-row overlay)
+    private void UpdateWindowedOverlayTopRow()
+    {
+        VideoOverlayTopRow.Visibility = VideoOverlayTopRow.Children.Any(c => c.Visibility == Visibility.Visible)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
     private void ShowWindowedVideoOverlay()
     {
         if (WindowedVideoOverlay.Visibility == Visibility.Visible && _windowedOverlayFadingIn)

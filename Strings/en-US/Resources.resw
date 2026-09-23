@@ -412,7 +412,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="EPG_XMLTV_Epg_One_Sopostavlenie_Kanalov" xml:space="preserve">
 
-    <value>EPG: XMLTV (epg.one), channel matching via the epg.one/setup-playlist table</value>
+    <value>EPG: XMLTV (epg.one), channel matching — tvg-id, epg.one/setup-playlist table, learned aliases, "+N" timeshift inheritance</value>
 
   </data>
 

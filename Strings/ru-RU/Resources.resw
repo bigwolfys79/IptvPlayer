@@ -412,7 +412,7 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   <data name="EPG_XMLTV_Epg_One_Sopostavlenie_Kanalov" xml:space="preserve">
 
-    <value>EPG: XMLTV (epg.one), сопоставление каналов — таблица epg.one/setup-playlist</value>
+    <value>EPG: XMLTV (epg.one), сопоставление каналов — tvg-id, таблица epg.one/setup-playlist, выученные псевдонимы, таймшифт-наследование «+N»</value>
 
   </data>
 

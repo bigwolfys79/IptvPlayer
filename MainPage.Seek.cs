@@ -49,6 +49,7 @@ public sealed partial class MainPage : Page
         VideoOverlayPauseButton.Content = isPaused ? AppIcons.Play(16) : AppIcons.Pause(16);
         ToolTipService.SetToolTip(VideoOverlayPauseButton, isPaused ? L.T("Prodolzhit_Probel") : L.T("Pauza_Probel"));
 
+        UpdateWindowedOverlayTopRow();
         ShowPlaybackStateBadge(isPauseAvailable, isPaused);
     }
 
@@ -142,6 +143,7 @@ public sealed partial class MainPage : Page
 
         OverlayVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
         WindowedVodSeekPanel.Visibility = Player.IsVodPlaying ? Visibility.Visible : Visibility.Collapsed;
+        UpdateWindowedOverlayTopRow();
 
         UpdateVodSeasonEpisodeCombos();
         UpdateVodAudioTrackButtons();
@@ -196,6 +198,7 @@ public sealed partial class MainPage : Page
         var visible = Player.IsVodPlaying && Player.AudioTrackLabels.Count > 1;
         OverlayVodAudioTrackButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         WindowedVodAudioTrackButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        UpdateWindowedOverlayTopRow();
         if (!visible)
         {
             return;
@@ -319,6 +322,7 @@ public sealed partial class MainPage : Page
                 seasonsVisible ? Visibility.Visible : Visibility.Collapsed;
             WindowedVodEpisodeCombo.Visibility = OverlayVodEpisodeCombo.Visibility =
                 episodesVisible ? Visibility.Visible : Visibility.Collapsed;
+            UpdateWindowedOverlayTopRow();
 
             if (!seasonsVisible)
             {
