@@ -277,6 +277,91 @@ public sealed partial class MainPage : Page
         {
             var seasonsVisible = false;
             var episodesVisible = false;
+            var ocVoiceoversVisible = false;
+
+            if (Player.IsVodPlaying && Player.VodChannel != null &&
+                Player.OnlineCinemaPlaylist is { } ocPlaylist)
+            {
+                // Online cinema: season / episode / voiceover pickers driven by
+                // the playlist tree
+                var seasons = ocPlaylist.Seasons;
+                var episodes = seasons is { Count: > 0 }
+                    ? seasons[Math.Max(0, Player.OcSeasonIndex)].Episodes
+                    : null;
+                var voiceovers = episodes is { Count: > 0 }
+                    ? episodes[Math.Max(0, Player.OcEpisodeIndex)].Voiceovers
+                    : ocPlaylist.Voiceovers;
+
+                seasonsVisible = seasons is { Count: > 1 };
+                episodesVisible = episodes is { Count: > 1 };
+                ocVoiceoversVisible = voiceovers is { Count: > 1 };
+
+                foreach (var combo in new[] { WindowedVodSeasonCombo, OverlayVodSeasonCombo })
+                {
+                    combo.Items.Clear();
+                    if (seasons != null)
+                    {
+                        for (var i = 0; i < seasons.Count; i++)
+                        {
+                            combo.Items.Add(new ComboBoxItem
+                            {
+                                Content = seasons[i].Label,
+                                Tag = i,
+                                IsSelected = i == Player.OcSeasonIndex
+                            });
+                        }
+                    }
+                }
+
+                foreach (var combo in new[] { WindowedVodEpisodeCombo, OverlayVodEpisodeCombo })
+                {
+                    combo.Items.Clear();
+                    if (episodes != null)
+                    {
+                        for (var i = 0; i < episodes.Count; i++)
+                        {
+                            combo.Items.Add(new ComboBoxItem
+                            {
+                                Content = episodes[i].Label,
+                                Tag = i,
+                                IsSelected = i == Player.OcEpisodeIndex
+                            });
+                        }
+                    }
+                }
+
+                foreach (var combo in new[] { WindowedVodVoiceoverCombo, OverlayVodVoiceoverCombo })
+                {
+                    combo.Items.Clear();
+                    if (voiceovers != null)
+                    {
+                        for (var i = 0; i < voiceovers.Count; i++)
+                        {
+                            combo.Items.Add(new ComboBoxItem
+                            {
+                                Content = voiceovers[i].Label,
+                                Tag = i,
+                                IsSelected = i == Player.OcVoiceoverIndex
+                            });
+                        }
+                    }
+                }
+
+                WindowedVodSeasonCombo.Visibility = OverlayVodSeasonCombo.Visibility =
+                    seasonsVisible ? Visibility.Visible : Visibility.Collapsed;
+                WindowedVodEpisodeCombo.Visibility = OverlayVodEpisodeCombo.Visibility =
+                    episodesVisible ? Visibility.Visible : Visibility.Collapsed;
+                WindowedVodVoiceoverCombo.Visibility = OverlayVodVoiceoverCombo.Visibility =
+                    ocVoiceoversVisible ? Visibility.Visible : Visibility.Collapsed;
+                if (!ocVoiceoversVisible)
+                {
+                    WindowedVodVoiceoverCombo.Items.Clear();
+                    OverlayVodVoiceoverCombo.Items.Clear();
+                }
+
+                UpdateWindowedOverlayTopRow();
+                return;
+            }
 
             if (Player.IsVodPlaying && Player.VodChannel is { } vodChannel)
             {
@@ -335,6 +420,14 @@ public sealed partial class MainPage : Page
                 WindowedVodEpisodeCombo.Items.Clear();
                 OverlayVodEpisodeCombo.Items.Clear();
             }
+
+            WindowedVodVoiceoverCombo.Visibility = OverlayVodVoiceoverCombo.Visibility =
+                ocVoiceoversVisible ? Visibility.Visible : Visibility.Collapsed;
+            if (!ocVoiceoversVisible)
+            {
+                WindowedVodVoiceoverCombo.Items.Clear();
+                OverlayVodVoiceoverCombo.Items.Clear();
+            }
         }
         finally
         {
@@ -351,8 +444,20 @@ public sealed partial class MainPage : Page
 
     private async void VodSeasonCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_updatingVodCombos ||
-            sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: ChannelViewModel sibling } })
+        if (_updatingVodCombos)
+        {
+            return;
+        }
+
+        // Online cinema: Tag holds the season index
+        if (sender is ComboBox { SelectedItem: ComboBoxItem { Tag: int ocSeason } })
+        {
+            await Player.PlayOnlineCinemaLeafAsync(ocSeason, -1, -1);
+            UpdateVodSeasonEpisodeCombos();
+            return;
+        }
+
+        if (sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: ChannelViewModel sibling } })
         {
             return;
         }
@@ -373,8 +478,21 @@ public sealed partial class MainPage : Page
 
     private async void VodEpisodeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_updatingVodCombos ||
-            sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: int index } })
+        if (_updatingVodCombos)
+        {
+            return;
+        }
+
+        // Online cinema: Tag holds the episode index
+        if (sender is ComboBox { SelectedItem: ComboBoxItem { Tag: int ocEpisode } } &&
+            Player.OnlineCinemaPlaylist != null)
+        {
+            await Player.PlayOnlineCinemaLeafAsync(-1, ocEpisode, -1);
+            UpdateVodSeasonEpisodeCombos();
+            return;
+        }
+
+        if (sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: int index } })
         {
             return;
         }
@@ -391,6 +509,19 @@ public sealed partial class MainPage : Page
                 Player.StreamError = ex.Message;
             }
         }
+    }
+
+    private async void VodVoiceoverCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingVodCombos ||
+            sender is not ComboBox { SelectedItem: ComboBoxItem { Tag: int ocVoiceover } } ||
+            Player.OnlineCinemaPlaylist == null)
+        {
+            return;
+        }
+
+        await Player.PlayOnlineCinemaLeafAsync(-1, -1, ocVoiceover);
+        UpdateVodSeasonEpisodeCombos();
     }
 
     private bool _updatingVodSeekBarValue;

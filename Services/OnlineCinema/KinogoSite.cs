@@ -6,8 +6,9 @@ using System.Text.RegularExpressions;
 
 namespace IptvPlayer.Services;
 
-// Site adapter for the online-cinema source. Selector set mirrors the proven reference parser
-// (article.shortStory cards, /page/N/ pagination, embed iframe, api/playlist/load).
+// Site adapter for the online-cinema source. Selector set mirrors the proven
+// reference parser (article.shortStory cards, /page/N/ pagination, embed
+// iframe, api/playlist/load).
 // New sites plug in as another class with the same shape.
 public static class KinogoSite
 {
@@ -18,6 +19,7 @@ public static class KinogoSite
     public static readonly IReadOnlyDictionary<string, string> Categories = new Dictionary<string, string>
     {
         ["все фильмы"] = "/filmy/",
+        ["сериалы"] = "/serialy/",
         ["мультфильмы"] = "/multfilmy/",
         ["новинки"] = "/novinki/",
         ["фантастика"] = "/fantastika/",
@@ -221,7 +223,7 @@ public static class KinogoSite
     return { total: total, current: cur ? parseInt(cur[1], 10) : 1, items: out };
 })()";
 
-    // Applies the site's session year filter (same POST as reference parser);
+    // Applies the site's session year filter (same POST as the reference parser);
     // __YEAR__ is substituted in code (ExecuteScriptAsync takes no arguments)
     public const string SetYearFilterJsTemplate = @"
 async () => {
@@ -233,8 +235,8 @@ async () => {
     return true;
 }";
 
-    // All embed player candidates on the page (the site hosts several providers,
-    // e.g. several providers); ads and YouTube are skipped.
+    // All embed player candidates on the page (the site hosts several providers);
+    // ads and YouTube are skipped.
     // Each candidate is scrolled into view first — the player sits below the
     // fold, and the click aim is viewport-relative
     public const string IframeCandidatesJs = @"

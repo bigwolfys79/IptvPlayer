@@ -160,6 +160,11 @@ public class AppSettings
     public bool OnlineCinemaEnabled { get; set; } = true;
 
 
+    // How often (minutes) the visible online-cinema list is re-read from the
+    // catalog DB while background collection runs; 0 = never during playback
+    public int OnlineCinemaListRefreshMinutes { get; set; } = 60;
+
+
     public int SleepTimerMinutes { get; set; }
 
 

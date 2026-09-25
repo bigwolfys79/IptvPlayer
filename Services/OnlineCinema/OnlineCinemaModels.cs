@@ -46,18 +46,47 @@ public class OnlineCinemaStream
     // empty when the resolved link is a media playlist
     public Dictionary<string, string> Variants { get; } = new();
 
-    // Voiceover/episode tracks of the embed playlist (first = default); each
-    // carries its own master link and renditions
-    public List<OnlineCinemaTrack> Tracks { get; } = new();
+    // Series → seasons/episodes/voiceovers; films → Voiceovers only (null Seasons)
+    public OnlineCinemaPlaylist? Playlist { get; set; }
 }
 
 
-// One voiceover/episode track resolved from the cinemar playlist
-public class OnlineCinemaTrack
+// Voiceover leaf of the playlist tree: Data is the api payload for lazy
+// resolution; ResolvedUrl is set when the leaf is already resolved
+public class OnlineCinemaLeaf
 {
     public string Label { get; set; } = string.Empty;
 
-    public string Url { get; set; } = string.Empty;
+    public string Data { get; set; } = string.Empty;
 
-    public Dictionary<string, string> Variants { get; } = new();
+    public string Origin { get; set; } = string.Empty;
+
+    public string EmbedUrl { get; set; } = string.Empty;
+
+    public string? ResolvedUrl { get; set; }
+}
+
+
+public class OnlineCinemaEpisode
+{
+    public string Label { get; set; } = string.Empty;
+
+    public List<OnlineCinemaLeaf> Voiceovers { get; } = new();
+}
+
+
+public class OnlineCinemaSeason
+{
+    public string Label { get; set; } = string.Empty;
+
+    public List<OnlineCinemaEpisode> Episodes { get; } = new();
+}
+
+
+public class OnlineCinemaPlaylist
+{
+    // Films: a flat voiceover list; series: seasons → episodes → voiceovers
+    public List<OnlineCinemaSeason>? Seasons { get; set; }
+
+    public List<OnlineCinemaLeaf>? Voiceovers { get; set; }
 }

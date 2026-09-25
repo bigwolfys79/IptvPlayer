@@ -305,25 +305,25 @@ public partial class MainPageViewModel
 
             // Default to the best rendition (FFmpeg's own master choice is the
             // lowest one); the picker keeps every rendition plus "Авто".
-            // Multiple voiceover tracks become the episode picker list
+            // Series: the resolver already played back the default leaf
+            // (season 1, episode 1, first voiceover) — cache its URL on the
+            // leaf so a later picker switch skips the POST
+            var ocPlaylist = resolved?.Playlist;
+            if (ocPlaylist?.Seasons is { Count: > 0 } seasons &&
+                resolved is { } r)
+            {
+                seasons[0].Episodes[0].Voiceovers[0].ResolvedUrl = r.Url;
+            }
+
             Dictionary<string, string>? variants = null;
             string? quality = null;
-            List<PortalEpisode>? vodEpisodes = null;
-            var track = resolved?.Tracks.FirstOrDefault();
-            if (track != null)
+            if (resolved != null)
             {
-                variants = track.Variants;
+                variants = resolved.Variants;
                 quality = PickDefaultVodQuality(variants);
-                playUrl = quality != null ? variants[quality] : track.Url;
-
-                if (resolved!.Tracks.Count > 1)
+                if (quality != null)
                 {
-                    vodEpisodes = resolved.Tracks.Select(t => new PortalEpisode
-                    {
-                        Title = t.Label,
-                        StreamUrl = t.Url,
-                        Variants = t.Variants
-                    }).ToList();
+                    playUrl = variants[quality];
                 }
             }
 
@@ -332,7 +332,7 @@ public partial class MainPageViewModel
                 : null;
             await Player.StartPlaybackAsync(channel, playUrl, archiveEntry: null,
                 isVod: true, vodVariants: variants, vodQuality: quality, resumePosition: cinemaResume,
-                vodEpisodes: vodEpisodes, vodEpisodeIndex: 0);
+                onlineCinemaPlaylist: ocPlaylist);
             return true;
         }
 

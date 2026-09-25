@@ -73,8 +73,23 @@ public partial class MainPageViewModel
     {
         var channels = await LoadOnlineCinemaFromDbAsync();
         var selected = SelectedChannel;
+        var group = SelectedGroup;
+
         Channels = new ObservableCollection<ChannelViewModel>(channels);
-        SelectedChannel = selected;
+
+        // Rebuild resets the combos — keep the user's group/genre/year and
+        // re-point the selection at the fresh instance of the playing item
+        RefreshGroups(group, keepFilters: true);
+        if (selected != null)
+        {
+            var fresh = Channels.FirstOrDefault(
+                c => !string.IsNullOrEmpty(c.PageUrl) && c.PageUrl == selected.PageUrl);
+            if (fresh != null)
+            {
+                fresh.IsPlaying = selected.IsPlaying;
+                SelectedChannel = fresh;
+            }
+        }
     }
 
 
@@ -103,6 +118,10 @@ public partial class MainPageViewModel
     // per tick; playlist refreshes are skipped while it runs
     public bool IsOnlineCinemaSyncActive => _onlineCinemaCatalog.IsSyncActive;
 
+    // Visible list is re-read from the catalog DB at most once per the
+    // configured interval while background collection runs
+    private DateTime _lastCinemaListRefresh = DateTime.UtcNow;
+
     public async Task OnlineCinemaBackgroundCollectAsync()
     {
         if (_isCinemaRefreshRunning)
@@ -115,8 +134,17 @@ public partial class MainPageViewModel
             var loaded = await _onlineCinemaCatalog.SyncNextBackgroundPageAsync();
             if (loaded)
             {
+                var refreshMinutes = Math.Clamp(AppSettings.OnlineCinemaListRefreshMinutes, 0, 24 * 60);
+                if (refreshMinutes == 0 ||
+                    DateTime.UtcNow - _lastCinemaListRefresh < TimeSpan.FromMinutes(refreshMinutes))
+                {
+                    _logger.LogDebug("Онлайн-кинотеатр: страница каталога добавлена в БД, список не обновлялся.");
+                    return;
+                }
+
+                _lastCinemaListRefresh = DateTime.UtcNow;
                 await ReloadOnlineCinemaChannelsAsync();
-                _logger.LogInformation("Онлайн-кинотеатр: фоновый сбор добавил страницу каталога.");
+                _logger.LogInformation("Онлайн-кинотеатр: фоновый сбор добавил страницу каталога, список обновлён.");
             }
         }
         catch (Exception ex)
@@ -167,11 +195,26 @@ public partial class MainPageViewModel
         OnPropertyChanged(nameof(IsLoadMoreBusyVisible));
         try
         {
+            // "Load more" follows the selection: series deepen their own
+            // listing, films deepen the selected genre (falling back to
+            // "all films" when the genre is not a site category); any other
+            // group keeps the round-robin over site categories
             List<OnlineCinemaItem>? items = null;
-            var category = SelectedGroup != AllGroupsOption && SelectedGroup != FavoritesOption
-                ? SelectedGroup
-                : null;
-            if (category != null && KinogoSite.Categories.ContainsKey(category))
+            string? category = null;
+            if (SelectedGroup == L.T("OnlineCinema_Group_Serials"))
+            {
+                category = "сериалы";
+            }
+            else if (SelectedGroup == L.T("OnlineCinema_Group_Films"))
+            {
+                var genre = SelectedGenre;
+                category = !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
+                           KinogoSite.Categories.ContainsKey(genre)
+                    ? genre
+                    : "все фильмы";
+            }
+
+            if (category != null)
             {
                 items = await _onlineCinemaCatalog.LoadNextPageAsync(category);
             }

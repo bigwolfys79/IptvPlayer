@@ -116,7 +116,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
 • Video catalog from an m3u playlist: posters, genres, years
 
-• Online cinema: movie catalog, stream on demand
+• Online cinema: movie catalog, season, episode and voiceover selection
 
 • XMLTV programme guide, programme reminders
 
@@ -1381,6 +1381,12 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+  <data name="Ozvuchka" xml:space="preserve">
+
+    <value>Voiceover</value>
+
+  </data>
+
   <data name="OnlineCinema_Toggle" xml:space="preserve">
 
     <value>Online cinema</value>
@@ -1389,6 +1395,16 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="OnlineCinema_Toggle_Hint" xml:space="preserve">
 
     <value>Disabling hides the catalog and stops all background collection</value>
+
+  </data>
+  <data name="OnlineCinema_List_Refresh" xml:space="preserve">
+
+    <value>List refresh during playback, minutes</value>
+
+  </data>
+  <data name="OnlineCinema_List_Refresh_Hint" xml:space="preserve">
+
+    <value>How often the catalog list is re-read from the database during background collection (0 — never). Group/genre filters and the playing item's selection are kept.</value>
 
   </data>
   <data name="OnlineCinema_Otklyuchen" xml:space="preserve">

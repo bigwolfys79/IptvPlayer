@@ -15,6 +15,11 @@ public interface IOnlineCinemaStreamResolver
     // Resolves a fresh stream URL from the film page at play time — CDN links
     // carry a date-bound token and expire, so they are never cached
     Task<OnlineCinemaStream?> ResolveAsync(string pageUrl, CancellationToken ct = default);
+
+    // Resolves one voiceover leaf (season/episode selection) — POST
+    // api/playlist/load with the leaf payload + master rendition parse
+    Task<OnlineCinemaStream?> ResolveLeafAsync(string origin, string data, string embedUrl,
+        CancellationToken ct = default);
 }
 
 
@@ -76,8 +81,9 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 if (stream != null)
                 {
                     _logger.LogInformation(
-                        "Онлайн-кинотеатр: поток получен по HTTP для {Url}: дорожек {Tracks} — {Hit}",
-                        pageUrl, stream.Tracks.Count, stream.Url.Length > 100 ? stream.Url[..100] : stream.Url);
+                        "Онлайн-кинотеатр: поток получен по HTTP для {Url} ({Kind}) — {Hit}",
+                        pageUrl, stream.Playlist?.Seasons != null ? "сериал" : "фильм",
+                        stream.Url.Length > 100 ? stream.Url[..100] : stream.Url);
                     return stream;
                 }
             }
@@ -88,6 +94,22 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         }
 
         return null;
+    }
+
+    // Resolves a single voiceover leaf (season/episode picker) — POST
+    // api/playlist/load with its payload, then parse master renditions
+    public async Task<OnlineCinemaStream?> ResolveLeafAsync(string origin, string data, string embedUrl,
+        CancellationToken ct = default)
+    {
+        var url = await PostPlaylistLoadAsync(origin, data, embedUrl, ct);
+        if (url == null)
+        {
+            return null;
+        }
+
+        var stream = new OnlineCinemaStream { Url = url };
+        CopyVariants(await GetVariantsAsync(url), stream.Variants);
+        return stream;
     }
 
     private async Task<OnlineCinemaStream?> TryResolveEmbedAsync(string embedUrl, string pageUrl, CancellationToken ct)
@@ -107,45 +129,115 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             return null;
         }
 
-        var tracks = CinemarDecoder.DecodePlaylist(fileMatch.Groups[1].Value)
-            .Where(t => !string.IsNullOrWhiteSpace(t.Data))
-            .Take(12)
-            .ToList();
-        if (tracks.Count == 0)
-        {
-            return null;
-        }
-
+        var nodes = CinemarDecoder.DecodePlaylist(fileMatch.Groups[1].Value);
+        var isSeries = nodes.Any(n => n.Folder is { Count: > 0 });
         var origin = new Uri(embedUrl).GetLeftPart(System.UriPartial.Authority);
-        // Every track is one POST — voiceovers for films, episodes for series
-        var resolved = await Task.WhenAll(tracks.Select(async t =>
-        {
-            var url = await PostPlaylistLoadAsync(origin, t.Data, embedUrl, ct);
-            return url == null
-                ? null
-                : new OnlineCinemaTrack { Label = CleanTrackLabel(t.Title), Url = url };
-        }));
 
-        var stream = new OnlineCinemaStream();
-        foreach (var track in resolved.Where(t => t != null).Cast<OnlineCinemaTrack>())
+        if (!isSeries)
         {
-            await FillVariantsAsync(track);
-            stream.Tracks.Add(track);
+            // Film: every voiceover is pre-resolved so switching is instant
+            var leaves = CinemarDecoder.FlattenLeaves(nodes).Take(12).ToList();
+            if (leaves.Count == 0)
+            {
+                return null;
+            }
+
+            var gate = new SemaphoreSlim(3, 3);
+            var voiceovers = (await Task.WhenAll(leaves.Select(async leaf =>
+            {
+                await gate.WaitAsync(ct);
+                try
+                {
+                    var url = await PostPlaylistLoadAsync(origin, leaf.Data, embedUrl, ct);
+                    return url == null
+                        ? null
+                        : new OnlineCinemaLeaf
+                        {
+                            Label = leaf.Label,
+                            Data = leaf.Data,
+                            Origin = origin,
+                            EmbedUrl = embedUrl,
+                            ResolvedUrl = url
+                        };
+                }
+                finally
+                {
+                    gate.Release();
+                }
+            }))).Where(v => v != null).Cast<OnlineCinemaLeaf>().ToList();
+
+            if (voiceovers.Count == 0)
+            {
+                return null;
+            }
+
+            var filmStream = new OnlineCinemaStream
+            {
+                Label = voiceovers[0].Label,
+                Url = voiceovers[0].ResolvedUrl!,
+                Playlist = new OnlineCinemaPlaylist { Voiceovers = voiceovers }
+            };
+            CopyVariants(await GetVariantsAsync(filmStream.Url), filmStream.Variants);
+            return filmStream;
         }
 
-        if (stream.Tracks.Count == 0)
+        // Series: seasons → episodes → voiceovers; leaves resolve lazily at
+        // selection time (a series can carry dozens of them)
+        var playlist = new OnlineCinemaPlaylist { Seasons = new List<OnlineCinemaSeason>() };
+        foreach (var seasonNode in nodes)
+        {
+            var season = new OnlineCinemaSeason { Label = seasonNode.Title };
+            foreach (var episodeNode in seasonNode.Folder ?? [])
+            {
+                var episode = new OnlineCinemaEpisode
+                {
+                    Label = string.IsNullOrWhiteSpace(episodeNode.Title2)
+                        ? episodeNode.Title
+                        : episodeNode.Title2
+                };
+                foreach (var voiceNode in episodeNode.Folder ?? [])
+                {
+                    if (string.IsNullOrWhiteSpace(voiceNode.Data))
+                    {
+                        continue;
+                    }
+
+                    episode.Voiceovers.Add(new OnlineCinemaLeaf
+                    {
+                        Label = CleanTrackLabel(voiceNode.Title),
+                        Data = voiceNode.Data,
+                        Origin = origin,
+                        EmbedUrl = embedUrl
+                    });
+                }
+
+                if (episode.Voiceovers.Count > 0)
+                {
+                    season.Episodes.Add(episode);
+                }
+            }
+
+            if (season.Episodes.Count > 0)
+            {
+                playlist.Seasons.Add(season);
+            }
+        }
+
+        if (playlist.Seasons.Count == 0)
         {
             return null;
         }
 
-        stream.Url = stream.Tracks[0].Url;
-        stream.Label = stream.Tracks[0].Label;
-        foreach (var kv in stream.Tracks[0].Variants)
+        // Default start: season 1, episode 1, first voiceover
+        var defaultLeaf = playlist.Seasons[0].Episodes[0].Voiceovers[0];
+        var defaultStream = await ResolveLeafAsync(defaultLeaf.Origin, defaultLeaf.Data, defaultLeaf.EmbedUrl, ct);
+        if (defaultStream == null)
         {
-            stream.Variants[kv.Key] = kv.Value;
+            return null;
         }
 
-        return stream;
+        defaultStream.Playlist = playlist;
+        return defaultStream;
     }
 
     // Track titles carry flag <img> tags and entities from the embed markup —
@@ -251,22 +343,28 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
 
     // Fetches the master playlist and parses its renditions so the quality
     // picker has options; failure keeps the plain link (media playlist case)
-    private static async Task FillVariantsAsync(OnlineCinemaTrack track)
+    private static async Task<Dictionary<string, string>> GetVariantsAsync(string url)
     {
+        var variants = new Dictionary<string, string>();
         try
         {
-            var master = await Http.GetStringAsync(track.Url);
-            var variants = StreamService.ParseHlsMasterVariants(master, new Uri(track.Url));
-            foreach (var kv in variants)
-            {
-                track.Variants[kv.Key] = kv.Value;
-            }
-
-            track.Variants["Авто"] = track.Url;
+            var master = await Http.GetStringAsync(url);
+            variants = StreamService.ParseHlsMasterVariants(master, new Uri(url));
+            variants["Авто"] = url;
         }
         catch (Exception)
         {
             // Master fetch is best-effort — playback falls back to the plain link
+        }
+
+        return variants;
+    }
+
+    private static void CopyVariants(Dictionary<string, string> variants, Dictionary<string, string> target)
+    {
+        foreach (var kv in variants)
+        {
+            target[kv.Key] = kv.Value;
         }
     }
 
@@ -326,15 +424,20 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                     var hit = await _browser.WaitForStreamHitAsync(ClickInterval, ct);
                     if (hit != null && ExtractStream(hit) is { } resolved)
                     {
-                        var track = new OnlineCinemaTrack { Label = resolved.Label, Url = resolved.Url };
-                        await FillVariantsAsync(track);
-                        resolved.Tracks.Add(track);
-                        resolved.Url = track.Url;
-                        foreach (var kv in track.Variants)
+                        CopyVariants(await GetVariantsAsync(resolved.Url), resolved.Variants);
+                        resolved.Playlist = new OnlineCinemaPlaylist
                         {
-                            resolved.Variants[kv.Key] = kv.Value;
-                        }
-
+                            Voiceovers =
+                            [
+                                new OnlineCinemaLeaf
+                                {
+                                    Label = resolved.Label,
+                                    Origin = resolved.Url,
+                                    ResolvedUrl = resolved.Url
+                                }
+                            ]
+                        };
+                        resolved.Label = "поток";
                         _logger.LogInformation(
                             "Онлайн-кинотеатр: поток получен для {Url} (кликов: {Clicks}), вариантов {Variants}: {Hit}",
                             pageUrl, clicked, resolved.Variants.Count, hit.Url.Length > 100 ? hit.Url[..100] : hit.Url);

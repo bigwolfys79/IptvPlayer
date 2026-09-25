@@ -86,6 +86,103 @@ public partial class PlayerViewModel : ObservableObject
     public ChannelViewModel? VodChannel => _vodChannel;
 
 
+    // Online cinema: season/episode/voiceover tree for the picker combos
+    public Services.OnlineCinemaPlaylist? OnlineCinemaPlaylist { get; private set; }
+
+    public int OcSeasonIndex { get; private set; } = -1;
+
+    public int OcEpisodeIndex { get; private set; } = -1;
+
+    public int OcVoiceoverIndex { get; private set; } = -1;
+
+    private Services.IOnlineCinemaStreamResolver _onlineCinemaResolver;
+
+    // Switches season/episode/voiceover (-1 = keep the current one) and plays
+    // the leaf: lazy api resolution, quality = maximum rendition, position
+    // preserved when only the voiceover changes
+    public async Task PlayOnlineCinemaLeafAsync(int seasonIndex, int episodeIndex, int voiceoverIndex)
+    {
+        var playlist = OnlineCinemaPlaylist;
+        if (playlist == null || _vodChannel == null || !IsVodPlaying)
+        {
+            return;
+        }
+
+        seasonIndex = seasonIndex < 0 ? OcSeasonIndex : seasonIndex;
+        episodeIndex = episodeIndex < 0 ? OcEpisodeIndex : episodeIndex;
+        voiceoverIndex = voiceoverIndex < 0 ? OcVoiceoverIndex : voiceoverIndex;
+
+        Services.OnlineCinemaLeaf? leaf;
+        if (playlist.Seasons is { Count: > 0 } seasons)
+        {
+            if (seasonIndex < 0 || seasonIndex >= seasons.Count ||
+                episodeIndex < 0 || episodeIndex >= seasons[seasonIndex].Episodes.Count ||
+                voiceoverIndex < 0 || voiceoverIndex >= seasons[seasonIndex].Episodes[episodeIndex].Voiceovers.Count)
+            {
+                return;
+            }
+
+            leaf = seasons[seasonIndex].Episodes[episodeIndex].Voiceovers[voiceoverIndex];
+        }
+        else if (playlist.Voiceovers is { Count: > 0 } voiceovers &&
+                 voiceoverIndex >= 0 && voiceoverIndex < voiceovers.Count)
+        {
+            leaf = voiceovers[voiceoverIndex];
+        }
+        else
+        {
+            return;
+        }
+
+        var sameEpisode = playlist.Seasons != null &&
+                          seasonIndex == OcSeasonIndex && episodeIndex == OcEpisodeIndex;
+        var resume = sameEpisode && Player is { } current ? current.Position : TimeSpan.Zero;
+        OcSeasonIndex = seasonIndex;
+        OcEpisodeIndex = episodeIndex;
+        OcVoiceoverIndex = voiceoverIndex;
+
+        IsBuffering = true;
+        Services.OnlineCinemaStream? resolved;
+        try
+        {
+            resolved = leaf.ResolvedUrl != null
+                ? new Services.OnlineCinemaStream { Url = leaf.ResolvedUrl }
+                : await _onlineCinemaResolver.ResolveLeafAsync(leaf.Origin, leaf.Data, leaf.EmbedUrl);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: резолв листа не удался.");
+            StreamError = Services.L.T("OnlineCinema_Resolv_Fail");
+            return;
+        }
+        finally
+        {
+            IsBuffering = false;
+        }
+
+        if (resolved == null)
+        {
+            StreamError = Services.L.T("OnlineCinema_Resolv_Fail");
+            return;
+        }
+
+        if (leaf.ResolvedUrl == null)
+        {
+            leaf.ResolvedUrl = resolved.Url;
+        }
+
+        var quality = resolved.Variants.Keys
+            .Where(k => k.EndsWith('p') && int.TryParse(k[..^1], out _))
+            .OrderByDescending(k => int.Parse(k[..^1]))
+            .FirstOrDefault();
+        var url = quality != null ? resolved.Variants[quality] : resolved.Url;
+        await StartPlaybackAsync(_vodChannel, url, archiveEntry: null, isVod: true,
+            vodVariants: resolved.Variants.Count > 0 ? resolved.Variants : null,
+            vodQuality: quality, resumePosition: resume > TimeSpan.Zero ? resume : null,
+            onlineCinemaPlaylist: playlist);
+    }
+
+
     public async Task PlayVodEpisodeAsync(int index)
     {
         if (!IsVodPlaying || _vodChannel == null ||
@@ -358,10 +455,12 @@ public partial class PlayerViewModel : ObservableObject
 
     public event EventHandler? ArchiveStateChanged;
 
-    public PlayerViewModel(IStreamService streamService, ISettingsService settingsService, ILogger<PlayerViewModel> logger)
+    public PlayerViewModel(IStreamService streamService, ISettingsService settingsService,
+        Services.IOnlineCinemaStreamResolver onlineCinemaResolver, ILogger<PlayerViewModel> logger)
     {
         _streamService = streamService;
         _settingsService = settingsService;
+        _onlineCinemaResolver = onlineCinemaResolver;
         _logger = logger;
     }
 
@@ -378,7 +477,7 @@ public partial class PlayerViewModel : ObservableObject
     }
 
 
-    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1)
+    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1, Services.OnlineCinemaPlaylist? onlineCinemaPlaylist = null)
     {
 
         Stop();
@@ -445,6 +544,24 @@ public partial class PlayerViewModel : ObservableObject
             CurrentPlayerChannelId = channel.Id;
             IsArchivePlaying = archiveEntry != null;
             IsVodPlaying = isVod && archiveEntry == null;
+            OnlineCinemaPlaylist = isVod ? onlineCinemaPlaylist : null;
+            if (OnlineCinemaPlaylist != null)
+            {
+                // New film resets the tree position; a leaf switch keeps it
+                // (indexes are already set by PlayOnlineCinemaLeafAsync)
+                if (!ReferenceEquals(_vodChannel, channel))
+                {
+                    OcSeasonIndex = 0;
+                    OcEpisodeIndex = 0;
+                    OcVoiceoverIndex = 0;
+                }
+                else
+                {
+                    OcSeasonIndex = Math.Max(0, OcSeasonIndex);
+                    OcEpisodeIndex = Math.Max(0, OcEpisodeIndex);
+                    OcVoiceoverIndex = Math.Max(0, OcVoiceoverIndex);
+                }
+            }
 
             if (IsVodPlaying)
             {

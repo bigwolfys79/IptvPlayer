@@ -116,7 +116,7 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
 • Видео-каталог из m3u-плейлиста: постеры, жанры, годы
 
-• Онлайн кинотеатр: каталог фильмов, поток по клику
+• Онлайн кинотеатр: каталог фильмов, выбор сезона, серии и озвучки
 
 • Программа передач XMLTV, напоминания о передачах
 
@@ -1381,6 +1381,12 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
+  <data name="Ozvuchka" xml:space="preserve">
+
+    <value>Озвучка</value>
+
+  </data>
+
   <data name="OnlineCinema_Toggle" xml:space="preserve">
 
     <value>Онлайн кинотеатр</value>
@@ -1389,6 +1395,16 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="OnlineCinema_Toggle_Hint" xml:space="preserve">
 
     <value>Отключение скрывает каталог и останавливает всю фоновую загрузку</value>
+
+  </data>
+  <data name="OnlineCinema_List_Refresh" xml:space="preserve">
+
+    <value>Обновление списка во время просмотра, минут</value>
+
+  </data>
+  <data name="OnlineCinema_List_Refresh_Hint" xml:space="preserve">
+
+    <value>Как часто список каталога перечитывается из базы при фоновом сборе (0 — не обновлять). Фильтры и выделение играющего фильма сохраняются.</value>
 
   </data>
   <data name="OnlineCinema_Otklyuchen" xml:space="preserve">

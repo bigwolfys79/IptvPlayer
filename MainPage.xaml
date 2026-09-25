@@ -567,6 +567,11 @@
                               Visibility="Collapsed"
                               SelectionChanged="VodEpisodeCombo_SelectionChanged"
                               x:Uid="Seriya" />
+                    <ComboBox x:Name="WindowedVodVoiceoverCombo"
+                              Width="150" FontSize="12" Height="30" VerticalAlignment="Center"
+                              Visibility="Collapsed"
+                              SelectionChanged="VodVoiceoverCombo_SelectionChanged"
+                              x:Uid="Ozvuchka" />
                     <Button x:Name="WindowedVodQualityButton"
                             x:Uid="Avto" FontSize="12" Padding="12,4" MinWidth="56" MinHeight="30" VerticalAlignment="Center"
                             Visibility="Collapsed"
@@ -1116,6 +1121,11 @@
                               Visibility="Collapsed"
                               SelectionChanged="VodEpisodeCombo_SelectionChanged"
                               x:Uid="Seriya" />
+                    <ComboBox x:Name="OverlayVodVoiceoverCombo"
+                              Width="170" FontSize="13" Height="34" VerticalAlignment="Center"
+                              Visibility="Collapsed"
+                              SelectionChanged="VodVoiceoverCombo_SelectionChanged"
+                              x:Uid="Ozvuchka" />
                     <Button x:Name="OverlayVodQualityButton"
                             x:Uid="Avto" FontSize="13" Padding="12,4" MinWidth="56" MinHeight="34" VerticalAlignment="Center"
                             Visibility="Collapsed"

@@ -130,6 +130,10 @@ namespace IptvPlayer.Dialogs
             OnlineCinemaToggle.Toggled += OnlineCinemaToggle_Toggled;
             OnlineCinemaHint.Text = L.T("OnlineCinema_Toggle_Hint");
 
+            OnlineCinemaRefreshHeader.Text = L.T("OnlineCinema_List_Refresh");
+            OnlineCinemaRefreshHint.Text = L.T("OnlineCinema_List_Refresh_Hint");
+            OnlineCinemaRefreshBox.Value = settings.OnlineCinemaListRefreshMinutes;
+
             ShowHubOnStartupToggle.Toggled -= ShowHubOnStartupToggle_Toggled;
             ShowHubOnStartupToggle.IsOn = settings.ShowHubOnStartup;
             ShowHubOnStartupToggle.Header = L.T("Pokazyvat_Glavnoe_Menyu_Pri_Zapuske");
@@ -192,6 +196,9 @@ namespace IptvPlayer.Dialogs
             {
                 appSettings.SleepTimerAction = sleepAction;
             }
+
+            appSettings.OnlineCinemaListRefreshMinutes =
+                (int)Math.Clamp(OnlineCinemaRefreshBox.Value, 0, 1440);
 
             await _settingsService.SaveAsync(appSettings);
 

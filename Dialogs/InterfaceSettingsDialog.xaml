@@ -67,6 +67,11 @@
                     <ToggleSwitch x:Name="OnlineCinemaToggle" HorizontalAlignment="Left" Toggled="OnlineCinemaToggle_Toggled"/>
                     <TextBlock x:Name="OnlineCinemaHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="OnlineCinemaRefreshHeader" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="OnlineCinemaRefreshHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <NumberBox x:Name="OnlineCinemaRefreshBox" MinWidth="180" HorizontalAlignment="Left"
+                               Minimum="0" Maximum="1440" SpinButtonPlacementMode="Compact" SmallChange="5"/>
                 </StackPanel>
 
             </StackPanel>

@@ -75,10 +75,11 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" (for the selected category or all categories in turn)
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network
 - On every open, category first pages older than 6 hours refresh in the background — new films join the catalog automatically
+- While a film is playing, background collection deepens the catalog by one page every ~2 minutes; the visible list is re-read from the DB at most once per the configured interval ("List refresh during playback" setting, 60 minutes by default, 0 — never) — group, genre, year filters and the playing item's selection are preserved across refreshes
 - Selecting a year re-requests the site's first page for that year (the `/xfsearch/god/<year>/` path) and adds it under the "year N" pseudo-category
 - The stream link is not stored; it is resolved at the moment a movie starts (CDN links carry a date-bound token and expire). A hidden built-in WebView2 does the work — it also keeps the site clearance (Cloudflare). The whole process is invisible: the browser window never appears (not in the taskbar, not in Alt-Tab); if the site demands an unsolvable challenge, the resolution fails with an error message in the UI
 - VOD-style playback: pause, "Resume playback" dialog, seeking; the maximum rendition of the master playlist is selected by default (or the "Preferred quality" from settings when set), all renditions are available in the quality picker
-- Voiceover track selection (dub, multi-voice tracks, etc.) — a combo box in the player next to the quality picker; the first track is the default; each track's stream and renditions are resolved up front
+- Series: season, episode and voiceover pickers as combo boxes in the player next to the quality picker (films get the voiceover one only); season 1 / episode 1 / first track by default; switching keeps the playback position when only the voiceover changes
 - Requires the WebView2 Runtime (usually preinstalled on Windows 10/11)
 
 ### Interface
