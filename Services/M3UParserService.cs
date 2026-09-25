@@ -301,7 +301,7 @@ namespace IptvPlayer.Services
 
         // Closed set of catalog genres; anything else (site prefixes, movie
         // titles in series groups) must not leak into the genre filter
-        private static readonly HashSet<string> KnownGenres = new(StringComparer.OrdinalIgnoreCase)
+        internal static readonly HashSet<string> KnownGenres = new(StringComparer.OrdinalIgnoreCase)
         {
             "все фильмы", "новинки", "боевик", "биография", "вестерн", "военный",
             "детектив", "детский", "документальные", "драма", "исторические",

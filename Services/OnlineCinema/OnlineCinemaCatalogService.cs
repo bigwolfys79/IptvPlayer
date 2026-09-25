@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,11 +12,15 @@ namespace IptvPlayer.Services;
 // Orchestrates catalog loading for the online cinema: first sync loads page 1 of
 // every category, later opens refresh stale first pages in the background (new
 // films appear on page 1), deeper pages load on demand as the user scrolls.
+// Pages are fetched over plain HTTP (the site WAF passes in-site-looking
+// requests — verified live); the hidden WebView2 is only a fallback.
 // All methods must be called on the UI thread (WebView2 requirement).
 public class OnlineCinemaCatalogService
 {
     private const int Page1RefreshHours = 6;
     private const int PauseBetweenPagesMs = 2000;
+
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     private readonly ICatalogDatabaseService _db;
     private readonly OnlineCinemaBrowserService _browser;
@@ -35,14 +40,92 @@ public class OnlineCinemaCatalogService
 
     public static string YearCategoryKey(int year) => $"год {year}";
 
+    // Pure-HTTP page fetch: null means "not usable" (challenge/403/empty) — the
+    // caller falls back to the hidden WebView2. curl.exe goes first (its TLS
+    // passes the WAF where .NET gets challenged), plain HttpClient is the
+    // second tier, the hidden WebView2 the last one
+    private async Task<(List<OnlineCinemaItem> Items, int TotalPages)?> TryLoadPageHttpAsync(
+        string url, string category, CancellationToken ct)
+    {
+        if (!KinogoSite.IsValidPageUrl(url))
+        {
+            return null;
+        }
+
+        foreach (var viaCurl in new[] { true, false })
+        {
+            string? html;
+            if (viaCurl)
+            {
+                if (!await CurlHttp.GetAvailabilityAsync())
+                {
+                    continue;
+                }
+
+                var result = await CurlHttp.GetAsync(url, KinogoSite.BaseUrl + "/", iframe: false, ct);
+                html = result is { Status: 200 } ? result.Body : null;
+            }
+            else
+            {
+                try
+                {
+                    using var msg = new HttpRequestMessage(HttpMethod.Get, url);
+                    KinogoSite.ApplyBrowserHeaders(msg);
+                    using var resp = await Http.SendAsync(msg, ct);
+                    html = resp.IsSuccessStatusCode ? await resp.Content.ReadAsStringAsync(ct) : null;
+                }
+                catch (Exception)
+                {
+                    html = null;
+                }
+            }
+
+            if (html == null || KinogoSite.LooksLikeChallenge(html))
+            {
+                continue;
+            }
+
+            var (items, total) = KinogoSite.ParseCategoryPageHtml(html, category);
+            if (items.Count > 0)
+            {
+                return (items, total);
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<List<OnlineCinemaItem>> SavePageAsync(
+        string category, int page, List<OnlineCinemaItem> items, int total)
+    {
+        await _db.UpsertItemsAsync(KinogoSite.Id, items);
+        await _db.SavePageInfoAsync(KinogoSite.Id, new OnlineCinemaPageInfo
+        {
+            Category = category,
+            PageNumber = page,
+            TotalPages = total
+        });
+
+        Progress?.Invoke($"{category}: страница {page}{(total > 0 ? $" из {total}" : "")}");
+        _logger.LogInformation("Онлайн-кинотеатр: {Category} стр. {Page} — {Count} карточек, всего страниц {Total}.",
+            category, page, items.Count, total);
+        return items;
+    }
+
     public async Task<List<OnlineCinemaItem>> LoadCategoryPageAsync(string category, int page, CancellationToken ct = default)
     {
+        var url = KinogoSite.CategoryUrl(category, page);
+        var httpResult = await TryLoadPageHttpAsync(url, category, ct);
+        if (httpResult != null)
+        {
+            return await SavePageAsync(category, page, httpResult.Value.Items, httpResult.Value.TotalPages);
+        }
+
         if (!_browser.IsInitialized)
         {
             await _browser.InitializeAsync();
         }
 
-        var url = KinogoSite.CategoryUrl(category, page);
         if (!await _browser.NavigateAsync(url, ct))
         {
             throw new InvalidOperationException($"Не удалось открыть страницу каталога: {url}");
@@ -63,18 +146,7 @@ public class OnlineCinemaCatalogService
         }
 
         var total = result.TryGetProperty("total", out var t) && t.TryGetInt32(out var tp) ? tp : 0;
-        await _db.UpsertItemsAsync(KinogoSite.Id, items);
-        await _db.SavePageInfoAsync(KinogoSite.Id, new OnlineCinemaPageInfo
-        {
-            Category = category,
-            PageNumber = page,
-            TotalPages = total
-        });
-
-        Progress?.Invoke($"{category}: страница {page}{(total > 0 ? $" из {total}" : "")}");
-        _logger.LogInformation("Онлайн-кинотеатр: {Category} стр. {Page} — {Count} карточек, всего страниц {Total}.",
-            category, page, items.Count, total);
-        return items;
+        return await SavePageAsync(category, page, items, total);
     }
 
     // Called when the source opens: page 1 of every category is (re)loaded when
@@ -144,12 +216,19 @@ public class OnlineCinemaCatalogService
         }
     }
 
-    // Site-side year selection: sets the session year filter (the first page of a
-    // category is different per year), fetches its page 1 into a pseudo-category.
-    // The session filter persists on the site side — subsequent page loads of any
-    // category return that year's content, which is why the page marker is scoped.
+    // Site-side year listing: /xfsearch/god/<year>/ is fetched over plain HTTP
+    // and stored under the "год N" pseudo-category. The site's first page
+    // differs per year, so the year is re-requested rather than only filtered
+    // locally. Browser fallback for when the WAF blocks plain HTTP
     public async Task<List<OnlineCinemaItem>?> SyncYearAsync(int year, CancellationToken ct = default)
     {
+        var yearCategory = YearCategoryKey(year);
+        var httpResult = await TryLoadPageHttpAsync(KinogoSite.YearUrl(year), yearCategory, ct);
+        if (httpResult != null)
+        {
+            return await SavePageAsync(yearCategory, 1, httpResult.Value.Items, httpResult.Value.TotalPages);
+        }
+
         if (!_browser.IsInitialized)
         {
             await _browser.InitializeAsync();
@@ -166,7 +245,7 @@ public class OnlineCinemaCatalogService
         await _browser.RunScriptJsonAsync(js, ct);
         await Task.Delay(1500, ct);
 
-        return await LoadCategoryPageAsync(YearCategoryKey(year), 1, ct);
+        return await LoadCategoryPageAsync(yearCategory, 1, ct);
     }
 
     private int JitteredPause() => PauseBetweenPagesMs + _random.Next(0, 1200);

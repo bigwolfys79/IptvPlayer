@@ -732,8 +732,9 @@ public sealed partial class MainPage : Page
                 ?? ViewModel.AppSettings.Playlists
                     .FirstOrDefault(p => p.Id == ViewModel.AppSettings.ActivePlaylistId)
                 ?? ViewModel.AppSettings.Playlists.FirstOrDefault();
-            Serilog.Log.Information("InitializeAsync: _activePlaylist Id={Id} Name={Name} IsPortal={IsPortal}",
-                _activePlaylist?.Id ?? -1, _activePlaylist?.Name ?? "NULL", _activePlaylist?.IsPortal ?? false);
+            Serilog.Log.Information("InitializeAsync: _activePlaylist Id={Id} Name={Name} Type={Type} IsPortal={IsPortal}",
+                _activePlaylist?.Id ?? -1, _activePlaylist?.Name ?? "NULL", _activePlaylist?.Type ?? "NULL",
+                _activePlaylist?.IsPortal ?? false);
             if (_activePlaylist != null)
             {
                 ViewModel.AppSettings.ActivePlaylistId = _activePlaylist.Id;

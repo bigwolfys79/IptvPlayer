@@ -45,4 +45,19 @@ public class OnlineCinemaStream
     // Renditions parsed from the master playlist ("1080p" -> url, "Авто" -> master);
     // empty when the resolved link is a media playlist
     public Dictionary<string, string> Variants { get; } = new();
+
+    // Voiceover/episode tracks of the embed playlist (first = default); each
+    // carries its own master link and renditions
+    public List<OnlineCinemaTrack> Tracks { get; } = new();
+}
+
+
+// One voiceover/episode track resolved from the cinemar playlist
+public class OnlineCinemaTrack
+{
+    public string Label { get; set; } = string.Empty;
+
+    public string Url { get; set; } = string.Empty;
+
+    public Dictionary<string, string> Variants { get; } = new();
 }

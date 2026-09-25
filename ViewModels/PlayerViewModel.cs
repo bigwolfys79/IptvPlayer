@@ -97,9 +97,20 @@ public partial class PlayerViewModel : ObservableObject
         var episode = _vodEpisodes[index];
         _logger.LogInformation("VOD: серия {Current} → {Next} («{Title}»).",
             CurrentVodEpisodeIndex + 1, index + 1, episode.Title);
+        // Carry the current quality over; if the new episode lacks it, the
+        // maximum rendition beats the master (FFmpeg's own default is lowest)
+        var quality = CurrentVodQuality;
+        if (quality == null || (episode.Variants.Count > 0 && !episode.Variants.ContainsKey(quality)))
+        {
+            quality = episode.Variants.Keys
+                .Where(k => k.EndsWith('p') && int.TryParse(k[..^1], out _))
+                .OrderByDescending(k => int.Parse(k[..^1]))
+                .FirstOrDefault();
+        }
+
         await StartPlaybackAsync(_vodChannel, episode.StreamUrl, archiveEntry: null, isVod: true,
             vodVariants: episode.Variants.Count > 0 ? episode.Variants : null,
-            vodQuality: CurrentVodQuality,
+            vodQuality: quality,
             vodEpisodes: _vodEpisodes, vodEpisodeIndex: index);
     }
 

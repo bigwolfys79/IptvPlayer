@@ -71,12 +71,14 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 
 ### Online cinema
 - "Online cinema" playlist type: the movie catalog is taken directly from the website — poster grid, search, genre and year filters, category selection
+- Everything runs without a browser: requests go through the system `curl.exe` (its TLS fingerprint passes the site protection, unlike .NET), the hidden WebView2 remains a fallback and is not started by default
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" (for the selected category or all categories in turn)
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network
 - On every open, category first pages older than 6 hours refresh in the background — new films join the catalog automatically
-- Selecting a year applies the site-side year filter (same as the external parser) and the result is added under the "year N" pseudo-category
+- Selecting a year re-requests the site's first page for that year (the `/xfsearch/god/<year>/` path) and adds it under the "year N" pseudo-category
 - The stream link is not stored; it is resolved at the moment a movie starts (CDN links carry a date-bound token and expire). A hidden built-in WebView2 does the work — it also keeps the site clearance (Cloudflare). The whole process is invisible: the browser window never appears (not in the taskbar, not in Alt-Tab); if the site demands an unsolvable challenge, the resolution fails with an error message in the UI
 - VOD-style playback: pause, "Resume playback" dialog, seeking; the maximum rendition of the master playlist is selected by default (or the "Preferred quality" from settings when set), all renditions are available in the quality picker
+- Voiceover track selection (dub, multi-voice tracks, etc.) — a combo box in the player next to the quality picker; the first track is the default; each track's stream and renditions are resolved up front
 - Requires the WebView2 Runtime (usually preinstalled on Windows 10/11)
 
 ### Interface

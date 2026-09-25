@@ -304,16 +304,26 @@ public partial class MainPageViewModel
             }
 
             // Default to the best rendition (FFmpeg's own master choice is the
-            // lowest one); the picker keeps every rendition plus "Авто"
+            // lowest one); the picker keeps every rendition plus "Авто".
+            // Multiple voiceover tracks become the episode picker list
             Dictionary<string, string>? variants = null;
             string? quality = null;
-            if (resolved is { Variants.Count: > 0 })
+            List<PortalEpisode>? vodEpisodes = null;
+            var track = resolved?.Tracks.FirstOrDefault();
+            if (track != null)
             {
-                variants = resolved.Variants;
+                variants = track.Variants;
                 quality = PickDefaultVodQuality(variants);
-                if (quality != null)
+                playUrl = quality != null ? variants[quality] : track.Url;
+
+                if (resolved!.Tracks.Count > 1)
                 {
-                    playUrl = variants[quality];
+                    vodEpisodes = resolved.Tracks.Select(t => new PortalEpisode
+                    {
+                        Title = t.Label,
+                        StreamUrl = t.Url,
+                        Variants = t.Variants
+                    }).ToList();
                 }
             }
 
@@ -321,7 +331,8 @@ public partial class MainPageViewModel
                 ? await OfferVodResumeAsync(channel.Name, -1)
                 : null;
             await Player.StartPlaybackAsync(channel, playUrl, archiveEntry: null,
-                isVod: true, vodVariants: variants, vodQuality: quality, resumePosition: cinemaResume);
+                isVod: true, vodVariants: variants, vodQuality: quality, resumePosition: cinemaResume,
+                vodEpisodes: vodEpisodes, vodEpisodeIndex: 0);
             return true;
         }
 
