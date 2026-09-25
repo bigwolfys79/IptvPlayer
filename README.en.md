@@ -70,7 +70,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - A catalog from a local file reloads itself when the file changes (regardless of the playlist refresh period); for URL playlists only the settings period applies
 
 ### Online cinema
-- "Online cinema" playlist type: the movie catalog is taken directly from the source website — poster grid, search, genre and year filters, category selection
+- "Online cinema" playlist type: the movie catalog is taken directly from the source website — poster grid, search, genre and year filters, Movies/Series groups and favorites
 - Everything runs without a browser: requests go through the system `curl.exe` (its TLS fingerprint passes the site protection, unlike .NET), the hidden WebView2 remains a fallback and is not started by default
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" (for the selected category or all categories in turn)
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network

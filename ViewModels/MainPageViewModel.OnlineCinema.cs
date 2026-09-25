@@ -43,11 +43,18 @@ public partial class MainPageViewModel
     }
 
 
+    // Coarse group for the category combo: series by their page path,
+    // everything else is a film. Site genres stay in Genre (multi-genre aware)
+    internal static string GroupForItem(OnlineCinemaItem item) =>
+        item.PageUrl.Contains("/serialy/", StringComparison.OrdinalIgnoreCase)
+            ? L.T("OnlineCinema_Group_Serials")
+            : L.T("OnlineCinema_Group_Films");
+
     internal static ChannelViewModel ItemToChannel(OnlineCinemaItem item) => new()
     {
         Name = item.Title,
         LogoUrl = item.PosterUrl,
-        Group = item.Category,
+        Group = GroupForItem(item),
         PageUrl = item.PageUrl,
         Description = item.Description,
         Year = item.Year,

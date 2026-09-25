@@ -1369,6 +1369,18 @@ Serilog (логирование), Inno Setup (установщик)</value>
   </data>
 
 
+  <data name="OnlineCinema_Group_Films" xml:space="preserve">
+
+    <value>Фильмы</value>
+
+  </data>
+
+  <data name="OnlineCinema_Group_Serials" xml:space="preserve">
+
+    <value>Сериалы</value>
+
+  </data>
+
   <data name="OnlineCinema_Toggle" xml:space="preserve">
 
     <value>Онлайн кинотеатр</value>
