@@ -48,9 +48,9 @@ public class OnlineCinemaCatalogService
 
     private int _backgroundCursor;
 
-    // Called from the playback timer (~every 2 minutes): deepens the catalog by
-    // one page, round-robin over categories that already have a first page.
-    // Returns true when a page was loaded
+    // Called from the playback timer (~every 2 minutes): deepens the "все фильмы"
+    // category by one page — background collection never touches other
+    // categories. Returns true when a page was loaded
     public async Task<bool> SyncNextBackgroundPageAsync(CancellationToken ct = default)
     {
         if (_syncActive)
@@ -61,43 +61,25 @@ public class OnlineCinemaCatalogService
         _syncActive = true;
         try
         {
-            var categories = KinogoSite.Categories.Keys.ToList();
-            var pages = await _db.GetLoadedPagesAsync(KinogoSite.Id);
-            for (var n = 0; n < categories.Count; n++)
+            var category = KinogoSite.Categories.Keys.First();
+            var categoryPages = (await _db.GetLoadedPagesAsync(KinogoSite.Id))
+                .Where(p => p.Category == category)
+                .ToList();
+            if (categoryPages.Count == 0)
             {
-                ct.ThrowIfCancellationRequested();
-                var category = categories[(_backgroundCursor + n) % categories.Count];
-                var categoryPages = pages.Where(p => p.Category == category).ToList();
-                if (categoryPages.Count == 0)
-                {
-                    continue; // category not started — the first sync owns it
-                }
-
-                var next = categoryPages.Max(p => p.PageNumber) + 1;
-                var total = categoryPages.Max(p => p.TotalPages);
-                if (total > 0 && next > total)
-                {
-                    continue; // exhausted
-                }
-
-                try
-                {
-                    await LoadCategoryPageAsync(category, next, ct);
-                    _backgroundCursor = (categories.IndexOf(category) + 1) % categories.Count;
-                    return true;
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Онлайн-кинотеатр: фоновая догрузка {Category} стр. {Page} не удалась.",
-                        category, next);
-                }
+                return false; // not started — the first sync owns it
             }
 
-            return false;
+            var next = categoryPages.Max(p => p.PageNumber) + 1;
+            var total = categoryPages.Max(p => p.TotalPages);
+            if (total > 0 && next > total)
+            {
+                return false; // exhausted
+            }
+
+            await LoadCategoryPageAsync(category, next, ct);
+            _backgroundCursor = (_backgroundCursor + 1) % Math.Max(1, total);
+            return true;
         }
         finally
         {

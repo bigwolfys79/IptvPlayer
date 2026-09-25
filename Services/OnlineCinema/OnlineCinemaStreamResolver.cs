@@ -194,6 +194,11 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 }
             }
 
+            if (body == null)
+            {
+                return null;
+            }
+
             using var doc = JsonDocument.Parse(body);
             var file = doc.RootElement.TryGetProperty("file", out var f) ? f.GetString() : null;
             return string.IsNullOrWhiteSpace(file) ? null : file;
