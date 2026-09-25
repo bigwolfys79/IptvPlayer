@@ -116,6 +116,8 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
 • Видео-каталог из m3u-плейлиста: постеры, жанры, годы
 
+• Онлайн кинотеатр: каталог с сайта, поток по клику
+
 • Программа передач XMLTV, напоминания о передачах
 
 • Запись каналов и передач (ffmpeg, до 3 параллельных)
@@ -1363,6 +1365,42 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="Videokatalog_M3U_Lbl" xml:space="preserve">
 
     <value>Видео-каталог (m3u)</value>
+
+  </data>
+
+  <data name="OnlineCinema_Tip_Lbl" xml:space="preserve">
+
+    <value>Онлайн кинотеатр</value>
+
+  </data>
+
+  <data name="OnlineCinema_Url_Placeholder" xml:space="preserve">
+
+    <value>URL сайта (по умолчанию)</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Text.Text" xml:space="preserve">
+
+    <value>Загрузить ещё страницу каталога</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Button.Content" xml:space="preserve">
+
+    <value>Загрузить</value>
+
+  </data>
+
+  <data name="OnlineCinema_Zagruzka_Kataloga" xml:space="preserve">
+
+    <value>Загрузка каталога онлайн-кинотеатра…</value>
+
+  </data>
+
+  <data name="OnlineCinema_Resolv_Fail" xml:space="preserve">
+
+    <value>Не удалось получить ссылку на поток — попробуйте ещё раз.</value>
 
   </data>
 

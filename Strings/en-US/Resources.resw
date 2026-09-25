@@ -116,6 +116,8 @@ Serilog (logging), Inno Setup (installer)</value>
 
 • Video catalog from an m3u playlist: posters, genres, years
 
+• Online cinema: on-site catalog, stream on demand
+
 • XMLTV programme guide, programme reminders
 
 • Channel/programme recording (ffmpeg, up to 3 parallel)
@@ -1363,6 +1365,42 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Videokatalog_M3U_Lbl" xml:space="preserve">
 
     <value>Video catalog (m3u)</value>
+
+  </data>
+
+  <data name="OnlineCinema_Tip_Lbl" xml:space="preserve">
+
+    <value>Online cinema</value>
+
+  </data>
+
+  <data name="OnlineCinema_Url_Placeholder" xml:space="preserve">
+
+    <value>Site URL (by default)</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Text.Text" xml:space="preserve">
+
+    <value>Load another catalog page</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Button.Content" xml:space="preserve">
+
+    <value>Load</value>
+
+  </data>
+
+  <data name="OnlineCinema_Zagruzka_Kataloga" xml:space="preserve">
+
+    <value>Loading the online cinema catalog…</value>
+
+  </data>
+
+  <data name="OnlineCinema_Resolv_Fail" xml:space="preserve">
+
+    <value>Could not resolve the stream link — please try again.</value>
 
   </data>
 

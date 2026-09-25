@@ -66,6 +66,7 @@ public partial class MainPageViewModel
     public void SetPortalInfo(PlaylistSource source, List<PortalGenreFilter> genres, List<PortalYearFilter> years, List<PortalCategoryInfo> categories)
     {
         PortalSource = source;
+        SetOnlineCinemaSource(false);
         _portalGenreFilters = genres;
         _portalYearFilters = years;
         _portalCategories = categories;
@@ -132,6 +133,7 @@ public partial class MainPageViewModel
         _portalCategoryIdsByFid.Clear();
         _isPortalSource = false;
         SetVodSource(false);
+        SetOnlineCinemaSource(false);
 
         _suppressFilterLoad = true;
         try

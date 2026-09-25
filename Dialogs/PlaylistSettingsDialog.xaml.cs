@@ -132,6 +132,7 @@ namespace IptvPlayer.Dialogs
             PlaylistTypeCombo.Items.Clear();
             PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Pleylist_M3U_M3U8"), Tag = "m3u" });
             PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Videokatalog_M3U_Lbl"), Tag = "m3u-vod" });
+            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("OnlineCinema_Tip_Lbl"), Tag = "online-cinema" });
             PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Video_Portal"), Tag = "portal" });
             PlaylistTypeCombo.SelectedIndex = 0;
             UpdatePlaylistTypeUi();
@@ -456,10 +457,16 @@ namespace IptvPlayer.Dialogs
         private async void AddPlaylistButton_Click(object sender, RoutedEventArgs e)
         {
             var url = PlaylistUrlBox.Text.Trim();
-            if (string.IsNullOrEmpty(url))
+            var isOnlineCinema = SelectedPlaylistType == "online-cinema";
+            if (string.IsNullOrEmpty(url) && !isOnlineCinema)
             {
                 SetPlaylistStatus(L.T("Vvedite_URL_Pleylista"));
                 return;
+            }
+
+            if (isOnlineCinema && string.IsNullOrEmpty(url))
+            {
+                url = Services.KinogoSite.BaseUrl;
             }
 
             var isPortal = IsPortalTypeSelected;
@@ -496,11 +503,14 @@ namespace IptvPlayer.Dialogs
         private void UpdatePlaylistTypeUi()
         {
             var isPortal = IsPortalTypeSelected;
+            var isOnlineCinema = SelectedPlaylistType == "online-cinema";
             PortalKeyBox.Visibility = isPortal ? Visibility.Visible : Visibility.Collapsed;
-            AddPlaylistFileButton.Visibility = isPortal ? Visibility.Collapsed : Visibility.Visible;
+            AddPlaylistFileButton.Visibility = isPortal || isOnlineCinema ? Visibility.Collapsed : Visibility.Visible;
             PlaylistUrlBox.PlaceholderText = isPortal
                 ? L.T("Stroka_Portala_Portal_Key_URL_Ili")
-                : L.T("URL_Pleylista_M3U_M3U8_Lbl");
+                : isOnlineCinema
+                    ? L.T("OnlineCinema_Url_Placeholder")
+                    : L.T("URL_Pleylista_M3U_M3U8_Lbl");
         }
 
         private void PlaylistTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

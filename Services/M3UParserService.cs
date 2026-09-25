@@ -334,7 +334,7 @@ namespace IptvPlayer.Services
         }
 
 
-        // "Kinogo / все фильмы / Фильмы / Драма / Комедия" -> ["Драма", "Комедия"]:
+        // "Кинотеатр / все фильмы / Фильмы / Драма / Комедия" -> ["Драма", "Комедия"]:
         // the first three path segments are the structural prefix, the rest are
         // kept only when they match the known genre list
         private static List<string> GenresFromGroupPath(string group)

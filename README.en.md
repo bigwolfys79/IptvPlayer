@@ -64,10 +64,20 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ### Video catalog from an m3u playlist
 - "Video catalog (m3u)" playlist type: a plain m3u with movies opens as a catalog — poster grid, search, genre and year filters
 - The m3u parser reads `tvg-year` (year) and `tvg-genre` (genres, all values of the list) attributes, plus `#EXTDESC:` descriptions between `#EXTINF` and the link (the "[page: …]" marker is stripped)
-- When `tvg-genre` is absent, genres come from `group-title`: the first three path segments ("Kinogo / all movies / Movies") are skipped, and only segments matching the fixed genre list (drama, comedy, action, animation, etc.) are kept — service segments and series titles never reach the filter; a multi-genre movie appears under the filter of each of its genres
+- When `tvg-genre` is absent, genres come from `group-title`: the first three path segments ("Cinema / all movies / Movies") are skipped, and only segments matching the fixed genre list (drama, comedy, action, animation, etc.) are kept — service segments and series titles never reach the filter; a multi-genre movie appears under the filter of each of its genres
 - Category selection is the genre filter (the group list is hidden, like the portal); VOD-style playback: pause, "Resume playback" dialog, seeking, quality selection from the master playlist
 - Logos (`tvg-logo`) and groups (`group-title`) work as in a regular playlist
 - A catalog from a local file reloads itself when the file changes (regardless of the playlist refresh period); for URL playlists only the settings period applies
+
+### Online cinema
+- "Online cinema" playlist type: the movie catalog is taken directly from the website — poster grid, search, genre and year filters, category selection
+- First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" (for the selected category or all categories in turn)
+- The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network
+- On every open, category first pages older than 6 hours refresh in the background — new films join the catalog automatically
+- Selecting a year applies the site-side year filter (same as the external parser) and the result is added under the "year N" pseudo-category
+- The stream link is not stored; it is resolved at the moment a movie starts (CDN links carry a date-bound token and expire). A hidden built-in WebView2 does the work — it also keeps the site clearance (Cloudflare). The whole process is invisible: the browser window never appears (not in the taskbar, not in Alt-Tab); if the site demands an unsolvable challenge, the resolution fails with an error message in the UI
+- VOD-style playback: pause, "Resume playback" dialog, seeking; the maximum rendition of the master playlist is selected by default (or the "Preferred quality" from settings when set), all renditions are available in the quality picker
+- Requires the WebView2 Runtime (usually preinstalled on Windows 10/11)
 
 ### Interface
 - Hub Page — launch screen with "Playlists", "Portal", "Settings" cards

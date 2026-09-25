@@ -42,6 +42,12 @@ public sealed partial class MainPage : Page
     private async Task<List<ChannelViewModel>> LoadPlaylistChannelsAsync(
         PlaylistSource playlist, System.Threading.CancellationToken ct = default)
     {
+        // Online cinema keeps its own catalog DB — the m3u cache does not apply
+        if (playlist.IsOnlineCinema)
+        {
+            return await LoadOnlineCinemaAsync(playlist, ct);
+        }
+
         var result = new List<ChannelViewModel>();
         var playlistCache = await _playlistCacheService.LoadAsync(playlist.Id);
         var keyHash = string.IsNullOrEmpty(playlist.PortalKey) ? null : ComputeKeyHash(playlist.PortalKey);

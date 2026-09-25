@@ -190,6 +190,10 @@ public partial class App : Application
         services.AddSingleton<LocalStreamProxy>();
         services.AddSingleton<IStreamService, StreamService>();
         services.AddSingleton<IPlaylistCacheService, PlaylistDatabaseService>();
+        services.AddSingleton<ICatalogDatabaseService, CatalogDatabaseService>();
+        services.AddSingleton<OnlineCinemaBrowserService>();
+        services.AddSingleton<OnlineCinemaCatalogService>();
+        services.AddSingleton<IOnlineCinemaStreamResolver, OnlineCinemaStreamResolver>();
         services.AddSingleton<IM3UParserService, M3UParserService>();
         services.AddSingleton<IVideoPortalService, VideoPortalService>();
         services.AddSingleton<IUpdateService, UpdateService>();

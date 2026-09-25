@@ -203,7 +203,7 @@ public partial class MainPageViewModel : ObservableObject
         : Visibility.Collapsed;
 
 
-    public Visibility IsGroupFilterVisible => !_isPortalSource && !_isVodSource
+    public Visibility IsGroupFilterVisible => !_isPortalSource && !_isVodSource || _isOnlineCinemaSource
         ? Visibility.Visible
         : Visibility.Collapsed;
 
@@ -354,16 +354,24 @@ public partial class MainPageViewModel : ObservableObject
         PlayerViewModel player,
         RecordingService recording,
         Services.VodResumeStore vodResumeStore,
+        Services.ICatalogDatabaseService catalogDatabase,
+        Services.OnlineCinemaCatalogService onlineCinemaCatalog,
+        Services.IOnlineCinemaStreamResolver onlineCinemaResolver,
         ILogger<MainPageViewModel> logger)
     {
         _epgViewModel = epgViewModel;
         _settingsService = settingsService;
         _videoPortalService = videoPortalService;
         _vodResumeStore = vodResumeStore;
+        _onlineCinemaDb = catalogDatabase;
+        _onlineCinemaCatalog = onlineCinemaCatalog;
+        _onlineCinemaResolver = onlineCinemaResolver;
         _logger = logger;
         Player = player;
         Recording = recording;
         _selectedChannel = new ChannelViewModel();
+
+        _onlineCinemaCatalog.Progress += text => PlaylistLoadingText = text;
 
         Recording.RecordingsChanged += (s, e) =>
         {
@@ -440,11 +448,16 @@ public partial class MainPageViewModel : ObservableObject
         if (_isPortalSource && PortalSource != null)
         {
             _ = LoadFilteredFromServerAsync();
+            return;
         }
-        else
+
+        // Online cinema: the site's first page differs per year — refresh it
+        if (_isOnlineCinemaSource && int.TryParse(value, out var cinemaYear))
         {
-            FilterChannels();
+            _ = SyncOnlineCinemaYearAsync(cinemaYear);
         }
+
+        FilterChannels();
     }
 
     private void OnChannelsChanged(ObservableCollection<ChannelViewModel> value)

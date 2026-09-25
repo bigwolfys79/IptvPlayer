@@ -108,6 +108,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid Grid.Row="0" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8">
@@ -286,7 +287,17 @@
                     </GridView.ItemTemplate>
                 </GridView>
 
-                <Border Grid.Row="3" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8"
+                            Margin="0,4"
+                            Visibility="{x:Bind ViewModel.IsLoadMoreVisible, Mode=OneWay}">
+                    <ProgressRing Width="16" Height="16" IsActive="True"
+                                  Visibility="{x:Bind ViewModel.IsLoadMoreBusyVisible, Mode=OneWay}" />
+                    <TextBlock x:Uid="OnlineCinema_LoadMore_Text" VerticalAlignment="Center" />
+                    <Button Command="{x:Bind ViewModel.LoadMoreOnlineCinemaCommand, Mode=OneWay}"
+                            x:Uid="OnlineCinema_LoadMore_Button" />
+                </StackPanel>
+
+                <Border Grid.Row="4" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
                                                 <TextBlock x:Name="ChannelCountText" Text="{x:Bind ViewModel.ChannelCountText, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </Border>
             </Grid>

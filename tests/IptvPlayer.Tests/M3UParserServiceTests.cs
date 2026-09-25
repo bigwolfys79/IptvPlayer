@@ -209,7 +209,7 @@ public class M3UParserServiceTests
     public void ParseContent_ExtDescBetweenExtinfAndUrl_FillsDescription()
     {
         var content = "#EXTM3U\n" +
-            "#EXTINF:-1 tvg-year=\"2024\" group-title=\"Kinogo / все фильмы / Фильмы / Драма\",Фильм (2024)\n" +
+            "#EXTINF:-1 tvg-year=\"2024\" group-title=\"Кинотеатр / все фильмы / Фильмы / Драма\",Фильм (2024)\n" +
             "#EXTDESC:Описание фильма. [страница: https://kinogo.online/filmy/1.html]\n" +
             "http://example.com/1.mp4\n";
         var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
@@ -238,7 +238,7 @@ public class M3UParserServiceTests
     public void ParseContent_DeriveGenreFromGroup_SkipsPrefix_KeepsAllSegments()
     {
         var content = "#EXTM3U\n" +
-            "#EXTINF:-1 group-title=\"Kinogo / все фильмы / Фильмы / Новинки / Комедия / Мелодрама\",Фильм\n" +
+            "#EXTINF:-1 group-title=\"Кинотеатр / все фильмы / Фильмы / Новинки / Комедия / Мелодрама\",Фильм\n" +
             "http://example.com/1.mp4\n";
         var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
         Assert.Equal("Новинки, Комедия, Мелодрама", ch.Genre);
@@ -248,7 +248,7 @@ public class M3UParserServiceTests
     public void ParseContent_DeriveGenreFromGroup_MultiGenreItem_InEachGenre()
     {
         var content = "#EXTM3U\n" +
-            "#EXTINF:-1 group-title=\"Kinogo / все фильмы / Фильмы / Драма / Комедия / Мелодрама\",Фильм\n" +
+            "#EXTINF:-1 group-title=\"Кинотеатр / все фильмы / Фильмы / Драма / Комедия / Мелодрама\",Фильм\n" +
             "http://example.com/1.mp4\n";
         var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
         var genres = ch.Genre!.Split(", ");
@@ -259,7 +259,7 @@ public class M3UParserServiceTests
     public void ParseContent_DeriveGenreFromGroup_NonGenreSegments_Dropped()
     {
         var content = "#EXTM3U\n" +
-            "#EXTINF:-1 group-title=\"Kinogo / все сериалы / Сериалы / Сверхъестественное / Сезон 1\",Серия\n" +
+            "#EXTINF:-1 group-title=\"Кинотеатр / все сериалы / Сериалы / Сверхъестественное / Сезон 1\",Серия\n" +
             "http://example.com/1.mp4\n";
         var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
         Assert.Null(ch.Genre);
@@ -277,7 +277,7 @@ public class M3UParserServiceTests
     public void ParseContent_DeriveGenreDisabled_GenreStaysNull()
     {
         var content = "#EXTM3U\n" +
-            "#EXTINF:-1 group-title=\"Kinogo / все фильмы / Фильмы / Драма\",Фильм\n" +
+            "#EXTINF:-1 group-title=\"Кинотеатр / все фильмы / Фильмы / Драма\",Фильм\n" +
             "http://example.com/1.mp4\n";
         var ch = Assert.Single(CreateParser().ParseContent(content));
         Assert.Null(ch.Genre);
@@ -287,7 +287,7 @@ public class M3UParserServiceTests
     public void ParseContent_TvgGenreTakesPrecedenceOverGroupDerivation()
     {
         var content = "#EXTM3U\n" +
-            "#EXTINF:-1 tvg-genre=\"Боевик\" group-title=\"Kinogo / Фильмы / Драма\",Фильм\n" +
+            "#EXTINF:-1 tvg-genre=\"Боевик\" group-title=\"Кинотеатр / Фильмы / Драма\",Фильм\n" +
             "http://example.com/1.mp4\n";
         var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
         Assert.Equal("Боевик", ch.Genre);

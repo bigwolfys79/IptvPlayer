@@ -89,6 +89,10 @@ public partial class ChannelViewModel : ObservableObject
     public bool IsVodCatalogItem { get; set; }
 
 
+    // Online cinema: film page URL used to resolve the stream on play
+    public string? PageUrl { get; set; }
+
+
     public bool IsLocalFile { get; set; }
 
     private string? _description;

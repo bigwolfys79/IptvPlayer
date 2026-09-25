@@ -270,6 +270,61 @@ public partial class MainPageViewModel
             return true;
         }
 
+        // Online cinema: resolve a fresh stream from the film page — CDN links
+        // carry a date-bound token and expire, so they are never cached
+        if (!string.IsNullOrWhiteSpace(channel.PageUrl))
+        {
+            OnlineCinemaStream? resolved = null;
+            Player.IsBuffering = true;
+            try
+            {
+                resolved = await _onlineCinemaResolver.ResolveAsync(channel.PageUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Онлайн-кинотеатр: резолв потока не удался для «{Name}».", channel.Name);
+            }
+            finally
+            {
+                Player.IsBuffering = false;
+            }
+
+            string? playUrl = resolved?.Url;
+            if (string.IsNullOrWhiteSpace(playUrl) && !string.IsNullOrWhiteSpace(channel.StreamUrl))
+            {
+                _logger.LogInformation(
+                    "Онлайн-кинотеатр: резолв не удался — откат на ссылку из каталога для «{Name}».", channel.Name);
+                playUrl = channel.StreamUrl;
+            }
+
+            if (string.IsNullOrWhiteSpace(playUrl))
+            {
+                Player.StreamError = L.T("OnlineCinema_Resolv_Fail");
+                return false;
+            }
+
+            // Default to the best rendition (FFmpeg's own master choice is the
+            // lowest one); the picker keeps every rendition plus "Авто"
+            Dictionary<string, string>? variants = null;
+            string? quality = null;
+            if (resolved is { Variants.Count: > 0 })
+            {
+                variants = resolved.Variants;
+                quality = PickDefaultVodQuality(variants);
+                if (quality != null)
+                {
+                    playUrl = variants[quality];
+                }
+            }
+
+            var cinemaResume = interactive
+                ? await OfferVodResumeAsync(channel.Name, -1)
+                : null;
+            await Player.StartPlaybackAsync(channel, playUrl, archiveEntry: null,
+                isVod: true, vodVariants: variants, vodQuality: quality, resumePosition: cinemaResume);
+            return true;
+        }
+
         // m3u VOD catalog: same resume + pause treatment as portal catalog items
         if (_isVodSource && !string.IsNullOrWhiteSpace(channel.StreamUrl))
         {
@@ -284,6 +339,26 @@ public partial class MainPageViewModel
         await Player.PlayLiveAsync(channel);
         return !string.IsNullOrWhiteSpace(channel.StreamUrl);
     }
+
+    // PreferredQuality from settings wins when available, otherwise the maximum
+    private string? PickDefaultVodQuality(Dictionary<string, string> variants)
+    {
+        var preferred = AppSettings.PreferredQuality;
+        if (preferred > 0)
+        {
+            var key = preferred + "p";
+            if (variants.ContainsKey(key))
+            {
+                return key;
+            }
+        }
+
+        return variants.Keys
+            .Where(k => k.EndsWith('p') && int.TryParse(k[..^1], out _))
+            .OrderByDescending(k => int.Parse(k[..^1]))
+            .FirstOrDefault();
+    }
+
 
     private async Task LoadPortalVariantsInBackgroundAsync(PlaylistSource playlist, ChannelViewModel channel)
     {
