@@ -131,6 +131,7 @@ namespace IptvPlayer.Dialogs
             PortalKeyBox.Text = string.Empty;
             PlaylistTypeCombo.Items.Clear();
             PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Pleylist_M3U_M3U8"), Tag = "m3u" });
+            PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Videokatalog_M3U_Lbl"), Tag = "m3u-vod" });
             PlaylistTypeCombo.Items.Add(new ComboBoxItem { Content = L.T("Video_Portal"), Tag = "portal" });
             PlaylistTypeCombo.SelectedIndex = 0;
             UpdatePlaylistTypeUi();
@@ -483,12 +484,13 @@ namespace IptvPlayer.Dialogs
                 }
             }
 
-            await AddPlaylistAsync(url, isPortal ? "portal" : "m3u", portalKey);
+            await AddPlaylistAsync(url, SelectedPlaylistType, portalKey);
         }
 
-        private bool IsPortalTypeSelected =>
-            PlaylistTypeCombo.SelectedItem is ComboBoxItem { Tag: string tag } &&
-            tag == "portal";
+        private string SelectedPlaylistType =>
+            PlaylistTypeCombo.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : "m3u";
+
+        private bool IsPortalTypeSelected => SelectedPlaylistType == "portal";
 
 
         private void UpdatePlaylistTypeUi()
@@ -524,7 +526,7 @@ namespace IptvPlayer.Dialogs
                 return;
             }
 
-            await AddPlaylistAsync(file.Path);
+            await AddPlaylistAsync(file.Path, SelectedPlaylistType);
         }
 
 

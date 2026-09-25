@@ -77,7 +77,10 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                     id INTEGER PRIMARY KEY,
                     format_version INTEGER NOT NULL DEFAULT 4,
                     saved_at_utc TEXT NOT NULL,
-                    portal_key TEXT
+                    portal_key TEXT,
+                    source_last_write_utc TEXT,
+                    source_length INTEGER NOT NULL DEFAULT 0,
+                    source_hash TEXT
                 );
                 CREATE TABLE IF NOT EXISTS channels (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,6 +128,20 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             {
                 // Column already exists
             }
+
+            foreach (var column in new[] { "source_last_write_utc TEXT", "source_length INTEGER NOT NULL DEFAULT 0", "source_hash TEXT" })
+            {
+                try
+                {
+                    var altCmd = connection.CreateCommand();
+                    altCmd.CommandText = $"ALTER TABLE playlists ADD COLUMN {column}";
+                    altCmd.ExecuteNonQuery();
+                }
+                catch (SqliteException)
+                {
+                    // Column already exists
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -143,7 +160,7 @@ public class PlaylistDatabaseService : IPlaylistCacheService
 
             var metaCmd = connection.CreateCommand();
             metaCmd.CommandText =
-                "SELECT format_version, saved_at_utc, portal_key FROM playlists WHERE id = $id";
+                "SELECT format_version, saved_at_utc, portal_key, source_last_write_utc, source_length, source_hash FROM playlists WHERE id = $id";
             metaCmd.Parameters.AddWithValue("$id", playlistId);
 
             await using var reader = await metaCmd.ExecuteReaderAsync();
@@ -159,6 +176,11 @@ public class PlaylistDatabaseService : IPlaylistCacheService
             var savedAtUtc = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture,
                 DateTimeStyles.RoundtripKind);
             var portalKeyHash = reader.IsDBNull(2) ? null : reader.GetString(2);
+            DateTime? sourceLastWriteUtc = reader.IsDBNull(3)
+                ? null
+                : DateTime.Parse(reader.GetString(3), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            var sourceLength = reader.GetInt64(4);
+            var sourceHash = reader.IsDBNull(5) ? null : reader.GetString(5);
             await reader.CloseAsync();
 
             var cache = new PlaylistCache
@@ -166,6 +188,9 @@ public class PlaylistDatabaseService : IPlaylistCacheService
                 FormatVersion = formatVersion,
                 SavedAtUtc = savedAtUtc,
                 PortalKeyHash = portalKeyHash,
+                SourceLastWriteTimeUtc = sourceLastWriteUtc,
+                SourceLength = sourceLength,
+                ContentHash = sourceHash,
                 Channels = new()
             };
 
@@ -219,12 +244,18 @@ public class PlaylistDatabaseService : IPlaylistCacheService
 
             var metaCmd = connection.CreateCommand();
             metaCmd.CommandText =
-                "INSERT INTO playlists (id, format_version, saved_at_utc, portal_key) VALUES ($id, $ver, $date, $key) " +
-                "ON CONFLICT(id) DO UPDATE SET format_version = $ver, saved_at_utc = $date, portal_key = $key";
+                "INSERT INTO playlists (id, format_version, saved_at_utc, portal_key, source_last_write_utc, source_length, source_hash) " +
+                "VALUES ($id, $ver, $date, $key, $srcDate, $srcLen, $srcHash) " +
+                "ON CONFLICT(id) DO UPDATE SET format_version = $ver, saved_at_utc = $date, portal_key = $key, " +
+                "source_last_write_utc = $srcDate, source_length = $srcLen, source_hash = $srcHash";
             metaCmd.Parameters.AddWithValue("$id", playlistId);
             metaCmd.Parameters.AddWithValue("$ver", cache.FormatVersion);
             metaCmd.Parameters.AddWithValue("$date", cache.SavedAtUtc.ToString("O"));
             metaCmd.Parameters.AddWithValue("$key", (object?)cache.PortalKeyHash ?? DBNull.Value);
+            metaCmd.Parameters.AddWithValue("$srcDate",
+                (object?)cache.SourceLastWriteTimeUtc?.ToString("O") ?? DBNull.Value);
+            metaCmd.Parameters.AddWithValue("$srcLen", cache.SourceLength);
+            metaCmd.Parameters.AddWithValue("$srcHash", (object?)cache.ContentHash ?? DBNull.Value);
             await metaCmd.ExecuteNonQueryAsync();
 
 

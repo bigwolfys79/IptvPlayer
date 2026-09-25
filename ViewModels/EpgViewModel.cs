@@ -249,7 +249,7 @@ public partial class EpgViewModel : ObservableObject
         {
             var entries = await _epgService.GetEPGEntriesAsync(channelId);
             var channel = Channels.FirstOrDefault(c => c.Id == channelId);
-            if (channel == null)
+            if (channel == null || channel.IsVodCatalogItem)
             {
                 return;
             }
@@ -338,7 +338,7 @@ public partial class EpgViewModel : ObservableObject
         foreach (var channel in Channels)
         {
 
-            if (channel.IsPortalItem)
+            if (channel.IsPortalItem || channel.IsVodCatalogItem)
             {
                 continue;
             }
@@ -396,7 +396,7 @@ public partial class EpgViewModel : ObservableObject
         {
 
 
-            if (channel.IsPortalItem)
+            if (channel.IsPortalItem || channel.IsVodCatalogItem)
             {
                 continue;
             }

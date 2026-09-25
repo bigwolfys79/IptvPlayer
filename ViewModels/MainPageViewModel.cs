@@ -203,7 +203,7 @@ public partial class MainPageViewModel : ObservableObject
         : Visibility.Collapsed;
 
 
-    public Visibility IsGroupFilterVisible => !_isPortalSource
+    public Visibility IsGroupFilterVisible => !_isPortalSource && !_isVodSource
         ? Visibility.Visible
         : Visibility.Collapsed;
 
@@ -667,7 +667,10 @@ public partial class MainPageViewModel : ObservableObject
             var selectedGenre = SelectedGenre;
             if (!string.IsNullOrEmpty(selectedGenre) && selectedGenre != AllGenresOption)
             {
-                filtered = filtered.Where(c => string.Equals(c.Genre?.Trim(), selectedGenre, StringComparison.OrdinalIgnoreCase));
+                // Genre holds a comma-separated list — an item shows up under each of its genres
+                filtered = filtered.Where(c =>
+                    !string.IsNullOrEmpty(c.Genre) &&
+                    c.Genre.Split(',').Any(g => string.Equals(g.Trim(), selectedGenre, StringComparison.OrdinalIgnoreCase)));
             }
 
             if (!string.IsNullOrEmpty(SelectedYear) && SelectedYear != AllYearsOption)
@@ -720,10 +723,12 @@ public partial class MainPageViewModel : ObservableObject
 
         if (!_isPortalSource)
         {
+            // Genre holds a comma-separated list — the filter lists individual genres
             var genres = Channels
-                .Select(c => c.Genre)
-                .Where(g => !string.IsNullOrWhiteSpace(g))
-                .Select(g => g!.Trim())
+                .Where(c => !string.IsNullOrWhiteSpace(c.Genre))
+                .SelectMany(c => c.Genre!.Split(','))
+                .Select(g => g.Trim())
+                .Where(g => g.Length > 0)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(g => g, StringComparer.OrdinalIgnoreCase)
                 .ToList();

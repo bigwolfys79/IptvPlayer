@@ -975,7 +975,7 @@ public sealed partial class MainPage : Page
     private void ApplyChannelViewMode()
     {
 
-        var posters = ViewModel.IsContentTypeFilterVisible == Visibility.Visible && ViewModel.AppSettings.ChannelListPosterView;
+        var posters = ViewModel.IsPosterViewAvailable == Visibility.Visible && ViewModel.AppSettings.ChannelListPosterView;
         PosterGridView.Visibility = posters ? Visibility.Visible : Visibility.Collapsed;
         ChannelsListView.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;
         PosterViewIconList.Visibility = posters ? Visibility.Collapsed : Visibility.Visible;

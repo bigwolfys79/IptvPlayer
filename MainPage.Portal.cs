@@ -45,11 +45,16 @@ public sealed partial class MainPage : Page
         var result = new List<ChannelViewModel>();
         var playlistCache = await _playlistCacheService.LoadAsync(playlist.Id);
         var keyHash = string.IsNullOrEmpty(playlist.PortalKey) ? null : ComputeKeyHash(playlist.PortalKey);
+        // Local-file playlists: missing snapshot (first run after update) or a
+        // changed file both force a reparse, regardless of the refresh period
+        var isLocalFile = System.IO.File.Exists(playlist.Url);
         var refreshDue = playlistCache == null ||
                          playlistCache.Channels.Count == 0 ||
                          playlistCache.FormatVersion < PlaylistCache.CurrentFormatVersion ||
                          IsCacheDue(playlistCache.SavedAtUtc, ViewModel.AppSettings.PlaylistRefreshDays) ||
-                         (playlist.IsPortal && playlistCache.PortalKeyHash != null && playlistCache.PortalKeyHash != keyHash);
+                         (playlist.IsPortal && playlistCache.PortalKeyHash != null && playlistCache.PortalKeyHash != keyHash) ||
+                         (isLocalFile && playlistCache != null &&
+                          (playlistCache.SourceLastWriteTimeUtc == null || playlistCache.IsSourceChanged(playlist.Url)));
 
         if (!refreshDue && playlistCache != null)
         {
@@ -78,8 +83,10 @@ public sealed partial class MainPage : Page
             else
             {
                 ViewModel.ClearPortalInfo();
+                ViewModel.SetVodSource(playlist.IsVodCatalog);
             }
 
+            MarkVodCatalogItems(playlist, result);
             return result;
         }
 
@@ -107,14 +114,15 @@ public sealed partial class MainPage : Page
             }
             else
             {
-                playlistChannels = System.IO.File.Exists(playlist.Url)
-                    ? await _m3uParserService.ParseFromFileAsync(playlist.Url)
-                    : await _m3uParserService.ParseFromUrlAsync(playlist.Url, ct);
                 ViewModel.ClearPortalInfo();
+                ViewModel.SetVodSource(playlist.IsVodCatalog);
+                playlistChannels = System.IO.File.Exists(playlist.Url)
+                    ? await _m3uParserService.ParseFromFileAsync(playlist.Url, playlist.IsVodCatalog)
+                    : await _m3uParserService.ParseFromUrlAsync(playlist.Url, ct, playlist.IsVodCatalog);
             }
 
             result.AddRange(playlistChannels);
-            await SavePlaylistCacheAsync(playlist.Id, playlistChannels, playlist.PortalKey);
+            await SavePlaylistCacheAsync(playlist, playlistChannels);
         }
         catch (Exception ex)
         {
@@ -129,7 +137,22 @@ public sealed partial class MainPage : Page
             }
         }
 
+        MarkVodCatalogItems(playlist, result);
         return result;
+    }
+
+
+    private static void MarkVodCatalogItems(PlaylistSource playlist, List<ChannelViewModel> channels)
+    {
+        if (!playlist.IsVodCatalog)
+        {
+            return;
+        }
+
+        foreach (var channel in channels)
+        {
+            channel.IsVodCatalogItem = true;
+        }
     }
 
 
@@ -226,13 +249,13 @@ public sealed partial class MainPage : Page
     }
 
 
-    private Task SavePlaylistCacheAsync(int playlistId, List<ChannelViewModel> channels, string? portalKey = null)
+    private Task SavePlaylistCacheAsync(PlaylistSource playlist, List<ChannelViewModel> channels)
     {
         var cache = new Models.PlaylistCache
         {
             FormatVersion = Models.PlaylistCache.CurrentFormatVersion,
             SavedAtUtc = DateTime.UtcNow,
-            PortalKeyHash = string.IsNullOrEmpty(portalKey) ? null : ComputeKeyHash(portalKey),
+            PortalKeyHash = string.IsNullOrEmpty(playlist.PortalKey) ? null : ComputeKeyHash(playlist.PortalKey!),
             Channels = channels.Select(c => new Models.CachedChannel
             {
                 Name = c.Name,
@@ -248,7 +271,8 @@ public sealed partial class MainPage : Page
             }).ToList()
         };
 
-        return _playlistCacheService.SaveAsync(playlistId, cache);
+        cache.UpdateSourceState(playlist.Url);
+        return _playlistCacheService.SaveAsync(playlist.Id, cache);
     }
 
     private static string ComputeKeyHash(string key)

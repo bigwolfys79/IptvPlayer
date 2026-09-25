@@ -189,7 +189,7 @@
                         <Button x:Name="PosterViewToggleButton"
                                 Width="36" Height="32" Padding="0"
                                 Click="PosterViewToggleButton_Click"
-                                Visibility="{x:Bind ViewModel.IsContentTypeFilterVisible, Mode=OneWay}"
+                                Visibility="{x:Bind ViewModel.IsPosterViewAvailable, Mode=OneWay}"
                                 x:Uid="Vid_Spisok_Postery">
                             <Grid Width="16" Height="16">
                                 <Rectangle x:Name="PosterViewIconList" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Top" Margin="1,1.5,1,0" />

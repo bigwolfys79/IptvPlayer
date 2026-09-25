@@ -270,6 +270,17 @@ public partial class MainPageViewModel
             return true;
         }
 
+        // m3u VOD catalog: same resume + pause treatment as portal catalog items
+        if (_isVodSource && !string.IsNullOrWhiteSpace(channel.StreamUrl))
+        {
+            var resume = interactive
+                ? await OfferVodResumeAsync(channel.Name, -1)
+                : null;
+            await Player.StartPlaybackAsync(channel, channel.StreamUrl!, archiveEntry: null,
+                isVod: true, resumePosition: resume);
+            return true;
+        }
+
         await Player.PlayLiveAsync(channel);
         return !string.IsNullOrWhiteSpace(channel.StreamUrl);
     }

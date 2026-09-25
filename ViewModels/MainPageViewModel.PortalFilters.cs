@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using IptvPlayer.Models;
 using IptvPlayer.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml;
 
 namespace IptvPlayer.ViewModels;
 
@@ -28,6 +29,27 @@ public partial class MainPageViewModel
 
 
     private bool _isPortalSource;
+
+
+    private bool _isVodSource;
+
+
+    public bool IsVodSource => _isVodSource;
+
+
+    // Poster grid toggle applies to portals and m3u VOD catalogs alike
+    public Visibility IsPosterViewAvailable => IsContentTypeFilterVisible == Visibility.Visible || _isVodSource
+        ? Visibility.Visible
+        : Visibility.Collapsed;
+
+
+    public void SetVodSource(bool isVod)
+    {
+        _isVodSource = isVod;
+        OnPropertyChanged(nameof(IsVodSource));
+        OnPropertyChanged(nameof(IsPosterViewAvailable));
+        OnPropertyChanged(nameof(IsGroupFilterVisible));
+    }
 
 
     private bool _suppressFilterLoad;
@@ -109,6 +131,7 @@ public partial class MainPageViewModel
         _portalFullCatalog = null;
         _portalCategoryIdsByFid.Clear();
         _isPortalSource = false;
+        SetVodSource(false);
 
         _suppressFilterLoad = true;
         try

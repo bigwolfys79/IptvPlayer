@@ -180,4 +180,116 @@ public class M3UParserServiceTests
             File.Delete(tempFile);
         }
     }
+
+    [Fact]
+    public void ParseContent_TvgYear_IsParsed()
+    {
+        var content = "#EXTM3U\n#EXTINF:-1 tvg-year=\"2025\",Фильм\nhttp://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Equal(2025, ch.Year);
+    }
+
+    [Fact]
+    public void ParseContent_InvalidTvgYear_IsZero()
+    {
+        var content = "#EXTM3U\n#EXTINF:-1 tvg-year=\"abc\",Фильм\nhttp://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Equal(0, ch.Year);
+    }
+
+    [Fact]
+    public void ParseContent_TvgGenre_KeepsAllTokens()
+    {
+        var content = "#EXTM3U\n#EXTINF:-1 tvg-genre=\"Комедия, Драма\",Фильм\nhttp://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Equal("Комедия, Драма", ch.Genre);
+    }
+
+    [Fact]
+    public void ParseContent_ExtDescBetweenExtinfAndUrl_FillsDescription()
+    {
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1 tvg-year=\"2024\" group-title=\"Kinogo / все фильмы / Фильмы / Драма\",Фильм (2024)\n" +
+            "#EXTDESC:Описание фильма. [страница: https://kinogo.online/filmy/1.html]\n" +
+            "http://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
+        Assert.Equal("Описание фильма.", ch.Description);
+        Assert.DoesNotContain("страница", ch.Description);
+        Assert.Equal(2024, ch.Year);
+    }
+
+    [Fact]
+    public void ParseContent_ExtDescWithoutPageMarker_IsKeptAsIs()
+    {
+        var content = "#EXTM3U\n#EXTINF:-1,Фильм\n#EXTDESC:Простое описание\nhttp://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Equal("Простое описание", ch.Description);
+    }
+
+    [Fact]
+    public void ParseContent_ExtDescAfterUrl_IsIgnored()
+    {
+        var content = "#EXTM3U\n#EXTINF:-1,Фильм\nhttp://example.com/1.mp4\n#EXTDESC:Позднее описание\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Null(ch.Description);
+    }
+
+    [Fact]
+    public void ParseContent_DeriveGenreFromGroup_SkipsPrefix_KeepsAllSegments()
+    {
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1 group-title=\"Kinogo / все фильмы / Фильмы / Новинки / Комедия / Мелодрама\",Фильм\n" +
+            "http://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
+        Assert.Equal("Новинки, Комедия, Мелодрама", ch.Genre);
+    }
+
+    [Fact]
+    public void ParseContent_DeriveGenreFromGroup_MultiGenreItem_InEachGenre()
+    {
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1 group-title=\"Kinogo / все фильмы / Фильмы / Драма / Комедия / Мелодрама\",Фильм\n" +
+            "http://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
+        var genres = ch.Genre!.Split(", ");
+        Assert.Equal(new[] { "Драма", "Комедия", "Мелодрама" }, genres);
+    }
+
+    [Fact]
+    public void ParseContent_DeriveGenreFromGroup_NonGenreSegments_Dropped()
+    {
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1 group-title=\"Kinogo / все сериалы / Сериалы / Сверхъестественное / Сезон 1\",Серия\n" +
+            "http://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
+        Assert.Null(ch.Genre);
+    }
+
+    [Fact]
+    public void ParseContent_DeriveGenreFromGroup_SingleSegment_UsesGroup()
+    {
+        var content = "#EXTM3U\n#EXTINF:-1 group-title=\"Комедия\",Фильм\nhttp://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
+        Assert.Equal("Комедия", ch.Genre);
+    }
+
+    [Fact]
+    public void ParseContent_DeriveGenreDisabled_GenreStaysNull()
+    {
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1 group-title=\"Kinogo / все фильмы / Фильмы / Драма\",Фильм\n" +
+            "http://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content));
+        Assert.Null(ch.Genre);
+    }
+
+    [Fact]
+    public void ParseContent_TvgGenreTakesPrecedenceOverGroupDerivation()
+    {
+        var content = "#EXTM3U\n" +
+            "#EXTINF:-1 tvg-genre=\"Боевик\" group-title=\"Kinogo / Фильмы / Драма\",Фильм\n" +
+            "http://example.com/1.mp4\n";
+        var ch = Assert.Single(CreateParser().ParseContent(content, deriveGenreFromGroup: true));
+        Assert.Equal("Боевик", ch.Genre);
+    }
 }

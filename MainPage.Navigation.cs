@@ -171,6 +171,7 @@ public sealed partial class MainPage : Page
         ViewModel.UpdateChannelCountText();
         ViewModel.RefreshGroups();
         ViewModel.FilterChannels();
+        ApplyChannelViewMode();
 
         var lastWatched = string.IsNullOrWhiteSpace(playlist.LastWatchedChannel)
             ? null

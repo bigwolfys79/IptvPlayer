@@ -164,7 +164,11 @@ public class AppSettings
     public List<EPGSource> GetActiveEpgSources()
     {
         var playlist = Playlists.FirstOrDefault(p => p.Id == ActivePlaylistId);
-        if (playlist is { IsPortal: true } && playlist.EpgSources.Count == 0)
+        // Portals and m3u VOD catalogs have no broadcast schedule — skip the
+        // pointless XMLTV download unless the user assigned sources explicitly
+        if (playlist != null &&
+            (playlist.IsPortal || playlist.IsVodCatalog) &&
+            playlist.EpgSources.Count == 0)
         {
             return new List<EPGSource>();
         }
@@ -191,6 +195,9 @@ public class PlaylistSource
 
 
     public bool IsPortal => string.Equals(Type, "portal", StringComparison.OrdinalIgnoreCase);
+
+
+    public bool IsVodCatalog => string.Equals(Type, "m3u-vod", StringComparison.OrdinalIgnoreCase);
 
 
     public string? LastWatchedChannel { get; set; }

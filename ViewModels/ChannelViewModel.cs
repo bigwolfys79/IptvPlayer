@@ -85,6 +85,10 @@ public partial class ChannelViewModel : ObservableObject
     public bool IsPortalItem => !string.IsNullOrEmpty(_portalRequest);
 
 
+    // m3u VOD catalog entry: no EPG, no live-program subtitle
+    public bool IsVodCatalogItem { get; set; }
+
+
     public bool IsLocalFile { get; set; }
 
     private string? _description;

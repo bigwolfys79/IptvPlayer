@@ -114,6 +114,8 @@ Serilog (logging), Inno Setup (installer)</value>
 
 • Video library (portal): films, series, quality selection
 
+• Video catalog from an m3u playlist: posters, genres, years
+
 • XMLTV programme guide, programme reminders
 
 • Channel/programme recording (ffmpeg, up to 3 parallel)
@@ -1355,6 +1357,12 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="Pleylist_M3U_M3U8" xml:space="preserve">
 
     <value>M3U/M3U8 playlist</value>
+
+  </data>
+
+  <data name="Videokatalog_M3U_Lbl" xml:space="preserve">
+
+    <value>Video catalog (m3u)</value>
 
   </data>
 
