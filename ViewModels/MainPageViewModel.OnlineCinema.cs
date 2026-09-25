@@ -92,11 +92,38 @@ public partial class MainPageViewModel
     }
 
 
+    // Background collection (playback timer): deepens the catalog by one page
+    // per tick; playlist refreshes are skipped while it runs
+    public bool IsOnlineCinemaSyncActive => _onlineCinemaCatalog.IsSyncActive;
+
+    public async Task OnlineCinemaBackgroundCollectAsync()
+    {
+        if (_isCinemaRefreshRunning)
+        {
+            return;
+        }
+
+        try
+        {
+            var loaded = await _onlineCinemaCatalog.SyncNextBackgroundPageAsync();
+            if (loaded)
+            {
+                await ReloadOnlineCinemaChannelsAsync();
+                _logger.LogInformation("Онлайн-кинотеатр: фоновый сбор добавил страницу каталога.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: фоновый сбор страницы не удался.");
+        }
+    }
+
+
     // Background refresh on source open: page 1 of each stale category is
     // re-fetched so new films join the catalog without blocking the UI
     public async Task RefreshOnlineCinemaInBackgroundAsync()
     {
-        if (_isCinemaRefreshRunning)
+        if (_isCinemaRefreshRunning || _onlineCinemaCatalog.IsSyncActive)
         {
             return;
         }

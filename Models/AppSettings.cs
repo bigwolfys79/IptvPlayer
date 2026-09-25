@@ -155,6 +155,11 @@ public class AppSettings
     public bool ShowHubOnStartup { get; set; } = true;
 
 
+    // Online-cinema source master switch: off hides the catalog and stops
+    // all its background collection
+    public bool OnlineCinemaEnabled { get; set; } = true;
+
+
     public int SleepTimerMinutes { get; set; }
 
 

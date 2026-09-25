@@ -64,13 +64,13 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ### Video catalog from an m3u playlist
 - "Video catalog (m3u)" playlist type: a plain m3u with movies opens as a catalog — poster grid, search, genre and year filters
 - The m3u parser reads `tvg-year` (year) and `tvg-genre` (genres, all values of the list) attributes, plus `#EXTDESC:` descriptions between `#EXTINF` and the link (the "[page: …]" marker is stripped)
-- When `tvg-genre` is absent, genres come from `group-title`: the first three path segments ("Cinema / all movies / Movies") are skipped, and only segments matching the fixed genre list (drama, comedy, action, animation, etc.) are kept — service segments and series titles never reach the filter; a multi-genre movie appears under the filter of each of its genres
+- When `tvg-genre` is absent, genres come from `group-title`: the first three path segments ("source / all movies / Movies") are skipped, and only segments matching the fixed genre list (drama, comedy, action, animation, etc.) are kept — service segments and series titles never reach the filter; a multi-genre movie appears under the filter of each of its genres
 - Category selection is the genre filter (the group list is hidden, like the portal); VOD-style playback: pause, "Resume playback" dialog, seeking, quality selection from the master playlist
 - Logos (`tvg-logo`) and groups (`group-title`) work as in a regular playlist
 - A catalog from a local file reloads itself when the file changes (regardless of the playlist refresh period); for URL playlists only the settings period applies
 
 ### Online cinema
-- "Online cinema" playlist type: the movie catalog is taken directly from the website — poster grid, search, genre and year filters, category selection
+- "Online cinema" playlist type: the movie catalog is taken directly from the source website — poster grid, search, genre and year filters, category selection
 - Everything runs without a browser: requests go through the system `curl.exe` (its TLS fingerprint passes the site protection, unlike .NET), the hidden WebView2 remains a fallback and is not started by default
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" (for the selected category or all categories in turn)
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network

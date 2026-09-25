@@ -40,6 +40,71 @@ public class OnlineCinemaCatalogService
 
     public static string YearCategoryKey(int year) => $"год {year}";
 
+    private volatile bool _syncActive;
+
+    // True while a background collection page is in flight — playlist refreshes
+    // are skipped for its duration
+    public bool IsSyncActive => _syncActive;
+
+    private int _backgroundCursor;
+
+    // Called from the playback timer (~every 2 minutes): deepens the catalog by
+    // one page, round-robin over categories that already have a first page.
+    // Returns true when a page was loaded
+    public async Task<bool> SyncNextBackgroundPageAsync(CancellationToken ct = default)
+    {
+        if (_syncActive)
+        {
+            return false;
+        }
+
+        _syncActive = true;
+        try
+        {
+            var categories = KinogoSite.Categories.Keys.ToList();
+            var pages = await _db.GetLoadedPagesAsync(KinogoSite.Id);
+            for (var n = 0; n < categories.Count; n++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var category = categories[(_backgroundCursor + n) % categories.Count];
+                var categoryPages = pages.Where(p => p.Category == category).ToList();
+                if (categoryPages.Count == 0)
+                {
+                    continue; // category not started — the first sync owns it
+                }
+
+                var next = categoryPages.Max(p => p.PageNumber) + 1;
+                var total = categoryPages.Max(p => p.TotalPages);
+                if (total > 0 && next > total)
+                {
+                    continue; // exhausted
+                }
+
+                try
+                {
+                    await LoadCategoryPageAsync(category, next, ct);
+                    _backgroundCursor = (categories.IndexOf(category) + 1) % categories.Count;
+                    return true;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Онлайн-кинотеатр: фоновая догрузка {Category} стр. {Page} не удалась.",
+                        category, next);
+                }
+            }
+
+            return false;
+        }
+        finally
+        {
+            _syncActive = false;
+        }
+    }
+
     // Pure-HTTP page fetch: null means "not usable" (challenge/403/empty) — the
     // caller falls back to the hidden WebView2. curl.exe goes first (its TLS
     // passes the WAF where .NET gets challenged), plain HttpClient is the
@@ -150,9 +215,15 @@ public class OnlineCinemaCatalogService
     }
 
     // Called when the source opens: page 1 of every category is (re)loaded when
-    // missing or stale, everything else comes from the DB — instant open
+    // missing or stale, everything else comes from the DB — instant open.
+    // Skipped while a background collection page is in flight
     public async Task RefreshFirstPagesAsync(CancellationToken ct = default)
     {
+        if (_syncActive)
+        {
+            return;
+        }
+
         if (!_browser.IsInitialized)
         {
             await _browser.InitializeAsync();

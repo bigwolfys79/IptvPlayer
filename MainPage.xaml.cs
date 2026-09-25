@@ -189,6 +189,7 @@ public sealed partial class MainPage : Page
             _volumeSaveDebounceTimer.Stop();
             _badgeHideTimer?.Stop();
             _actionToastHideTimer?.Stop();
+            StopCinemaCollectTimer();
             StopPlayback();
             LastChannelListWidth = _isFullScreen
                 ? _channelListExpandedWidth

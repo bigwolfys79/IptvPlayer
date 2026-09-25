@@ -54,13 +54,24 @@ public sealed partial class MainPage : Page
         // Local-file playlists: missing snapshot (first run after update) or a
         // changed file both force a reparse, regardless of the refresh period
         var isLocalFile = System.IO.File.Exists(playlist.Url);
-        var refreshDue = playlistCache == null ||
-                         playlistCache.Channels.Count == 0 ||
-                         playlistCache.FormatVersion < PlaylistCache.CurrentFormatVersion ||
-                         IsCacheDue(playlistCache.SavedAtUtc, ViewModel.AppSettings.PlaylistRefreshDays) ||
-                         (playlist.IsPortal && playlistCache.PortalKeyHash != null && playlistCache.PortalKeyHash != keyHash) ||
-                         (isLocalFile && playlistCache != null &&
-                          (playlistCache.SourceLastWriteTimeUtc == null || playlistCache.IsSourceChanged(playlist.Url)));
+        // While the online-cinema background collection is in flight, playlist
+        // refreshes are skipped — the cache serves the current content
+        var cinemaSyncActive = ViewModel.IsOnlineCinemaSyncActive;
+        var refreshDue = !cinemaSyncActive &&
+                         (playlistCache == null ||
+                          playlistCache.Channels.Count == 0 ||
+                          playlistCache.FormatVersion < PlaylistCache.CurrentFormatVersion ||
+                          IsCacheDue(playlistCache.SavedAtUtc, ViewModel.AppSettings.PlaylistRefreshDays) ||
+                          (playlist.IsPortal && playlistCache.PortalKeyHash != null && playlistCache.PortalKeyHash != keyHash) ||
+                          (isLocalFile && playlistCache != null &&
+                           (playlistCache.SourceLastWriteTimeUtc == null || playlistCache.IsSourceChanged(playlist.Url))));
+        if (cinemaSyncActive && playlistCache != null &&
+            IsCacheDue(playlistCache.SavedAtUtc, ViewModel.AppSettings.PlaylistRefreshDays))
+        {
+            _logger.LogInformation(
+                "Плейлист {Playlist}: обновление отложено — идёт фоновая загрузка каталога кинотеатра.",
+                playlist.Name);
+        }
 
         if (!refreshDue && playlistCache != null)
         {

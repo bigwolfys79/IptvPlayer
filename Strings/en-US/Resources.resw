@@ -116,7 +116,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
 • Video catalog from an m3u playlist: posters, genres, years
 
-• Online cinema: on-site catalog, stream on demand
+• Online cinema: movie catalog, stream on demand
 
 • XMLTV programme guide, programme reminders
 
@@ -1368,6 +1368,23 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+
+  <data name="OnlineCinema_Toggle" xml:space="preserve">
+
+    <value>Online cinema</value>
+
+  </data>
+  <data name="OnlineCinema_Toggle_Hint" xml:space="preserve">
+
+    <value>Disabling hides the catalog and stops all background collection</value>
+
+  </data>
+  <data name="OnlineCinema_Otklyuchen" xml:space="preserve">
+
+    <value>Online cinema is disabled in the settings.</value>
+
+  </data>
+
   <data name="OnlineCinema_Tip_Lbl" xml:space="preserve">
 
     <value>Online cinema</value>
@@ -1376,7 +1393,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
   <data name="OnlineCinema_Url_Placeholder" xml:space="preserve">
 
-    <value>Site URL (by default)</value>
+    <value>Site URL (optional)</value>
 
   </data>
 

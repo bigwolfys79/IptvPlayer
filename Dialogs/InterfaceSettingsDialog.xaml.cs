@@ -122,6 +122,14 @@ namespace IptvPlayer.Dialogs
             AutoUpdateHint.Text = L.T("Posle_Zapuska_Ne_Chashche_Raza_V");
 
 
+            OnlineCinemaToggle.Toggled -= OnlineCinemaToggle_Toggled;
+            OnlineCinemaToggle.IsOn = settings.OnlineCinemaEnabled;
+            OnlineCinemaToggle.Header = L.T("OnlineCinema_Toggle");
+            OnlineCinemaToggle.OnContent = L.T("Vkl");
+            OnlineCinemaToggle.OffContent = L.T("Vykl");
+            OnlineCinemaToggle.Toggled += OnlineCinemaToggle_Toggled;
+            OnlineCinemaHint.Text = L.T("OnlineCinema_Toggle_Hint");
+
             ShowHubOnStartupToggle.Toggled -= ShowHubOnStartupToggle_Toggled;
             ShowHubOnStartupToggle.IsOn = settings.ShowHubOnStartup;
             ShowHubOnStartupToggle.Header = L.T("Pokazyvat_Glavnoe_Menyu_Pri_Zapuske");
@@ -143,6 +151,13 @@ namespace IptvPlayer.Dialogs
         private async void ShowHubOnStartupToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.ShowHubOnStartup = ShowHubOnStartupToggle.IsOn;
+            await _settingsService.SaveAsync(_viewModel.AppSettings);
+        }
+
+
+        private async void OnlineCinemaToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AppSettings.OnlineCinemaEnabled = OnlineCinemaToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 
