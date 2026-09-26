@@ -46,6 +46,8 @@ public class OnlineCinemaCatalogService
     // are skipped for its duration
     public bool IsSyncActive => _syncActive;
 
+    private volatile bool _searchActive;
+
     private int _backgroundCursor;
 
     // Called from the playback timer (~every 2 minutes): deepens the "все фильмы"
@@ -302,4 +304,146 @@ public class OnlineCinemaCatalogService
     }
 
     private int JitteredPause() => PauseBetweenPagesMs + _random.Next(0, 1200);
+
+    // Site quick search (DLE lightsearch): POST q=<query> returns JSON with an
+    // HTML snippet of matches. Hits are stored in the catalog under the "поиск"
+    // pseudo-category, so they join the local list and survive restarts.
+    // Transport cascade is the same as for catalog pages: curl → HttpClient,
+    // hidden WebView2 over the full /search/<query>/ page as the last resort.
+    // Returns null when the search could not be performed, empty list when the
+    // site answered with no matches
+    public async Task<List<OnlineCinemaItem>?> SearchAsync(string query, CancellationToken ct = default)
+    {
+        query = query.Trim();
+        if (query.Length < 2 || _searchActive)
+        {
+            return null;
+        }
+
+        _searchActive = true;
+        try
+        {
+            var items = await TrySearchHttpAsync(query, ct) ?? await SearchViaBrowserAsync(query, ct);
+            if (items is not { Count: > 0 })
+            {
+                return items;
+            }
+
+            await _db.UpsertItemsAsync(KinogoSite.Id, items);
+            Progress?.Invoke($"Поиск «{query}»: найдено {items.Count}");
+            _logger.LogInformation("Онлайн-кинотеатр: поиск по сайту «{Query}» — {Count} карточек сохранено в каталог.",
+                query, items.Count);
+            return items;
+        }
+        finally
+        {
+            _searchActive = false;
+        }
+    }
+
+    // Non-null result means the HTTP tier answered (possibly with zero hits);
+    // null means "unusable" — the caller falls back to the browser
+    private async Task<List<OnlineCinemaItem>?> TrySearchHttpAsync(string query, CancellationToken ct)
+    {
+        foreach (var viaCurl in new[] { true, false })
+        {
+            string? json;
+            if (viaCurl)
+            {
+                if (!await CurlHttp.GetAvailabilityAsync())
+                {
+                    continue;
+                }
+
+                var result = await CurlHttp.PostFormAsync(
+                    KinogoSite.LightSearchUrl, "q=" + Uri.EscapeDataString(query),
+                    KinogoSite.BaseUrl + "/", KinogoSite.BaseUrl, ct);
+                json = result is { Status: 200 } ? result.Body : null;
+            }
+            else
+            {
+                try
+                {
+                    using var msg = new HttpRequestMessage(HttpMethod.Post, KinogoSite.LightSearchUrl);
+                    KinogoSite.ApplyAjaxHeaders(msg);
+                    msg.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["q"] = query });
+                    using var resp = await Http.SendAsync(msg, ct);
+                    json = resp.IsSuccessStatusCode ? await resp.Content.ReadAsStringAsync(ct) : null;
+                }
+                catch (Exception)
+                {
+                    json = null;
+                }
+            }
+
+            var items = ParseSearchResponse(json);
+            if (items != null)
+            {
+                return items;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<OnlineCinemaItem>? ParseSearchResponse(string? json)
+    {
+        if (string.IsNullOrEmpty(json) || KinogoSite.LooksLikeChallenge(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var html = doc.RootElement.TryGetProperty("html", out var el) ? el.GetString() : null;
+            return html == null ? null : KinogoSite.ParseLightSearchHtml(html, KinogoSite.SearchCategory);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<List<OnlineCinemaItem>?> SearchViaBrowserAsync(string query, CancellationToken ct)
+    {
+        if (_syncActive)
+        {
+            return null; // the hidden WebView2 may be busy with a catalog page
+        }
+
+        try
+        {
+            if (!_browser.IsInitialized)
+            {
+                await _browser.InitializeAsync();
+            }
+
+            if (!await _browser.NavigateAsync(KinogoSite.SearchPageUrl(query), ct))
+            {
+                return null;
+            }
+
+            var result = await _browser.RunScriptJsonAsync(KinogoSite.ParseCategoryPageJs, ct);
+            var items = new List<OnlineCinemaItem>();
+            if (result.TryGetProperty("items", out var arr) && arr.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var el in arr.EnumerateArray())
+                {
+                    var item = KinogoSite.ToItem(el, KinogoSite.SearchCategory);
+                    if (item != null)
+                    {
+                        items.Add(item);
+                    }
+                }
+            }
+
+            return items;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: поиск через браузер «{Query}» не удался.", query);
+            return null;
+        }
+    }
 }

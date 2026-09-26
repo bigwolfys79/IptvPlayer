@@ -412,6 +412,21 @@ public partial class MainPageViewModel : ObservableObject
         }
 
         FilterChannels();
+        await TriggerOnlineCinemaSiteSearchAsync(ct);
+    }
+
+    // Online cinema: when local filtering found nothing, ask the site's quick
+    // search — hits are added to the catalog and re-filtering picks them up
+    private async Task TriggerOnlineCinemaSiteSearchAsync(System.Threading.CancellationToken ct)
+    {
+        var query = SearchQuery?.Trim() ?? string.Empty;
+        if (!_isOnlineCinemaSource || query.Length < 2 || DisplayedChannels.Count > 0 ||
+            _siteSearchHits.ContainsKey(query))
+        {
+            return;
+        }
+
+        await SearchOnlineCinemaSiteAsync(query, ct);
     }
 
     private void OnSelectedGroupChanged(string value) => FilterChannels();
@@ -657,7 +672,17 @@ public partial class MainPageViewModel : ObservableObject
 
         if (!string.IsNullOrEmpty(query))
         {
-            filtered = filtered.Where(c => c.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
+            var matching = filtered.Where(c => c.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
+            // Online cinema: site-search hits for this query stay visible even
+            // when the query doesn't appear in the title text
+            if (_siteSearchHits.TryGetValue(query, out var hits))
+            {
+                filtered = matching.Union(filtered.Where(c => hits.Contains(c.PageUrl ?? string.Empty)));
+            }
+            else
+            {
+                filtered = matching;
+            }
         }
 
         if (_isPortalSource)

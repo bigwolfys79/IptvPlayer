@@ -52,6 +52,15 @@ public static class KinogoSite
     public static string YearUrl(int year, int page = 1) =>
         page <= 1 ? $"{BaseUrl}/xfsearch/god/{year}/" : $"{BaseUrl}/xfsearch/god/{year}/page/{page}/";
 
+    // Quick-search hits land in the catalog under this pseudo-category
+    public const string SearchCategory = "поиск";
+
+    // DLE lightsearch AJAX endpoint (form field q, JSON response with html)
+    public const string LightSearchUrl = BaseUrl + "/engine/ajax/controller.php?mod=lightsearch";
+
+    public static string SearchPageUrl(string query) =>
+        $"{BaseUrl}/search/{Uri.EscapeDataString(query)}/";
+
     public const string UserAgent =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 
@@ -75,6 +84,17 @@ public static class KinogoSite
         html.Contains("just a moment", StringComparison.OrdinalIgnoreCase) ||
         html.Contains("cf-chl", StringComparison.OrdinalIgnoreCase) ||
         html.Contains("turnstile", StringComparison.OrdinalIgnoreCase);
+
+    // AJAX request headers matching the site's jQuery lightsearch call
+    public static void ApplyAjaxHeaders(HttpRequestMessage msg)
+    {
+        msg.Headers.TryAddWithoutValidation("User-Agent", UserAgent);
+        msg.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+        msg.Headers.TryAddWithoutValidation("Accept-Language", "ru-RU,ru;q=0.9");
+        msg.Headers.TryAddWithoutValidation("Referer", BaseUrl + "/");
+        msg.Headers.TryAddWithoutValidation("Origin", BaseUrl);
+        msg.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+    }
 
     // Embed player iframes from the film page HTML (data-src or src); ads and
     // YouTube are skipped, the main provider goes first. Used by the pure-HTTP resolver
@@ -189,6 +209,49 @@ public static class KinogoSite
         }
 
         return (items, total);
+    }
+
+    // Parses the quick-search HTML snippet: <a class="lightsearch__item"> cards
+    // with a "Title (Year)" header and a CSS-background poster. No genres or
+    // description in this snippet — they arrive on the film page
+    public static List<OnlineCinemaItem> ParseLightSearchHtml(string html, string category)
+    {
+        var items = new List<OnlineCinemaItem>();
+
+        foreach (var m in Regex.Matches(html,
+                     @"<a href=""([^""]+)""[^>]*class=""lightsearch__item""[^>]*>(.*?)</a>",
+                     RegexOptions.Singleline).Cast<Match>())
+        {
+            var pageUrl = AbsoluteUrl(m.Groups[1].Value);
+            if (pageUrl == null)
+            {
+                continue;
+            }
+
+            var card = m.Groups[2].Value;
+            var title = Regex.Match(card, @"lightsearch__itemTitle"">([^<]+)").Groups[1].Value.Trim();
+            if (title.Length == 0)
+            {
+                continue;
+            }
+
+            var yearMatch = Regex.Match(title, @"\((\d{4})\)\s*$");
+            var posterMatch = Regex.Match(card, @"lightsearch__itemImage""[^>]*background-image:\s*url\(([^)]+)\)");
+            items.Add(new OnlineCinemaItem
+            {
+                PageUrl = pageUrl,
+                Title = title,
+                Year = yearMatch.Success ? int.Parse(yearMatch.Groups[1].Value) : 0,
+                PosterUrl = AbsoluteUrl(posterMatch.Success
+                    ? posterMatch.Groups[1].Value.Trim('\'', '"')
+                    : string.Empty) ?? string.Empty,
+                Genres = new List<string>(),
+                Description = string.Empty,
+                Category = category
+            });
+        }
+
+        return items;
     }
 
     // Runs in the page context; returns the card list and the pagination total.

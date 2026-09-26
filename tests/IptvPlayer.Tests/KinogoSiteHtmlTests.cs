@@ -69,4 +69,47 @@ public class KinogoSiteHtmlTests
         Assert.Equal("https://kinogo.online/xfsearch/god/2026/", KinogoSite.YearUrl(2026));
         Assert.Equal("https://kinogo.online/xfsearch/god/2026/page/3/", KinogoSite.YearUrl(2026, 3));
     }
+
+    private const string LightSearchHtml = @"
+<a href=""/search/%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0"" class=""lightsearch__showAll"">Все результаты поиска (12) →</a>
+<a href=""/filmy/13855-matrica.html"" class=""lightsearch__item"">
+	<div class=""lightsearch__itemTitle"">Матрица (1999)</div>
+	<div class=""lightsearch__itemContent"">
+		<div class=""lightsearch__itemImage"" style=""background-image: url(/uploads/posts/2021-02/1614449224-1298697377.jpg)""></div>
+		<div class=""lightsearch__itemInfo""><div>The Matrix</div></div>
+	</div>
+	<div class=""lightsearch__itemRating""><div class=""lightsearch__itemRating-kp"">КП: 8.5</div></div>
+</a>
+<a href=""https://kinogo.online/serialy/47-matrica-serial.html"" class=""lightsearch__item"">
+	<div class=""lightsearch__itemTitle"">Матрица: Сериал (2021)</div>
+	<div class=""lightsearch__itemContent"">
+		<div class=""lightsearch__itemImage"" style=""background-image: url(https://kinogo.online/uploads/posts/x.jpg)""></div>
+	</div>
+</a>
+<a href=""/filmy/99-no-title.html"" class=""lightsearch__item""><div class=""lightsearch__itemContent""></div></a>";
+
+    [Fact]
+    public void ParseLightSearchHtml_ExtractsCardsWithYearAndPoster()
+    {
+        var items = KinogoSite.ParseLightSearchHtml(LightSearchHtml, KinogoSite.SearchCategory);
+
+        Assert.Equal(2, items.Count);
+        Assert.Equal("https://kinogo.online/filmy/13855-matrica.html", items[0].PageUrl);
+        Assert.Equal("Матрица (1999)", items[0].Title);
+        Assert.Equal(1999, items[0].Year);
+        Assert.Equal("https://kinogo.online/uploads/posts/2021-02/1614449224-1298697377.jpg", items[0].PosterUrl);
+        Assert.Equal("https://kinogo.online/serialy/47-matrica-serial.html", items[1].PageUrl);
+        Assert.Equal("https://kinogo.online/uploads/posts/x.jpg", items[1].PosterUrl);
+        // Cards carry no genres/description — those come from the film page
+        Assert.Equal(KinogoSite.SearchCategory, items[0].Category);
+        Assert.Empty(items[0].Genres);
+        Assert.Empty(items[0].Description);
+    }
+
+    [Fact]
+    public void SearchPageUrl_EscapesQuery()
+    {
+        Assert.Equal("https://kinogo.online/search/%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0/",
+            KinogoSite.SearchPageUrl("матрица"));
+    }
 }

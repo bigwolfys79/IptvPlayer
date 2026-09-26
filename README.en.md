@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.23.0
+- **Version:** 1.24.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -74,6 +74,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Everything runs without a browser: requests go through the system `curl.exe` (its TLS fingerprint passes the site protection, unlike .NET), the hidden WebView2 remains a fallback and is not started by default
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" following the selection: the "Series" group deepens the series listing, the "Movies" group — the selected genre category (or "all movies"), any other group — categories in turn
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network
+- Search: when the loaded catalog has nothing for the query, the request automatically goes to the site's quick search (lightsearch) — found films are added to the list and saved into the catalog, so repeating the same query needs no network
 - On every open, category first pages older than 6 hours refresh in the background — new films join the catalog automatically
 - While a film is playing, background collection deepens the catalog by one page at a configurable interval ("Background catalog loading" setting, 120 seconds by default, 30–7200); the visible list is re-read from the DB at most once per the configured interval ("List refresh during playback" setting, 60 minutes by default, 0 — never) — group, genre, year filters and the playing item's selection are preserved across refreshes
 - Selecting a year re-requests the site's first page for that year (the `/xfsearch/god/<year>/` path) and adds it under the "year N" pseudo-category

@@ -17,7 +17,12 @@ public partial class MainPageViewModel
     private bool _isOnlineCinemaSource;
     private bool _isCinemaRefreshRunning;
     private bool _isLoadingMoreCinema;
+    private bool _siteSearchRunning;
     private int _lastSyncedYear;
+
+    // Site quick-search results per query: hit page URLs stay visible in the
+    // filtered list even when the query doesn't match the (Russian) title text
+    private readonly Dictionary<string, HashSet<string>> _siteSearchHits = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly ICatalogDatabaseService _onlineCinemaDb;
     private readonly OnlineCinemaCatalogService _onlineCinemaCatalog;
@@ -266,6 +271,54 @@ public partial class MainPageViewModel
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Онлайн-кинотеатр: не удалось синхронизировать год {Year}.", year);
+        }
+    }
+
+
+    // Online cinema site search (lightsearch): called when local filtering
+    // finds nothing. Hits are saved to the catalog (pseudo-category "поиск")
+    // and remembered per query so the filtered list keeps showing them
+    public async Task<bool> SearchOnlineCinemaSiteAsync(string query, CancellationToken ct = default)
+    {
+        query = query.Trim();
+        if (!_isOnlineCinemaSource || query.Length < 2 || _siteSearchRunning ||
+            _siteSearchHits.ContainsKey(query))
+        {
+            return false;
+        }
+
+        _siteSearchRunning = true;
+        try
+        {
+            var items = await _onlineCinemaCatalog.SearchAsync(query, ct);
+            if (items == null)
+            {
+                return false; // transport failed — leave the query retryable
+            }
+
+            _siteSearchHits[query] = items.Select(i => i.PageUrl).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (items.Count > 0)
+            {
+                await ReloadOnlineCinemaChannelsAsync();
+            }
+
+            _logger.LogInformation("Онлайн-кинотеатр: поиск по сайту «{Query}» — {Count} результатов.",
+                query, items.Count);
+            return items.Count > 0;
+        }
+        catch (OperationCanceledException)
+        {
+            // Query changed mid-search — the fresh query re-triggers on debounce
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: поиск по сайту «{Query}» не удался.", query);
+            return false;
+        }
+        finally
+        {
+            _siteSearchRunning = false;
         }
     }
 }

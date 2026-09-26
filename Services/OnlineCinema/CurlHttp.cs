@@ -81,6 +81,24 @@ public static class CurlHttp
             jsonBody, ct);
     }
 
+    // Form-urlencoded AJAX POST (DLE lightsearch: q=<query>)
+    public static async Task<CurlResult?> PostFormAsync(string url, string formBody, string referer, string origin,
+        CancellationToken ct = default)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return null;
+        }
+
+        return await RunAsync(url,
+            new[]
+            {
+                "Accept: application/json, text/plain, */*", "Content-Type: application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With: XMLHttpRequest", $"Referer: {referer}", $"Origin: {origin}"
+            },
+            formBody, ct);
+    }
+
     private static ProcessStartInfo BuildStartInfo(string url, bool postBody)
     {
         var psi = new ProcessStartInfo("curl.exe")
