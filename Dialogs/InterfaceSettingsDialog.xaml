@@ -72,6 +72,11 @@
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     <NumberBox x:Name="OnlineCinemaRefreshBox" MinWidth="180" HorizontalAlignment="Left"
                                Minimum="0" Maximum="1440" SpinButtonPlacementMode="Compact" SmallChange="5"/>
+                    <TextBlock x:Name="OnlineCinemaCollectHeader" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="OnlineCinemaCollectHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <NumberBox x:Name="OnlineCinemaCollectBox" MinWidth="180" HorizontalAlignment="Left"
+                               Minimum="30" Maximum="7200" SpinButtonPlacementMode="Compact" SmallChange="30"/>
                 </StackPanel>
 
             </StackPanel>

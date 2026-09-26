@@ -149,16 +149,21 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 try
                 {
                     var url = await PostPlaylistLoadAsync(origin, leaf.Data, embedUrl, ct);
-                    return url == null
-                        ? null
-                        : new OnlineCinemaLeaf
-                        {
-                            Label = leaf.Label,
-                            Data = leaf.Data,
-                            Origin = origin,
-                            EmbedUrl = embedUrl,
-                            ResolvedUrl = url
-                        };
+                    if (url == null)
+                    {
+                        return null;
+                    }
+
+                    var resolved = new OnlineCinemaLeaf
+                    {
+                        Label = CleanTrackLabel(leaf.Label),
+                        Data = leaf.Data,
+                        Origin = origin,
+                        EmbedUrl = embedUrl,
+                        ResolvedUrl = url
+                    };
+                    CopyVariants(await GetVariantsAsync(url), resolved.Variants);
+                    return resolved;
                 }
                 finally
                 {
@@ -177,7 +182,7 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 Url = voiceovers[0].ResolvedUrl!,
                 Playlist = new OnlineCinemaPlaylist { Voiceovers = voiceovers }
             };
-            CopyVariants(await GetVariantsAsync(filmStream.Url), filmStream.Variants);
+            CopyVariants(voiceovers[0].Variants, filmStream.Variants);
             return filmStream;
         }
 
@@ -236,6 +241,7 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             return null;
         }
 
+        CopyVariants(defaultStream.Variants, defaultLeaf.Variants);
         defaultStream.Playlist = playlist;
         return defaultStream;
     }

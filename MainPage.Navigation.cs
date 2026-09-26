@@ -181,11 +181,17 @@ public sealed partial class MainPage : Page
 
         UpdatePlaylistMenu();
 
-        _ = LoadEpgAfterPlaylistSwitchAsync();
+        _ = LoadEpgAfterPlaylistSwitchAsync(playlist);
     }
 
-    private async Task LoadEpgAfterPlaylistSwitchAsync()
+    private async Task LoadEpgAfterPlaylistSwitchAsync(PlaylistSource playlist)
     {
+        // Online cinema and portals carry no EPG — nothing to search or refresh
+        if (playlist.IsOnlineCinema || playlist.IsPortal || playlist.IsVodCatalog)
+        {
+            return;
+        }
+
         try
         {
             await ViewModel.EpgViewModel.ReloadForPlaylistAsync();

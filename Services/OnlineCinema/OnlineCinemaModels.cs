@@ -64,6 +64,10 @@ public class OnlineCinemaLeaf
     public string EmbedUrl { get; set; } = string.Empty;
 
     public string? ResolvedUrl { get; set; }
+
+    // Renditions parsed from ResolvedUrl's master playlist; cached so a leaf
+    // switch plays a media playlist, not the multi-program master
+    public Dictionary<string, string> Variants { get; } = new();
 }
 
 

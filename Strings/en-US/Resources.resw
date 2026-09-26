@@ -1407,6 +1407,16 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>How often the catalog list is re-read from the database during background collection (0 — never). Group/genre filters and the playing item's selection are kept.</value>
 
   </data>
+  <data name="OnlineCinema_Collect_Interval" xml:space="preserve">
+
+    <value>Background catalog loading, seconds</value>
+
+  </data>
+  <data name="OnlineCinema_Collect_Interval_Hint" xml:space="preserve">
+
+    <value>How often the next catalog page is fetched during playback so the list grows ahead of you (30–7200).</value>
+
+  </data>
   <data name="OnlineCinema_Otklyuchen" xml:space="preserve">
 
     <value>Online cinema is disabled in the settings.</value>

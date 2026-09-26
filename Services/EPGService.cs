@@ -164,25 +164,25 @@ namespace IptvPlayer.Services
 
         public async Task<List<EPGEntry>> GetEPGEntriesAsync(int channelId)
         {
-            await EnsureEpgLoadedAsync();
-
-            if (channelId < 0)
+            // Portal and online-cinema items never have EPG — return early so
+            // they neither trigger source loading nor match against XMLTV
+            if (channelId >= 0)
             {
-                return new List<EPGEntry>();
-            }
-
-            var channel = await _channelRepository.GetChannelByIdAsync(channelId);
-            if (channel == null)
-            {
-
-                if (LogPerChannelDiagnostics)
+                var channel = await _channelRepository.GetChannelByIdAsync(channelId);
+                if (channel == null || channel.IsPortalItem || channel.IsVodCatalogItem)
                 {
-                    _logger.LogWarning(
-                        "Канал с id={ChannelId} не найден в ChannelRepository — EPG для него не может быть найден.",
-                        channelId);
+                    return new List<EPGEntry>();
                 }
-                return new List<EPGEntry>();
+
+                return await GetEPGEntriesAsync(channel);
             }
+
+            return new List<EPGEntry>();
+        }
+
+        private async Task<List<EPGEntry>> GetEPGEntriesAsync(ChannelViewModel channel)
+        {
+            await EnsureEpgLoadedAsync();
 
             if (channel.IsPortalItem)
             {
@@ -201,7 +201,7 @@ namespace IptvPlayer.Services
                             _logger.LogWarning(
                                 "У канала \"{Name}\" (id={ChannelId}) пустой TvgId, и по названию тоже не " +
                                 "нашлось совпадения в XMLTV — программы не будут показаны для этого канала.",
-                                channel.Name, channelId);
+                                channel.Name, channel.Id);
                         }
                         else
                         {
@@ -221,7 +221,7 @@ namespace IptvPlayer.Services
                     {
                         _logger.LogInformation(
                             "Канал \"{Name}\" (id={ChannelId}) сопоставлен с EPG по названию (tvg-id " + "{TvgIdState}).",
-                            channel.Name, channelId,
+                            channel.Name, channel.Id,
                             string.IsNullOrWhiteSpace(channel.TvgId) ? "отсутствует" : $"\"{channel.TvgId}\" не найден в XMLTV");
                     }
                     return entries;
@@ -233,13 +233,19 @@ namespace IptvPlayer.Services
 
         public async Task<EPGEntry?> GetCurrentProgramAsync(int channelId)
         {
-            await EnsureEpgLoadedAsync();
-
-            var channel = await _channelRepository.GetChannelByIdAsync(channelId);
-            if (channel == null || channel.IsPortalItem)
+            // Portal and online-cinema items: no EPG lookup, no source loading
+            if (channelId < 0)
             {
                 return null;
             }
+
+            var channel = await _channelRepository.GetChannelByIdAsync(channelId);
+            if (channel == null || channel.IsPortalItem || channel.IsVodCatalogItem)
+            {
+                return null;
+            }
+
+            await EnsureEpgLoadedAsync();
 
             var (entries, _) = MatchChannel(channel);
             if (entries.Count == 0)
@@ -784,7 +790,7 @@ namespace IptvPlayer.Services
                         continue;
                     }
 
-                    if (channel.IsPortalItem)
+                    if (channel.IsPortalItem || channel.IsVodCatalogItem)
                     {
                         continue;
                     }
@@ -918,7 +924,11 @@ namespace IptvPlayer.Services
             List<ChannelViewModel> channels;
             try
             {
-                channels = await _channelRepository.GetAllChannelsAsync().ConfigureAwait(false);
+                // Portal/online-cinema catalog items are EPG-free — exclude them
+                // from matching and alias learning entirely
+                channels = (await _channelRepository.GetAllChannelsAsync().ConfigureAwait(false))
+                    .Where(c => !c.IsPortalItem && !c.IsVodCatalogItem)
+                    .ToList();
             }
             catch (Exception ex)
             {
@@ -946,7 +956,7 @@ namespace IptvPlayer.Services
                 foreach (var channel in channels)
                 {
 
-                    if (channel.IsPortalItem)
+                    if (channel.IsPortalItem || channel.IsVodCatalogItem)
                     {
                         continue;
                     }

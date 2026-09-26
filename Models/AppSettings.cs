@@ -165,6 +165,11 @@ public class AppSettings
     public int OnlineCinemaListRefreshMinutes { get; set; } = 60;
 
 
+    // How often (seconds) the background collector deepens the catalog by one
+    // page while a film is playing
+    public int OnlineCinemaCollectIntervalSeconds { get; set; } = 120;
+
+
     public int SleepTimerMinutes { get; set; }
 
 

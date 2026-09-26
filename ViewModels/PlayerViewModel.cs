@@ -134,8 +134,10 @@ public partial class PlayerViewModel : ObservableObject
             return;
         }
 
-        var sameEpisode = playlist.Seasons != null &&
-                          seasonIndex == OcSeasonIndex && episodeIndex == OcEpisodeIndex;
+        // Film: a voiceover switch stays at the position; series: only within
+        // the same episode
+        var sameEpisode = playlist.Seasons == null ||
+                          (seasonIndex == OcSeasonIndex && episodeIndex == OcEpisodeIndex);
         var resume = sameEpisode && Player is { } current ? current.Position : TimeSpan.Zero;
         OcSeasonIndex = seasonIndex;
         OcEpisodeIndex = episodeIndex;
@@ -146,7 +148,7 @@ public partial class PlayerViewModel : ObservableObject
         try
         {
             resolved = leaf.ResolvedUrl != null
-                ? new Services.OnlineCinemaStream { Url = leaf.ResolvedUrl }
+                ? LeafStream(leaf)
                 : await _onlineCinemaResolver.ResolveLeafAsync(leaf.Origin, leaf.Data, leaf.EmbedUrl);
         }
         catch (Exception ex)
@@ -171,15 +173,41 @@ public partial class PlayerViewModel : ObservableObject
             leaf.ResolvedUrl = resolved.Url;
         }
 
-        var quality = resolved.Variants.Keys
-            .Where(k => k.EndsWith('p') && int.TryParse(k[..^1], out _))
-            .OrderByDescending(k => int.Parse(k[..^1]))
-            .FirstOrDefault();
-        var url = quality != null ? resolved.Variants[quality] : resolved.Url;
+        foreach (var kv in resolved.Variants)
+        {
+            leaf.Variants[kv.Key] = kv.Value;
+        }
+
+        // Keep the user's quality when the new leaf carries the same rendition
+        var variants = resolved.Variants;
+        var quality = CurrentVodQuality is { } kept && IsRenditionKey(kept) && variants.ContainsKey(kept)
+            ? kept
+            : variants.Keys.Where(IsRenditionKey)
+                .OrderByDescending(k => int.Parse(k[..^1]))
+                .FirstOrDefault();
+        var url = quality != null ? variants[quality] : resolved.Url;
+        _logger.LogInformation(
+            "Онлайн-кинотеатр: озвучка «{Label}» — качество {Quality}, поток {Url}",
+            leaf.Label, quality ?? "Авто", url);
         await StartPlaybackAsync(_vodChannel, url, archiveEntry: null, isVod: true,
-            vodVariants: resolved.Variants.Count > 0 ? resolved.Variants : null,
+            vodVariants: variants.Count > 0 ? variants : null,
             vodQuality: quality, resumePosition: resume > TimeSpan.Zero ? resume : null,
-            onlineCinemaPlaylist: playlist);
+            onlineCinemaPlaylist: playlist, onlineCinemaLeafSwitch: true);
+    }
+
+    private static bool IsRenditionKey(string key) =>
+        key.EndsWith('p') && int.TryParse(key[..^1], out _);
+
+    // Pre-resolved leaf: a fresh stream over the cached URL and renditions
+    private static Services.OnlineCinemaStream LeafStream(Services.OnlineCinemaLeaf leaf)
+    {
+        var stream = new Services.OnlineCinemaStream { Url = leaf.ResolvedUrl ?? string.Empty };
+        foreach (var kv in leaf.Variants)
+        {
+            stream.Variants[kv.Key] = kv.Value;
+        }
+
+        return stream;
     }
 
 
@@ -477,7 +505,7 @@ public partial class PlayerViewModel : ObservableObject
     }
 
 
-    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1, Services.OnlineCinemaPlaylist? onlineCinemaPlaylist = null)
+    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1, Services.OnlineCinemaPlaylist? onlineCinemaPlaylist = null, bool onlineCinemaLeafSwitch = false)
     {
 
         Stop();
@@ -548,18 +576,19 @@ public partial class PlayerViewModel : ObservableObject
             if (OnlineCinemaPlaylist != null)
             {
                 // New film resets the tree position; a leaf switch keeps it
-                // (indexes are already set by PlayOnlineCinemaLeafAsync)
-                if (!ReferenceEquals(_vodChannel, channel))
-                {
-                    OcSeasonIndex = 0;
-                    OcEpisodeIndex = 0;
-                    OcVoiceoverIndex = 0;
-                }
-                else
+                // (indexes are already set by PlayOnlineCinemaLeafAsync).
+                // _vodChannel is nulled by Stop(), so it cannot discriminate here
+                if (onlineCinemaLeafSwitch)
                 {
                     OcSeasonIndex = Math.Max(0, OcSeasonIndex);
                     OcEpisodeIndex = Math.Max(0, OcEpisodeIndex);
                     OcVoiceoverIndex = Math.Max(0, OcVoiceoverIndex);
+                }
+                else
+                {
+                    OcSeasonIndex = 0;
+                    OcEpisodeIndex = 0;
+                    OcVoiceoverIndex = 0;
                 }
             }
 

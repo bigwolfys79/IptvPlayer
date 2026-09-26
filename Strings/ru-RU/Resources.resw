@@ -1407,6 +1407,16 @@ Serilog (логирование), Inno Setup (установщик)</value>
     <value>Как часто список каталога перечитывается из базы при фоновом сборе (0 — не обновлять). Фильтры и выделение играющего фильма сохраняются.</value>
 
   </data>
+  <data name="OnlineCinema_Collect_Interval" xml:space="preserve">
+
+    <value>Фоновая загрузка каталога, секунд</value>
+
+  </data>
+  <data name="OnlineCinema_Collect_Interval_Hint" xml:space="preserve">
+
+    <value>Как часто во время просмотра подгружается следующая страница каталога, чтобы список пополнялся заранее (30–7200).</value>
+
+  </data>
   <data name="OnlineCinema_Otklyuchen" xml:space="preserve">
 
     <value>Онлайн кинотеатр отключён в настройках.</value>

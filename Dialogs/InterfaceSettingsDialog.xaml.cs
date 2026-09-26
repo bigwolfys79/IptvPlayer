@@ -134,6 +134,10 @@ namespace IptvPlayer.Dialogs
             OnlineCinemaRefreshHint.Text = L.T("OnlineCinema_List_Refresh_Hint");
             OnlineCinemaRefreshBox.Value = settings.OnlineCinemaListRefreshMinutes;
 
+            OnlineCinemaCollectHeader.Text = L.T("OnlineCinema_Collect_Interval");
+            OnlineCinemaCollectHint.Text = L.T("OnlineCinema_Collect_Interval_Hint");
+            OnlineCinemaCollectBox.Value = settings.OnlineCinemaCollectIntervalSeconds;
+
             ShowHubOnStartupToggle.Toggled -= ShowHubOnStartupToggle_Toggled;
             ShowHubOnStartupToggle.IsOn = settings.ShowHubOnStartup;
             ShowHubOnStartupToggle.Header = L.T("Pokazyvat_Glavnoe_Menyu_Pri_Zapuske");
@@ -199,6 +203,8 @@ namespace IptvPlayer.Dialogs
 
             appSettings.OnlineCinemaListRefreshMinutes =
                 (int)Math.Clamp(OnlineCinemaRefreshBox.Value, 0, 1440);
+            appSettings.OnlineCinemaCollectIntervalSeconds =
+                (int)Math.Clamp(OnlineCinemaCollectBox.Value, 30, 7200);
 
             await _settingsService.SaveAsync(appSettings);
 

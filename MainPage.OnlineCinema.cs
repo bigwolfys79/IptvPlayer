@@ -17,8 +17,12 @@ public sealed partial class MainPage : Page
 {
     private DispatcherTimer? _cinemaCollectTimer;
 
+    // Background catalog loading interval comes from the settings dialog
+    private TimeSpan CinemaCollectInterval =>
+        TimeSpan.FromSeconds(Math.Clamp(ViewModel.AppSettings.OnlineCinemaCollectIntervalSeconds, 30, 7200));
+
     // While a film from the online cinema is playing, collect catalog pages in
-    // the background (~every 2 minutes) so later browsing needs less fetching
+    // the background so later browsing needs less fetching
     private void EnsureCinemaCollectTimer()
     {
         if (_cinemaCollectTimer != null)
@@ -26,7 +30,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        _cinemaCollectTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(2) };
+        _cinemaCollectTimer = new DispatcherTimer { Interval = CinemaCollectInterval };
         _cinemaCollectTimer.Tick += (_, _) => OnCinemaCollectTick();
         _cinemaCollectTimer.Start();
     }
@@ -39,6 +43,12 @@ public sealed partial class MainPage : Page
 
     private void OnCinemaCollectTick()
     {
+        // Pick up interval changes from the settings dialog without a restart
+        if (_cinemaCollectTimer != null)
+        {
+            _cinemaCollectTimer.Interval = CinemaCollectInterval;
+        }
+
         var playlist = ViewModel.AppSettings.Playlists
             .FirstOrDefault(p => p.Id == ViewModel.AppSettings.ActivePlaylistId);
         if (playlist == null || !playlist.IsOnlineCinema ||

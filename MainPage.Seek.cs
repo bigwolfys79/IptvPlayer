@@ -306,10 +306,13 @@ public sealed partial class MainPage : Page
                             combo.Items.Add(new ComboBoxItem
                             {
                                 Content = seasons[i].Label,
-                                Tag = i,
-                                IsSelected = i == Player.OcSeasonIndex
+                                Tag = i
                             });
                         }
+
+                        // SelectedIndex after fill: IsSelected at add time
+                        // does not stick in ComboBox
+                        combo.SelectedIndex = Math.Max(0, Player.OcSeasonIndex);
                     }
                 }
 
@@ -323,10 +326,11 @@ public sealed partial class MainPage : Page
                             combo.Items.Add(new ComboBoxItem
                             {
                                 Content = episodes[i].Label,
-                                Tag = i,
-                                IsSelected = i == Player.OcEpisodeIndex
+                                Tag = i
                             });
                         }
+
+                        combo.SelectedIndex = Math.Max(0, Player.OcEpisodeIndex);
                     }
                 }
 
@@ -340,10 +344,11 @@ public sealed partial class MainPage : Page
                             combo.Items.Add(new ComboBoxItem
                             {
                                 Content = voiceovers[i].Label,
-                                Tag = i,
-                                IsSelected = i == Player.OcVoiceoverIndex
+                                Tag = i
                             });
                         }
+
+                        combo.SelectedIndex = Math.Max(0, Player.OcVoiceoverIndex);
                     }
                 }
 
