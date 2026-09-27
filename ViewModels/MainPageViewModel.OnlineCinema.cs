@@ -79,12 +79,26 @@ public partial class MainPageViewModel
         var channels = await LoadOnlineCinemaFromDbAsync();
         var selected = SelectedChannel;
         var group = SelectedGroup;
+        // The rebuild resets the combos via OnChannelsChanged → RefreshGroups();
+        // the second RefreshGroups below restores the group only, so genre/year
+        // are snapshotted and put back explicitly (a first-ever year sync used
+        // to clear the year selection)
+        var genre = SelectedGenre;
+        var year = SelectedYear;
 
         Channels = new ObservableCollection<ChannelViewModel>(channels);
 
         // Rebuild resets the combos — keep the user's group/genre/year and
         // re-point the selection at the fresh instance of the playing item
         RefreshGroups(group, keepFilters: true);
+        if (!string.IsNullOrEmpty(genre) && Genres.Contains(genre))
+        {
+            SelectedGenre = genre;
+        }
+        if (!string.IsNullOrEmpty(year) && Years.Contains(year))
+        {
+            SelectedYear = year;
+        }
         if (selected != null)
         {
             var fresh = Channels.FirstOrDefault(
