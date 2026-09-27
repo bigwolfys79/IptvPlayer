@@ -20,6 +20,11 @@ public interface IOnlineCinemaStreamResolver
     // api/playlist/load with the leaf payload + master rendition parse
     Task<OnlineCinemaStream?> ResolveLeafAsync(string origin, string data, string embedUrl,
         CancellationToken ct = default);
+
+    // Direct-MP4 download renditions of one voiceover leaf: POST
+    // api/playlist/load for the download token, then api/player/download
+    Task<List<OnlineCinemaDownloadOption>> GetDownloadOptionsAsync(string origin, string data, string embedUrl,
+        CancellationToken ct = default);
 }
 
 
@@ -106,7 +111,7 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
     public async Task<OnlineCinemaStream?> ResolveLeafAsync(string origin, string data, string embedUrl,
         CancellationToken ct = default)
     {
-        var url = await PostPlaylistLoadAsync(origin, data, embedUrl, ct);
+        var (url, _) = await PostPlaylistLoadAsync(origin, data, embedUrl, ct);
         if (url == null)
         {
             return null;
@@ -115,6 +120,91 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         var stream = new OnlineCinemaStream { Url = url };
         CopyVariants(await GetVariantsAsync(url), stream.Variants);
         return stream;
+    }
+
+    // Direct-MP4 download renditions of one voiceover leaf: the playlist/load
+    // response carries a "download" token, api/player/download turns it into
+    // the download-window HTML with one link per quality
+    public async Task<List<OnlineCinemaDownloadOption>> GetDownloadOptionsAsync(string origin, string data,
+        string embedUrl, CancellationToken ct = default)
+    {
+        var (_, token) = await PostPlaylistLoadAsync(origin, data, embedUrl, ct);
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _logger.LogInformation("Онлайн-кинотеатр: в ответе playlist/load нет download-токена.");
+            return [];
+        }
+
+        var html = await PostApiAsync(origin, "/api/player/download", JsonSerializer.Serialize(token), embedUrl, ct);
+        if (html == null)
+        {
+            return [];
+        }
+
+        return ParseDownloadWindowHtml(ExtractDownloadWindowHtml(html));
+    }
+
+    // api/player/download answers either a JSON array ["<html>", ...] or the
+    // raw HTML — reduce both to the window markup
+    private static string ExtractDownloadWindowHtml(string body)
+    {
+        var trimmed = body.TrimStart();
+        if (trimmed.StartsWith('['))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.ValueKind == JsonValueKind.Array &&
+                    doc.RootElement.GetArrayLength() > 0 &&
+                    doc.RootElement[0].ValueKind == JsonValueKind.String)
+                {
+                    return doc.RootElement[0].GetString() ?? string.Empty;
+                }
+            }
+            catch (JsonException)
+            {
+                // Not a JSON array — treat the body as raw HTML below
+            }
+        }
+
+        return body;
+    }
+
+    // The window markup labels are shifted (anchor text may not match the
+    // file) — the quality is taken from the URL suffix, /1080.mp4 -> "1080p"
+    public static List<OnlineCinemaDownloadOption> ParseDownloadWindowHtml(string html)
+    {
+        var options = new List<OnlineCinemaDownloadOption>();
+        if (string.IsNullOrEmpty(html))
+        {
+            return options;
+        }
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (System.Text.RegularExpressions.Match match in
+                 System.Text.RegularExpressions.Regex.Matches(
+                     html, @"<a\s+href=""(?<url>[^""]+\.mp4[^""]*)""", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            var url = match.Groups["url"].Value;
+            if (!url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var height = System.Text.RegularExpressions.Regex.Match(url, @"/(?<h>\d{3,4})\.mp4$");
+            if (!height.Success || !seen.Add(height.Groups["h"].Value))
+            {
+                continue;
+            }
+
+            options.Add(new OnlineCinemaDownloadOption
+            {
+                Quality = height.Groups["h"].Value + "p",
+                Url = url
+            });
+        }
+
+        return options.OrderByDescending(o => int.Parse(o.Quality[..^1])).ToList();
     }
 
     private async Task<OnlineCinemaStream?> TryResolveEmbedAsync(string embedUrl, string pageUrl, CancellationToken ct)
@@ -153,7 +243,7 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 await gate.WaitAsync(ct);
                 try
                 {
-                    var url = await PostPlaylistLoadAsync(origin, leaf.Data, embedUrl, ct);
+                    var (url, _) = await PostPlaylistLoadAsync(origin, leaf.Data, embedUrl, ct);
                     if (url == null)
                     {
                         return null;
@@ -260,60 +350,77 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         return System.Text.RegularExpressions.Regex.Replace(clean, @"\s+", " ").Trim();
     }
 
-    private async Task<string?> PostPlaylistLoadAsync(string origin, string trackData, string embedUrl, CancellationToken ct)
+    private async Task<(string? File, string? DownloadToken)> PostPlaylistLoadAsync(
+        string origin, string trackData, string embedUrl, CancellationToken ct)
     {
         try
         {
-            var api = origin + "/api/playlist/load";
-            string? body;
-            var curlPosted = false;
-            if (OnlineCinemaMethods.UseCurl && await CurlHttp.GetAvailabilityAsync())
-            {
-                var posted = await CurlHttp.PostJsonAsync(api, JsonSerializer.Serialize(trackData), embedUrl, origin, ct);
-                curlPosted = posted is { Status: 200 };
-                body = curlPosted ? posted!.Body : null;
-                if (!curlPosted)
-                {
-                    _logger.LogInformation(
-                        "Онлайн-кинотеатр: api/playlist/load через curl ответил {Status}.", posted?.Status ?? 0);
-                }
-            }
-            else
-            {
-                if (!OnlineCinemaMethods.UseHttpClient)
-                {
-                    return null; // both HTTP methods disabled in settings
-                }
-
-                using var msg = new HttpRequestMessage(HttpMethod.Post, api)
-                {
-                    Content = new StringContent(JsonSerializer.Serialize(trackData), Encoding.UTF8, "application/json")
-                };
-                msg.Headers.TryAddWithoutValidation("Referer", embedUrl);
-                msg.Headers.TryAddWithoutValidation("Origin", origin);
-                msg.Headers.TryAddWithoutValidation("User-Agent", KinogoSite.UserAgent);
-                msg.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
-                using var resp = await Http.SendAsync(msg, ct);
-                body = await resp.Content.ReadAsStringAsync(ct);
-                if (!resp.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation("Онлайн-кинотеатр: api/playlist/load ответил {Status}.", (int)resp.StatusCode);
-                    return null;
-                }
-            }
-
+            var body = await PostApiAsync(origin, "/api/playlist/load", JsonSerializer.Serialize(trackData), embedUrl, ct);
             if (body == null)
             {
-                return null;
+                return (null, null);
             }
 
             using var doc = JsonDocument.Parse(body);
             var file = doc.RootElement.TryGetProperty("file", out var f) ? f.GetString() : null;
-            return string.IsNullOrWhiteSpace(file) ? null : file;
+            var download = doc.RootElement.TryGetProperty("download", out var d) ? d.GetString() : null;
+            return (string.IsNullOrWhiteSpace(file) ? null : file,
+                    string.IsNullOrWhiteSpace(download) ? null : download);
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Онлайн-кинотеатр: POST api/playlist/load не удался.");
+            return (null, null);
+        }
+    }
+
+    // POST JSON to the player API: curl.exe first (its TLS passes the WAF),
+    // HttpClient fallback; both methods disabled in settings -> null
+    private async Task<string?> PostApiAsync(string origin, string apiPath, string jsonBody, string embedUrl,
+        CancellationToken ct)
+    {
+        try
+        {
+            var api = origin + apiPath;
+            if (OnlineCinemaMethods.UseCurl && await CurlHttp.GetAvailabilityAsync())
+            {
+                var posted = await CurlHttp.PostJsonAsync(api, jsonBody, embedUrl, origin, ct);
+                if (posted is { Status: 200 })
+                {
+                    return posted!.Body;
+                }
+
+                _logger.LogInformation("Онлайн-кинотеатр: {Path} через curl ответил {Status}.",
+                    apiPath, posted?.Status ?? 0);
+                return null;
+            }
+
+            if (!OnlineCinemaMethods.UseHttpClient)
+            {
+                return null; // both HTTP methods disabled in settings
+            }
+
+            using var msg = new HttpRequestMessage(HttpMethod.Post, api)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+            msg.Headers.TryAddWithoutValidation("Referer", embedUrl);
+            msg.Headers.TryAddWithoutValidation("Origin", origin);
+            msg.Headers.TryAddWithoutValidation("User-Agent", KinogoSite.UserAgent);
+            msg.Headers.TryAddWithoutValidation("Accept", "application/json, text/plain, */*");
+            using var resp = await Http.SendAsync(msg, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Онлайн-кинотеатр: {Path} ответил {Status}.", apiPath, (int)resp.StatusCode);
+                return null;
+            }
+
+            return body;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Онлайн-кинотеатр: POST {Path} не удался.", apiPath);
             return null;
         }
     }

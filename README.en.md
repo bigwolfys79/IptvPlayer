@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.25.1
+- **Version:** 1.26.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -82,6 +82,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - The stream link is not stored; it is resolved at the moment a movie starts (CDN links carry a date-bound token and expire): film page → embed iframe → decoded player playlist → master `.m3u8`, all over HTTP via `curl.exe`; the hidden WebView2 remains a fallback (trusted iframe clicks + browser-level m3u8 interception) and closes right after the stream link is obtained — the site player keeps nothing running in the background. The whole process is invisible: the browser window never appears (not in the taskbar, not in Alt-Tab); if the site demands an unsolvable challenge, the resolution fails with an error message in the UI
 - VOD-style playback: pause, "Resume playback" dialog, seeking; the maximum rendition of the master playlist is selected by default (or the "Preferred quality" from settings when set), all renditions are available in the quality picker
 - Series: season, episode and voiceover pickers as combo boxes in the player next to the quality picker (films get the voiceover one only); season 1 / episode 1 / first track by default; switching keeps the playback position when only the voiceover changes
+- Downloading: a button in the player next to the quality picker downloads what is playing right now — the current voiceover and episode at the selected quality (the "Auto" mode takes the best rendition); links are resolved on the fly by the same cascade as the stream (no site registration needed), files go to `%LocalAppData%\IptvPlayer\downloads`, resuming after an interruption is supported, progress shows in a toast above the bottom panel
 - The WebView2 Runtime is only needed for the resolution fallback (usually preinstalled on Windows 10/11)
 
 ### Interface

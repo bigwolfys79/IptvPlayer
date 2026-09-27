@@ -576,6 +576,20 @@
                             x:Uid="Avto" FontSize="12" Padding="12,4" MinWidth="56" MinHeight="30" VerticalAlignment="Center"
                             Visibility="Collapsed"
                             />
+                    <Button x:Name="WindowedVodDownloadButton"
+                            FontSize="12" Padding="12,4" MinWidth="40" MinHeight="30" VerticalAlignment="Center"
+                            Visibility="Collapsed"
+                            Click="VodDownloadButton_Click"
+                            x:Uid="OnlineCinema_Skachat">
+                        <Grid Width="16" Height="16">
+                            <Path Data="M8,1.5 L8,9.5 M5,7 L8,10 L11,7"
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.5"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            <Path Data="M2,13 L14,13"
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.5"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Grid>
+                    </Button>
                     <Button x:Name="WindowedVodAudioTrackButton"
                             FontSize="12" Padding="12,4" MinWidth="56" MinHeight="30" VerticalAlignment="Center"
                             Visibility="Collapsed" />
@@ -1131,6 +1145,20 @@
                             x:Uid="Avto" FontSize="13" Padding="12,4" MinWidth="56" MinHeight="34" VerticalAlignment="Center"
                             Visibility="Collapsed"
                             />
+                    <Button Style="{StaticResource OverlayIconButtonStyle}" x:Name="OverlayVodDownloadButton"
+                            Width="40" Height="40" Margin="8,0,0,0"
+                            Visibility="Collapsed"
+                            Click="VodDownloadButton_Click"
+                            x:Uid="OnlineCinema_Skachat">
+                        <Grid Width="18" Height="18">
+                            <Path Data="M9,1.5 L9,11 M5.4,7.6 L9,11.2 L12.6,7.6"
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.6"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            <Path Data="M2.5,14.5 L15.5,14.5"
+                                  Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Grid>
+                    </Button>
                     <Button x:Name="OverlayVodAudioTrackButton"
                             FontSize="13" Padding="12,4" MinWidth="56" MinHeight="34" VerticalAlignment="Center"
                             Visibility="Collapsed" />

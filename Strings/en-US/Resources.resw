@@ -116,7 +116,7 @@ Serilog (logging), Inno Setup (installer)</value>
 
 • Video catalog from an m3u playlist: posters, genres, years
 
-• Online cinema: movie catalog, site search, season, episode and voiceover selection
+• Online cinema: movie catalog, site search, season, episode and voiceover selection, video download
 
 • XMLTV programme guide, programme reminders
 
@@ -3354,4 +3354,23 @@ Serilog (logging), Inno Setup (installer)</value>
 
 
   
+  <data name="OnlineCinema_Skachat.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Download video</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_Start" xml:space="preserve">
+    <value>Preparing download…</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_0" xml:space="preserve">
+    <value>Downloading: {0}%</value>
+  </data>
+  <data name="OnlineCinema_Skachano_0" xml:space="preserve">
+    <value>Downloaded: {0}</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_Idyot" xml:space="preserve">
+    <value>Download already in progress</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_Oshibka" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+
 </root>

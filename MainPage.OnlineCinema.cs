@@ -101,4 +101,47 @@ public sealed partial class MainPage : Page
 
         return channels;
     }
+
+    // Download the currently playing online-cinema item; progress reuses the
+    // action toast — each update restarts its auto-hide timer, so the toast
+    // stays visible while the download runs
+    private async void VodDownloadButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (Player.IsOnlineCinemaDownloading)
+        {
+            ShowActionToast(L.T("OnlineCinema_Skachivanie_Idyot"));
+            return;
+        }
+
+        if (!Player.IsVodPlaying || Player.OnlineCinemaPlaylist == null)
+        {
+            return;
+        }
+
+        ShowActionToast(L.T("OnlineCinema_Skachivanie_Start"));
+        var progress = new Progress<int>(percent =>
+        {
+            if (percent >= 0)
+            {
+                ShowActionToast(string.Format(L.T("OnlineCinema_Skachivanie_0"), percent));
+            }
+        });
+
+        string? path;
+        try
+        {
+            path = await Player.DownloadCurrentOnlineCinemaAsync(progress);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Скачивание из онлайн-кинотеатра не удалось.");
+            ShowActionToast(L.T("OnlineCinema_Skachivanie_Oshibka"));
+            return;
+        }
+
+        if (path != null)
+        {
+            ShowActionToast(string.Format(L.T("OnlineCinema_Skachano_0"), System.IO.Path.GetFileName(path)));
+        }
+    }
 }

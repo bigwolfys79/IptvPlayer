@@ -51,6 +51,15 @@ public class OnlineCinemaStream
 }
 
 
+// One direct-MP4 rendition from the player download window ("1080p" -> url)
+public class OnlineCinemaDownloadOption
+{
+    public string Quality { get; set; } = string.Empty;
+
+    public string Url { get; set; } = string.Empty;
+}
+
+
 // Voiceover leaf of the playlist tree: Data is the api payload for lazy
 // resolution; ResolvedUrl is set when the leaf is already resolved
 public class OnlineCinemaLeaf

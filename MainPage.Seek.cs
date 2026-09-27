@@ -147,6 +147,7 @@ public sealed partial class MainPage : Page
 
         UpdateVodSeasonEpisodeCombos();
         UpdateVodAudioTrackButtons();
+        UpdateOnlineCinemaDownloadButton();
 
         var epgVisible = Player.IsVodPlaying ? Visibility.Collapsed : Visibility.Visible;
         VideoOverlayEpgButton.Visibility = epgVisible;
@@ -191,6 +192,16 @@ public sealed partial class MainPage : Page
 
         OverlayVodQualityButton.Flyout = menu;
         WindowedVodQualityButton.Flyout = menuCopy;
+    }
+
+    // Download button shows only for online-cinema playback — portal VOD and
+    // live channels have no download source
+    private void UpdateOnlineCinemaDownloadButton()
+    {
+        var visible = Player.IsVodPlaying && Player.OnlineCinemaPlaylist != null;
+        OverlayVodDownloadButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        WindowedVodDownloadButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        UpdateWindowedOverlayTopRow();
     }
 
     private void UpdateVodAudioTrackButtons()

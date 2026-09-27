@@ -116,7 +116,7 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
 • Видео-каталог из m3u-плейлиста: постеры, жанры, годы
 
-• Онлайн кинотеатр: каталог фильмов, поиск по сайту, выбор сезона, серии и озвучки
+• Онлайн кинотеатр: каталог фильмов, поиск по сайту, выбор сезона, серии и озвучки, скачивание видео
 
 • Программа передач XMLTV, напоминания о передачах
 
@@ -3354,4 +3354,23 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
 
   
+  <data name="OnlineCinema_Skachat.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Скачать видео</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_Start" xml:space="preserve">
+    <value>Подготовка скачивания…</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_0" xml:space="preserve">
+    <value>Скачивание: {0}%</value>
+  </data>
+  <data name="OnlineCinema_Skachano_0" xml:space="preserve">
+    <value>Скачано: {0}</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_Idyot" xml:space="preserve">
+    <value>Скачивание уже идёт</value>
+  </data>
+  <data name="OnlineCinema_Skachivanie_Oshibka" xml:space="preserve">
+    <value>Ошибка скачивания</value>
+  </data>
+
 </root>

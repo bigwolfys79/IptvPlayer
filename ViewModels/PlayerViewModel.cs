@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using IptvPlayer.Models;
@@ -16,6 +18,12 @@ public partial class PlayerViewModel : ObservableObject
     private readonly IStreamService _streamService;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<PlayerViewModel> _logger;
+    private readonly Services.IOnlineCinemaDownloadService _downloadService;
+
+    // Only one download runs at a time; a second click is rejected in the UI
+    private volatile bool _isDownloading;
+
+    public bool IsOnlineCinemaDownloading => _isDownloading;
 
     private string _streamId = string.Empty;
     private string? _lastStreamUrl;
@@ -208,6 +216,117 @@ public partial class PlayerViewModel : ObservableObject
         }
 
         return stream;
+    }
+
+    // Leaf currently selected by the season/episode/voiceover pickers
+    private Services.OnlineCinemaLeaf? CurrentOnlineCinemaLeaf()
+    {
+        var playlist = OnlineCinemaPlaylist;
+        if (playlist == null)
+        {
+            return null;
+        }
+
+        if (playlist.Seasons is { Count: > 0 } seasons &&
+            OcSeasonIndex >= 0 && OcSeasonIndex < seasons.Count &&
+            OcEpisodeIndex >= 0 && OcEpisodeIndex < seasons[OcSeasonIndex].Episodes.Count)
+        {
+            var voiceovers = seasons[OcSeasonIndex].Episodes[OcEpisodeIndex].Voiceovers;
+            if (OcVoiceoverIndex >= 0 && OcVoiceoverIndex < voiceovers.Count)
+            {
+                return voiceovers[OcVoiceoverIndex];
+            }
+        }
+        else if (playlist.Voiceovers is { Count: > 0 } voiceovers &&
+                 OcVoiceoverIndex >= 0 && OcVoiceoverIndex < voiceovers.Count)
+        {
+            return voiceovers[OcVoiceoverIndex];
+        }
+
+        return null;
+    }
+
+    // Download the currently playing voiceover/episode at the currently
+    // selected quality ("Авто" → best rendition). Returns the target file
+    // path, null when the leaf or the download links are unavailable
+    public async Task<string?> DownloadCurrentOnlineCinemaAsync(IProgress<int> progress, CancellationToken ct = default)
+    {
+        if (_isDownloading)
+        {
+            return null;
+        }
+
+        var leaf = CurrentOnlineCinemaLeaf();
+        if (leaf == null || _vodChannel == null)
+        {
+            return null;
+        }
+
+        var options = await _onlineCinemaResolver.GetDownloadOptionsAsync(leaf.Origin, leaf.Data, leaf.EmbedUrl, ct);
+        var option = PickDownloadOption(options);
+        if (option == null)
+        {
+            _logger.LogInformation("Онлайн-кинотеатр: ссылки на скачивание не найдены.");
+            return null;
+        }
+
+        var fileName = Services.OnlineCinemaDownloadService.BuildFileName(DownloadNameParts(leaf), option.Quality);
+        var targetPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "IptvPlayer", "downloads", fileName);
+
+        _isDownloading = true;
+        try
+        {
+            await _downloadService.DownloadAsync(option.Url, targetPath, progress, ct);
+            return targetPath;
+        }
+        finally
+        {
+            _isDownloading = false;
+        }
+    }
+
+    // Exact selected quality, else the nearest rendition below it, else the
+    // highest (options come sorted descending)
+    private Services.OnlineCinemaDownloadOption? PickDownloadOption(
+        List<Services.OnlineCinemaDownloadOption> options)
+    {
+        if (options.Count == 0)
+        {
+            return null;
+        }
+
+        if (CurrentVodQuality is { } preferred && IsRenditionKey(preferred))
+        {
+            var wanted = int.Parse(preferred[..^1]);
+            var option = options.FirstOrDefault(o => o.Quality == preferred) ??
+                         options.LastOrDefault(o => int.Parse(o.Quality[..^1]) <= wanted);
+            if (option != null)
+            {
+                return option;
+            }
+        }
+
+        return options[0];
+    }
+
+    private List<string> DownloadNameParts(Services.OnlineCinemaLeaf leaf)
+    {
+        var parts = new List<string> { _vodChannel?.Name ?? "video" };
+        if (OnlineCinemaPlaylist?.Seasons is { Count: > 0 } seasons &&
+            OcSeasonIndex >= 0 && OcSeasonIndex < seasons.Count)
+        {
+            var season = seasons[OcSeasonIndex];
+            parts.Add(season.Label);
+            if (OcEpisodeIndex >= 0 && OcEpisodeIndex < season.Episodes.Count)
+            {
+                parts.Add(season.Episodes[OcEpisodeIndex].Label);
+            }
+        }
+
+        parts.Add(leaf.Label);
+        return parts;
     }
 
 
@@ -484,11 +603,13 @@ public partial class PlayerViewModel : ObservableObject
     public event EventHandler? ArchiveStateChanged;
 
     public PlayerViewModel(IStreamService streamService, ISettingsService settingsService,
-        Services.IOnlineCinemaStreamResolver onlineCinemaResolver, ILogger<PlayerViewModel> logger)
+        Services.IOnlineCinemaStreamResolver onlineCinemaResolver,
+        Services.IOnlineCinemaDownloadService downloadService, ILogger<PlayerViewModel> logger)
     {
         _streamService = streamService;
         _settingsService = settingsService;
         _onlineCinemaResolver = onlineCinemaResolver;
+        _downloadService = downloadService;
         _logger = logger;
     }
 
