@@ -51,6 +51,11 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             return http;
         }
 
+        if (!OnlineCinemaMethods.UseWebView2)
+        {
+            return null; // hidden browser disabled in settings
+        }
+
         _logger.LogInformation("Онлайн-кинотеатр: HTTP-резолв не удался — фолбэк на скрытый браузер: {Url}", pageUrl);
         return await ResolveViaBrowserAsync(pageUrl, ct);
     }
@@ -262,7 +267,7 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             var api = origin + "/api/playlist/load";
             string? body;
             var curlPosted = false;
-            if (await CurlHttp.GetAvailabilityAsync())
+            if (OnlineCinemaMethods.UseCurl && await CurlHttp.GetAvailabilityAsync())
             {
                 var posted = await CurlHttp.PostJsonAsync(api, JsonSerializer.Serialize(trackData), embedUrl, origin, ct);
                 curlPosted = posted is { Status: 200 };
@@ -275,6 +280,11 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             }
             else
             {
+                if (!OnlineCinemaMethods.UseHttpClient)
+                {
+                    return null; // both HTTP methods disabled in settings
+                }
+
                 using var msg = new HttpRequestMessage(HttpMethod.Post, api)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(trackData), Encoding.UTF8, "application/json")
@@ -316,7 +326,7 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         }
 
         // curl.exe first — its TLS passes the WAF where .NET gets challenged
-        if (await CurlHttp.GetAvailabilityAsync())
+        if (OnlineCinemaMethods.UseCurl && await CurlHttp.GetAvailabilityAsync())
         {
             var result = await CurlHttp.GetAsync(url, referer, iframe, ct);
             if (result is { Status: 200 })
@@ -325,6 +335,11 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             }
 
             return null;
+        }
+
+        if (!OnlineCinemaMethods.UseHttpClient)
+        {
+            return null; // both HTTP methods disabled in settings
         }
 
         using var msg = new HttpRequestMessage(HttpMethod.Get, url);
@@ -383,15 +398,24 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             await _browser.InitializeAsync();
         }
 
-        _browser.ClearPlaylistResponses();
-        if (!await _browser.NavigateAsync(pageUrl, ct))
+        try
         {
-            _logger.LogWarning(
-                "Онлайн-кинотеатр: страница фильма не открылась (или сайт требует проверку): {Url}", pageUrl);
-            return null;
-        }
+            _browser.ClearPlaylistResponses();
+            if (!await _browser.NavigateAsync(pageUrl, ct))
+            {
+                _logger.LogWarning(
+                    "Онлайн-кинотеатр: страница фильма не открылась (или сайт требует проверку): {Url}", pageUrl);
+                return null;
+            }
 
-        return await ResolveCoreAsync(pageUrl, ct);
+            return await ResolveCoreAsync(pageUrl, ct);
+        }
+        finally
+        {
+            // The hidden browser is not needed once the stream link is known —
+            // otherwise the site player keeps running in the background
+            await _browser.ShutdownAsync();
+        }
     }
 
     private async Task<OnlineCinemaStream?> ResolveCoreAsync(string pageUrl, CancellationToken ct)

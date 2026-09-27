@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.24.0
+- **Version:** 1.25.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -71,14 +71,15 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 
 ### Online cinema
 - "Online cinema" playlist type: the movie catalog is taken directly from the source website — poster grid, search, genre and year filters, Movies/Series groups and favorites
-- Everything runs without a browser: requests go through the system `curl.exe` (its TLS fingerprint passes the site protection, unlike .NET), the hidden WebView2 remains a fallback and is not started by default
+- Everything runs without a browser: requests go through the system `curl.exe` (its TLS fingerprint passes the site protection, unlike .NET), the hidden WebView2 remains a fallback and is not started by default; every parsing method can be disabled in the settings
+- A dedicated "Online cinema" settings section (player settings menu): source on/off switch, background catalog loading and list refresh intervals, parsing-method toggles (curl.exe → HttpClient → hidden WebView2 — a disabled method is skipped)
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" following the selection: the "Series" group deepens the series listing, the "Movies" group — the selected genre category (or "all movies"), any other group — categories in turn
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network
 - Search: when the loaded catalog has nothing for the query, the request automatically goes to the site's quick search (lightsearch) — found films are added to the list and saved into the catalog, so repeating the same query needs no network
 - On every open, category first pages older than 6 hours refresh in the background — new films join the catalog automatically
 - While a film is playing, background collection deepens the catalog by one page at a configurable interval ("Background catalog loading" setting, 120 seconds by default, 30–7200); the visible list is re-read from the DB at most once per the configured interval ("List refresh during playback" setting, 60 minutes by default, 0 — never) — group, genre, year filters and the playing item's selection are preserved across refreshes
 - Selecting a year re-requests the site's first page for that year (the `/xfsearch/god/<year>/` path) and adds it under the "year N" pseudo-category
-- The stream link is not stored; it is resolved at the moment a movie starts (CDN links carry a date-bound token and expire): film page → embed iframe → decoded player playlist → master `.m3u8`, all over HTTP via `curl.exe`; the hidden WebView2 remains a fallback (trusted iframe clicks + browser-level m3u8 interception). The whole process is invisible: the browser window never appears (not in the taskbar, not in Alt-Tab); if the site demands an unsolvable challenge, the resolution fails with an error message in the UI
+- The stream link is not stored; it is resolved at the moment a movie starts (CDN links carry a date-bound token and expire): film page → embed iframe → decoded player playlist → master `.m3u8`, all over HTTP via `curl.exe`; the hidden WebView2 remains a fallback (trusted iframe clicks + browser-level m3u8 interception) and closes right after the stream link is obtained — the site player keeps nothing running in the background. The whole process is invisible: the browser window never appears (not in the taskbar, not in Alt-Tab); if the site demands an unsolvable challenge, the resolution fails with an error message in the UI
 - VOD-style playback: pause, "Resume playback" dialog, seeking; the maximum rendition of the master playlist is selected by default (or the "Preferred quality" from settings when set), all renditions are available in the quality picker
 - Series: season, episode and voiceover pickers as combo boxes in the player next to the quality picker (films get the voiceover one only); season 1 / episode 1 / first track by default; switching keeps the playback position when only the voiceover changes
 - The WebView2 Runtime is only needed for the resolution fallback (usually preinstalled on Windows 10/11)

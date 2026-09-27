@@ -49,6 +49,13 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    // Open online cinema settings dialog
+    private async void OnlineCinemaSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Dialogs.OnlineCinemaSettingsDialog(ViewModel, _settingsService);
+        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
+    }
+
     // Open EPG settings dialog
     private async void EpgSettingsButton_Click(object sender, RoutedEventArgs e)
     {

@@ -170,6 +170,17 @@ public class AppSettings
     public int OnlineCinemaCollectIntervalSeconds { get; set; } = 120;
 
 
+    // Online-cinema parsing method gates. The site requests go down the
+    // curl.exe → HttpClient → hidden WebView2 cascade; a disabled method is
+    // skipped (WebView2 off also disables the browser fallback of stream
+    // resolution). All on by default — the cascade degrades gracefully
+    public bool OnlineCinemaUseCurl { get; set; } = true;
+
+    public bool OnlineCinemaUseHttpClient { get; set; } = true;
+
+    public bool OnlineCinemaUseWebView2 { get; set; } = true;
+
+
     public int SleepTimerMinutes { get; set; }
 
 

@@ -432,22 +432,36 @@ public sealed partial class MainPage
     // Show short action toast
     private void ShowActionToast(string message)
     {
+        // Only the current mode's toast is shown — in fullscreen both would
+        // stack side by side
+        var fullScreen = _isFullScreen;
+        ActionToast.Visibility = fullScreen ? Visibility.Collapsed : Visibility.Visible;
+        OverlayActionToast.Visibility = fullScreen ? Visibility.Visible : Visibility.Collapsed;
+
+        // Lift the toast above the bottom control bar — with the fixed offset
+        // it lands behind the bar (the bar draws over it in both modes)
+        var bottomOffset = Math.Max(fullScreen ? FullScreenBottomBar.ActualHeight : WindowedVideoOverlay.ActualHeight, 0) + 16;
+        if (bottomOffset <= 16)
+        {
+            bottomOffset = 32; // bar hidden — keep a small gap above the video edge
+        }
+
+        ActionToast.Margin = new Thickness(0, 0, 0, bottomOffset);
+        OverlayActionToast.Margin = new Thickness(0, 0, 0, bottomOffset);
+
         ActionToastText.Text = message;
         OverlayActionToastText.Text = message;
 
         var storyboard = new Storyboard();
-        foreach (var target in new[] { ActionToast, OverlayActionToast })
+        var animation = new DoubleAnimation
         {
-            var animation = new DoubleAnimation
-            {
-                To = 1,
-                Duration = new Duration(TimeSpan.FromMilliseconds(150)),
-                EasingFunction = new QuadraticEase()
-            };
-            Storyboard.SetTarget(animation, target);
-            Storyboard.SetTargetProperty(animation, "Opacity");
-            storyboard.Children.Add(animation);
-        }
+            To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(150)),
+            EasingFunction = new QuadraticEase()
+        };
+        Storyboard.SetTarget(animation, fullScreen ? (DependencyObject)OverlayActionToast : ActionToast);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+        storyboard.Children.Add(animation);
         storyboard.Begin();
 
         if (_actionToastHideTimer is not { } timer)
@@ -467,18 +481,15 @@ public sealed partial class MainPage
         _actionToastHideTimer?.Stop();
 
         var storyboard = new Storyboard();
-        foreach (var target in new[] { ActionToast, OverlayActionToast })
+        var animation = new DoubleAnimation
         {
-            var animation = new DoubleAnimation
-            {
-                To = 0,
-                Duration = new Duration(TimeSpan.FromMilliseconds(250)),
-                EasingFunction = new QuadraticEase()
-            };
-            Storyboard.SetTarget(animation, target);
-            Storyboard.SetTargetProperty(animation, "Opacity");
-            storyboard.Children.Add(animation);
-        }
+            To = 0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(250)),
+            EasingFunction = new QuadraticEase()
+        };
+        Storyboard.SetTarget(animation, _isFullScreen ? (DependencyObject)OverlayActionToast : ActionToast);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+        storyboard.Children.Add(animation);
         storyboard.Begin();
     }
 

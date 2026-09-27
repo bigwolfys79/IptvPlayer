@@ -122,22 +122,6 @@ namespace IptvPlayer.Dialogs
             AutoUpdateHint.Text = L.T("Posle_Zapuska_Ne_Chashche_Raza_V");
 
 
-            OnlineCinemaToggle.Toggled -= OnlineCinemaToggle_Toggled;
-            OnlineCinemaToggle.IsOn = settings.OnlineCinemaEnabled;
-            OnlineCinemaToggle.Header = L.T("OnlineCinema_Toggle");
-            OnlineCinemaToggle.OnContent = L.T("Vkl");
-            OnlineCinemaToggle.OffContent = L.T("Vykl");
-            OnlineCinemaToggle.Toggled += OnlineCinemaToggle_Toggled;
-            OnlineCinemaHint.Text = L.T("OnlineCinema_Toggle_Hint");
-
-            OnlineCinemaRefreshHeader.Text = L.T("OnlineCinema_List_Refresh");
-            OnlineCinemaRefreshHint.Text = L.T("OnlineCinema_List_Refresh_Hint");
-            OnlineCinemaRefreshBox.Value = settings.OnlineCinemaListRefreshMinutes;
-
-            OnlineCinemaCollectHeader.Text = L.T("OnlineCinema_Collect_Interval");
-            OnlineCinemaCollectHint.Text = L.T("OnlineCinema_Collect_Interval_Hint");
-            OnlineCinemaCollectBox.Value = settings.OnlineCinemaCollectIntervalSeconds;
-
             ShowHubOnStartupToggle.Toggled -= ShowHubOnStartupToggle_Toggled;
             ShowHubOnStartupToggle.IsOn = settings.ShowHubOnStartup;
             ShowHubOnStartupToggle.Header = L.T("Pokazyvat_Glavnoe_Menyu_Pri_Zapuske");
@@ -159,13 +143,6 @@ namespace IptvPlayer.Dialogs
         private async void ShowHubOnStartupToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.ShowHubOnStartup = ShowHubOnStartupToggle.IsOn;
-            await _settingsService.SaveAsync(_viewModel.AppSettings);
-        }
-
-
-        private async void OnlineCinemaToggle_Toggled(object sender, RoutedEventArgs e)
-        {
-            _viewModel.AppSettings.OnlineCinemaEnabled = OnlineCinemaToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 
@@ -200,11 +177,6 @@ namespace IptvPlayer.Dialogs
             {
                 appSettings.SleepTimerAction = sleepAction;
             }
-
-            appSettings.OnlineCinemaListRefreshMinutes =
-                (int)Math.Clamp(OnlineCinemaRefreshBox.Value, 0, 1440);
-            appSettings.OnlineCinemaCollectIntervalSeconds =
-                (int)Math.Clamp(OnlineCinemaCollectBox.Value, 30, 7200);
 
             await _settingsService.SaveAsync(appSettings);
 

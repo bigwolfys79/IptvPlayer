@@ -63,6 +63,11 @@ public class OnlineCinemaCatalogService
         _syncActive = true;
         try
         {
+            if (!OnlineCinemaMethods.AnyHttp && !OnlineCinemaMethods.UseWebView2)
+            {
+                return false; // all parsing methods disabled in settings
+            }
+
             var category = KinogoSite.Categories.Keys.First();
             var categoryPages = (await _db.GetLoadedPagesAsync(KinogoSite.Id))
                 .Where(p => p.Category == category)
@@ -89,20 +94,25 @@ public class OnlineCinemaCatalogService
         }
     }
 
-    // Pure-HTTP page fetch: null means "not usable" (challenge/403/empty) — the
-    // caller falls back to the hidden WebView2. curl.exe goes first (its TLS
-    // passes the WAF where .NET gets challenged), plain HttpClient is the
-    // second tier, the hidden WebView2 the last one
+    // Pure-HTTP page fetch: null means "not usable" (challenge/403/empty/disabled
+    // by settings) — the caller falls back to the hidden WebView2. curl.exe goes
+    // first (its TLS passes the WAF where .NET gets challenged), plain HttpClient
+    // is the second tier, the hidden WebView2 the last one
     private async Task<(List<OnlineCinemaItem> Items, int TotalPages)?> TryLoadPageHttpAsync(
         string url, string category, CancellationToken ct)
     {
-        if (!KinogoSite.IsValidPageUrl(url))
+        if (!KinogoSite.IsValidPageUrl(url) || (!OnlineCinemaMethods.UseCurl && !OnlineCinemaMethods.UseHttpClient))
         {
             return null;
         }
 
         foreach (var viaCurl in new[] { true, false })
         {
+            if (viaCurl ? !OnlineCinemaMethods.UseCurl : !OnlineCinemaMethods.UseHttpClient)
+            {
+                continue;
+            }
+
             string? html;
             if (viaCurl)
             {
@@ -168,6 +178,11 @@ public class OnlineCinemaCatalogService
         if (httpResult != null)
         {
             return await SavePageAsync(category, page, httpResult.Value.Items, httpResult.Value.TotalPages);
+        }
+
+        if (!OnlineCinemaMethods.UseWebView2)
+        {
+            throw new InvalidOperationException("Скрытый браузер отключён в настройках онлайн-кинотеатра.");
         }
 
         if (!_browser.IsInitialized)
@@ -284,6 +299,11 @@ public class OnlineCinemaCatalogService
             return await SavePageAsync(yearCategory, 1, httpResult.Value.Items, httpResult.Value.TotalPages);
         }
 
+        if (!OnlineCinemaMethods.UseWebView2)
+        {
+            return null;
+        }
+
         if (!_browser.IsInitialized)
         {
             await _browser.InitializeAsync();
@@ -345,8 +365,18 @@ public class OnlineCinemaCatalogService
     // null means "unusable" — the caller falls back to the browser
     private async Task<List<OnlineCinemaItem>?> TrySearchHttpAsync(string query, CancellationToken ct)
     {
+        if (!OnlineCinemaMethods.AnyHttp)
+        {
+            return null;
+        }
+
         foreach (var viaCurl in new[] { true, false })
         {
+            if (viaCurl ? !OnlineCinemaMethods.UseCurl : !OnlineCinemaMethods.UseHttpClient)
+            {
+                continue;
+            }
+
             string? json;
             if (viaCurl)
             {
@@ -407,9 +437,9 @@ public class OnlineCinemaCatalogService
 
     private async Task<List<OnlineCinemaItem>?> SearchViaBrowserAsync(string query, CancellationToken ct)
     {
-        if (_syncActive)
+        if (_syncActive || !OnlineCinemaMethods.UseWebView2)
         {
-            return null; // the hidden WebView2 may be busy with a catalog page
+            return null; // the hidden WebView2 may be busy / disabled in settings
         }
 
         try

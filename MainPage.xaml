@@ -664,6 +664,7 @@
                             <MenuFlyout>
                                 <MenuFlyoutItem x:Uid="Vosproizvedenie" x:Name="SettingsPlaybackItem" Click="PlaybackSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Interfeys" x:Name="SettingsInterfaceItem" Click="InterfaceSettingsButton_Click"/>
+                                <MenuFlyoutItem x:Uid="OnlineCinema_Menu_Lbl" x:Name="SettingsOnlineCinemaItem" Click="OnlineCinemaSettingsButton_Click"/>
                                 <MenuFlyoutItem Text="EPG" Click="EpgSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Pleylist" x:Name="SettingsPlaylistItem" Click="PlaylistSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Zapisi" x:Name="SettingsRecordingItem" Click="RecordingSettingsButton_Click"/>

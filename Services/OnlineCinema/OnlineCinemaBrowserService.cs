@@ -402,6 +402,33 @@ public class OnlineCinemaBrowserService : IDisposable
         _window = null;
     }
 
+    // Full shutdown after the stream is resolved: the site player inside the
+    // hidden browser must not keep running (audio/decode) while the real
+    // playback goes through FFmpeg. about:blank stops the media immediately,
+    // the short delay lets the navigation land before the window closes; the
+    // on-disk profile (cf_clearance) survives, so the next fallback re-inits
+    // with the same session
+    public async Task ShutdownAsync()
+    {
+        if (_core == null)
+        {
+            return;
+        }
+
+        Serilog.Log.Information("Онлайн-кинотеатр: закрытие скрытого браузера после резолва потока.");
+        try
+        {
+            _core.Navigate("about:blank");
+            await Task.Delay(300).ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            // Best-effort media stop — the window close below is the hard stop
+        }
+
+        Dispose();
+    }
+
 
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hwnd, int index);

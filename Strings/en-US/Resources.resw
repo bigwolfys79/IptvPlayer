@@ -1417,6 +1417,61 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>How often the next catalog page is fetched during playback so the list grows ahead of you (30–7200).</value>
 
   </data>
+  <data name="OnlineCinema_Menu_Lbl.Text" xml:space="preserve">
+
+    <value>Online cinema</value>
+
+  </data>
+  <data name="OnlineCinema_Settings.Text" xml:space="preserve">
+
+    <value>Online cinema</value>
+
+  </data>
+  <data name="OnlineCinema_Settings_Lbl" xml:space="preserve">
+
+    <value>Online cinema settings</value>
+
+  </data>
+  <data name="OnlineCinema_Parsing_Header" xml:space="preserve">
+
+    <value>Parsing methods</value>
+
+  </data>
+  <data name="OnlineCinema_Parsing_Hint" xml:space="preserve">
+
+    <value>Site requests go down the chain: curl.exe → HttpClient → hidden WebView2. A disabled method is skipped; with everything disabled the catalog and search will not work.</value>
+
+  </data>
+  <data name="OnlineCinema_Use_Curl" xml:space="preserve">
+
+    <value>curl.exe (system client)</value>
+
+  </data>
+  <data name="OnlineCinema_Use_Curl_Hint" xml:space="preserve">
+
+    <value>Primary method: the system curl's TLS fingerprint passes the site protection where .NET gets a challenge stub.</value>
+
+  </data>
+  <data name="OnlineCinema_Use_HttpClient" xml:space="preserve">
+
+    <value>HttpClient (.NET)</value>
+
+  </data>
+  <data name="OnlineCinema_Use_HttpClient_Hint" xml:space="preserve">
+
+    <value>Second method: plain .NET requests — the site may answer those with a challenge (403).</value>
+
+  </data>
+  <data name="OnlineCinema_Use_WebView2" xml:space="preserve">
+
+    <value>Hidden WebView2 (browser)</value>
+
+  </data>
+  <data name="OnlineCinema_Use_WebView2_Hint" xml:space="preserve">
+
+    <value>Last fallback of the catalog and search, and the stream-resolution fallback; the browser closes right after the stream link is obtained.</value>
+
+  </data>
   <data name="OnlineCinema_Otklyuchen" xml:space="preserve">
 
     <value>Online cinema is disabled in the settings.</value>

@@ -1417,6 +1417,61 @@ Serilog (логирование), Inno Setup (установщик)</value>
     <value>Как часто во время просмотра подгружается следующая страница каталога, чтобы список пополнялся заранее (30–7200).</value>
 
   </data>
+  <data name="OnlineCinema_Menu_Lbl.Text" xml:space="preserve">
+
+    <value>Онлайн кинотеатр</value>
+
+  </data>
+  <data name="OnlineCinema_Settings.Text" xml:space="preserve">
+
+    <value>Онлайн кинотеатр</value>
+
+  </data>
+  <data name="OnlineCinema_Settings_Lbl" xml:space="preserve">
+
+    <value>Настройки онлайн-кинотеатра</value>
+
+  </data>
+  <data name="OnlineCinema_Parsing_Header" xml:space="preserve">
+
+    <value>Методы парсинга</value>
+
+  </data>
+  <data name="OnlineCinema_Parsing_Hint" xml:space="preserve">
+
+    <value>Запросы к сайту идут по цепочке: curl.exe → HttpClient → скрытый WebView2. Отключённый метод пропускается; если отключить все, каталог и поиск работать не будут.</value>
+
+  </data>
+  <data name="OnlineCinema_Use_Curl" xml:space="preserve">
+
+    <value>curl.exe (системный клиент)</value>
+
+  </data>
+  <data name="OnlineCinema_Use_Curl_Hint" xml:space="preserve">
+
+    <value>Основной метод: TLS-отпечаток системного curl проходит защиту сайта, где .NET получает заглушку проверки.</value>
+
+  </data>
+  <data name="OnlineCinema_Use_HttpClient" xml:space="preserve">
+
+    <value>HttpClient (.NET)</value>
+
+  </data>
+  <data name="OnlineCinema_Use_HttpClient_Hint" xml:space="preserve">
+
+    <value>Второй метод: обычные .NET-запросы — сайт может ответить им проверкой (403).</value>
+
+  </data>
+  <data name="OnlineCinema_Use_WebView2" xml:space="preserve">
+
+    <value>Скрытый WebView2 (браузер)</value>
+
+  </data>
+  <data name="OnlineCinema_Use_WebView2_Hint" xml:space="preserve">
+
+    <value>Последний фолбэк каталога и поиска, а также фолбэк получения потока; браузер закрывается сразу после получения ссылки.</value>
+
+  </data>
   <data name="OnlineCinema_Otklyuchen" xml:space="preserve">
 
     <value>Онлайн кинотеатр отключён в настройках.</value>
