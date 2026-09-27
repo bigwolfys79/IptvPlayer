@@ -812,7 +812,9 @@ public sealed partial class MainPage : Page
                     string.Equals(c.Name, lastWatchedName, StringComparison.OrdinalIgnoreCase));
 
             var lastGroup = lastWatched?.Group?.Trim();
-            if (!string.IsNullOrEmpty(lastGroup))
+            // Online cinema opens on "Все группы" — the resume target stays
+            // selected without narrowing the list to its group
+            if (!string.IsNullOrEmpty(lastGroup) && _activePlaylist?.IsOnlineCinema != true)
             {
                 var canonicalGroup = ViewModel.Groups.FirstOrDefault(
                     g => string.Equals(g, lastGroup, StringComparison.OrdinalIgnoreCase));

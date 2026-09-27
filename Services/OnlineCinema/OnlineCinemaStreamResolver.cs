@@ -587,11 +587,19 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             var seriesStream = new OnlineCinemaStream { Label = "поток", IsPlainHls = true };
             if (BuildNextEmbedSeries(seasonsJson, seriesStream))
             {
-                _logger.LogInformation(
-                    "Онлайн-кинотеатр: поток получен из hls-конфига {Url} (сезонов: {Seasons}) — {Hit}",
-                    embedUrl, seriesStream.Playlist?.Seasons?.Count ?? 0,
-                    seriesStream.Url.Length > 100 ? seriesStream.Url[..100] : seriesStream.Url);
-                return seriesStream;
+                if (!await IsPlayableUrlAsync(seriesStream.Url, ct))
+                {
+                    _logger.LogInformation(
+                        "Онлайн-кинотеатр: ссылка эпизода мертва, пробую следующий embed — {Url}", embedUrl);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Онлайн-кинотеатр: поток получен из hls-конфига {Url} (сезонов: {Seasons}) — {Hit}",
+                        embedUrl, seriesStream.Playlist?.Seasons?.Count ?? 0,
+                        seriesStream.Url.Length > 100 ? seriesStream.Url[..100] : seriesStream.Url);
+                    return seriesStream;
+                }
             }
         }
 
@@ -608,7 +616,20 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 Label = "поток"
             };
 
-            var master = await Http.GetStringAsync(stream.Url);
+            // A dead master falls through to the next embed — the exception
+            // must not abort the whole provider loop
+            string master;
+            try
+            {
+                master = await Http.GetStringAsync(stream.Url);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(ex,
+                    "Онлайн-кинотеатр: мастер недоступен, пробую следующий embed — {Url}", stream.Url);
+                return null;
+            }
+
             if (!master.Contains("#EXT-X-MEDIA"))
             {
                 // Muxed variants — quality switching keeps working
@@ -685,6 +706,13 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 return null;
             }
 
+            if (!await IsPlayableUrlAsync(voiceovers[0].ResolvedUrl!, ct))
+            {
+                _logger.LogInformation(
+                    "Онлайн-кинотеатр: ссылка озвучки мертва, пробую следующий embed — {Url}", embedUrl);
+                return null;
+            }
+
             var filmStream = new OnlineCinemaStream
             {
                 Label = voiceovers[0].Label,
@@ -747,6 +775,15 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         var defaultStream = await ResolveLeafAsync(defaultLeaf.Origin, defaultLeaf.Data, defaultLeaf.EmbedUrl, ct);
         if (defaultStream == null)
         {
+            return null;
+        }
+
+        if (!await IsPlayableUrlAsync(defaultStream.Url, ct))
+        {
+            // The provider may hand out dead links (API 200, CDN 404) — fall
+            // through to the next embed provider
+            _logger.LogInformation(
+                "Онлайн-кинотеатр: ссылка эпизода мертва, пробую следующий embed — {Url}", embedUrl);
             return null;
         }
 
@@ -881,6 +918,22 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         using var resp = await Http.SendAsync(msg, ct);
         var html = await resp.Content.ReadAsStringAsync(ct);
         return resp.IsSuccessStatusCode ? html : null;
+    }
+
+    // Probes a resolved stream link before accepting it: providers can hand
+    // out dead links (API 200, CDN 404 — the site player shows the same
+    // "no video" error); a dead link must fall through to the next embed
+    private static async Task<bool> IsPlayableUrlAsync(string url, CancellationToken ct)
+    {
+        try
+        {
+            using var resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
+            return resp.IsSuccessStatusCode;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     // Fetches the master playlist and parses its renditions so the quality

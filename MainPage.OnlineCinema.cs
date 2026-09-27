@@ -96,6 +96,9 @@ public sealed partial class MainPage : Page
             _ = ViewModel.RefreshOnlineCinemaInBackgroundAsync();
         }
 
+        // Open state: sort combo at the site default regardless of stored sorts
+        ViewModel.ResetOnlineCinemaSortToDefault();
+
         foreach (var channel in channels)
         {
             channel.IsVodCatalogItem = true;

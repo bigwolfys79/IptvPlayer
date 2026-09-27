@@ -388,6 +388,15 @@ public partial class MainPageViewModel
         }
     }
 
+    // On open the sort combo starts at the site default ("По умолчанию");
+    // per-category stored sorts only come back when the user picks a group
+    public void ResetOnlineCinemaSortToDefault()
+    {
+        _suppressOnlineCinemaSort = true;
+        SelectedOnlineCinemaSort = OnlineCinemaSortOptions[0];
+        _suppressOnlineCinemaSort = false;
+    }
+
     public void RestoreOnlineCinemaSortSelection()
     {
         string category;

@@ -329,7 +329,7 @@ public partial class PlayerViewModel : ObservableObject
             Quality = quality ?? "auto",
             PageUrl = pageUrl,
             IsHls = true,
-            EpisodeKey = episodeKey,
+            EpisodeKey = episodeKey ?? string.Empty,
             FreshUrl = () => _onlineCinemaResolver.ResolveFreshHlsUrlAsync(pageUrl, quality, episodeKey)
         }) == null
             ? Services.L.T("OnlineCinema_Skachivanie_Idyot")

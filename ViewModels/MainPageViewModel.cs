@@ -111,9 +111,19 @@ public partial class MainPageViewModel : ObservableObject
         get => _selectedGroup;
         set
         {
-            if (SetProperty(ref _selectedGroup, value))
+            // Clearing the combo ItemsSource pushes a transient null back
+            // through the TwoWay binding — coerce it to "all groups" and
+            // echo the value so the combo selection recovers
+            var effective = string.IsNullOrEmpty(value) ? AllGroupsOption : value;
+            var changed = SetProperty(ref _selectedGroup, effective);
+            if (changed)
             {
-                OnSelectedGroupChanged(value);
+                OnSelectedGroupChanged(effective);
+            }
+            else if (effective != value)
+            {
+                // Already "all groups" — still echo back so the combo recovers
+                OnPropertyChanged(nameof(SelectedGroup));
             }
         }
     }
@@ -857,6 +867,10 @@ public partial class MainPageViewModel : ObservableObject
             SelectedYear = AllYearsOption;
         }
         OnPropertyChanged(nameof(IsYearFilterVisible));
+
+        // The ItemsSource rebuild can drop the combo selection — echo the
+        // value so the TwoWay SelectedItem binding re-applies it
+        OnPropertyChanged(nameof(SelectedGroup));
     }
 
     public void UpdateChannelCountText()
