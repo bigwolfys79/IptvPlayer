@@ -2,6 +2,8 @@ namespace IptvPlayer.Services;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -15,6 +17,10 @@ public interface IOnlineCinemaDownloadService
     // existing .part when the server honours Range. Reports percent 0..100,
     // -1 while the total size is unknown
     Task DownloadAsync(string url, string targetPath, IProgress<int> progress, CancellationToken ct);
+
+    // HLS variant (VOD): remuxes the stream into an MP4 via the bundled
+    // ffmpeg.exe (-c copy). Restart-based — no segment-level resume
+    Task DownloadHlsAsync(string hlsUrl, string targetPath, IProgress<int> progress, CancellationToken ct);
 }
 
 
@@ -44,10 +50,10 @@ public class OnlineCinemaDownloadService : IOnlineCinemaDownloadService
 
         using var msg = new HttpRequestMessage(HttpMethod.Get, url);
         msg.Headers.TryAddWithoutValidation("User-Agent", KinogoSite.UserAgent);
-        if (resumeFrom > 0)
-        {
-            msg.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(resumeFrom, null);
-        }
+        // Range on every request (even from 0): the CDN then answers 206 with
+        // Content-Range carrying the FULL file size — a plain 200 often has
+        // no Content-Length, which left the progress at 0%
+        msg.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(resumeFrom, null);
 
         using var resp = await Http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
         // 200 after a resume request means the CDN ignored Range — start over
@@ -57,7 +63,9 @@ public class OnlineCinemaDownloadService : IOnlineCinemaDownloadService
         }
 
         resp.EnsureSuccessStatusCode();
-        var total = resp.Content.Headers.ContentLength + (resumeFrom > 0 ? resumeFrom : null);
+        long? total = resp.StatusCode == System.Net.HttpStatusCode.PartialContent
+            ? resp.Content.Headers.ContentRange?.Length
+            : resp.Content.Headers.ContentLength;
         var reportAt = Environment.TickCount64;
         void Report(long received)
         {
@@ -117,5 +125,138 @@ public class OnlineCinemaDownloadService : IOnlineCinemaDownloadService
 
         name = System.Text.RegularExpressions.Regex.Replace(name.Trim(), @"\s+", " ");
         return $"{name} [{quality}].mp4";
+    }
+
+    // Remuxes a VOD HLS playlist (video + separate audio group) into a single
+    // MP4 with the bundled ffmpeg.exe (-c copy — no re-encoding). Progress
+    // comes from ffmpeg's -progress pipe:1 (out_time_us vs Duration)
+    public async Task DownloadHlsAsync(string hlsUrl, string targetPath, IProgress<int> progress, CancellationToken ct)
+    {
+        var ffmpeg = Path.Combine(AppContext.BaseDirectory, "ffmpeg.exe");
+        if (!File.Exists(ffmpeg))
+        {
+            throw new InvalidOperationException("ffmpeg.exe не найден рядом с приложением.");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        var partPath = targetPath + ".part";
+        if (File.Exists(partPath))
+        {
+            File.Delete(partPath); // remux restarts from scratch — no partial resume
+        }
+
+        var psi = new ProcessStartInfo(ffmpeg)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            RedirectStandardInput = true,
+        };
+        foreach (var arg in new[]
+        {
+            "-y", "-hide_banner", "-loglevel", "info", "-stats_period", "1",
+            "-user_agent", KinogoSite.UserAgent,
+            "-i", hlsUrl,
+            "-c", "copy",
+            "-movflags", "+faststart",
+            // The .part extension means ffmpeg can't guess the muxer — set it
+            "-f", "mp4",
+            "-progress", "pipe:1",
+            partPath,
+        })
+        {
+            psi.ArgumentList.Add(arg);
+        }
+
+        double? totalSec = null;
+        double lastSec = 0;
+        var reportAt = Environment.TickCount64;
+        void Report(double seconds)
+        {
+            var now = Environment.TickCount64;
+            if (now - reportAt < 500)
+            {
+                return;
+            }
+
+            reportAt = now;
+            progress.Report(totalSec is > 0 ? (int)(seconds * 100 / totalSec.Value) : -1);
+        }
+
+        using var proc = new Process { StartInfo = psi };
+        using var killReg = ct.Register(() =>
+        {
+            try { proc.Kill(true); } catch { }
+        });
+        proc.Start();
+
+        // stderr carries the container "Duration: ..." line — the only total
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                string? line;
+                while ((line = await proc.StandardError.ReadLineAsync()) != null)
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(
+                        line, @"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)");
+                    if (m.Success)
+                    {
+                        totalSec = int.Parse(m.Groups[1].Value) * 3600
+                            + int.Parse(m.Groups[2].Value) * 60
+                            + double.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture);
+                    }
+                    else if (System.Text.RegularExpressions.Regex.IsMatch(
+                        line, @"error|failed|Invalid|410", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    {
+                        // Visible in the app log: 410/signature errors here
+                        // explain most download failures
+                        _logger.LogInformation("ffmpeg hls: {Line}", line);
+                    }
+                }
+            }
+            catch (Exception) { /* process exited */ }
+        }, CancellationToken.None);
+
+        // stdout carries -progress key=value blocks
+        string? progressLine;
+        try
+        {
+            while ((progressLine = await proc.StandardOutput.ReadLineAsync(ct)) != null)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    progressLine, @"out_time_us=(?<us>\d+)");
+                if (!m.Success)
+                {
+                    continue;
+                }
+
+                lastSec = long.Parse(m.Groups["us"].Value) / 1_000_000.0;
+                Report(lastSec);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "ffmpeg progress stream ended.");
+        }
+
+        await proc.WaitForExitAsync(ct);
+        if (ct.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(ct);
+        }
+
+        if (proc.ExitCode != 0)
+        {
+            _logger.LogWarning("ffmpeg remux завершился с кодом {Code} — {Url}.", proc.ExitCode, hlsUrl);
+            throw new InvalidOperationException($"ffmpeg exit code {proc.ExitCode}");
+        }
+
+        File.Move(partPath, targetPath, overwrite: true);
+        progress.Report(100);
+        _logger.LogInformation("Онлайн-кинотеатр: HLS скачан {Path} ({Size} байт).", targetPath,
+            new FileInfo(targetPath).Length);
     }
 }

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using IptvPlayer.Models;
 using IptvPlayer.Services;
 using IptvPlayer.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -73,6 +74,7 @@ public sealed partial class MainPage : Page
         ViewModel.ClearPortalInfo();
         ViewModel.SetVodSource(true);
         ViewModel.SetOnlineCinemaSource(true);
+        ViewModel.SyncCatalogSorts();
         EnsureCinemaCollectTimer();
 
         if (!ViewModel.AppSettings.OnlineCinemaEnabled)
@@ -102,46 +104,52 @@ public sealed partial class MainPage : Page
         return channels;
     }
 
-    // Download the currently playing online-cinema item; progress reuses the
-    // action toast — each update restarts its auto-hide timer, so the toast
-    // stays visible while the download runs
+    // Download the currently playing online-cinema item: pick a folder, then
+    // queue a new row in the downloads menu (multiple downloads run in
+    // parallel and survive film/playlist switches)
     private async void VodDownloadButton_Click(object sender, RoutedEventArgs e)
     {
-        if (Player.IsOnlineCinemaDownloading)
-        {
-            ShowActionToast(L.T("OnlineCinema_Skachivanie_Idyot"));
-            return;
-        }
-
-        if (!Player.IsVodPlaying || Player.OnlineCinemaPlaylist == null)
+        if (!Player.IsVodPlaying || string.IsNullOrEmpty(Player.VodChannel?.PageUrl))
         {
             return;
         }
 
-        ShowActionToast(L.T("OnlineCinema_Skachivanie_Start"));
-        var progress = new Progress<int>(percent =>
+        var folder = await PickDownloadFolderAsync();
+        if (string.IsNullOrEmpty(folder))
         {
-            if (percent >= 0)
-            {
-                ShowActionToast(string.Format(L.T("OnlineCinema_Skachivanie_0"), percent));
-            }
-        });
-
-        string? path;
-        try
-        {
-            path = await Player.DownloadCurrentOnlineCinemaAsync(progress);
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Warning(ex, "Скачивание из онлайн-кинотеатра не удалось.");
-            ShowActionToast(L.T("OnlineCinema_Skachivanie_Oshibka"));
             return;
         }
 
-        if (path != null)
+        var error = await Player.StartOnlineCinemaDownloadAsync(folder);
+        if (error != null)
         {
-            ShowActionToast(string.Format(L.T("OnlineCinema_Skachano_0"), System.IO.Path.GetFileName(path)));
+            ShowActionToast(error);
+            return;
         }
+
+        await new Dialogs.DownloadsDialog(ViewModel.DownloadManager, ViewModel).ShowAsync(Content.XamlRoot);
+    }
+
+    // Sort combo: applies the site sort for the current category
+    private async void OnlineCinemaSortFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel.SelectedOnlineCinemaSort is { } option)
+        {
+            await ViewModel.ApplyOnlineCinemaSortAsync(option.Value);
+        }
+    }
+
+    // FolderPicker; remember the choice for the next time
+    private async Task<string?> PickDownloadFolderAsync()
+    {
+        var service = App.Services.GetRequiredService<Services.LocalVideoFileService>();
+        var path = await service.PickFolderAsync();
+        if (!string.IsNullOrEmpty(path) && path != ViewModel.AppSettings.OnlineCinemaDownloadFolder)
+        {
+            ViewModel.AppSettings.OnlineCinemaDownloadFolder = path;
+            await _settingsService.SaveAsync(ViewModel.AppSettings);
+        }
+
+        return path;
     }
 }

@@ -77,6 +77,34 @@ public class LocalVideoFileService
     }
 
 
+    // Folder picker (online-cinema download destination); null = cancelled
+    public async Task<string?> PickFolderAsync()
+    {
+        var picker = new FolderPicker
+        {
+            SuggestedStartLocation = PickerLocationId.VideosLibrary
+        };
+        picker.FileTypeFilter.Add("*");
+
+        if (MainWindow.Instance is { } window)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            picker.As<IInitializeWithWindow>().Initialize(hwnd);
+        }
+
+        try
+        {
+            var folder = await picker.PickSingleFolderAsync();
+            return folder?.Path;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Выбор папки не удался.");
+            return null;
+        }
+    }
+
+
     public static ChannelViewModel CreateChannel(LocalVideoFile file)
     {
         return new ChannelViewModel

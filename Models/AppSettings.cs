@@ -180,6 +180,18 @@ public class AppSettings
 
     public bool OnlineCinemaUseWebView2 { get; set; } = true;
 
+    // Last folder picked for online-cinema downloads; empty → the picker
+    // starts in the Videos library
+    public string OnlineCinemaDownloadFolder { get; set; } = string.Empty;
+
+    // Persisted downloads list: unfinished rows resume after a restart,
+    // completed ones stay openable in the downloads menu
+    public List<OnlineCinemaDownloadEntry> OnlineCinemaDownloads { get; set; } = new();
+
+    // Per-category site sort (online cinema): category ("все фильмы", genre,
+    // "сериалы") → DLE xsort value ("date", "rating", ...)
+    public Dictionary<string, string> OnlineCinemaSorts { get; set; } = new();
+
 
     public int SleepTimerMinutes { get; set; }
 

@@ -48,6 +48,10 @@ public class OnlineCinemaStream
 
     // Series → seasons/episodes/voiceovers; films → Voiceovers only (null Seasons)
     public OnlineCinemaPlaylist? Playlist { get; set; }
+
+    // true for plain-HLS providers (nextembed): the master carries a separate
+    // EXT-X-MEDIA audio group and per-episode mini-masters are built lazily
+    public bool IsPlainHls { get; set; }
 }
 
 
@@ -61,7 +65,8 @@ public class OnlineCinemaDownloadOption
 
 
 // Voiceover leaf of the playlist tree: Data is the api payload for lazy
-// resolution; ResolvedUrl is set when the leaf is already resolved
+// resolution; ResolvedUrl is set when the leaf is already resolved.
+// SeasonNumber/EpisodeNumber identify nextembed series episodes
 public class OnlineCinemaLeaf
 {
     public string Label { get; set; } = string.Empty;
@@ -71,6 +76,10 @@ public class OnlineCinemaLeaf
     public string Origin { get; set; } = string.Empty;
 
     public string EmbedUrl { get; set; } = string.Empty;
+
+    public int SeasonNumber { get; set; }
+
+    public int EpisodeNumber { get; set; }
 
     public string? ResolvedUrl { get; set; }
 

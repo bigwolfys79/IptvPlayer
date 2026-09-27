@@ -42,6 +42,22 @@ public class OnlineCinemaCatalogService
 
     private volatile bool _syncActive;
 
+    // category -> desired (year, sort); category -> filters already applied
+    // to the site session in this run
+    private readonly Dictionary<string, (string? Year, string? Sort)> _desiredFilters =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, (string? Year, string? Sort)> _appliedFilters =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    // category -> xs_value (set by the UI when the user picks a sort order)
+    private Dictionary<string, string> _sorts = new(StringComparer.OrdinalIgnoreCase);
+
+    public Dictionary<string, string> Sorts
+    {
+        get => _sorts;
+        set => _sorts = new Dictionary<string, string>(value ?? [], StringComparer.OrdinalIgnoreCase);
+    }
+
     // True while a background collection page is in flight — playlist refreshes
     // are skipped for its duration
     public bool IsSyncActive => _syncActive;
@@ -96,6 +112,70 @@ public class OnlineCinemaCatalogService
 
     // Pure-HTTP page fetch: null means "not usable" (challenge/403/empty/disabled
     // by settings) — the caller falls back to the hidden WebView2. curl.exe goes
+    // DLE xsort: POST xsort=1&xs_field=defaultsort&xs_value=<value> to the
+    // category URL sets the session sort and returns the sorted first page.
+    // The session cookie jar must be reused by later page fetches. Saves the
+    // sorted page as page 1 of the category
+    // Session filters per category (DLE xsort): the site keeps the year
+    // filter and sort order in its session — every page fetch of the
+    // category returns filtered+sorted content until the session changes
+    public void SetCategoryFilter(string category, string? year, string? sort)
+    {
+        _desiredFilters[category] = (year, sort);
+    }
+
+    // Re-POSTs changed filters (year first, then sort — the last POST
+    // response is the fully filtered+sorted page 1, reused by the caller)
+    private async Task<string?> EnsureCategoryFiltersAsync(string category, CancellationToken ct)
+    {
+        if (!_desiredFilters.TryGetValue(category, out var desired))
+        {
+            return null;
+        }
+
+        var applied = _appliedFilters.TryGetValue(category, out var a) ? a : (Year: (string?)null, Sort: (string?)null);
+        if (applied == desired)
+        {
+            return null;
+        }
+
+        var url = KinogoSite.CategoryUrl(category, 1);
+        string? lastHtml = null;
+        if (desired.Year != applied.Year)
+        {
+            var result = await CurlHttp.PostFormAsync(url,
+                "xsort=1&xs_field=year&xs_value=" + Uri.EscapeDataString(desired.Year ?? ""),
+                KinogoSite.BaseUrl + "/", KinogoSite.BaseUrl, ct);
+            if (result is { Status: 200 } && !KinogoSite.LooksLikeChallenge(result.Body))
+            {
+                lastHtml = result.Body;
+            }
+        }
+
+        if (desired.Sort != applied.Sort)
+        {
+            var result = await CurlHttp.PostFormAsync(url,
+                "xsort=1&xs_field=defaultsort&xs_value=" + Uri.EscapeDataString(desired.Sort ?? ""),
+                KinogoSite.BaseUrl + "/", KinogoSite.BaseUrl, ct);
+            if (result is { Status: 200 } && !KinogoSite.LooksLikeChallenge(result.Body))
+            {
+                lastHtml = result.Body;
+            }
+        }
+
+        // Applied state is cached only on full success — failures retry
+        if (lastHtml != null)
+        {
+            _appliedFilters[category] = desired;
+            // The listing restarts at page 1 in the new order — drop the
+            // stale page numbering, or "load more" would resume from pages
+            // of the previous (unfiltered) order
+            await _db.ResetCategoryPagesAsync(KinogoSite.Id, category);
+        }
+
+        return lastHtml;
+    }
+
     // first (its TLS passes the WAF where .NET gets challenged), plain HttpClient
     // is the second tier, the hidden WebView2 the last one
     private async Task<(List<OnlineCinemaItem> Items, int TotalPages)?> TryLoadPageHttpAsync(
@@ -171,12 +251,56 @@ public class OnlineCinemaCatalogService
         return items;
     }
 
+    // Serializes catalog page fetches: parallel loads race the session cookie
+    // jar and ping-pong the filter state (observed as alternating totals)
+    private static readonly SemaphoreSlim LoadGate = new(1, 1);
+
+    private readonly Dictionary<string, DateTime> _lastPage1Fetch = new(StringComparer.OrdinalIgnoreCase);
+
     public async Task<List<OnlineCinemaItem>> LoadCategoryPageAsync(string category, int page, CancellationToken ct = default)
     {
+        await LoadGate.WaitAsync(ct);
+        try
+        {
+            return await LoadCategoryPageCoreAsync(category, page, ct);
+        }
+        finally
+        {
+            LoadGate.Release();
+        }
+    }
+
+    private async Task<List<OnlineCinemaItem>> LoadCategoryPageCoreAsync(string category, int page, CancellationToken ct)
+    {
+        var ensuredHtml = await EnsureCategoryFiltersAsync(category, ct);
+        if (ensuredHtml != null && page == 1)
+        {
+            // The filter POST already returned the re-filtered page 1
+            var (ensuredItems, ensuredTotal) = KinogoSite.ParseCategoryPageHtml(ensuredHtml, category);
+            if (ensuredItems.Count > 0)
+            {
+                _lastPage1Fetch[category] = DateTime.UtcNow;
+                return await SavePageAsync(category, 1, ensuredItems, ensuredTotal);
+            }
+        }
+
         var url = KinogoSite.CategoryUrl(category, page);
+        if (page == 1 && _lastPage1Fetch.TryGetValue(category, out var lastFetch) &&
+            (DateTime.UtcNow - lastFetch).TotalSeconds < 10)
+        {
+            // Unchanged filters + fresh page 1: a fetch here is a reload loop,
+            // not a user action — refuse it
+            return new List<OnlineCinemaItem>();
+        }
+
         var httpResult = await TryLoadPageHttpAsync(url, category, ct);
         if (httpResult != null)
         {
+            if (page == 1)
+            {
+                _lastPage1Fetch[category] = DateTime.UtcNow;
+            }
+
             return await SavePageAsync(category, page, httpResult.Value.Items, httpResult.Value.TotalPages);
         }
 
@@ -290,39 +414,6 @@ public class OnlineCinemaCatalogService
     // and stored under the "год N" pseudo-category. The site's first page
     // differs per year, so the year is re-requested rather than only filtered
     // locally. Browser fallback for when the WAF blocks plain HTTP
-    public async Task<List<OnlineCinemaItem>?> SyncYearAsync(int year, CancellationToken ct = default)
-    {
-        var yearCategory = YearCategoryKey(year);
-        var httpResult = await TryLoadPageHttpAsync(KinogoSite.YearUrl(year), yearCategory, ct);
-        if (httpResult != null)
-        {
-            return await SavePageAsync(yearCategory, 1, httpResult.Value.Items, httpResult.Value.TotalPages);
-        }
-
-        if (!OnlineCinemaMethods.UseWebView2)
-        {
-            return null;
-        }
-
-        if (!_browser.IsInitialized)
-        {
-            await _browser.InitializeAsync();
-        }
-
-        var baseCategory = KinogoSite.Categories.Keys.First();
-        var basePage = KinogoSite.CategoryUrl(baseCategory, 1);
-        if (!await _browser.NavigateAsync(basePage, ct))
-        {
-            return null;
-        }
-
-        var js = KinogoSite.SetYearFilterJsTemplate.Replace("__YEAR__", year.ToString());
-        await _browser.RunScriptJsonAsync(js, ct);
-        await Task.Delay(1500, ct);
-
-        return await LoadCategoryPageAsync(yearCategory, 1, ct);
-    }
-
     private int JitteredPause() => PauseBetweenPagesMs + _random.Next(0, 1200);
 
     // Site quick search (DLE lightsearch): POST q=<query> returns JSON with an

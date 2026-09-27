@@ -1,0 +1,108 @@
+<UserControl
+    x:Class="IptvPlayer.Dialogs.DownloadsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:services="using:IptvPlayer.Services"
+    xmlns:converters="using:IptvPlayer.Converters"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+    </UserControl.Resources>
+
+    <StackPanel Spacing="12" MinWidth="440">
+        <Grid>
+            <Button x:Name="ClearButton"
+                    HorizontalAlignment="Right"
+                    Click="ClearButton_Click" />
+        </Grid>
+        <TextBlock x:Name="EmptyText"
+                   FontSize="13"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   Visibility="Collapsed" />
+        <ListView ItemsSource="{x:Bind Manager.Items, Mode=OneWay}"
+                  MaxHeight="360"
+                  SelectionMode="None">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="services:OnlineCinemaDownloadItem">
+                    <Grid Padding="4,6" ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind FileName, Mode=OneWay}"
+                                       FontSize="12.5" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                            <ProgressBar Maximum="100" Height="4" CornerRadius="2"
+                                         Value="{x:Bind Percent, Mode=OneWay}"
+                                         IsIndeterminate="{x:Bind PercentIndeterminate, Mode=OneWay}"
+                                         Visibility="{x:Bind IsNotFinished, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}" />
+                            <TextBlock Text="{x:Bind StateText, Mode=OneWay}"
+                                       FontSize="11.5"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                            <Button Style="{StaticResource OverlayIconButtonStyle}" Width="30" Height="30"
+                                    Command="{x:Bind PauseCommand}"
+                                    Visibility="{x:Bind IsRunning, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    x:Uid="OnlineCinema_Pauza">
+                                <Path Data="M4.5,2 L4.5,12 M9.5,2 L9.5,12"
+                                      Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="2.2"
+                                      StrokeEndLineCap="Round" />
+                            </Button>
+                            <Button Style="{StaticResource OverlayIconButtonStyle}" Width="30" Height="30"
+                                    Command="{x:Bind ResumeCommand}"
+                                    Visibility="{x:Bind IsPaused, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    x:Uid="OnlineCinema_Prodolzhit">
+                                <Path Data="M4,2 L11.5,7 L4,12 Z"
+                                      Fill="{ThemeResource OverlayFgBrush}" />
+                            </Button>
+                            <Button Style="{StaticResource OverlayIconButtonStyle}" Width="30" Height="30"
+                                    Command="{x:Bind CancelCommand}"
+                                    Visibility="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    x:Uid="OnlineCinema_Ostanovit">
+                                <Path Data="M3.5,3.5 L10.5,10.5 M10.5,3.5 L3.5,10.5"
+                                      Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.8"
+                                      StrokeEndLineCap="Round" />
+                            </Button>
+                            <Button Style="{StaticResource OverlayIconButtonStyle}" Width="30" Height="30"
+                                    Click="OpenFileButton_Click"
+                                    Visibility="{x:Bind IsCompleted, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    x:Uid="OnlineCinema_Vosproizvesti">
+                                <Path Data="M4,2 L11.5,7 L4,12 Z"
+                                      Fill="{ThemeResource OverlayFgBrush}" />
+                            </Button>
+                            <Button Style="{StaticResource OverlayIconButtonStyle}" Width="30" Height="30"
+                                    Command="{x:Bind OpenFolderCommand}"
+                                    Visibility="{x:Bind IsFinished, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    x:Uid="OnlineCinema_Pokazat_V_Papke">
+                                <Path Data="M1.5,4.5 A1,1 0 0 1 2.5,3.5 L6,3.5 L7.5,5 L13.5,5 A1,1 0 0 1 14.5,6 L14.5,12 A1,1 0 0 1 13.5,13 L2.5,13 A1,1 0 0 1 1.5,12 Z"
+                                      Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.3"
+                                      Fill="{ThemeResource OverlayFgBrush}" Opacity="0.25" />
+                            </Button>
+                            <Button Style="{StaticResource OverlayIconButtonStyle}" Width="30" Height="30"
+                                    Command="{x:Bind RetryCommand}"
+                                    Visibility="{x:Bind IsFailed, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    x:Uid="OnlineCinema_Povtorit">
+                                <Path Data="M12.5,7 A5.5,5.5 0 1 1 10,2.6 M10,2.5 L10,5.5 L7,5.5"
+                                      Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.6"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Fill="Transparent" />
+                            </Button>
+                            <Button Style="{StaticResource OverlayIconButtonStyle}" Width="30" Height="30"
+                                    Command="{x:Bind RemoveCommand}"
+                                    Visibility="{x:Bind IsRemovable, Mode=OneWay, Converter={StaticResource BoolToVisConverter}}"
+                                    x:Uid="OnlineCinema_Ubrat">
+                                <Path Data="M3.5,3.5 L10.5,10.5 M10.5,3.5 L3.5,10.5"
+                                      Stroke="{ThemeResource OverlayFgBrush}" StrokeThickness="1.8"
+                                      StrokeEndLineCap="Round" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </StackPanel>
+</UserControl>

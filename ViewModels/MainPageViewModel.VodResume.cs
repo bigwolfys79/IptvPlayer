@@ -178,6 +178,15 @@ public partial class MainPageViewModel
 
     public async Task<bool> PlayChannelAsync(ChannelViewModel channel, bool interactive)
     {
+        // Immediate silence: the resolve + resume dialog may take seconds, and
+        // the previously playing stream must not keep sounding through them.
+        // Selecting the same item again keeps its audio untouched
+        if (!ReferenceEquals(Player.VodChannel, channel) &&
+            !string.Equals(Player.VodChannel?.PageUrl, channel.PageUrl, StringComparison.Ordinal))
+        {
+            Player.Player?.Pause();
+        }
+
         if (!string.IsNullOrWhiteSpace(channel.PortalRequest))
         {
             var playlist = AppSettings.Playlists.FirstOrDefault(p => p.Id == AppSettings.ActivePlaylistId);
@@ -320,6 +329,17 @@ public partial class MainPageViewModel
             if (resolved != null)
             {
                 variants = resolved.Variants;
+                // Plain-HLS series (nextembed): the first episode's variants
+                // are built lazily — enrich before picking the rendition
+                if (resolved.IsPlainHls &&
+                    ocPlaylist?.Seasons is { Count: > 0 } pls &&
+                    pls[0].Episodes is { Count: > 0 } eps0 &&
+                    eps0[0].Voiceovers is { Count: > 0 } vos0)
+                {
+                    await _onlineCinemaResolver.EnrichNextEmbedLeafVariantsAsync(vos0[0]);
+                    variants = vos0[0].Variants;
+                }
+
                 quality = PickDefaultVodQuality(variants);
                 if (quality != null)
                 {

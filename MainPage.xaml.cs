@@ -114,6 +114,7 @@ public sealed partial class MainPage : Page
         Player.ArchiveStateChanged += OnPlayerArchiveStateChanged;
 
         Player.VodStateChanged += OnPlayerVodStateChanged;
+        _ = Player.RestoreDownloadsAsync();
 
         ViewModel.PortalEpisodePickRequested += OnPortalEpisodePickRequested;
 
@@ -501,6 +502,7 @@ public sealed partial class MainPage : Page
             Player.PlayerChanged -= OnPlayerChangedApplyRenderer;
             Player.ArchiveStateChanged -= OnPlayerArchiveStateChanged;
             Player.VodStateChanged -= OnPlayerVodStateChanged;
+
             Player.PropertyChanged -= OnPlayerPropertyChangedBuffering;
             Player.PropertyChanged -= OnPlayerPropertyChangedMuted;
             Player.PlayerChanged -= OnPlayerChangedAttachBuffering;

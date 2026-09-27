@@ -152,6 +152,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <ComboBox x:Name="GroupFilterComboBox"
                               Grid.Row="0" Grid.Column="0"
@@ -165,6 +166,33 @@
                               ItemsSource="{x:Bind ViewModel.ContentTypes, Mode=OneWay}"
                               SelectedItem="{x:Bind ViewModel.SelectedContentType, Mode=TwoWay}"
                               Visibility="{x:Bind ViewModel.IsContentTypeFilterVisible, Mode=OneWay}" />
+                        <ComboBox x:Name="SortFilterComboBox"
+                                  Grid.Row="2" Grid.Column="0"
+                                  HorizontalAlignment="Stretch" Margin="0,2,0,0"
+                                  ItemsSource="{x:Bind ViewModel.OnlineCinemaSortOptions, Mode=OneWay}"
+                                  SelectedItem="{x:Bind ViewModel.SelectedOnlineCinemaSort, Mode=TwoWay}"
+                                  DisplayMemberPath="Label"
+                                  SelectionChanged="OnlineCinemaSortFilter_SelectionChanged"
+                                  Visibility="{x:Bind ViewModel.IsOnlineCinemaSortVisible, Mode=OneWay}" />
+                        <Button x:Name="PosterViewToggleButton"
+                                Grid.Row="2" Grid.Column="1"
+                                Width="36" Height="32" Padding="0" Margin="0,2,0,0"
+                                Click="PosterViewToggleButton_Click"
+                                Visibility="{x:Bind ViewModel.IsPosterViewAvailable, Mode=OneWay}"
+                                x:Uid="Vid_Spisok_Postery">
+                            <Grid Width="16" Height="16">
+                                <Rectangle x:Name="PosterViewIconList" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Top" Margin="1,1.5,1,0" />
+                                <Rectangle x:Name="PosterViewIconList2" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="1,0,1,0" />
+                                <Rectangle x:Name="PosterViewIconList3" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Bottom" Margin="1,0,1,1.5" />
+                                <Grid x:Name="PosterViewIconGrid" Visibility="Collapsed">
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                                </Grid>
+                            </Grid>
+                        </Button>
+
                     <StackPanel Grid.Row="1" Grid.Column="0"
                                 Orientation="Horizontal" Spacing="6">
                         <ComboBox x:Name="GenreFilterComboBox"
@@ -186,23 +214,6 @@
                                   Stretch="Uniform"
                                   Fill="{ThemeResource TextFillColorPrimaryBrush}"
                                   Data="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M16.24,7.76A1,1 0 0,1 18.18,7.76A1,1 0 0,1 18.18,9.18L15.89,11.46L18.18,13.75A1,1 0 0,1 18.18,15.18A1,1 0 0,1 16.24,15.18L13.95,12.89L11.66,15.18A1,1 0 0,1 10.22,15.18A1,1 0 0,1 10.22,13.75L12.51,11.46L10.22,9.18A1,1 0 0,1 10.22,7.76A1,1 0 0,1 11.66,7.76L13.95,10.05Z" />
-                        </Button>
-                        <Button x:Name="PosterViewToggleButton"
-                                Width="36" Height="32" Padding="0"
-                                Click="PosterViewToggleButton_Click"
-                                Visibility="{x:Bind ViewModel.IsPosterViewAvailable, Mode=OneWay}"
-                                x:Uid="Vid_Spisok_Postery">
-                            <Grid Width="16" Height="16">
-                                <Rectangle x:Name="PosterViewIconList" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Top" Margin="1,1.5,1,0" />
-                                <Rectangle x:Name="PosterViewIconList2" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="1,0,1,0" />
-                                <Rectangle x:Name="PosterViewIconList3" Width="14" Height="2.4" RadiusX="1.2" Fill="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Bottom" Margin="1,0,1,1.5" />
-                                <Grid x:Name="PosterViewIconGrid" Visibility="Collapsed">
-                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" />
-                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
-                                    <Rectangle Width="6.4" Height="6.4" Fill="{ThemeResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
-                                </Grid>
-                            </Grid>
                         </Button>
                     </StackPanel>
                     <ProgressRing x:Name="FilterLoadingRing"
@@ -679,6 +690,7 @@
                                 <MenuFlyoutItem x:Uid="Vosproizvedenie" x:Name="SettingsPlaybackItem" Click="PlaybackSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Interfeys" x:Name="SettingsInterfaceItem" Click="InterfaceSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="OnlineCinema_Menu_Lbl" x:Name="SettingsOnlineCinemaItem" Click="OnlineCinemaSettingsButton_Click"/>
+                                <MenuFlyoutItem x:Uid="OnlineCinema_Zagruzki_Menu" x:Name="SettingsDownloadsItem" Click="DownloadsButton_Click"/>
                                 <MenuFlyoutItem Text="EPG" Click="EpgSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Pleylist" x:Name="SettingsPlaylistItem" Click="PlaylistSettingsButton_Click"/>
                                 <MenuFlyoutItem x:Uid="Zapisi" x:Name="SettingsRecordingItem" Click="RecordingSettingsButton_Click"/>

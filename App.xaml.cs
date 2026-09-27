@@ -195,6 +195,7 @@ public partial class App : Application
         services.AddSingleton<OnlineCinemaCatalogService>();
         services.AddSingleton<IOnlineCinemaStreamResolver, OnlineCinemaStreamResolver>();
         services.AddSingleton<IOnlineCinemaDownloadService, OnlineCinemaDownloadService>();
+        services.AddSingleton<OnlineCinemaDownloadManager>();
         services.AddSingleton<IM3UParserService, M3UParserService>();
         services.AddSingleton<IVideoPortalService, VideoPortalService>();
         services.AddSingleton<IUpdateService, UpdateService>();

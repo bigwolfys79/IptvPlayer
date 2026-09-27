@@ -98,35 +98,48 @@ public static class KinogoSite
 
     // Embed player iframes from the film page HTML (data-src or src); ads and
     // YouTube are skipped, the main provider goes first. Used by the pure-HTTP resolver
+    // Film pages carry several player providers: the active one in
+    // <iframe data-src|src> plus the switcher entries (<li data-src="...">)
+    // listing every other provider. All of them are collected — an
+    // unsupported provider falls through to the next one
     public static List<string> ExtractEmbedUrls(string filmHtml)
     {
         var result = new List<string>();
-        foreach (var m in Regex.Matches(filmHtml, @"<iframe[^>]*?(?:data-src|src)=""([^""]+)""").Cast<Match>())
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // cinemar is the best-parsed provider — it always goes first
+        foreach (var m in Regex.Matches(filmHtml, @"(?:<iframe[^>]*?|\s)(?:data-src|src)=""([^""]+)""").Cast<Match>())
         {
-            var url = m.Groups[1].Value;
-            if (url.Contains("youtube", StringComparison.OrdinalIgnoreCase) ||
-                url.Contains("agl010", StringComparison.OrdinalIgnoreCase) ||
-                !url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-            {
-                continue;
-            }
-
-            if (url.Contains("cinemar", StringComparison.OrdinalIgnoreCase))
-            {
-                result.Insert(0, url);
-            }
-            else
-            {
-                result.Add(url);
-            }
+            AddEmbedUrl(m.Groups[1].Value, result, seen);
         }
 
         return result;
+    }
+
+    private static void AddEmbedUrl(string raw, List<string> result, HashSet<string> seen)
+    {
+        var url = raw;
+        if (url.Contains("youtube", StringComparison.OrdinalIgnoreCase) ||
+            url.Contains("agl010", StringComparison.OrdinalIgnoreCase) ||
+            !url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ||
+            !seen.Add(url))
+        {
+            return;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return;
+        }
+
+        if (url.Contains("cinemar", StringComparison.OrdinalIgnoreCase))
+        {
+            result.Insert(0, url);
+        }
+        else
+        {
+            result.Add(url);
+        }
     }
 
     // Only https pages of the site itself may be fetched/parsed
@@ -288,15 +301,6 @@ public static class KinogoSite
 
     // Applies the site's session year filter (same POST as the reference parser);
     // __YEAR__ is substituted in code (ExecuteScriptAsync takes no arguments)
-    public const string SetYearFilterJsTemplate = @"
-async () => {
-    await fetch(location.href, {
-        method: 'POST', credentials: 'include',
-        headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'x-requested-with': 'XMLHttpRequest' },
-        body: 'xsort=1&xs_field=year&xs_value=__YEAR__'
-    });
-    return true;
-}";
 
     // All embed player candidates on the page (the site hosts several providers);
     // ads and YouTube are skipped.

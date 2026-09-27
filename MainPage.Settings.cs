@@ -56,6 +56,13 @@ public sealed partial class MainPage : Page
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
     }
 
+    // Open the downloads menu (progress, pause/stop, play file/show in folder)
+    private async void DownloadsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Dialogs.DownloadsDialog(ViewModel.DownloadManager, ViewModel);
+        await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
+    }
+
     // Open EPG settings dialog
     private async void EpgSettingsButton_Click(object sender, RoutedEventArgs e)
     {

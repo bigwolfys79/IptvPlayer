@@ -194,11 +194,13 @@ public sealed partial class MainPage : Page
         WindowedVodQualityButton.Flyout = menuCopy;
     }
 
-    // Download button shows only for online-cinema playback — portal VOD and
-    // live channels have no download source
+    // Download button shows for online-cinema playback (playlist tree or
+    // plain-HLS stream) — portal VOD and live channels have no download
     private void UpdateOnlineCinemaDownloadButton()
     {
-        var visible = Player.IsVodPlaying && Player.OnlineCinemaPlaylist != null;
+        var visible = Player.IsVodPlaying &&
+            (Player.OnlineCinemaPlaylist != null ||
+             (Player.VodChannel?.IsVodCatalogItem == true && !string.IsNullOrEmpty(Player.VodChannel.PageUrl)));
         OverlayVodDownloadButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         WindowedVodDownloadButton.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         UpdateWindowedOverlayTopRow();

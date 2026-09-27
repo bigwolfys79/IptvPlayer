@@ -3357,12 +3357,6 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="OnlineCinema_Skachat.ToolTipService.ToolTip" xml:space="preserve">
     <value>Скачать видео</value>
   </data>
-  <data name="OnlineCinema_Skachivanie_Start" xml:space="preserve">
-    <value>Подготовка скачивания…</value>
-  </data>
-  <data name="OnlineCinema_Skachivanie_0" xml:space="preserve">
-    <value>Скачивание: {0}%</value>
-  </data>
   <data name="OnlineCinema_Skachano_0" xml:space="preserve">
     <value>Скачано: {0}</value>
   </data>
@@ -3371,6 +3365,83 @@ Serilog (логирование), Inno Setup (установщик)</value>
   </data>
   <data name="OnlineCinema_Skachivanie_Oshibka" xml:space="preserve">
     <value>Ошибка скачивания</value>
+  </data>
+
+  <data name="OnlineCinema_Ssilok_Net" xml:space="preserve">
+    <value>Не удалось получить ссылки на скачивание.</value>
+  </data>
+  <data name="OnlineCinema_Ostanovit.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Остановить скачивание</value>
+  </data>
+
+  <data name="OnlineCinema_Zakryt.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Закрыть</value>
+  </data>
+  <data name="OnlineCinema_Pauza.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Пауза</value>
+  </data>
+  <data name="OnlineCinema_Prodolzhit.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Продолжить</value>
+  </data>
+  <data name="OnlineCinema_Vosproizvesti.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Воспроизвести скачанный файл</value>
+  </data>
+  <data name="OnlineCinema_Pokazat_V_Papke.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Показать в папке</value>
+  </data>
+  <data name="OnlineCinema_Povtorit.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Повторить</value>
+  </data>
+  <data name="OnlineCinema_Ubrat.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Убрать из списка</value>
+  </data>
+  <data name="OnlineCinema_Status_Pauza" xml:space="preserve">
+    <value>Пауза</value>
+  </data>
+  <data name="OnlineCinema_Status_Gotovo" xml:space="preserve">
+    <value>Готово</value>
+  </data>
+  <data name="OnlineCinema_Status_Oshibka" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+
+  <data name="OnlineCinema_Zagruzki_Menu.Text" xml:space="preserve">
+    <value>Скачивания</value>
+  </data>
+  <data name="OnlineCinema_Zagruzki_Text" xml:space="preserve">
+    <value>Скачивания</value>
+  </data>
+  <data name="DownloadsDialog_Pusto" xml:space="preserve">
+    <value>Нет активных скачиваний</value>
+  </data>
+
+  <data name="OnlineCinema_Ochistit_Spisok" xml:space="preserve">
+    <value>Очистить список</value>
+  </data>
+
+  <data name="Sort_Po_Umolchaniyu" xml:space="preserve">
+    <value>По умолчанию</value>
+  </data>
+  <data name="Sort_Po_Date" xml:space="preserve">
+    <value>По дате</value>
+  </data>
+  <data name="Sort_Po_Reytingu" xml:space="preserve">
+    <value>По рейтингу</value>
+  </data>
+  <data name="Sort_Top_3_Dnya" xml:space="preserve">
+    <value>Топ за 3 дня</value>
+  </data>
+  <data name="Sort_Po_Prosmotram" xml:space="preserve">
+    <value>По просмотрам</value>
+  </data>
+  <data name="Sort_Po_Kommentariyam" xml:space="preserve">
+    <value>По комментариям</value>
+  </data>
+  <data name="Sort_Po_Godu" xml:space="preserve">
+    <value>По году</value>
+  </data>
+  <data name="Sort_Po_Kinopoisku" xml:space="preserve">
+    <value>По Кинопоиску</value>
   </data>
 
 </root>

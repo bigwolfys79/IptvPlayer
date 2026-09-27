@@ -39,6 +39,9 @@ public partial class MainPageViewModel : ObservableObject
     public PlayerViewModel Player { get; }
 
 
+    public Services.OnlineCinemaDownloadManager DownloadManager { get; }
+
+
     public RecordingService Recording { get; }
 
     private ObservableCollection<ChannelViewModel> _channels = new();
@@ -170,6 +173,38 @@ public partial class MainPageViewModel : ObservableObject
     }
 
     public Visibility IsYearFilterVisible => Years.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+    // Site xsort options (online cinema films/series listings)
+    public record OnlineCinemaSortOption(string Label, string Value);
+
+    public List<OnlineCinemaSortOption> OnlineCinemaSortOptions { get; } = new()
+    {
+        new(L.T("Sort_Po_Umolchaniyu"), ""),
+        new(L.T("Sort_Po_Date"), "date"),
+        new(L.T("Sort_Po_Reytingu"), "rating"),
+        new(L.T("Sort_Top_3_Dnya"), "views_top"),
+        new(L.T("Sort_Po_Prosmotram"), "views"),
+        new(L.T("Sort_Po_Kommentariyam"), "comm"),
+        new(L.T("Sort_Po_Godu"), "year"),
+        new(L.T("Sort_Po_Kinopoisku"), "kp"),
+    };
+
+    private OnlineCinemaSortOption? _selectedOnlineCinemaSort;
+
+    public OnlineCinemaSortOption? SelectedOnlineCinemaSort
+    {
+        get => _selectedOnlineCinemaSort;
+        set
+        {
+            if (SetProperty(ref _selectedOnlineCinemaSort, value))
+            {
+                _ = ApplyOnlineCinemaSortAsync(value?.Value ?? "");
+            }
+        }
+    }
+
+    public Visibility IsOnlineCinemaSortVisible =>
+        _isOnlineCinemaSource ? Visibility.Visible : Visibility.Collapsed;
 
     private static string AllContentTypesOption => L.T("Vse_Tipy");
 
@@ -357,6 +392,7 @@ public partial class MainPageViewModel : ObservableObject
         Services.ICatalogDatabaseService catalogDatabase,
         Services.OnlineCinemaCatalogService onlineCinemaCatalog,
         Services.IOnlineCinemaStreamResolver onlineCinemaResolver,
+        Services.OnlineCinemaDownloadManager downloadManager,
         ILogger<MainPageViewModel> logger)
     {
         _epgViewModel = epgViewModel;
@@ -369,6 +405,7 @@ public partial class MainPageViewModel : ObservableObject
         _logger = logger;
         Player = player;
         Recording = recording;
+        DownloadManager = downloadManager;
         _selectedChannel = new ChannelViewModel();
 
         _onlineCinemaCatalog.Progress += text => PlaylistLoadingText = text;
@@ -466,10 +503,11 @@ public partial class MainPageViewModel : ObservableObject
             return;
         }
 
-        // Online cinema: the site's first page differs per year — refresh it
-        if (_isOnlineCinemaSource && int.TryParse(value, out var cinemaYear))
+        // Online cinema: the year is a session filter on the category
+        // listing — re-apply filters and reload the current category's page 1
+        if (_isOnlineCinemaSource)
         {
-            _ = SyncOnlineCinemaYearAsync(cinemaYear);
+            _ = ApplyOnlineCinemaYearAsync();
         }
 
         FilterChannels();
@@ -790,6 +828,7 @@ public partial class MainPageViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(IsGenreFilterVisible));
+        OnPropertyChanged(nameof(IsOnlineCinemaSortVisible));
 
         if (!_isPortalSource)
         {

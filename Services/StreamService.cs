@@ -518,6 +518,21 @@ namespace IptvPlayer.Services
 
                 ffmpegConfig.FFmpegOptions["multiple_requests"] = "0";
 
+                // Онлайн-кинотеатр: некоторые CDN (nextembed/interkh) отдают
+                // сегменты HLS только браузерным User-Agent — с дефолтным
+                // "Lavf" они отвечают 410 Gone
+                if (isVod)
+                {
+                    ffmpegConfig.FFmpegOptions["user_agent"] = KinogoSite.UserAgent;
+
+                    // Локальные мини-мастера (переключение качества при
+                    // раздельной аудио-группе) ссылаются на https-плейлисты:
+                    // для локального файла hls-демуксер по умолчанию пускает
+                    // только file/crypto/data
+                    ffmpegConfig.FFmpegOptions["protocol_whitelist"] =
+                        "file,http,https,tcp,tls,crypto";
+                }
+
                 // Сокращаем зондирование потока для live-каналов.
                 // По умолчанию FFmpeg анализирует до 5 МБ / 5 с перед первым кадром —
                 // именно это даёт ~1–1,5 с задержки на старте. 500 КБ / 500 мс

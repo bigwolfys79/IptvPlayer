@@ -20,6 +20,8 @@ public sealed class LocalStreamProxy : IDisposable
     private readonly HttpClient _http;
     private readonly Microsoft.Extensions.Logging.ILogger<LocalStreamProxy> _logger;
     private readonly object _gate = new();
+    private readonly object _virtualGate = new();
+    private readonly Dictionary<string, string> _virtualTexts = new(StringComparer.Ordinal);
     private readonly Queue<double> _window = new();
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
@@ -43,6 +45,27 @@ public sealed class LocalStreamProxy : IDisposable
     }
 
     public bool IsRunning => _listener is not null;
+
+
+    // Registers a static playlist (online-cinema mini-masters) served at a
+    // stable local URL; empty string when the listener cannot start
+    public string RegisterText(string content, string extension)
+    {
+        if (!IsRunning && !TryStart())
+        {
+            return string.Empty;
+        }
+
+        var name = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(content)))[..16]
+            + extension;
+        lock (_virtualGate)
+        {
+            _virtualTexts[name] = content;
+        }
+
+        return _baseUrl + "/v/" + name;
+    }
 
 
     public string WrapUrl(string upstreamUrl)
@@ -193,6 +216,25 @@ public sealed class LocalStreamProxy : IDisposable
                     return;
                 }
 
+                // Virtual static playlists (mini-masters) — no upstream fetch
+                if (path.StartsWith("/v/", StringComparison.Ordinal))
+                {
+                    string? text;
+                    lock (_virtualGate)
+                    {
+                        _virtualTexts.TryGetValue(path[3..], out text);
+                    }
+
+                    if (text is null)
+                    {
+                        await WriteSimpleStatusAsync(stream, 404, "Not Found", ct);
+                        return;
+                    }
+
+                    await WriteTextPlaylistAsync(stream, text, ct);
+                    return;
+                }
+
                 var upstream = DecodePath(path);
                 if (upstream is null)
                 {
@@ -297,6 +339,21 @@ public sealed class LocalStreamProxy : IDisposable
         }
 
         request.Headers.TryAddWithoutValidation("Accept-Encoding", "identity");
+    }
+
+    private async Task WriteTextPlaylistAsync(
+        NetworkStream client, string text, CancellationToken ct)
+    {
+        var bytes = Encoding.UTF8.GetBytes(text);
+
+        var head = new StringBuilder();
+        head.Append("HTTP/1.1 200 OK\r\n");
+        head.Append("Content-Type: application/vnd.apple.mpegurl\r\n");
+        head.Append("Content-Length: ").Append(bytes.Length).Append("\r\n");
+        head.Append("Connection: close\r\n\r\n");
+
+        await client.WriteAsync(Encoding.ASCII.GetBytes(head.ToString()), ct);
+        await client.WriteAsync(bytes, ct);
     }
 
     private async Task ProxyPlaylistAsync(

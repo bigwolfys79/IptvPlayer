@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
 using IptvPlayer.Models;
@@ -18,7 +19,7 @@ public partial class MainPageViewModel
     private bool _isCinemaRefreshRunning;
     private bool _isLoadingMoreCinema;
     private bool _siteSearchRunning;
-    private int _lastSyncedYear;
+    private int? _lastSyncedYear;
 
     // Site quick-search results per query: hit page URLs stay visible in the
     // filtered list even when the query doesn't match the (Russian) title text
@@ -42,6 +43,7 @@ public partial class MainPageViewModel
     {
         _isOnlineCinemaSource = isOnlineCinema;
         OnPropertyChanged(nameof(IsOnlineCinemaSource));
+        OnPropertyChanged(nameof(IsOnlineCinemaSortVisible));
         OnPropertyChanged(nameof(IsLoadMoreVisible));
         OnPropertyChanged(nameof(IsLoadMoreBusyVisible));
         OnPropertyChanged(nameof(IsGroupFilterVisible));
@@ -91,6 +93,7 @@ public partial class MainPageViewModel
         // Rebuild resets the combos — keep the user's group/genre/year and
         // re-point the selection at the fresh instance of the playing item
         RefreshGroups(group, keepFilters: true);
+        _suppressFilterLoad = true;
         if (!string.IsNullOrEmpty(genre) && Genres.Contains(genre))
         {
             SelectedGenre = genre;
@@ -99,6 +102,8 @@ public partial class MainPageViewModel
         {
             SelectedYear = year;
         }
+        _suppressFilterLoad = false;
+        RestoreOnlineCinemaSortSelection();
         if (selected != null)
         {
             var fresh = Channels.FirstOrDefault(
@@ -269,25 +274,157 @@ public partial class MainPageViewModel
     // Site-side year sync: the first page differs per year, so when the user
     // picks a year the site is re-queried with its session year filter and the
     // fresh page lands in the catalog under a "год N" pseudo-category
-    public async Task SyncOnlineCinemaYearAsync(int year)
+    // Sort combo → DLE xsort POST for the category matching the current
+    // group/genre; the sorted page 1 replaces the cached one and the list
+    // reloads. Empty value resets to the site default
+    private bool _suppressOnlineCinemaSort;
+
+    public async Task ApplyOnlineCinemaSortAsync(string sortValue)
     {
-        if (_lastSyncedYear == year)
+        if (_suppressOnlineCinemaSort || !_isOnlineCinemaSource)
         {
             return;
         }
 
-        _lastSyncedYear = year;
-        try
+        var category = CurrentCinemaCategory();
+        if (category == null)
         {
-            await _onlineCinemaCatalog.SyncYearAsync(year);
-            await ReloadOnlineCinemaChannelsAsync();
+            return;
         }
-        catch (Exception ex)
+
+        if (string.IsNullOrEmpty(sortValue))
         {
-            _logger.LogWarning(ex, "Онлайн-кинотеатр: не удалось синхронизировать год {Year}.", year);
+            AppSettings.OnlineCinemaSorts.Remove(category);
+        }
+        else
+        {
+            AppSettings.OnlineCinemaSorts[category] = sortValue;
+        }
+
+        _ = _settingsService.SaveAsync(AppSettings);
+        UpdateOnlineCinemaFilters(reloadCurrentPage: false);
+        await ReloadCurrentCinemaCategoryAsync(category);
+    }
+
+    // Restores the combo from the stored sort for the current category
+    // Push the persisted per-category sorts into the catalog service
+    public void SyncCatalogSorts() => _onlineCinemaCatalog.Sorts = AppSettings.OnlineCinemaSorts;
+
+    // The category matching the current group/genre selection (films →
+    // genre-or-"все фильмы"; series → "сериалы"); null for other groups
+    private string? CurrentCinemaCategory()
+    {
+        if (SelectedGroup == L.T("OnlineCinema_Group_Serials"))
+        {
+            return "сериалы";
+        }
+
+        if (SelectedGroup == L.T("OnlineCinema_Group_Films"))
+        {
+            var genre = SelectedGenre;
+            return !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
+                   KinogoSite.Categories.ContainsKey(genre)
+                ? genre
+                : "все фильмы";
+        }
+
+        return null;
+    }
+
+    // Pushes the current year + per-category sorts into the catalog service
+    public void UpdateOnlineCinemaFilters(bool reloadCurrentPage)
+    {
+        if (!_isOnlineCinemaSource)
+        {
+            return;
+        }
+
+        SyncCatalogSorts();
+        var year = int.TryParse(SelectedYear, out var y) ? y.ToString() : "";
+        foreach (var cat in KinogoSite.Categories.Keys.Concat(new[] { "сериалы" }))
+        {
+            _onlineCinemaCatalog.SetCategoryFilter(cat, year,
+                AppSettings.OnlineCinemaSorts.GetValueOrDefault(cat) ?? "");
+        }
+
+        if (reloadCurrentPage)
+        {
+            var category = CurrentCinemaCategory();
+            if (category != null)
+            {
+                _ = ReloadCurrentCinemaCategoryAsync(category);
+            }
         }
     }
 
+    private int _categoryReloadBusy;
+
+    private async Task ReloadCurrentCinemaCategoryAsync(string category)
+    {
+        // Re-fetches page 1 with the session filters applied and refreshes the
+        // list. Re-entrancy guard: the reload re-fires combo handlers, which
+        // must not start another fetch cycle
+        if (Interlocked.Exchange(ref _categoryReloadBusy, 1) == 1)
+        {
+            return;
+        }
+
+        try
+        {
+            try
+            {
+                await _onlineCinemaCatalog.LoadCategoryPageAsync(category, 1);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Онлайн-кинотеатр: не удалось обновить страницу «{Category}».", category);
+            }
+
+            await ReloadOnlineCinemaChannelsAsync();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _categoryReloadBusy, 0);
+        }
+    }
+
+    public void RestoreOnlineCinemaSortSelection()
+    {
+        string category;
+        if (SelectedGroup == L.T("OnlineCinema_Group_Serials"))
+        {
+            category = "сериалы";
+        }
+        else if (SelectedGroup == L.T("OnlineCinema_Group_Films"))
+        {
+            var genre = SelectedGenre;
+            category = !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
+                       KinogoSite.Categories.ContainsKey(genre)
+                ? genre
+                : "все фильмы";
+        }
+        else
+        {
+            return;
+        }
+
+        AppSettings.OnlineCinemaSorts.TryGetValue(category, out var stored);
+        _suppressOnlineCinemaSort = true;
+        SelectedOnlineCinemaSort = OnlineCinemaSortOptions.FirstOrDefault(o => o.Value == stored)
+            ?? OnlineCinemaSortOptions[0];
+        _suppressOnlineCinemaSort = false;
+    }
+
+    public async Task ApplyOnlineCinemaYearAsync()
+    {
+        if (_lastSyncedYear?.ToString() == SelectedYear)
+        {
+            return;
+        }
+
+        _lastSyncedYear = int.TryParse(SelectedYear, out var parsed) ? parsed : (int?)null;
+        UpdateOnlineCinemaFilters(reloadCurrentPage: true);
+    }
 
     // Online cinema site search (lightsearch): called when local filtering
     // finds nothing. Hits are saved to the catalog (pseudo-category "поиск")

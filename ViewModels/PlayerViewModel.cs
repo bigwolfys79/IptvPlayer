@@ -18,12 +18,7 @@ public partial class PlayerViewModel : ObservableObject
     private readonly IStreamService _streamService;
     private readonly ISettingsService _settingsService;
     private readonly ILogger<PlayerViewModel> _logger;
-    private readonly Services.IOnlineCinemaDownloadService _downloadService;
-
-    // Only one download runs at a time; a second click is rejected in the UI
-    private volatile bool _isDownloading;
-
-    public bool IsOnlineCinemaDownloading => _isDownloading;
+    private readonly Services.OnlineCinemaDownloadManager _downloadManager;
 
     private string _streamId = string.Empty;
     private string? _lastStreamUrl;
@@ -155,6 +150,13 @@ public partial class PlayerViewModel : ObservableObject
         Services.OnlineCinemaStream? resolved;
         try
         {
+            // nextembed series episodes: pre-resolved, but their variants
+            // (mini-masters) are built lazily on first play
+            if (leaf.ResolvedUrl != null && leaf.Variants.Count == 0 && string.IsNullOrEmpty(leaf.Data))
+            {
+                await _onlineCinemaResolver.EnrichNextEmbedLeafVariantsAsync(leaf);
+            }
+
             resolved = leaf.ResolvedUrl != null
                 ? LeafStream(leaf)
                 : await _onlineCinemaResolver.ResolveLeafAsync(leaf.Origin, leaf.Data, leaf.EmbedUrl);
@@ -246,61 +248,124 @@ public partial class PlayerViewModel : ObservableObject
         return null;
     }
 
-    // Download the currently playing voiceover/episode at the currently
-    // selected quality ("Авто" → best rendition). Returns the target file
-    // path, null when the leaf or the download links are unavailable
-    public async Task<string?> DownloadCurrentOnlineCinemaAsync(IProgress<int> progress, CancellationToken ct = default)
+    // Resolve the download links for the currently playing voiceover/episode
+    // and queue a download row into the manager. Returns null on success, an
+    // error message (already localized) otherwise
+    public async Task<string?> StartOnlineCinemaDownloadAsync(string targetFolder)
     {
-        if (_isDownloading)
+        // Nextembed-style stream: no cinemar download window exists — download
+        // the HLS master (current quality's mini-master) via ffmpeg remux
+        if (OnlineCinemaPlaylist == null)
         {
-            return null;
+            return await StartHlsDownloadAsync(targetFolder);
         }
 
         var leaf = CurrentOnlineCinemaLeaf();
         if (leaf == null || _vodChannel == null)
         {
-            return null;
+            return Services.L.T("OnlineCinema_Resolv_Fail");
         }
 
-        var options = await _onlineCinemaResolver.GetDownloadOptionsAsync(leaf.Origin, leaf.Data, leaf.EmbedUrl, ct);
-        var option = PickDownloadOption(options);
+        var options = await _onlineCinemaResolver.GetDownloadOptionsAsync(leaf.Origin, leaf.Data, leaf.EmbedUrl);
+        var option = PickDownloadOption(options, CurrentVodQuality);
         if (option == null)
         {
             _logger.LogInformation("Онлайн-кинотеатр: ссылки на скачивание не найдены.");
-            return null;
+            return Services.L.T("OnlineCinema_Ssilok_Net");
         }
 
         var fileName = Services.OnlineCinemaDownloadService.BuildFileName(DownloadNameParts(leaf), option.Quality);
-        var targetPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "IptvPlayer", "downloads", fileName);
+        return _downloadManager.Start(new Services.OnlineCinemaDownloadRequest
+        {
+            Url = option.Url,
+            FileName = fileName,
+            TargetPath = Path.Combine(targetFolder, fileName),
+            Quality = option.Quality,
+            Origin = leaf.Origin,
+            LeafData = leaf.Data,
+            EmbedUrl = leaf.EmbedUrl,
+            FreshUrl = () => FreshDownloadUrlAsync(leaf, option.Quality)
+        }) == null
+            ? Services.L.T("OnlineCinema_Skachivanie_Idyot")
+            : null;
+    }
 
-        _isDownloading = true;
+    // HLS remux download of the currently playing nextembed stream
+    // HLS remux download of the currently playing nextembed stream. The
+    // link is resolved FRESH at download time — signatures minted at play
+    // start go stale within minutes. The film is paused first: the CDN
+    // allows a single session per IP, and an active playback blocks both
+    // the fresh resolve and the download itself
+    private async Task<string?> StartHlsDownloadAsync(string targetFolder)
+    {
+        if (_vodChannel == null || string.IsNullOrEmpty(_vodChannel.PageUrl))
+        {
+            return Services.L.T("OnlineCinema_Resolv_Fail");
+        }
+
+        var quality = CurrentVodQuality is { } q && IsRenditionKey(q) ? q : null;
+        var pageUrl = _vodChannel.PageUrl!;
+        var leaf = CurrentOnlineCinemaLeaf();
+
+        // Pause before resolving: playback holds the CDN session
+        Player?.Pause();
+
+        var episodeKey = leaf is { } l && l.SeasonNumber > 0 ? $"s{l.SeasonNumber}e{l.EpisodeNumber}" : null;
+        var hlsUrl = await _onlineCinemaResolver.ResolveFreshHlsUrlAsync(pageUrl, quality, episodeKey);
+        if (string.IsNullOrEmpty(hlsUrl))
+        {
+            return Services.L.T("OnlineCinema_Ssilok_Net");
+        }
+
+        var nameParts = leaf is { } currentLeaf
+            ? DownloadNameParts(currentLeaf)
+            : new List<string> { _vodChannel.Name ?? "video" };
+        var fileName = Services.OnlineCinemaDownloadService.BuildFileName(nameParts, quality ?? "auto");
+        return _downloadManager.Start(new Services.OnlineCinemaDownloadRequest
+        {
+            Url = hlsUrl,
+            FileName = fileName,
+            TargetPath = Path.Combine(targetFolder, fileName),
+            Quality = quality ?? "auto",
+            PageUrl = pageUrl,
+            IsHls = true,
+            EpisodeKey = episodeKey,
+            FreshUrl = () => _onlineCinemaResolver.ResolveFreshHlsUrlAsync(pageUrl, quality, episodeKey)
+        }) == null
+            ? Services.L.T("OnlineCinema_Skachivanie_Idyot")
+            : null;
+    }
+
+    // Fresh CDN link for the same quality — the old token expires after the
+    // hour, while the .part offset stays valid (same file, same quality)
+    private async Task<string?> FreshDownloadUrlAsync(Services.OnlineCinemaLeaf leaf, string quality)
+    {
         try
         {
-            await _downloadService.DownloadAsync(option.Url, targetPath, progress, ct);
-            return targetPath;
+            var options = await _onlineCinemaResolver.GetDownloadOptionsAsync(leaf.Origin, leaf.Data, leaf.EmbedUrl);
+            return PickDownloadOption(options, quality)?.Url;
         }
-        finally
+        catch (Exception ex)
         {
-            _isDownloading = false;
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: не удалось обновить ссылку для докачки.");
+            return null;
         }
     }
 
-    // Exact selected quality, else the nearest rendition below it, else the
+    // Exact preferred quality, else the nearest rendition below it, else the
     // highest (options come sorted descending)
-    private Services.OnlineCinemaDownloadOption? PickDownloadOption(
-        List<Services.OnlineCinemaDownloadOption> options)
+    private static Services.OnlineCinemaDownloadOption? PickDownloadOption(
+        List<Services.OnlineCinemaDownloadOption> options, string? preferred)
     {
         if (options.Count == 0)
         {
             return null;
         }
 
-        if (CurrentVodQuality is { } preferred && IsRenditionKey(preferred))
+        if (preferred is { } rendition && IsRenditionKey(rendition))
         {
-            var wanted = int.Parse(preferred[..^1]);
-            var option = options.FirstOrDefault(o => o.Quality == preferred) ??
+            var wanted = int.Parse(rendition[..^1]);
+            var option = options.FirstOrDefault(o => o.Quality == rendition) ??
                          options.LastOrDefault(o => int.Parse(o.Quality[..^1]) <= wanted);
             if (option != null)
             {
@@ -604,13 +669,100 @@ public partial class PlayerViewModel : ObservableObject
 
     public PlayerViewModel(IStreamService streamService, ISettingsService settingsService,
         Services.IOnlineCinemaStreamResolver onlineCinemaResolver,
-        Services.IOnlineCinemaDownloadService downloadService, ILogger<PlayerViewModel> logger)
+        Services.OnlineCinemaDownloadManager downloadManager, ILogger<PlayerViewModel> logger)
     {
         _streamService = streamService;
         _settingsService = settingsService;
         _onlineCinemaResolver = onlineCinemaResolver;
-        _downloadService = downloadService;
+        _downloadManager = downloadManager;
         _logger = logger;
+        _downloadManager.Changed += (_, _) => _ = SaveDownloadsAsync();
+    }
+
+    // Restores the persisted downloads list after a restart: unfinished rows
+    // come back Paused (resumable), finished ones stay openable. Called from
+    // the UI thread once at startup
+    public async Task RestoreDownloadsAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.LoadAsync();
+            foreach (var entry in settings.OnlineCinemaDownloads.AsEnumerable().Reverse())
+            {
+                if (!entry.IsCompleted && !File.Exists(entry.TargetPath + ".part"))
+                {
+                    continue; // nothing on disk to continue
+                }
+
+                if (entry.IsCompleted && !File.Exists(entry.TargetPath))
+                {
+                    continue; // the user deleted the finished file
+                }
+
+                var request = new Services.OnlineCinemaDownloadRequest
+                {
+                    Url = entry.Url,
+                    FileName = entry.FileName,
+                    TargetPath = entry.TargetPath,
+                    Quality = entry.Quality,
+                    Origin = entry.Origin,
+                    LeafData = entry.LeafData,
+                    EmbedUrl = entry.EmbedUrl,
+                    PageUrl = entry.PageUrl,
+                    IsHls = entry.IsHls,
+                    EpisodeKey = entry.EpisodeKey,
+                    FreshUrl = entry.IsHls
+                        ? () => _onlineCinemaResolver.ResolveFreshHlsUrlAsync(entry.PageUrl, entry.Quality)
+                        : () => FreshDownloadUrlAsync(
+                            new Services.OnlineCinemaLeaf
+                            {
+                                Origin = entry.Origin,
+                                Data = entry.LeafData,
+                                EmbedUrl = entry.EmbedUrl
+                            }, entry.Quality)
+                };
+
+                if (entry.IsCompleted)
+                {
+                    _downloadManager.RestoreCompleted(request);
+                }
+                else
+                {
+                    _downloadManager.RestorePaused(request);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: не удалось восстановить список скачиваний.");
+        }
+    }
+
+    private async Task SaveDownloadsAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.LoadAsync();
+            settings.OnlineCinemaDownloads = _downloadManager.Items.Select(i => new Models.OnlineCinemaDownloadEntry
+            {
+                Url = i.Url,
+                FileName = i.FileName,
+                TargetPath = i.TargetPath,
+                Quality = i.Request.Quality,
+                Origin = i.Request.Origin,
+                LeafData = i.Request.LeafData,
+                EmbedUrl = i.Request.EmbedUrl,
+                PageUrl = i.Request.PageUrl,
+                IsHls = i.Request.IsHls,
+                EpisodeKey = i.Request.EpisodeKey,
+                IsCompleted = i.IsCompleted
+            }).ToList();
+            await _settingsService.SaveAsync(settings);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Онлайн-кинотеатр: не удалось сохранить список скачиваний.");
+        }
     }
 
 

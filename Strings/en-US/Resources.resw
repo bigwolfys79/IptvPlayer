@@ -3357,12 +3357,6 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="OnlineCinema_Skachat.ToolTipService.ToolTip" xml:space="preserve">
     <value>Download video</value>
   </data>
-  <data name="OnlineCinema_Skachivanie_Start" xml:space="preserve">
-    <value>Preparing download…</value>
-  </data>
-  <data name="OnlineCinema_Skachivanie_0" xml:space="preserve">
-    <value>Downloading: {0}%</value>
-  </data>
   <data name="OnlineCinema_Skachano_0" xml:space="preserve">
     <value>Downloaded: {0}</value>
   </data>
@@ -3371,6 +3365,83 @@ Serilog (logging), Inno Setup (installer)</value>
   </data>
   <data name="OnlineCinema_Skachivanie_Oshibka" xml:space="preserve">
     <value>Download failed</value>
+  </data>
+
+  <data name="OnlineCinema_Ssilok_Net" xml:space="preserve">
+    <value>Could not get the download links.</value>
+  </data>
+  <data name="OnlineCinema_Ostanovit.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Stop download</value>
+  </data>
+
+  <data name="OnlineCinema_Zakryt.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="OnlineCinema_Pauza.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="OnlineCinema_Prodolzhit.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="OnlineCinema_Vosproizvesti.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Play downloaded file</value>
+  </data>
+  <data name="OnlineCinema_Pokazat_V_Papke.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Show in folder</value>
+  </data>
+  <data name="OnlineCinema_Povtorit.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="OnlineCinema_Ubrat.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Remove from list</value>
+  </data>
+  <data name="OnlineCinema_Status_Pauza" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="OnlineCinema_Status_Gotovo" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="OnlineCinema_Status_Oshibka" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+
+  <data name="OnlineCinema_Zagruzki_Menu.Text" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="OnlineCinema_Zagruzki_Text" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="DownloadsDialog_Pusto" xml:space="preserve">
+    <value>No downloads yet</value>
+  </data>
+
+  <data name="OnlineCinema_Ochistit_Spisok" xml:space="preserve">
+    <value>Clear finished</value>
+  </data>
+
+  <data name="Sort_Po_Umolchaniyu" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="Sort_Po_Date" xml:space="preserve">
+    <value>By date</value>
+  </data>
+  <data name="Sort_Po_Reytingu" xml:space="preserve">
+    <value>By rating</value>
+  </data>
+  <data name="Sort_Top_3_Dnya" xml:space="preserve">
+    <value>Top 3 days</value>
+  </data>
+  <data name="Sort_Po_Prosmotram" xml:space="preserve">
+    <value>By views</value>
+  </data>
+  <data name="Sort_Po_Kommentariyam" xml:space="preserve">
+    <value>By comments</value>
+  </data>
+  <data name="Sort_Po_Godu" xml:space="preserve">
+    <value>By year</value>
+  </data>
+  <data name="Sort_Po_Kinopoisku" xml:space="preserve">
+    <value>By Kinopoisk</value>
   </data>
 
 </root>
