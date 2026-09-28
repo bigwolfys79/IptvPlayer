@@ -517,7 +517,7 @@ public partial class MainPageViewModel : ObservableObject
         // listing — re-apply filters and reload the current category's page 1
         if (_isOnlineCinemaSource)
         {
-            _ = ApplyOnlineCinemaYearAsync();
+            ApplyOnlineCinemaYear();
         }
 
         FilterChannels();

@@ -78,6 +78,12 @@ public partial class MainPageViewModel
 
     public async Task ReloadOnlineCinemaChannelsAsync()
     {
+        // Playlist switched away — stale background work must not rebuild the list
+        if (!_isOnlineCinemaSource)
+        {
+            return;
+        }
+
         var channels = await LoadOnlineCinemaFromDbAsync();
         var selected = SelectedChannel;
         var group = SelectedGroup;
@@ -146,6 +152,24 @@ public partial class MainPageViewModel
     // configured interval while background collection runs
     private DateTime _lastCinemaListRefresh = DateTime.UtcNow;
 
+    // Background collect/refresh run under this source; a playlist switch
+    // cancels it so a finishing task cannot rebuild the other playlist's list
+    private CancellationTokenSource _cinemaBackgroundCts = new();
+
+    private CancellationToken BeginCinemaBackgroundWork()
+    {
+        if (_cinemaBackgroundCts.IsCancellationRequested)
+        {
+            _cinemaBackgroundCts.Dispose();
+            _cinemaBackgroundCts = new CancellationTokenSource();
+        }
+
+        return _cinemaBackgroundCts.Token;
+    }
+
+    // Playlist switch: abort in-flight cinema work
+    public void CancelOnlineCinemaBackgroundWork() => _cinemaBackgroundCts.Cancel();
+
     public async Task OnlineCinemaBackgroundCollectAsync()
     {
         if (_isCinemaRefreshRunning)
@@ -153,10 +177,11 @@ public partial class MainPageViewModel
             return;
         }
 
+        var ct = BeginCinemaBackgroundWork();
         try
         {
-            var loaded = await _onlineCinemaCatalog.SyncNextBackgroundPageAsync();
-            if (loaded)
+            var loaded = await _onlineCinemaCatalog.SyncNextBackgroundPageAsync(ct);
+            if (loaded && !ct.IsCancellationRequested)
             {
                 var refreshMinutes = Math.Clamp(AppSettings.OnlineCinemaListRefreshMinutes, 0, 24 * 60);
                 if (refreshMinutes == 0 ||
@@ -170,6 +195,10 @@ public partial class MainPageViewModel
                 await ReloadOnlineCinemaChannelsAsync();
                 _logger.LogInformation("Онлайн-кинотеатр: фоновый сбор добавил страницу каталога, список обновлён.");
             }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Playlist switched mid-page — the DB keeps what was loaded
         }
         catch (Exception ex)
         {
@@ -188,11 +217,16 @@ public partial class MainPageViewModel
         }
 
         _isCinemaRefreshRunning = true;
+        var ct = BeginCinemaBackgroundWork();
         try
         {
-            await _onlineCinemaCatalog.RefreshFirstPagesAsync();
+            await _onlineCinemaCatalog.RefreshFirstPagesAsync(ct);
             await ReloadOnlineCinemaChannelsAsync();
             _logger.LogInformation("Онлайн-кинотеатр: фоновое обновление первых страниц завершено.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Playlist switched mid-refresh — the DB keeps what was fetched
         }
         catch (Exception ex)
         {
@@ -424,7 +458,7 @@ public partial class MainPageViewModel
         _suppressOnlineCinemaSort = false;
     }
 
-    public async Task ApplyOnlineCinemaYearAsync()
+    public void ApplyOnlineCinemaYear()
     {
         if (_lastSyncedYear?.ToString() == SelectedYear)
         {

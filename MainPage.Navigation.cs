@@ -132,6 +132,7 @@ public sealed partial class MainPage : Page
         }
 
         _playlistLoadGeneration++;
+        ViewModel.CancelOnlineCinemaBackgroundWork();
         _playlistLoadCts?.Cancel();
         _playlistLoadCts = new System.Threading.CancellationTokenSource();
         var generation = _playlistLoadGeneration;
