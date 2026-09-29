@@ -1412,6 +1412,16 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>Background catalog loading, seconds</value>
 
   </data>
+  <data name="OnlineCinema_Background_Collect" xml:space="preserve">
+
+    <value>Background catalog loading</value>
+
+  </data>
+  <data name="OnlineCinema_Background_Collect_Hint" xml:space="preserve">
+
+    <value>Off: the catalog never grows on its own — new pages and first-page refreshes load only when you scroll or switch categories. On: while a film is playing the catalog grows on the intervals below.</value>
+
+  </data>
   <data name="OnlineCinema_Collect_Interval_Hint" xml:space="preserve">
 
     <value>How often the next catalog page is fetched during playback so the list grows ahead of you (30–7200).</value>

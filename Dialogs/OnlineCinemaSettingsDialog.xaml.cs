@@ -55,6 +55,14 @@ namespace IptvPlayer.Dialogs
             CinemaEnabledToggle.Toggled += CinemaEnabledToggle_Toggled;
             CinemaEnabledHint.Text = L.T("OnlineCinema_Toggle_Hint");
 
+            BackgroundCollectToggle.Toggled -= BackgroundCollectToggle_Toggled;
+            BackgroundCollectToggle.IsOn = settings.OnlineCinemaBackgroundCollectEnabled;
+            BackgroundCollectToggle.Header = L.T("OnlineCinema_Background_Collect");
+            BackgroundCollectToggle.OnContent = L.T("Vkl");
+            BackgroundCollectToggle.OffContent = L.T("Vykl");
+            BackgroundCollectToggle.Toggled += BackgroundCollectToggle_Toggled;
+            BackgroundCollectHint.Text = L.T("OnlineCinema_Background_Collect_Hint");
+
             RefreshHeader.Text = L.T("OnlineCinema_List_Refresh");
             RefreshHint.Text = L.T("OnlineCinema_List_Refresh_Hint");
             RefreshBox.Value = settings.OnlineCinemaListRefreshMinutes;
@@ -94,6 +102,14 @@ namespace IptvPlayer.Dialogs
         private async void CinemaEnabledToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.OnlineCinemaEnabled = CinemaEnabledToggle.IsOn;
+            await _settingsService.SaveAsync(_viewModel.AppSettings);
+        }
+
+        // Background collect gate applies instantly — the collect timer reads
+        // it on every tick, the on-open refresh checks it before starting
+        private async void BackgroundCollectToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            _viewModel.AppSettings.OnlineCinemaBackgroundCollectEnabled = BackgroundCollectToggle.IsOn;
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 

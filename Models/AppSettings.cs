@@ -170,6 +170,11 @@ public class AppSettings
     public int OnlineCinemaCollectIntervalSeconds { get; set; } = 120;
 
 
+    // Off stops all background catalog fetching: the playback collector and
+    // the on-open refresh of first pages; pages load only on demand
+    public bool OnlineCinemaBackgroundCollectEnabled { get; set; } = true;
+
+
     // Online-cinema parsing method gates. The site requests go down the
     // curl.exe → HttpClient → hidden WebView2 cascade; a disabled method is
     // skipped (WebView2 off also disables the browser fallback of stream

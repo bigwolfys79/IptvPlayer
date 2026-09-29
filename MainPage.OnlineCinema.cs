@@ -53,7 +53,8 @@ public sealed partial class MainPage : Page
         var playlist = ViewModel.AppSettings.Playlists
             .FirstOrDefault(p => p.Id == ViewModel.AppSettings.ActivePlaylistId);
         if (playlist == null || !playlist.IsOnlineCinema ||
-            !ViewModel.AppSettings.OnlineCinemaEnabled)
+            !ViewModel.AppSettings.OnlineCinemaEnabled ||
+            !ViewModel.AppSettings.OnlineCinemaBackgroundCollectEnabled)
         {
             return;
         }
@@ -93,7 +94,10 @@ public sealed partial class MainPage : Page
         }
         else
         {
-            _ = ViewModel.RefreshOnlineCinemaInBackgroundAsync();
+            if (ViewModel.AppSettings.OnlineCinemaBackgroundCollectEnabled)
+            {
+                _ = ViewModel.RefreshOnlineCinemaInBackgroundAsync();
+            }
         }
 
         // Open state: sort combo at the site default regardless of stored sorts

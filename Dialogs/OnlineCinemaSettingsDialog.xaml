@@ -19,6 +19,12 @@
                 </StackPanel>
 
                 <StackPanel Spacing="8">
+                    <ToggleSwitch x:Name="BackgroundCollectToggle" HorizontalAlignment="Left" Toggled="BackgroundCollectToggle_Toggled"/>
+                    <TextBlock x:Name="BackgroundCollectHint" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
                     <TextBlock x:Name="RefreshHeader" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="RefreshHint" FontSize="11" TextWrapping="Wrap"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
