@@ -557,7 +557,11 @@ namespace IptvPlayer.Dialogs
                     Id = _viewModel.AppSettings.Playlists.Count == 0
                         ? 1
                         : _viewModel.AppSettings.Playlists.Max(p => p.Id) + 1,
-                    Name = string.IsNullOrEmpty(name) ? MainPage.DefaultPlaylistName(urlOrPath) : name,
+                    Name = string.IsNullOrEmpty(name)
+                        ? type == "online-cinema"
+                            ? L.T("OnlineCinema_Tip_Lbl")
+                            : MainPage.DefaultPlaylistName(urlOrPath)
+                        : name,
                     Url = urlOrPath,
                     Type = type,
                     PortalKey = isPortal ? portalKey : null

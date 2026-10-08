@@ -54,6 +54,8 @@ public sealed partial class MainPage : Page
     {
         var dialog = new Dialogs.OnlineCinemaSettingsDialog(ViewModel, _settingsService);
         await dialog.ShowAsync(((MenuFlyoutItem)sender).XamlRoot);
+        // The master toggle may have added/removed the cinema source
+        UpdatePlaylistMenu();
     }
 
     // Open the downloads menu (progress, pause/stop, play file/show in folder)

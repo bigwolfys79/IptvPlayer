@@ -102,6 +102,8 @@ namespace IptvPlayer.Dialogs
         private async void CinemaEnabledToggle_Toggled(object sender, RoutedEventArgs e)
         {
             _viewModel.AppSettings.OnlineCinemaEnabled = CinemaEnabledToggle.IsOn;
+            // The switch owns the source: on — create "online cinema", off — remove it
+            Services.OnlineCinema.OnlineCinemaPlaylistSync.Sync(_viewModel.AppSettings);
             await _settingsService.SaveAsync(_viewModel.AppSettings);
         }
 

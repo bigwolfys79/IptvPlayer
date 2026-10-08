@@ -570,7 +570,8 @@ public sealed partial class HubPage : Page
 
         if (m3us.Count == 1)
         {
-            AddFlyoutItem("\uE8AB", L.T("Zagruzit_Pleylist"), null, (_, _) =>
+            var isActive = _settings?.ActivePlaylistId == m3us[0].Id;
+            AddFlyoutItem(isActive ? "\uE73E" : "\uE8AB", m3us[0].Name, null, (_, _) =>
                 Frame.Navigate(typeof(MainPage), (m3us[0], skipResume: true)));
         }
         else

@@ -70,6 +70,9 @@ public partial class App : Application
 
     private static readonly LoggingLevelSwitch FileLogSwitch = new(LogEventLevel.Information);
 
+    // Bootstrap sync created/removed the cinema source — persist on first await-safe spot
+    private static bool _cinemaPlaylistSyncDirty;
+
 
     public App()
     {
@@ -87,6 +90,9 @@ public partial class App : Application
         }
 
         L.SetLanguage(initialSettings.Language);
+
+        // Cinema master switch owns its source; sync before any page reads settings
+        _cinemaPlaylistSyncDirty = global::IptvPlayer.Services.OnlineCinema.OnlineCinemaPlaylistSync.Sync(initialSettings);
         TempDiagnosticsEnabled = initialSettings.TempDiagnosticsEnabled;
         FileLogSwitch.MinimumLevel = initialSettings.FileLoggingEnabled
             ? LogEventLevel.Information
@@ -486,6 +492,11 @@ public partial class App : Application
 
             var settingsService = App.Services.GetRequiredService<ISettingsService>();
             var settings = await settingsService.LoadAsync();
+            if (_cinemaPlaylistSyncDirty)
+            {
+                _cinemaPlaylistSyncDirty = false;
+                await settingsService.SaveAsync(settings);
+            }
             Log.Information("OnLaunched: ShowHubOnStartup={Hub}", settings.ShowHubOnStartup);
 
             var target = settings.ShowHubOnStartup ? typeof(HubPage) : typeof(MainPage);

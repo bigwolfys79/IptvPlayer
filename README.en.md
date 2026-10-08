@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.26.2
+- **Version:** 1.26.5
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -72,6 +72,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 ### Online cinema
 - "Online cinema" playlist type: the movie catalog is taken directly from the source website — poster grid, search, genre and year filters, Movies/Series groups and favorites
 - Everything runs without a browser: requests go through the system `curl.exe` (its TLS fingerprint passes the site protection, unlike .NET), the hidden WebView2 remains a fallback and is not started by default; every parsing method can be disabled in the settings
+- The on/off switch fully owns the source: the "Online cinema" toggle creates and enables the "Online cinema" playlist by itself (on by default — no manual adding needed), turning it off removes the source and hides the catalog
 - A dedicated "Online cinema" settings section (player settings menu): source on/off switch, a "Background catalog loading" toggle (off — pages and category refreshes load only when you scroll), background catalog loading and list refresh intervals, parsing-method toggles (curl.exe → HttpClient → hidden WebView2 — a disabled method is skipped)
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" following the selection: the "Series" group deepens the series listing, the "Movies" group — the selected genre category (or "all movies"), any other group — categories in turn
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network
