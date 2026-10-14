@@ -28,6 +28,8 @@ public class XmlTvService : IXmlTvService
 
     public event Action<string, bool, string?>? SourceLoadFinished;
 
+    public event Action<string>? BackgroundRefreshCompleted;
+
     public XmlTvService(
         ILogger<XmlTvService> logger,
         HttpClient? httpClient = null)
@@ -131,6 +133,7 @@ public class XmlTvService : IXmlTvService
                     "Источник {Url}: фоновая перекачка завершена, распарсено программ: {Programs}.",
                     source.Url, parsed.Entries.Count);
                 SourceLoadFinished?.Invoke(source.Url, true, null);
+                BackgroundRefreshCompleted?.Invoke(source.Url);
             }
             catch (OperationCanceledException)
             {

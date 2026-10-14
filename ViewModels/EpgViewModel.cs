@@ -34,8 +34,32 @@ public partial class EpgViewModel : ObservableObject
         _epgService = epgService;
         _settingsService = settingsService;
         _logger = logger;
+        _uiDispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _epgService.BackgroundDataRefreshed += OnBackgroundDataRefreshed;
         ResetWindowToNow();
         LoadEpgSourcesFromSettings();
+    }
+
+    private readonly Microsoft.UI.Dispatching.DispatcherQueue? _uiDispatcher;
+
+    private void OnBackgroundDataRefreshed(object? s, EventArgs e)
+    {
+        void Apply()
+        {
+            if (!IsLoading)
+            {
+                _ = LoadEPGAsync();
+            }
+        }
+
+        if (_uiDispatcher is { } d && !d.HasThreadAccess)
+        {
+            d.TryEnqueue(Apply);
+        }
+        else
+        {
+            Apply();
+        }
     }
 
     private ObservableCollection<ChannelViewModel> _channels = new();

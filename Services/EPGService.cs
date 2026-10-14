@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using IptvPlayer.Models;
 using IptvPlayer.ViewModels;
@@ -109,6 +110,7 @@ namespace IptvPlayer.Services
             _logger = logger;
             _uiDispatcher = DispatcherQueue.GetForCurrentThread();
             _xmlTvService.SourceLoadFinished += OnSourceLoadFinished;
+            _xmlTvService.BackgroundRefreshCompleted += OnBackgroundRefreshCompleted;
         }
 
         private readonly System.Threading.SemaphoreSlim _statusUpdateGate = new(1, 1);
@@ -160,6 +162,36 @@ namespace IptvPlayer.Services
         public Task<List<ChannelViewModel>> GetChannelsAsync()
         {
             return _channelRepository.GetAllChannelsAsync();
+        }
+
+        public event EventHandler? BackgroundDataRefreshed;
+
+        private int _backgroundReloadPending;
+
+        // Apply background-refreshed source data to the running session
+        private async void OnBackgroundRefreshCompleted(string url)
+        {
+            if (Interlocked.CompareExchange(ref _backgroundReloadPending, 1, 0) != 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await ReloadSourcesAsync().ConfigureAwait(false);
+                BackgroundDataRefreshed?.Invoke(this, EventArgs.Empty);
+                _logger.LogInformation(
+                    "Фоновая перекачка {Url} применена к текущей сессии.",
+                    SecretProtector.Mask(url));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось применить фоновую перекачку {Url}.", SecretProtector.Mask(url));
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _backgroundReloadPending, 0);
+            }
         }
 
         public async Task<List<EPGEntry>> GetEPGEntriesAsync(int channelId)

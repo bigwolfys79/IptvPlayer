@@ -105,7 +105,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 
 ### EPG and extras
 - EPG (XMLTV) with lazy loading (current program at startup, full list on click); current program title in the channel list wraps up to two lines
-- Multi-level EPG cache: downloaded feed, merged result and positions — startup takes a fraction of a second, network is touched once per refresh period (1/3/7 days); when the refresh period is due, the program guide is shown immediately from the stale cache while the re-download runs in the background
+- Multi-level EPG cache: downloaded feed, merged result and positions — startup takes a fraction of a second, network is touched once per refresh period (1/3/7 days); when the refresh period is due, the program guide is shown immediately from the stale cache while the re-download runs in the background; once it finishes, the fresh data is applied to the running session automatically — current programmes in the channel list update without a restart or manual refresh
 - EPG settings: reminders, refresh period and archive depth (1/3/7 days back); EPG sources are configured per playlist
 - EPG is not used for video portals or the online cinema: their items are never searched, matched or refreshed against a TV guide
 - EPG source validation on add (head-of-feed download, gzip, XMLTV checks) and per-source status: last successful load or error text

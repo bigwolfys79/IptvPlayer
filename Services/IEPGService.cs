@@ -17,5 +17,9 @@ namespace IptvPlayer.Services
 
 
         Task ReloadSourcesAsync();
+
+
+        // Fresh data downloaded by a stale-cache background refresh is now merged in
+        event EventHandler? BackgroundDataRefreshed;
     }
 }

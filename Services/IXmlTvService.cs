@@ -28,5 +28,9 @@ public interface IXmlTvService
     event Action<string, bool, string?>? SourceLoadFinished;
 
 
+    // Raised after a stale-cache background re-download succeeded
+    event Action<string>? BackgroundRefreshCompleted;
+
+
     Task<string?> ValidateEpgSourceAsync(string url, CancellationToken ct = default);
 }
