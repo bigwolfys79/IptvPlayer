@@ -32,6 +32,12 @@ public partial class MainPageViewModel
 
     public bool IsOnlineCinemaSource => _isOnlineCinemaSource;
 
+    // Active cinema site adapter; switched when a cinema playlist opens
+    public IOnlineCinemaSite CurrentSite => _onlineCinemaCatalog.Site;
+
+    public void SetOnlineCinemaSite(string? playlistUrl) =>
+        _onlineCinemaCatalog.Site = OnlineCinemaSites.ByUrl(playlistUrl) ?? OnlineCinemaSites.Default;
+
 
     public Visibility IsLoadMoreVisible => _isOnlineCinemaSource ? Visibility.Visible : Visibility.Collapsed;
 
@@ -71,7 +77,7 @@ public partial class MainPageViewModel
 
     public async Task<List<ChannelViewModel>> LoadOnlineCinemaFromDbAsync()
     {
-        var items = await _onlineCinemaDb.GetItemsAsync(KinogoSite.Id);
+        var items = await _onlineCinemaDb.GetItemsAsync(CurrentSite.Id);
         return items.Select(ItemToChannel).ToList();
     }
 
@@ -267,7 +273,7 @@ public partial class MainPageViewModel
             {
                 var genre = SelectedGenre;
                 category = !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
-                           KinogoSite.Categories.ContainsKey(genre)
+                           CurrentSite.Categories.ContainsKey(genre)
                     ? genre
                     : "все фильмы";
             }
@@ -278,7 +284,7 @@ public partial class MainPageViewModel
             }
             else
             {
-                foreach (var cat in KinogoSite.Categories.Keys)
+                foreach (var cat in CurrentSite.Categories.Keys)
                 {
                     items = await _onlineCinemaCatalog.LoadNextPageAsync(cat);
                     if (items is { Count: > 0 })
@@ -357,7 +363,7 @@ public partial class MainPageViewModel
         {
             var genre = SelectedGenre;
             return !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
-                   KinogoSite.Categories.ContainsKey(genre)
+                   CurrentSite.Categories.ContainsKey(genre)
                 ? genre
                 : "все фильмы";
         }
@@ -375,7 +381,7 @@ public partial class MainPageViewModel
 
         SyncCatalogSorts();
         var year = int.TryParse(SelectedYear, out var y) ? y.ToString() : "";
-        foreach (var cat in KinogoSite.Categories.Keys.Concat(new[] { "сериалы" }))
+        foreach (var cat in CurrentSite.Categories.Keys.Concat(new[] { "сериалы" }))
         {
             _onlineCinemaCatalog.SetCategoryFilter(cat, year,
                 AppSettings.OnlineCinemaSorts.GetValueOrDefault(cat) ?? "");
@@ -442,7 +448,7 @@ public partial class MainPageViewModel
         {
             var genre = SelectedGenre;
             category = !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
-                       KinogoSite.Categories.ContainsKey(genre)
+                       CurrentSite.Categories.ContainsKey(genre)
                 ? genre
                 : "все фильмы";
         }

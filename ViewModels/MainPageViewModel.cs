@@ -957,11 +957,25 @@ public partial class MainPageViewModel : ObservableObject
         SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
 
 
-        await PlayChannelAsync(channel);
+        // Detached: a hung stream open must not hold the zap reentrancy guard,
+        // otherwise every channel click is dropped until the open times out
+        _ = PlayChannelAndEpgAsync(channel);
+    }
 
-        await EpgViewModel.LoadEPGForChannelAsync(channel.Id);
-        ApplyReminderFlags();
-        ScrollToProgramRequested?.Invoke(this, EventArgs.Empty);
+    private async Task PlayChannelAndEpgAsync(ChannelViewModel channel)
+    {
+        try
+        {
+            await PlayChannelAsync(channel);
+
+            await EpgViewModel.LoadEPGForChannelAsync(channel.Id);
+            ApplyReminderFlags();
+            ScrollToProgramRequested?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Запуск канала «{Name}» не удался.", channel.Name);
+        }
     }
 
 

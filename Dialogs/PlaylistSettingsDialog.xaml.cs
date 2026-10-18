@@ -559,7 +559,7 @@ namespace IptvPlayer.Dialogs
                         : _viewModel.AppSettings.Playlists.Max(p => p.Id) + 1,
                     Name = string.IsNullOrEmpty(name)
                         ? type == "online-cinema"
-                            ? L.T("OnlineCinema_Tip_Lbl")
+                            ? Services.OnlineCinemaSites.ByUrl(urlOrPath)?.DisplayName ?? L.T("OnlineCinema_Tip_Lbl")
                             : MainPage.DefaultPlaylistName(urlOrPath)
                         : name,
                     Url = urlOrPath,

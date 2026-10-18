@@ -27,6 +27,15 @@ public class OnlineCinemaCatalogService
     private readonly ILogger _logger;
     private readonly Random _random = new();
 
+    // Active site adapter; set by the VM when a cinema playlist opens
+    private IOnlineCinemaSite _site = OnlineCinemaSites.Default;
+
+    public IOnlineCinemaSite Site
+    {
+        get => _site;
+        set => _site = value ?? OnlineCinemaSites.Default;
+    }
+
     public OnlineCinemaCatalogService(
         ICatalogDatabaseService db, OnlineCinemaBrowserService browser, ILogger<OnlineCinemaCatalogService> logger)
     {
@@ -84,8 +93,8 @@ public class OnlineCinemaCatalogService
                 return false; // all parsing methods disabled in settings
             }
 
-            var category = KinogoSite.Categories.Keys.First();
-            var categoryPages = (await _db.GetLoadedPagesAsync(KinogoSite.Id))
+            var category = _site.Categories.Keys.First();
+            var categoryPages = (await _db.GetLoadedPagesAsync(_site.Id))
                 .Where(p => p.Category == category)
                 .ToList();
             if (categoryPages.Count == 0)
@@ -139,14 +148,14 @@ public class OnlineCinemaCatalogService
             return null;
         }
 
-        var url = KinogoSite.CategoryUrl(category, 1);
+        var url = _site.CategoryUrl(category, 1);
         string? lastHtml = null;
         if (desired.Year != applied.Year)
         {
             var result = await CurlHttp.PostFormAsync(url,
                 "xsort=1&xs_field=year&xs_value=" + Uri.EscapeDataString(desired.Year ?? ""),
-                KinogoSite.BaseUrl + "/", KinogoSite.BaseUrl, ct);
-            if (result is { Status: 200 } && !KinogoSite.LooksLikeChallenge(result.Body))
+                _site.BaseUrl + "/", _site.BaseUrl, ct);
+            if (result is { Status: 200 } && !_site.LooksLikeChallenge(result.Body))
             {
                 lastHtml = result.Body;
             }
@@ -156,8 +165,8 @@ public class OnlineCinemaCatalogService
         {
             var result = await CurlHttp.PostFormAsync(url,
                 "xsort=1&xs_field=defaultsort&xs_value=" + Uri.EscapeDataString(desired.Sort ?? ""),
-                KinogoSite.BaseUrl + "/", KinogoSite.BaseUrl, ct);
-            if (result is { Status: 200 } && !KinogoSite.LooksLikeChallenge(result.Body))
+                _site.BaseUrl + "/", _site.BaseUrl, ct);
+            if (result is { Status: 200 } && !_site.LooksLikeChallenge(result.Body))
             {
                 lastHtml = result.Body;
             }
@@ -170,7 +179,7 @@ public class OnlineCinemaCatalogService
             // The listing restarts at page 1 in the new order — drop the
             // stale page numbering, or "load more" would resume from pages
             // of the previous (unfiltered) order
-            await _db.ResetCategoryPagesAsync(KinogoSite.Id, category);
+            await _db.ResetCategoryPagesAsync(_site.Id, category);
         }
 
         return lastHtml;
@@ -181,7 +190,7 @@ public class OnlineCinemaCatalogService
     private async Task<(List<OnlineCinemaItem> Items, int TotalPages)?> TryLoadPageHttpAsync(
         string url, string category, CancellationToken ct)
     {
-        if (!KinogoSite.IsValidPageUrl(url) || (!OnlineCinemaMethods.UseCurl && !OnlineCinemaMethods.UseHttpClient))
+        if (!_site.IsValidPageUrl(url) || (!OnlineCinemaMethods.UseCurl && !OnlineCinemaMethods.UseHttpClient))
         {
             return null;
         }
@@ -201,7 +210,7 @@ public class OnlineCinemaCatalogService
                     continue;
                 }
 
-                var result = await CurlHttp.GetAsync(url, KinogoSite.BaseUrl + "/", iframe: false, ct);
+                var result = await CurlHttp.GetAsync(url, _site.BaseUrl + "/", iframe: false, ct);
                 html = result is { Status: 200 } ? result.Body : null;
             }
             else
@@ -209,7 +218,7 @@ public class OnlineCinemaCatalogService
                 try
                 {
                     using var msg = new HttpRequestMessage(HttpMethod.Get, url);
-                    KinogoSite.ApplyBrowserHeaders(msg);
+                    _site.ApplyBrowserHeaders(msg);
                     using var resp = await Http.SendAsync(msg, ct);
                     html = resp.IsSuccessStatusCode ? await resp.Content.ReadAsStringAsync(ct) : null;
                 }
@@ -219,12 +228,12 @@ public class OnlineCinemaCatalogService
                 }
             }
 
-            if (html == null || KinogoSite.LooksLikeChallenge(html))
+            if (html == null || _site.LooksLikeChallenge(html))
             {
                 continue;
             }
 
-            var (items, total) = KinogoSite.ParseCategoryPageHtml(html, category);
+            var (items, total) = _site.ParseCategoryPageHtml(html, category);
             if (items.Count > 0)
             {
                 return (items, total);
@@ -237,8 +246,8 @@ public class OnlineCinemaCatalogService
     private async Task<List<OnlineCinemaItem>> SavePageAsync(
         string category, int page, List<OnlineCinemaItem> items, int total)
     {
-        await _db.UpsertItemsAsync(KinogoSite.Id, items);
-        await _db.SavePageInfoAsync(KinogoSite.Id, new OnlineCinemaPageInfo
+        await _db.UpsertItemsAsync(_site.Id, items);
+        await _db.SavePageInfoAsync(_site.Id, new OnlineCinemaPageInfo
         {
             Category = category,
             PageNumber = page,
@@ -276,7 +285,7 @@ public class OnlineCinemaCatalogService
         if (ensuredHtml != null && page == 1)
         {
             // The filter POST already returned the re-filtered page 1
-            var (ensuredItems, ensuredTotal) = KinogoSite.ParseCategoryPageHtml(ensuredHtml, category);
+            var (ensuredItems, ensuredTotal) = _site.ParseCategoryPageHtml(ensuredHtml, category);
             if (ensuredItems.Count > 0)
             {
                 _lastPage1Fetch[category] = DateTime.UtcNow;
@@ -284,7 +293,7 @@ public class OnlineCinemaCatalogService
             }
         }
 
-        var url = KinogoSite.CategoryUrl(category, page);
+        var url = _site.CategoryUrl(category, page);
         if (page == 1 && _lastPage1Fetch.TryGetValue(category, out var lastFetch) &&
             (DateTime.UtcNow - lastFetch).TotalSeconds < 10)
         {
@@ -319,13 +328,13 @@ public class OnlineCinemaCatalogService
             throw new InvalidOperationException($"Не удалось открыть страницу каталога: {url}");
         }
 
-        var result = await _browser.RunScriptJsonAsync(KinogoSite.ParseCategoryPageJs, ct);
+        var result = await _browser.RunScriptJsonAsync(_site.ParseCategoryPageJs, ct);
         var items = new List<OnlineCinemaItem>();
         if (result.TryGetProperty("items", out var arr) && arr.ValueKind == JsonValueKind.Array)
         {
             foreach (var el in arr.EnumerateArray())
             {
-                var item = KinogoSite.ToItem(el, category);
+                var item = _site.ToItem(el, category);
                 if (item != null)
                 {
                     items.Add(item);
@@ -352,9 +361,9 @@ public class OnlineCinemaCatalogService
             await _browser.InitializeAsync();
         }
 
-        var loaded = await _db.GetLoadedPagesAsync(KinogoSite.Id);
+        var loaded = await _db.GetLoadedPagesAsync(_site.Id);
         var staleThreshold = DateTime.UtcNow.AddHours(-Page1RefreshHours);
-        foreach (var category in KinogoSite.Categories.Keys)
+        foreach (var category in _site.Categories.Keys)
         {
             ct.ThrowIfCancellationRequested();
             var page1 = loaded.FirstOrDefault(p => p.Category == category && p.PageNumber == 1);
@@ -384,7 +393,7 @@ public class OnlineCinemaCatalogService
     // going while the previous page returned cards
     public async Task<List<OnlineCinemaItem>?> LoadNextPageAsync(string category, CancellationToken ct = default)
     {
-        var pages = (await _db.GetLoadedPagesAsync(KinogoSite.Id))
+        var pages = (await _db.GetLoadedPagesAsync(_site.Id))
             .Where(p => p.Category == category)
             .ToList();
         if (pages.Count == 0)
@@ -426,7 +435,7 @@ public class OnlineCinemaCatalogService
     public async Task<List<OnlineCinemaItem>?> SearchAsync(string query, CancellationToken ct = default)
     {
         query = query.Trim();
-        if (query.Length < 2 || _searchActive)
+        if (query.Length < 2 || _searchActive || !_site.SupportsSearch)
         {
             return null;
         }
@@ -440,7 +449,7 @@ public class OnlineCinemaCatalogService
                 return items;
             }
 
-            await _db.UpsertItemsAsync(KinogoSite.Id, items);
+            await _db.UpsertItemsAsync(_site.Id, items);
             Progress?.Invoke($"Поиск «{query}»: найдено {items.Count}");
             _logger.LogInformation("Онлайн-кинотеатр: поиск по сайту «{Query}» — {Count} карточек сохранено в каталог.",
                 query, items.Count);
@@ -461,6 +470,15 @@ public class OnlineCinemaCatalogService
             return null;
         }
 
+        // Lightsearch AJAX sites (POST q=...) vs plain search-page sites (GET)
+        var searchUrl = _site.LightSearchUrl ?? _site.SearchRequestUrl(query);
+        if (searchUrl == null)
+        {
+            return null;
+        }
+
+        var isLightSearch = _site.LightSearchUrl != null;
+
         foreach (var viaCurl in new[] { true, false })
         {
             if (viaCurl ? !OnlineCinemaMethods.UseCurl : !OnlineCinemaMethods.UseHttpClient)
@@ -468,7 +486,7 @@ public class OnlineCinemaCatalogService
                 continue;
             }
 
-            string? json;
+            string? body;
             if (viaCurl)
             {
                 if (!await CurlHttp.GetAvailabilityAsync())
@@ -476,28 +494,49 @@ public class OnlineCinemaCatalogService
                     continue;
                 }
 
-                var result = await CurlHttp.PostFormAsync(
-                    KinogoSite.LightSearchUrl, "q=" + Uri.EscapeDataString(query),
-                    KinogoSite.BaseUrl + "/", KinogoSite.BaseUrl, ct);
-                json = result is { Status: 200 } ? result.Body : null;
+                var result = isLightSearch
+                    ? await CurlHttp.PostFormAsync(searchUrl, "q=" + Uri.EscapeDataString(query),
+                        _site.BaseUrl + "/", _site.BaseUrl, ct)
+                    : await CurlHttp.GetAsync(searchUrl, _site.BaseUrl + "/", iframe: false, ct);
+                body = result is { Status: 200 } ? result.Body : null;
             }
             else
             {
                 try
                 {
-                    using var msg = new HttpRequestMessage(HttpMethod.Post, KinogoSite.LightSearchUrl);
-                    KinogoSite.ApplyAjaxHeaders(msg);
-                    msg.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["q"] = query });
+                    using var msg = new HttpRequestMessage(
+                        isLightSearch ? HttpMethod.Post : HttpMethod.Get, searchUrl);
+                    if (isLightSearch)
+                    {
+                        _site.ApplyAjaxHeaders(msg);
+                        msg.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["q"] = query });
+                    }
+                    else
+                    {
+                        _site.ApplyBrowserHeaders(msg);
+                    }
+
                     using var resp = await Http.SendAsync(msg, ct);
-                    json = resp.IsSuccessStatusCode ? await resp.Content.ReadAsStringAsync(ct) : null;
+                    body = resp.IsSuccessStatusCode ? await resp.Content.ReadAsStringAsync(ct) : null;
                 }
                 catch (Exception)
                 {
-                    json = null;
+                    body = null;
                 }
             }
 
-            var items = ParseSearchResponse(json);
+            if (string.IsNullOrEmpty(body) || _site.LooksLikeChallenge(body))
+            {
+                continue;
+            }
+
+            var items = isLightSearch ? ParseSearchResponse(body) : null;
+            if (items == null && !isLightSearch)
+            {
+                var (parsed, _) = _site.ParseCategoryPageHtml(body, _site.SearchCategory);
+                items = parsed;
+            }
+
             if (items != null)
             {
                 return items;
@@ -507,9 +546,9 @@ public class OnlineCinemaCatalogService
         return null;
     }
 
-    private static List<OnlineCinemaItem>? ParseSearchResponse(string? json)
+    private List<OnlineCinemaItem>? ParseSearchResponse(string? json)
     {
-        if (string.IsNullOrEmpty(json) || KinogoSite.LooksLikeChallenge(json))
+        if (string.IsNullOrEmpty(json) || _site.LooksLikeChallenge(json))
         {
             return null;
         }
@@ -518,7 +557,7 @@ public class OnlineCinemaCatalogService
         {
             using var doc = JsonDocument.Parse(json);
             var html = doc.RootElement.TryGetProperty("html", out var el) ? el.GetString() : null;
-            return html == null ? null : KinogoSite.ParseLightSearchHtml(html, KinogoSite.SearchCategory);
+            return html == null ? null : _site.ParseLightSearchHtml(html, _site.SearchCategory);
         }
         catch (JsonException)
         {
@@ -540,18 +579,18 @@ public class OnlineCinemaCatalogService
                 await _browser.InitializeAsync();
             }
 
-            if (!await _browser.NavigateAsync(KinogoSite.SearchPageUrl(query), ct))
+            if (!await _browser.NavigateAsync(_site.SearchPageUrl(query), ct))
             {
                 return null;
             }
 
-            var result = await _browser.RunScriptJsonAsync(KinogoSite.ParseCategoryPageJs, ct);
+            var result = await _browser.RunScriptJsonAsync(_site.ParseCategoryPageJs, ct);
             var items = new List<OnlineCinemaItem>();
             if (result.TryGetProperty("items", out var arr) && arr.ValueKind == JsonValueKind.Array)
             {
                 foreach (var el in arr.EnumerateArray())
                 {
-                    var item = KinogoSite.ToItem(el, KinogoSite.SearchCategory);
+                    var item = _site.ToItem(el, _site.SearchCategory);
                     if (item != null)
                     {
                         items.Add(item);

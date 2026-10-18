@@ -1488,6 +1488,13 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+
+  <data name="OnlineCinema2_Name_Lbl" xml:space="preserve">
+
+    <value>Kinogo (new site)</value>
+
+  </data>
+
   <data name="OnlineCinema_Tip_Lbl" xml:space="preserve">
 
     <value>Online cinema</value>

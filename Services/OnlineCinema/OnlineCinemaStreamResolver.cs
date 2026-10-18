@@ -85,7 +85,8 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
     {
         try
         {
-            if (!KinogoSite.IsValidPageUrl(pageUrl))
+            var site = OnlineCinemaSites.ByUrl(pageUrl) ?? OnlineCinemaSites.Default;
+            if (!site.IsValidPageUrl(pageUrl))
             {
                 return null;
             }
@@ -93,13 +94,19 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             _logger.LogInformation("Онлайн-кинотеатр: резолв по HTTP, движок curl={Curl}.",
                 await CurlHttp.GetAvailabilityAsync());
 
-            var filmHtml = await GetStringAsync(pageUrl, referer: KinogoSite.BaseUrl + "/", iframe: false, ct);
-            if (filmHtml == null || KinogoSite.LooksLikeChallenge(filmHtml))
+            var filmHtml = await GetStringAsync(pageUrl, referer: site.BaseUrl + "/", iframe: false, ct);
+            if (filmHtml == null || site.LooksLikeChallenge(filmHtml))
             {
+                _logger.LogInformation(
+                    "Онлайн-кинотеатр: страница фильма по HTTP не получена ({Reason}): {Url}",
+                    filmHtml == null ? "нет ответа" : "challenge", pageUrl);
                 return null;
             }
 
-            foreach (var embedUrl in KinogoSite.ExtractEmbedUrls(filmHtml).Take(3))
+            var embeds = site.ExtractEmbedUrls(filmHtml).Take(3).ToList();
+            _logger.LogInformation("Онлайн-кинотеатр: найдено embed-плееров: {Count} для {Url}.",
+                embeds.Count, pageUrl);
+            foreach (var embedUrl in embeds)
             {
                 var stream = await TryResolveEmbedAsync(embedUrl, pageUrl, ct);
                 if (stream != null)
@@ -314,13 +321,14 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
     {
         try
         {
-            var filmHtml = await GetStringAsync(pageUrl, KinogoSite.BaseUrl + "/", false, ct);
-            if (filmHtml == null || KinogoSite.LooksLikeChallenge(filmHtml))
+            var site = OnlineCinemaSites.ByUrl(pageUrl) ?? OnlineCinemaSites.Default;
+            var filmHtml = await GetStringAsync(pageUrl, site.BaseUrl + "/", false, ct);
+            if (filmHtml == null || site.LooksLikeChallenge(filmHtml))
             {
                 return null;
             }
 
-            foreach (var embedUrl in KinogoSite.ExtractEmbedUrls(filmHtml).Take(3))
+            foreach (var embedUrl in site.ExtractEmbedUrls(filmHtml).Take(3))
             {
                 var embedHtml = await GetStringAsync(embedUrl, pageUrl, true, ct);
                 if (embedHtml == null)
@@ -577,6 +585,11 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         {
             _logger.LogInformation("Онлайн-кинотеатр: embed недоступен по HTTP: {Url}", embedUrl);
             return null;
+        }
+
+        if (embedHtml.Contains("hls:", StringComparison.Ordinal))
+        {
+            _logger.LogInformation("Онлайн-кинотеатр: embed отдал конфиг с hls: {Url}", embedUrl);
         }
 
         // Series first: the config carries the full seasons/episodes tree

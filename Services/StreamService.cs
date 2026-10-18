@@ -584,8 +584,24 @@ namespace IptvPlayer.Services
                 {
                     _logger.LogWarning("Dispose-очередь не освободилась за 15 с — открываю поток, не дожидаясь.");
                 }
-                var ffmpegSource = createdSource =
-                    await FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig).AsTask(openCt);
+                // Keep the operation reference: on timeout/cancel the managed await
+                // stops but the native open keeps running and would leak its source
+                var openOp = FFmpegMediaSource.CreateFromUriAsync(actualUrl, ffmpegConfig);
+                FFmpegMediaSource ffmpegSource;
+                try
+                {
+                    ffmpegSource = createdSource =
+                        await openOp.AsTask(openCt).ConfigureAwait(continueOnCapturedContext: false);
+                }
+                catch (OperationCanceledException)
+                {
+                    try { openOp.Cancel(); } catch { }
+                    _ = openOp.AsTask().ContinueWith(t =>
+                    {
+                        try { t.Result.Dispose(); } catch { }
+                    }, TaskContinuationOptions.OnlyOnRanToCompletion | TaskContinuationOptions.ExecuteSynchronously);
+                    throw;
+                }
                 var videoStreams = ffmpegSource.VideoStreams.ToList();
                 var audioStreams = ffmpegSource.AudioStreams.ToList();
 
