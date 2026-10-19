@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using IptvPlayer.Services;
 
 namespace IptvPlayer.Models;
 
@@ -196,6 +197,10 @@ public class AppSettings
     // Per-category site sort (online cinema): category ("все фильмы", genre,
     // "сериалы") → DLE xsort value ("date", "rating", ...)
     public Dictionary<string, string> OnlineCinemaSorts { get; set; } = new();
+
+    // Probed custom cinema sites (generic DLE adapter): one profile per host,
+    // captured by OnlineCinemaSiteProbe at playlist-add time
+    public List<OnlineCinemaSiteProfile> OnlineCinemaSiteProfiles { get; set; } = new();
 
 
     public int SleepTimerMinutes { get; set; }

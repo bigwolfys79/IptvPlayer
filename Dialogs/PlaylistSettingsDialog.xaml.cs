@@ -469,6 +469,30 @@ namespace IptvPlayer.Dialogs
                 url = Services.KinogoSite.BaseUrl;
             }
 
+            // Custom cinema host: probe the site live — a recognized DLE site
+            // produces a persisted profile, the generic adapter handles the rest
+            if (isOnlineCinema && Services.OnlineCinemaSites.ByUrl(url) == null)
+            {
+                SetPlaylistStatus(L.T("OnlineCinema_Probe_Running"));
+                var probe = await Services.OnlineCinemaSiteProbe.ProbeAsync(url);
+                if (probe == null)
+                {
+                    SetPlaylistStatus(L.T("OnlineCinema_Probe_Failed"));
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "Онлайн-кинотеатр: сайт распознан — {BaseUrl}, шаблон {Template}, категорий {Categories}, поиск {Search}.",
+                    probe.BaseUrl, probe.Template, probe.Categories.Count, probe.SearchKind);
+
+                var profiles = _viewModel.AppSettings.OnlineCinemaSiteProfiles;
+                profiles.RemoveAll(p => string.Equals(
+                    p.BaseUrl.TrimEnd('/'), url.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
+                profiles.Add(probe);
+                await _settingsService.SaveAsync(_viewModel.AppSettings);
+                url = probe.BaseUrl;
+            }
+
             var isPortal = IsPortalTypeSelected;
             var portalKey = PortalKeyBox.Text.Trim();
             if (isPortal)

@@ -85,7 +85,14 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
     {
         try
         {
-            var site = OnlineCinemaSites.ByUrl(pageUrl) ?? OnlineCinemaSites.Default;
+            var site = OnlineCinemaSites.ByUrl(pageUrl);
+            if (site == null)
+            {
+                _logger.LogInformation(
+                    "Онлайн-кинотеатр: адаптер для {Url} не найден (сайт не распознан) — резолв отменён.", pageUrl);
+                return null;
+            }
+
             if (!site.IsValidPageUrl(pageUrl))
             {
                 return null;
@@ -321,7 +328,12 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
     {
         try
         {
-            var site = OnlineCinemaSites.ByUrl(pageUrl) ?? OnlineCinemaSites.Default;
+            var site = OnlineCinemaSites.ByUrl(pageUrl);
+            if (site == null)
+            {
+                return null; // unknown host — nothing to re-resolve
+            }
+
             var filmHtml = await GetStringAsync(pageUrl, site.BaseUrl + "/", false, ct);
             if (filmHtml == null || site.LooksLikeChallenge(filmHtml))
             {

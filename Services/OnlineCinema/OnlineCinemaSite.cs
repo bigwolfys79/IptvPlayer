@@ -62,7 +62,9 @@ public interface IOnlineCinemaSite
 }
 
 
-// Registry of the supported cinema sites; the playlist URL host selects one
+// Registry of the supported cinema sites; the playlist URL host selects one.
+// Custom hosts fall back to a live-probed generic DLE adapter (profiles are
+// persisted in settings under OnlineCinemaSiteProfiles)
 public static class OnlineCinemaSites
 {
     public static readonly IOnlineCinemaSite Kinogo = new KinogoOnlineSite();
@@ -73,8 +75,13 @@ public static class OnlineCinemaSites
 
     public static IOnlineCinemaSite Default => Kinogo;
 
+    // Generic adapters are created on demand from persisted profiles
+    private static readonly Dictionary<string, IOnlineCinemaSite> GenericCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
     // Site adapter matching the URL host (playlist Url / film page URL);
-    // null when the host is unknown
+    // null when the host is unknown. Custom hosts resolve through the
+    // probed-site profiles stored in settings
     public static IOnlineCinemaSite? ByUrl(string? url)
     {
         if (string.IsNullOrEmpty(url) ||
@@ -85,9 +92,32 @@ public static class OnlineCinemaSites
         }
 
         var host = uri.Host;
-        return All.FirstOrDefault(s =>
+        var builtin = All.FirstOrDefault(s =>
             Uri.TryCreate(s.BaseUrl, UriKind.Absolute, out var baseUri) &&
             baseUri.Host.Equals(host, StringComparison.OrdinalIgnoreCase));
+        if (builtin != null)
+        {
+            return builtin;
+        }
+
+        var profile = SettingsService.Current?.OnlineCinemaSiteProfiles
+            .FirstOrDefault(p => Uri.TryCreate(p.BaseUrl, UriKind.Absolute, out var u) &&
+                                 u.Host.Equals(host, StringComparison.OrdinalIgnoreCase));
+        if (profile == null)
+        {
+            return null;
+        }
+
+        lock (GenericCache)
+        {
+            if (!GenericCache.TryGetValue(host, out var site))
+            {
+                site = new GenericDleSite(profile);
+                GenericCache[host] = site;
+            }
+
+            return site;
+        }
     }
 }
 

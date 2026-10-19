@@ -1489,6 +1489,18 @@ Serilog (логирование), Inno Setup (установщик)</value>
   </data>
 
 
+  <data name="OnlineCinema_Probe_Running" xml:space="preserve">
+
+    <value>Проверяем сайт…</value>
+
+  </data>
+
+  <data name="OnlineCinema_Probe_Failed" xml:space="preserve">
+
+    <value>Сайт не распознан: это не DLE-сайт или шаблон не поддерживается</value>
+
+  </data>
+
   <data name="OnlineCinema2_Name_Lbl" xml:space="preserve">
 
     <value>Киного (новый сайт)</value>

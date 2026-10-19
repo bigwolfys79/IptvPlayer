@@ -1489,6 +1489,18 @@ Serilog (logging), Inno Setup (installer)</value>
   </data>
 
 
+  <data name="OnlineCinema_Probe_Running" xml:space="preserve">
+
+    <value>Checking the site…</value>
+
+  </data>
+
+  <data name="OnlineCinema_Probe_Failed" xml:space="preserve">
+
+    <value>Site not recognized: not a DLE site or unsupported template</value>
+
+  </data>
+
   <data name="OnlineCinema2_Name_Lbl" xml:space="preserve">
 
     <value>Kinogo (new site)</value>

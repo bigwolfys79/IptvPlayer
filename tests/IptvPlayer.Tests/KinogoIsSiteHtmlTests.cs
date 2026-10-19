@@ -5,7 +5,7 @@ namespace IptvPlayer.Tests;
 
 public class KinogoIsSiteHtmlTests
 {
-    private const string Page = @"
+    internal const string Page = @"
 <html><body>
 <nav><a href=""https://kinogo.is/filmy/page/7/"">7</a><a href=""https://kinogo.is/filmy/page/11/"">11</a></nav>
 <div id=""dle-content"">
@@ -87,5 +87,58 @@ public class KinogoIsSiteHtmlTests
         Assert.Same(OnlineCinemaSites.KinogoIs, OnlineCinemaSites.ByUrl("https://kinogo.is/4850-x.html"));
         Assert.Same(OnlineCinemaSites.Kinogo, OnlineCinemaSites.ByUrl("https://kinogo.online/filmy/"));
         Assert.Null(OnlineCinemaSites.ByUrl("https://example.com/"));
+    }
+}
+
+public class GenericDleSiteTests
+{
+    private static OnlineCinemaSiteProfile Profile() => new()
+    {
+        BaseUrl = "https://kinogo.is",
+        Template = "card",
+        Categories = new Dictionary<string, string> { ["все фильмы"] = "/filmy/", ["сериалы"] = "/serialy/" },
+        YearPathPattern = "/filmy/{0}/",
+        SearchKind = "dlesearch"
+    };
+
+    [Fact]
+    public void GenericAdapter_ParsesCardTemplate_FromProfile()
+    {
+        var site = new GenericDleSite(Profile());
+        var (items, total) = site.ParseCategoryPageHtml(KinogoIsSiteHtmlTests.Page, "все фильмы");
+        var item = Assert.Single(items);
+        Assert.Equal("Человек-паук: Новый день (2026)", item.Title);
+        Assert.Equal(11, total);
+        Assert.Equal("dle:kinogo.is", site.Id);
+    }
+
+    [Fact]
+    public void GenericAdapter_ParsesCardTemplate_WithoutWrapperDiv()
+    {
+        // mba-style markup: card__title anchors inside an unknown container
+        var html = @"<div id=""dle-content""><article class=""movie"">
+<div class=""card__title""><a href=""/filmy/111729-genialnyj-plan-2026.html"">Гениальный план (2026)</a></div>
+<li><span>Год выпуска:</span> <a href=""/filmy/2026/"">2026</a></li>
+<li><span>Жанр:</span> <a href=""/boeviki/"">Боевик</a></li>
+<img src=""/uploads/posts/2026/x.webp"" alt=""Гениальный план"">
+</article>
+<article class=""movie""><div class=""card__title""><a href=""/filmy/89999-x.html"">Второй (2026)</a></div></article></div>";
+        var site = new GenericDleSite(Profile());
+        var (items, _) = site.ParseCategoryPageHtml(html, "все фильмы");
+        Assert.Equal(2, items.Count);
+        Assert.Equal("Гениальный план (2026)", items[0].Title);
+        Assert.Equal("https://kinogo.mba2.invalid".Replace("mba2.invalid", "is") + "/filmy/111729-genialnyj-plan-2026.html", items[0].PageUrl);
+        Assert.Equal(2026, items[0].Year);
+        Assert.Equal(["боевик"], items[0].Genres);
+    }
+
+    [Fact]
+    public void GenericAdapter_Urls_FollowProfile()
+    {
+        var site = new GenericDleSite(Profile());
+        Assert.Equal("https://kinogo.is/filmy/2024/", site.YearUrl(2024));
+        Assert.Equal("https://kinogo.is/serialy/page/3/", site.CategoryUrl("сериалы", 3));
+        Assert.Equal("https://kinogo.is/index.php?do=search&subaction=search&story=%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0",
+            site.SearchPageUrl("матрица"));
     }
 }
