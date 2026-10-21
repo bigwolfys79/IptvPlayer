@@ -38,6 +38,47 @@ public partial class MainPageViewModel
     public void SetOnlineCinemaSite(string? playlistUrl) =>
         _onlineCinemaCatalog.Site = OnlineCinemaSites.ByUrl(playlistUrl) ?? OnlineCinemaSites.Default;
 
+    // Legacy site profile (probed before a parser upgrade) — re-probes once,
+    // swaps the adapter and wipes the site's catalog rows so the next sync
+    // rebuilds them with the new parser (genre/year fields, kinogo.mba case)
+    public async Task EnsureSiteProfileUpToDateAsync()
+    {
+        if (_onlineCinemaCatalog.Site is not GenericDleSite generic ||
+            generic.Profile.Version >= OnlineCinemaSiteProbe.CurrentProfileVersion)
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "Онлайн-кинотеатр: профиль {Host} устарел (v{Old} < v{New}) — перепробинг и пересборка каталога.",
+            generic.Host, generic.Profile.Version, OnlineCinemaSiteProbe.CurrentProfileVersion);
+        try
+        {
+            var profile = await OnlineCinemaSiteProbe.ProbeAsync(generic.BaseUrl);
+            if (profile == null)
+            {
+                _logger.LogInformation(
+                    "Онлайн-кинотеатр: перепробинг {Host} не удался — работаем со старым профилем.", generic.Host);
+                return;
+            }
+
+            AppSettings.OnlineCinemaSiteProfiles.RemoveAll(p => string.Equals(
+                p.BaseUrl.TrimEnd('/'), profile.BaseUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
+            AppSettings.OnlineCinemaSiteProfiles.Add(profile);
+            OnlineCinemaSites.InvalidateGeneric(generic.Host);
+            await _onlineCinemaDb.DeleteSiteAsync(generic.Id);
+            _onlineCinemaCatalog.Site = new GenericDleSite(profile);
+            await _settingsService.SaveAsync(AppSettings);
+            _logger.LogInformation(
+                "Онлайн-кинотеатр: профиль {Host} обновлён до v{Version} — каталог будет пересобран.",
+                profile.BaseUrl, profile.Version);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: миграция профиля {Host} не удалась.", generic.Host);
+        }
+    }
+
 
     public Visibility IsLoadMoreVisible => _isOnlineCinemaSource ? Visibility.Visible : Visibility.Collapsed;
 
@@ -475,14 +516,13 @@ public partial class MainPageViewModel
         UpdateOnlineCinemaFilters(reloadCurrentPage: true);
     }
 
-    // Online cinema site search (lightsearch): called when local filtering
-    // finds nothing. Hits are saved to the catalog (pseudo-category "поиск")
-    // and remembered per query so the filtered list keeps showing them
+    // Online cinema site search: runs for every query (next to the local
+    // filter), hits are saved to the catalog (pseudo-category "поиск") and
+    // remembered per query so the filtered list keeps showing them
     public async Task<bool> SearchOnlineCinemaSiteAsync(string query, CancellationToken ct = default)
     {
         query = query.Trim();
-        if (!_isOnlineCinemaSource || query.Length < 2 || _siteSearchRunning ||
-            _siteSearchHits.ContainsKey(query))
+        if (!_isOnlineCinemaSource || query.Length < 2 || _siteSearchRunning)
         {
             return false;
         }
@@ -493,6 +533,9 @@ public partial class MainPageViewModel
             var items = await _onlineCinemaCatalog.SearchAsync(query, ct);
             if (items == null)
             {
+                _logger.LogInformation(
+                    "Поиск по сайту «{Query}»: поиск недоступен (адаптер {Site}, поиск {Search}).",
+                    query, _onlineCinemaCatalog.Site.Id, _onlineCinemaCatalog.Site.SupportsSearch);
                 return false; // transport failed — leave the query retryable
             }
 

@@ -313,7 +313,7 @@ public static class KinogoSite
     return list.map(f => {
         f.scrollIntoView({ block: 'center' });
         const r = f.getBoundingClientRect();
-        return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width, h: r.height, src: (f.dataset.src || '').slice(0, 60) };
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width, h: r.height, src: (f.dataset.src || '') };
     });
 })()";
 
@@ -336,10 +336,12 @@ public static class KinogoSite
         var genres = new List<string>();
         if (el.TryGetProperty("genres", out var g))
         {
+            // JS returns the raw row text: slash-separated on shortstory
+            // templates, comma-separated on card templates
             var raw = g.GetString() ?? string.Empty;
-            genres = raw.Split('/')
-                .Select(s => s.Trim())
-                .Where(s => s.Length > 0)
+            genres = raw.Split('/', ',')
+                .Select(s => s.Trim().ToLowerInvariant())
+                .Where(s => s.Length > 0 && M3UParserService.KnownGenres.Contains(s))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }

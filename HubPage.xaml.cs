@@ -23,7 +23,7 @@ public sealed partial class HubPage : Page
     private AppSettings? _settings;
     private PlaylistSource? _lastWatchedPlaylist;
     private string? _lastWatchedChannelName;
-    private List<(string Title, string RawTitle, int EpisodeIndex, VodResumePosition Position, int? PlaylistId, string? LocalPath)> _vodResumeItems = new();
+    private List<(string Title, string RawTitle, int EpisodeIndex, int SeasonIndex, VodResumePosition Position, int? PlaylistId, string? LocalPath)> _vodResumeItems = new();
 
 
     private const string LocalFileKeyPrefix = "file::";
@@ -169,15 +169,19 @@ public sealed partial class HubPage : Page
                     if (key.StartsWith(LocalFileKeyPrefix, StringComparison.Ordinal))
                     {
                         var path = key[LocalFileKeyPrefix.Length..];
-                        return (Path.GetFileNameWithoutExtension(path), path, -1, p.Value, (int?)null, path);
+                        return (Path.GetFileNameWithoutExtension(path), path, -1, -1, p.Value, (int?)null, path);
                     }
 
                     var parts = key.Split("::");
                     var title = parts[0];
+                    // Online cinema series keys ("Title::s2e14") — Position
+                    // carries both season and episode indexes; the tuple's
+                    // episode slot holds the episode, the season rides in
+                    // VodResumePosition.OcSeasonIndex
                     var display = episodeIndex >= 0
                         ? string.Format(L.T("Seriya_Nomer_0"), title, episodeIndex + 1)
                         : title;
-                    return (display, title, episodeIndex, p.Value, p.Value.PortalPlaylistId, (string?)null);
+                    return (display, title, episodeIndex, p.Value.OcSeasonIndex, p.Value, p.Value.PortalPlaylistId, (string?)null);
                 })
                 .ToList();
 
@@ -981,9 +985,9 @@ public sealed partial class HubPage : Page
         }
     }
 
-    private void VodMenuItem_Click(ValueTuple<string, string, int, VodResumePosition, int?, string?> item)
+    private void VodMenuItem_Click(ValueTuple<string, string, int, int, VodResumePosition, int?, string?> item)
     {
-        var (title, rawTitle, episodeIndex, position, playlistId, localPath) = item;
+        var (title, rawTitle, episodeIndex, seasonIndex, position, playlistId, localPath) = item;
 
 
         if (localPath != null)
@@ -1000,7 +1004,7 @@ public sealed partial class HubPage : Page
         if (playlist != null)
         {
             CloseFlyout();
-            Frame.Navigate(typeof(MainPage), (playlist, rawTitle, episodeIndex));
+            Frame.Navigate(typeof(MainPage), (playlist, rawTitle, episodeIndex, seasonIndex));
         }
     }
 }

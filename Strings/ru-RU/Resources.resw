@@ -1753,6 +1753,24 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
+  <data name="Oc_Serial_Season_Episode" xml:space="preserve">
+
+    <value>сезон {0}, серия {1}</value>
+
+  </data>
+
+  <data name="Oc_Serial_Position" xml:space="preserve">
+
+    <value>(остановились на {0})</value>
+
+  </data>
+
+  <data name="Oc_Serial_Resume_Text" xml:space="preserve">
+
+    <value>«{0}»: {1}. Продолжить?</value>
+
+  </data>
+
   <data name="Programma_Peredach.Text" xml:space="preserve">
 
     <value>— Программа передач</value>

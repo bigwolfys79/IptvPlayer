@@ -20,8 +20,14 @@ public partial class MainPageViewModel
 
     public event Func<string, TimeSpan, Task<bool>>? VodResumePromptRequested;
 
-    internal static string VodResumeKey(string title, int episodeIndex)
-        => episodeIndex >= 0 ? $"{title}::{episodeIndex}" : title;
+    // Series resume: (title, seasonIndex, episodeIndex, position) — asked
+    // before the tree jumps to the saved leaf; false means "start over"
+    public event Func<string, int, int, TimeSpan, Task<bool>>? OcSeriesResumePromptRequested;
+
+    internal static string VodResumeKey(string title, int seasonIndex, int episodeIndex)
+        => seasonIndex >= 0 && episodeIndex >= 0
+            ? $"{title}::s{seasonIndex}e{episodeIndex}"
+            : episodeIndex >= 0 ? $"{title}::{episodeIndex}" : title;
 
 
     internal static string LocalFileResumeKey(string path) => $"file::{path}";
@@ -61,6 +67,24 @@ public partial class MainPageViewModel
     public async Task LoadVodResumePositionsAsync()
     {
         var stored = await _vodResumeStore.LoadAllAsync();
+
+        // Film entries captured with stale season indexes (::s0e0 on the key,
+        // -1 in the fields) re-key to the flat title — the film lookup never
+        // sees season keys
+        foreach (var key in stored.Keys.ToList())
+        {
+            if (key.EndsWith("::s0e0", StringComparison.Ordinal) && stored[key].OcSeasonIndex < 0)
+            {
+                var title = key[..^6];
+                if (!stored.ContainsKey(title))
+                {
+                    stored[title] = stored[key];
+                }
+
+                stored.Remove(key);
+            }
+        }
+
         foreach (var (key, position) in stored)
         {
             _vodResumePositions[key] = position;
@@ -93,9 +117,24 @@ public partial class MainPageViewModel
     }
 
     public TimeSpan? GetSavedVodPosition(string title, int episodeIndex)
+        => GetSavedVodPosition(title, -1, episodeIndex);
+
+    // Online cinema: the key carries both season and episode, so a series
+    // resumes at the exact episode it stopped on
+    public TimeSpan? GetSavedVodPosition(string title, int seasonIndex, int episodeIndex)
     {
-        if (_vodResumePositions.TryGetValue(VodResumeKey(title, episodeIndex),
+        if (_vodResumePositions.TryGetValue(VodResumeKey(title, seasonIndex, episodeIndex),
                 out var entry) && entry.PositionSeconds >= MinVodResumeSeconds &&
+            (entry.DurationSeconds <= 0 ||
+             entry.PositionSeconds <= entry.DurationSeconds * VodResumeWatchedFraction))
+        {
+            return TimeSpan.FromSeconds(entry.PositionSeconds);
+        }
+
+        // Pre-season-key entries (or voiceover-only films): the flat key
+        if (seasonIndex >= 0 &&
+            _vodResumePositions.TryGetValue(VodResumeKey(title, -1, episodeIndex), out entry) &&
+            entry.PositionSeconds >= MinVodResumeSeconds &&
             (entry.DurationSeconds <= 0 ||
              entry.PositionSeconds <= entry.DurationSeconds * VodResumeWatchedFraction))
         {
@@ -105,9 +144,68 @@ public partial class MainPageViewModel
         return null;
     }
 
+    // Saved season/episode of a series entry — the resume flow starts the
+    // exact leaf the playback stopped on. Entries with a season key
+    // ("title::sNeM") carry both indexes; flat entries mean a film
+    public (int SeasonIndex, int EpisodeIndex)? GetSavedOcPosition(string title)
+        => FindLatestOcEntry(title) is { } saved
+            ? (saved.SeasonIndex, saved.EpisodeIndex)
+            : null;
+
+    // Latest saved position of a series entry with its season/episode slot;
+    // null when the title has no season-keyed entry. Flat entries whose
+    // fields carry the season/episode pair (legacy keys) are honored too
+    public (int SeasonIndex, int EpisodeIndex, TimeSpan? Position)? FindLatestOcEntry(string title)
+    {
+        var key = _vodResumePositions.Keys
+            .Where(k => k.StartsWith(title + "::s", StringComparison.Ordinal))
+            .Where(k =>
+            {
+                var (s, e) = ParseSeasonPart(k);
+                return s >= 0 && e >= 0;
+            })
+            .OrderByDescending(k => _vodResumePositions[k].UpdatedAt)
+            .FirstOrDefault();
+        if (key != null)
+        {
+            var (season, episode) = ParseSeasonPart(key);
+            var position = GetSavedVodPosition(title, season, episode);
+            return (season, episode, position);
+        }
+
+        if (_vodResumePositions.TryGetValue(title, out var flat) &&
+            flat.OcSeasonIndex >= 0 && flat.EpisodeIndex >= 0 &&
+            flat.PositionSeconds >= MinVodResumeSeconds &&
+            (flat.DurationSeconds <= 0 ||
+             flat.PositionSeconds <= flat.DurationSeconds * VodResumeWatchedFraction))
+        {
+            return (flat.OcSeasonIndex, flat.EpisodeIndex, TimeSpan.FromSeconds(flat.PositionSeconds));
+        }
+
+        return null;
+    }
+
+    // "Title::s2e14" → (2, 14)
+    internal static (int Season, int Episode) ParseSeasonPart(string key)
+    {
+        var mark = key.LastIndexOf("::s", StringComparison.Ordinal);
+        if (mark < 0)
+        {
+            return (-1, -1);
+        }
+
+        var tail = key[(mark + 3)..];
+        var e = tail.IndexOf('e');
+        return e > 0 &&
+               int.TryParse(tail[..e], out var s) &&
+               int.TryParse(tail[(e + 1)..], out var ep)
+            ? (s, ep)
+            : (-1, -1);
+    }
+
     public async Task<TimeSpan?> OfferVodResumeAsync(string title, int episodeIndex)
     {
-        var saved = GetSavedVodPosition(title, episodeIndex);
+        var saved = GetSavedVodPosition(title, -1, episodeIndex);
         if (saved == null || VodResumePromptRequested == null)
         {
             return null;
@@ -125,9 +223,14 @@ public partial class MainPageViewModel
         }
 
         var isLocalFile = channel.IsLocalFile && !string.IsNullOrWhiteSpace(channel.StreamUrl);
+        // Season/episode keys only for series trees — films must keep the
+        // flat key (tree indexes of a previous series leak into plain films)
+        var isOcSeries = Player.OnlineCinemaPlaylist?.Seasons is { Count: > 0 };
         var key = isLocalFile
             ? LocalFileResumeKey(channel.StreamUrl!)
-            : VodResumeKey(channel.Name, Player.CurrentVodEpisodeIndex);
+            : isOcSeries
+                ? VodResumeKey(channel.Name, Player.OcSeasonIndex, Player.OcEpisodeIndex)
+                : channel.Name;
 
         var position = Player.VodPositionSeconds;
         if (position < MinVodResumeSeconds)
@@ -142,7 +245,10 @@ public partial class MainPageViewModel
             {
                 PositionSeconds = position,
                 DurationSeconds = Player.VodDurationSeconds,
-                EpisodeIndex = Player.CurrentVodEpisodeIndex,
+                EpisodeIndex = Player.OnlineCinemaPlaylist != null
+                    ? Player.OcEpisodeIndex
+                    : Player.CurrentVodEpisodeIndex,
+                OcSeasonIndex = Player.OnlineCinemaPlaylist != null ? Player.OcSeasonIndex : -1,
                 UpdatedAt = DateTime.Now,
                 PortalPlaylistId = isLocalFile ? null : activePlaylist?.Id
             };
@@ -345,6 +451,68 @@ public partial class MainPageViewModel
                 {
                     playUrl = variants[quality];
                 }
+            }
+
+            // Series: start at the saved season/episode instead of the tree's
+            // default leaf. The leaf URL/variants resolve through the normal
+            // leaf-switch path after the base playback opens (the tree is
+            // already attached), the position restores via the leaf switch
+            if (interactive && ocPlaylist?.Seasons is { Count: > 0 } savedSeasons &&
+                FindLatestOcEntry(channel.Name) is { } saved &&
+                saved.SeasonIndex < savedSeasons.Count &&
+                saved.EpisodeIndex < savedSeasons[saved.SeasonIndex].Episodes.Count &&
+                (saved.SeasonIndex > 0 || saved.EpisodeIndex > 0 || saved.Position != null))
+            {
+                // Ask first: continue at the saved spot or start over
+                var confirmed = OcSeriesResumePromptRequested == null ||
+                                await OcSeriesResumePromptRequested(channel.Name,
+                                    saved.SeasonIndex, saved.EpisodeIndex, saved.Position ?? TimeSpan.Zero);
+                if (confirmed)
+                {
+                    if (saved.SeasonIndex > 0 || saved.EpisodeIndex > 0)
+                    {
+                        var leaf = savedSeasons[saved.SeasonIndex]
+                            .Episodes[saved.EpisodeIndex].Voiceovers[0];
+                        // Pre-resolve so the switch plays instantly; position applies
+                        // right after the switch lands (leaf switch resets position)
+                        if (leaf.ResolvedUrl == null && !string.IsNullOrEmpty(leaf.Data))
+                        {
+                            var leafStream = await _onlineCinemaResolver.ResolveLeafAsync(
+                                leaf.Origin, leaf.Data, leaf.EmbedUrl);
+                            if (leafStream != null)
+                            {
+                                leaf.ResolvedUrl = leafStream.Url;
+                                foreach (var kv in leafStream.Variants)
+                                {
+                                    leaf.Variants[kv.Key] = kv.Value;
+                                }
+                            }
+                        }
+
+                        await Player.StartPlaybackAsync(channel, leaf.ResolvedUrl ?? playUrl, archiveEntry: null,
+                            isVod: true, vodVariants: leaf.Variants.Count > 0 ? leaf.Variants : null,
+                            vodQuality: PickDefaultVodQuality(leaf.Variants),
+                            resumePosition: saved.Position,
+                            onlineCinemaPlaylist: ocPlaylist,
+                            onlineCinemaResume: (saved.SeasonIndex, saved.EpisodeIndex));
+                        _logger.LogInformation(
+                            "Онлайн-кинотеатр: продолжение «{Name}» — сезон {Season}, серия {Episode}.",
+                            channel.Name, saved.SeasonIndex, saved.EpisodeIndex);
+                        return true;
+                    }
+
+                    // Stopped on the tree's default leaf (s1e1) — the position
+                    // alone still needs restoring
+                    if (saved.Position is { } defaultLeafPosition)
+                    {
+                        await Player.StartPlaybackAsync(channel, playUrl, archiveEntry: null,
+                            isVod: true, vodVariants: variants, vodQuality: quality,
+                            resumePosition: defaultLeafPosition, onlineCinemaPlaylist: ocPlaylist);
+                        return true;
+                    }
+                }
+
+                // Declined — fall through to a fresh start
             }
 
             var cinemaResume = interactive

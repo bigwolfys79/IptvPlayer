@@ -59,6 +59,7 @@ public sealed partial class MainPage : Page
     private bool _skipResume;
     private string? _vodResumeChannelTitle;
     private int _vodResumeEpisodeIndex = -1;
+    private int _vodResumeSeasonIndex = -1;
 
     private bool _isFullScreen = false;
     private bool _wasEpgVisibleBeforeFullScreen = false;
@@ -120,6 +121,7 @@ public sealed partial class MainPage : Page
 
 
         ViewModel.VodResumePromptRequested += OnVodResumePromptRequested;
+        ViewModel.OcSeriesResumePromptRequested += OnVodSeriesResumePromptRequested;
         ViewModel.RecordingChanged += OnRecordingChangedUpdateButtons;
 
 
@@ -554,14 +556,15 @@ public sealed partial class MainPage : Page
             Serilog.Log.Information("OnNavigatedTo: получен плейлист Id={Id} Name={Name} IsPortal={IsPortal}",
                 playlist.Id, playlist.Name, playlist.IsPortal);
         }
-        else if (e.Parameter is ValueTuple<PlaylistSource, string, int> tuple)
+        else if (e.Parameter is ValueTuple<PlaylistSource, string, int, int> tuple4)
         {
-            _navigatedPlaylist = tuple.Item1;
-            _vodResumeChannelTitle = tuple.Item2;
-            _vodResumeEpisodeIndex = tuple.Item3;
+            _navigatedPlaylist = tuple4.Item1;
+            _vodResumeChannelTitle = tuple4.Item2;
+            _vodResumeEpisodeIndex = tuple4.Item3;
+            _vodResumeSeasonIndex = tuple4.Item4;
             _cameFromHub = true;
             Serilog.Log.Information("OnNavigatedTo: VOD resume, плейлист Id={Id} Name={Name} IsPortal={IsPortal} Title={Title} Ep={Ep}",
-                tuple.Item1.Id, tuple.Item1.Name, tuple.Item1.IsPortal, tuple.Item2, tuple.Item3);
+                tuple4.Item1.Id, tuple4.Item1.Name, tuple4.Item1.IsPortal, tuple4.Item2, tuple4.Item3);
         }
         else if (e.Parameter is ValueTuple<PlaylistSource, bool> loadTuple)
         {
@@ -841,7 +844,7 @@ public sealed partial class MainPage : Page
 
         if (_vodResumeChannelTitle != null)
         {
-            _ = ResumeVodFromHubAsync(_vodResumeChannelTitle, _vodResumeEpisodeIndex);
+            _ = ResumeVodFromHubAsync(_vodResumeChannelTitle, _vodResumeEpisodeIndex, _vodResumeSeasonIndex);
         }
 
 

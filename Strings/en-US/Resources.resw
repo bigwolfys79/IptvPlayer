@@ -1753,6 +1753,24 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+  <data name="Oc_Serial_Season_Episode" xml:space="preserve">
+
+    <value>season {0}, episode {1}</value>
+
+  </data>
+
+  <data name="Oc_Serial_Position" xml:space="preserve">
+
+    <value>(stopped at {0})</value>
+
+  </data>
+
+  <data name="Oc_Serial_Resume_Text" xml:space="preserve">
+
+    <value>"{0}": {1}. Continue?</value>
+
+  </data>
+
   <data name="Programma_Peredach.Text" xml:space="preserve">
 
     <value>— TV Guide</value>

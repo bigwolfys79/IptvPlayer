@@ -261,6 +261,37 @@ namespace IptvPlayer.Services
         }
 
 
+        // PlayerJS-style quality label: standard widths override the height
+        // bucket (mirrors site players' menus — 1920x800 shows as 1080p)
+        public static string HlsQualityLabel(int width, int height)
+        {
+            var label = height switch
+            {
+                < 200 => "160p",
+                <= 300 => "240p",
+                <= 400 => "360p",
+                <= 500 => "480p",
+                <= 600 => "540p",
+                <= 900 => "720p",
+                <= 1200 => "1080p",
+                <= 1800 => "1440p",
+                _ => "2160p"
+            };
+
+            return width switch
+            {
+                426 when height <= 240 => "240p",
+                640 when height <= 360 => "360p",
+                >= 854 and <= 860 when height <= 480 => "480p",
+                1280 when height <= 720 => "720p",
+                1920 when height <= 1080 => "1080p",
+                2560 when height <= 1440 => "1440p",
+                3840 when height <= 2160 => "2160p",
+                _ => label
+            };
+        }
+
+
         private static string? ParseHlsResolution(string streamInfLine)
         {
             var marker = "RESOLUTION=";
@@ -284,7 +315,7 @@ namespace IptvPlayer.Services
                 return null;
             }
 
-            return height > 0 ? $"{height}p" : null;
+            return height > 0 ? HlsQualityLabel(width, height) : null;
         }
 
 

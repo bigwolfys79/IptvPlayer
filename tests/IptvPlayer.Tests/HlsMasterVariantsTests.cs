@@ -62,4 +62,32 @@ public class HlsMasterVariantsTests
         Assert.Single(result);
         Assert.Equal("http://cdn.example.com/a.m3u8", result["720p"]);
     }
+
+    // Cinemascope masters (kinogo.mba / sevstar): raw heights 800/532/356/266
+    // must show as the site player's labels 1080p/720p/480p/360p
+    [Fact]
+    public void ParseHlsMasterVariants_CinemascopeWidths_UseSiteLabels()
+    {
+        var playlist = "#EXTM3U\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=1920x800\nv4.m3u8\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=1280x532\nv3.m3u8\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=854x356\nv2.m3u8\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=640x266\nv1.m3u8\n";
+        var result = StreamService.ParseHlsMasterVariants(playlist, new Uri("http://cdn.example.com/master.m3u8"));
+
+        Assert.Equal(4, result.Count);
+        Assert.Equal("http://cdn.example.com/v4.m3u8", result["1080p"]);
+        Assert.Equal("http://cdn.example.com/v3.m3u8", result["720p"]);
+        Assert.Equal("http://cdn.example.com/v2.m3u8", result["480p"]);
+        Assert.Equal("http://cdn.example.com/v1.m3u8", result["360p"]);
+    }
+
+    [Fact]
+    public void ParseHlsMasterVariants_NonStandardWidth_FallsBackToHeightBucket()
+    {
+        var playlist = "#EXTM3U\n#EXT-X-STREAM-INF:RESOLUTION=1080x800\nv.m3u8\n";
+        var result = StreamService.ParseHlsMasterVariants(playlist, new Uri("http://cdn.example.com/master.m3u8"));
+
+        Assert.Equal("http://cdn.example.com/v.m3u8", result["720p"]);
+    }
 }

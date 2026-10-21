@@ -419,6 +419,7 @@ public partial class MainPageViewModel : ObservableObject
         _selectedChannel = new ChannelViewModel();
 
         _onlineCinemaCatalog.Progress += text => PlaylistLoadingText = text;
+        _onlineCinemaCatalog.SettingsChanged += () => SettingsSaveRequested?.Invoke(this, EventArgs.Empty);
 
         Recording.RecordingsChanged += (s, e) =>
         {
@@ -462,17 +463,22 @@ public partial class MainPageViewModel : ObservableObject
         await TriggerOnlineCinemaSiteSearchAsync(ct);
     }
 
-    // Online cinema: when local filtering found nothing, ask the site's quick
-    // search — hits are added to the catalog and re-filtering picks them up
+    // Online cinema: local filtering runs first, the site search runs in
+    // parallel for every query — its hits are added to the catalog and the
+    // re-filter picks them up, so fresh site titles join the DB matches
     private async Task TriggerOnlineCinemaSiteSearchAsync(System.Threading.CancellationToken ct)
     {
         var query = SearchQuery?.Trim() ?? string.Empty;
-        if (!_isOnlineCinemaSource || query.Length < 2 || DisplayedChannels.Count > 0 ||
-            _siteSearchHits.ContainsKey(query))
+        if (!_isOnlineCinemaSource || query.Length < 2 || _siteSearchHits.ContainsKey(query))
         {
+            _logger.LogDebug(
+                "Поиск сайта пропущен: source={Source}, len={Len}, cached={Cached}.",
+                _isOnlineCinemaSource, query.Length, _siteSearchHits.ContainsKey(query));
             return;
         }
 
+        _logger.LogInformation("Поиск: запрос «{Query}» уходит на сайт (адаптер {Site}, поиск {Search}).",
+            query, _onlineCinemaCatalog.Site.Id, _onlineCinemaCatalog.Site.SupportsSearch);
         await SearchOnlineCinemaSiteAsync(query, ct);
     }
 

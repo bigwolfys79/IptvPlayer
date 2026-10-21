@@ -60,6 +60,18 @@ public class VodResumeStore
             {
 
             }
+
+            // Online cinema season index (migration for existing DBs)
+            try
+            {
+                using var alter = connection.CreateCommand();
+                alter.CommandText = "ALTER TABLE vod_resume ADD COLUMN oc_season_index INTEGER NOT NULL DEFAULT -1";
+                alter.ExecuteNonQuery();
+            }
+            catch (SqliteException)
+            {
+
+            }
         }
         catch (Exception ex)
         {
@@ -78,7 +90,7 @@ public class VodResumeStore
 
             var cmd = connection.CreateCommand();
             cmd.CommandText = @"
-                SELECT key, position_seconds, duration_seconds, episode_index, updated_at, portal_playlist_id
+                SELECT key, position_seconds, duration_seconds, episode_index, updated_at, portal_playlist_id, oc_season_index
                 FROM vod_resume";
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -89,7 +101,8 @@ public class VodResumeStore
                     DurationSeconds = reader.GetDouble(2),
                     EpisodeIndex = reader.GetInt32(3),
                     UpdatedAt = DateTime.TryParse(reader.GetString(4), out var at) ? at : DateTime.Now,
-                    PortalPlaylistId = reader.IsDBNull(5) ? null : reader.GetInt32(5)
+                    PortalPlaylistId = reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                    OcSeasonIndex = reader.FieldCount > 6 && !reader.IsDBNull(6) ? reader.GetInt32(6) : -1
                 };
                 result[reader.GetString(0)] = position;
             }
@@ -125,17 +138,18 @@ public class VodResumeStore
             {
                 cmd.Transaction = (SqliteTransaction)transaction;
                 cmd.CommandText = @"
-                    INSERT INTO vod_resume (key, position_seconds, duration_seconds, episode_index, updated_at, portal_playlist_id)
-                    VALUES ($key, $pos, $dur, $ep, $at, $pid)
+                    INSERT INTO vod_resume (key, position_seconds, duration_seconds, episode_index, updated_at, portal_playlist_id, oc_season_index)
+                    VALUES ($key, $pos, $dur, $ep, $at, $pid, $season)
                     ON CONFLICT(key) DO UPDATE SET
                         position_seconds = $pos, duration_seconds = $dur,
-                        episode_index = $ep, updated_at = $at, portal_playlist_id = $pid";
+                        episode_index = $ep, updated_at = $at, portal_playlist_id = $pid, oc_season_index = $season";
                 var key = cmd.Parameters.Add("$key", SqliteType.Text);
                 var pos = cmd.Parameters.Add("$pos", SqliteType.Real);
                 var dur = cmd.Parameters.Add("$dur", SqliteType.Real);
                 var ep = cmd.Parameters.Add("$ep", SqliteType.Integer);
                 var at = cmd.Parameters.Add("$at", SqliteType.Text);
                 var pid = cmd.Parameters.Add("$pid", SqliteType.Integer);
+                var season = cmd.Parameters.Add("$season", SqliteType.Integer);
 
                 foreach (var (k, p) in snapshot)
                 {
@@ -145,6 +159,7 @@ public class VodResumeStore
                     ep.Value = p.EpisodeIndex;
                     at.Value = p.UpdatedAt.ToString("O");
                     pid.Value = (object?)p.PortalPlaylistId ?? DBNull.Value;
+                    season.Value = p.OcSeasonIndex;
                     await cmd.ExecuteNonQueryAsync();
                 }
             }

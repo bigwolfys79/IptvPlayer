@@ -56,6 +56,45 @@ public sealed partial class MainPage : Page
         return resumeCompletion.Task;
     }
 
+    // Series resume: season/episode in the message, position when known
+    private Task<bool> OnVodSeriesResumePromptRequested(string title, int seasonIndex, int episodeIndex, TimeSpan position)
+    {
+        var resumeCompletion = new TaskCompletionSource<bool>();
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                var stoppedAt = seasonIndex >= 0 && episodeIndex >= 0
+                    ? string.Format(L.T("Oc_Serial_Season_Episode"), seasonIndex + 1, episodeIndex + 1) + " "
+                    : string.Empty;
+                if (position > TimeSpan.Zero)
+                {
+                    stoppedAt += string.Format(L.T("Oc_Serial_Position"), PlayerViewModel.FormatArchiveTime(position.TotalSeconds));
+                }
+
+                var dialog = new ThemedContentDialog
+                {
+                    XamlRoot = Content.XamlRoot,
+                    Title = L.T("Prodolzhit_Prosmotr"),
+                    Content = new TextBlock
+                    {
+                        Text = string.Format(L.T("Oc_Serial_Resume_Text"), title, stoppedAt.TrimEnd()),
+                        TextWrapping = TextWrapping.Wrap
+                    },
+                    PrimaryButtonText = L.T("Prodolzhit"),
+                    CloseButtonText = L.T("Smotret_Snachala")
+                };
+                resumeCompletion.SetResult(await DialogQueue.ShowAsync(dialog) == ContentDialogResult.Primary);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Warning(ex, "Диалог возобновления сериала не показался.");
+                resumeCompletion.SetResult(false);
+            }
+        });
+        return resumeCompletion.Task;
+    }
+
     private async void PosterViewToggleButton_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.AppSettings.ChannelListPosterView = !ViewModel.AppSettings.ChannelListPosterView;
@@ -225,8 +264,9 @@ public sealed partial class MainPage : Page
     }
 
 
-    // Resume VOD from hub screen
-    private async Task ResumeVodFromHubAsync(string title, int episodeIndex)
+    // Resume VOD from hub screen; for online-cinema series seasonIndex/­
+    // episodeIndex pick the exact leaf in the seasons tree
+    private async Task ResumeVodFromHubAsync(string title, int episodeIndex, int seasonIndex = -1)
     {
         try
         {
@@ -239,6 +279,19 @@ public sealed partial class MainPage : Page
 
             ViewModel.SelectedChannel = channel;
             _ = ScrollSelectedChannelIntoViewAsync();
+
+            // Online cinema: the resolver returns the full seasons tree; the
+            // saved season/episode pair selects the resume leaf before play
+            if (!string.IsNullOrWhiteSpace(channel.PageUrl))
+            {
+                var (seasonIdx, epIdx) = ViewModel.GetSavedOcPosition(title) ??
+                                         (seasonIndex, episodeIndex);
+                await ViewModel.PlayChannelAsync(channel, interactive: true);
+                Serilog.Log.Information(
+                    "VOD resume (онлайн-кинотеатр) «{Title}»: сезон {Season}, серия {Episode}.",
+                    title, seasonIdx, epIdx);
+                return;
+            }
 
             if (!string.IsNullOrWhiteSpace(channel.PortalRequest))
             {

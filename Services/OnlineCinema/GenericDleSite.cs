@@ -33,6 +33,10 @@ public class OnlineCinemaSiteProfile
     // True when the site blocks plain HTTP with a Cloudflare challenge —
     // HTTP tier is skipped for it, the hidden browser goes first
     public bool ChallengeProtected { get; set; }
+
+    // Probe revision that produced this profile; legacy profiles (0/1) are
+    // re-probed on source open after a parser-capability bump
+    public int Version { get; set; }
 }
 
 
@@ -49,6 +53,8 @@ public sealed class GenericDleSite : IOnlineCinemaSite
     }
 
     public string Host { get; }
+
+    public OnlineCinemaSiteProfile Profile => _profile;
 
     public string Id => "dle:" + Host;
 
@@ -89,7 +95,7 @@ public sealed class GenericDleSite : IOnlineCinemaSite
         uri.Host.Equals(Host, StringComparison.OrdinalIgnoreCase);
 
     // CF challenge markers only — DLE comment captchas (turnstile.js) are
-    // common on such sites and must not read as a challenge (kinogo.is lesson)
+    // common on such sites and must not read as a challenge
     public bool LooksLikeChallenge(string html) =>
         html.Contains("just a moment", StringComparison.OrdinalIgnoreCase) ||
         html.Contains("cf-chl", StringComparison.OrdinalIgnoreCase);
@@ -101,7 +107,7 @@ public sealed class GenericDleSite : IOnlineCinemaSite
 
     public string SearchPageUrl(string query) =>
         _profile.SearchKind == "dlesearch"
-            ? $"{BaseUrl}/index.php?do=search&subaction=search&story={Uri.EscapeDataString(query)}"
+            ? $"{BaseUrl}/index.php?do=search&subaction=search&story={Uri.EscapeDataString(KinogoIsOnlineSite.DleSearchQuery(query))}"
             : $"{BaseUrl}/search/{Uri.EscapeDataString(query)}/";
 
     public string? SearchRequestUrl(string query) =>
@@ -261,16 +267,33 @@ public sealed class GenericDleSite : IOnlineCinemaSite
                 continue;
             }
 
+            // Year: a "Год выпуска:" link row when present, else the
+            // "Премьера:" date row, else the "(Year)" in the card title
             var yearMatch = Regex.Match(card, @"Год выпуска:</span>\s*<a[^>]*>\s*(\d{4})");
+            if (!yearMatch.Success)
+            {
+                yearMatch = Regex.Match(card, @"Премьера:</span>\s*[^<]*?(\d{4})");
+            }
+            if (!yearMatch.Success)
+            {
+                yearMatch = Regex.Match(anchors[i].Groups["title"].Value.Trim(), @"\((\d{4})\)\s*$");
+            }
             var posterMatch = Regex.Match(card, @"<img[^>]*?src=""([^""]+)""", RegexOptions.Singleline);
 
+            // Genre row is either anchor links or plain comma text
+            // ("фильм, триллер, комедия"); junk tokens like "фильм" drop
+            // out via the whitelist
             var genres = new List<string>();
             var genreMatch = Regex.Match(card, @"Жанр:</span>(.*?)</li>", RegexOptions.Singleline);
             if (genreMatch.Success)
             {
-                genres = Regex.Matches(genreMatch.Groups[1].Value, @"<a[^>]*>([^<]+)</a>")
-                    .Cast<Match>()
-                    .Select(m => m.Groups[1].Value.Trim().ToLowerInvariant())
+                var genreText = genreMatch.Groups[1].Value;
+                var tokens = genreText.Contains("<a", StringComparison.OrdinalIgnoreCase)
+                    ? Regex.Matches(genreText, @"<a[^>]*>([^<]+)</a>").Cast<Match>()
+                        .Select(m => m.Groups[1].Value)
+                    : Regex.Replace(genreText, @"<[^>]+>", "").Split(',');
+                genres = tokens
+                    .Select(s => s.Trim().ToLowerInvariant())
                     .Where(s => s.Length > 0 && M3UParserService.KnownGenres.Contains(s))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
@@ -320,12 +343,14 @@ public sealed class GenericDleSite : IOnlineCinemaSite
         };
         const yearText = (el.querySelector(""a[href*='/god/']"")?.textContent ||
             el.querySelector(""a[href*='/filmy/']"")?.textContent || '').trim();
-        const yearNum = (spanVal('Год') || rowVal('Год выпуска') || yearText).match(/\d{4}/);
+        // Card titles carry the year on sites without a year row
+        const yearNum = a.textContent.match(/\((\d{4})\)\s*$/) ||
+            (spanVal('Год') || rowVal('Год выпуска') || yearText).match(/\d{4}/);
         out.push({
             title: (a.textContent.trim()) || (img && img.alt && img.alt.trim()) || '',
             url: a.href,
             poster: img ? new URL(img.getAttribute('data-src') || img.src || '', location.origin).href : '',
-            year: yearNum ? parseInt(yearNum[0], 10) : 0,
+            year: yearNum ? parseInt(yearNum[1] || yearNum[0], 10) : 0,
             genres: spanVal('Жанр') || rowVal('Жанр'),
             description: (el.querySelector('.excerpt')?.textContent ||
                 el.querySelector('.card__text')?.textContent || '').trim()

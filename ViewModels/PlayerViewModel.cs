@@ -778,7 +778,7 @@ public partial class PlayerViewModel : ObservableObject
     }
 
 
-    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1, Services.OnlineCinemaPlaylist? onlineCinemaPlaylist = null, bool onlineCinemaLeafSwitch = false)
+    public async Task StartPlaybackAsync(ChannelViewModel channel, string streamUrl, EPGEntry? archiveEntry, DateTime? archivePlayStart = null, bool isVod = false, Dictionary<string, string>? vodVariants = null, string? vodQuality = null, TimeSpan? resumePosition = null, IReadOnlyList<PortalEpisode>? vodEpisodes = null, int vodEpisodeIndex = -1, Services.OnlineCinemaPlaylist? onlineCinemaPlaylist = null, bool onlineCinemaLeafSwitch = false, (int SeasonIndex, int EpisodeIndex)? onlineCinemaResume = null)
     {
 
         Stop();
@@ -849,9 +849,16 @@ public partial class PlayerViewModel : ObservableObject
             if (OnlineCinemaPlaylist != null)
             {
                 // New film resets the tree position; a leaf switch keeps it
-                // (indexes are already set by PlayOnlineCinemaLeafAsync).
+                // (indexes are already set by PlayOnlineCinemaLeafAsync);
+                // a series resume points at the saved season/episode.
                 // _vodChannel is nulled by Stop(), so it cannot discriminate here
-                if (onlineCinemaLeafSwitch)
+                if (onlineCinemaResume is { } savedLeaf)
+                {
+                    OcSeasonIndex = Math.Max(0, savedLeaf.SeasonIndex);
+                    OcEpisodeIndex = Math.Max(0, savedLeaf.EpisodeIndex);
+                    OcVoiceoverIndex = 0;
+                }
+                else if (onlineCinemaLeafSwitch)
                 {
                     OcSeasonIndex = Math.Max(0, OcSeasonIndex);
                     OcEpisodeIndex = Math.Max(0, OcEpisodeIndex);

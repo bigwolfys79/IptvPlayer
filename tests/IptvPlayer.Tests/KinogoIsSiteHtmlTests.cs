@@ -138,7 +138,126 @@ public class GenericDleSiteTests
         var site = new GenericDleSite(Profile());
         Assert.Equal("https://kinogo.is/filmy/2024/", site.YearUrl(2024));
         Assert.Equal("https://kinogo.is/serialy/page/3/", site.CategoryUrl("сериалы", 3));
-        Assert.Equal("https://kinogo.is/index.php?do=search&subaction=search&story=%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0",
+        // DLE search carries the prefix wildcard (escaped as %2A)
+        Assert.Equal("https://kinogo.is/index.php?do=search&subaction=search&story=%D0%BC%D0%B0%D1%82%D1%80%D0%B8%D1%86%D0%B0%2A",
             site.SearchPageUrl("матрица"));
+    }
+
+    [Fact]
+    public void DleSearchQuery_AppendsWildcardOnce()
+    {
+        Assert.Equal("невск*", KinogoIsOnlineSite.DleSearchQuery("невск"));
+        Assert.Equal("невск*", KinogoIsOnlineSite.DleSearchQuery("невск*"));
+    }
+
+    [Fact]
+    public void GenericAdapter_YearUrl_MbaDoubleSlashPattern()
+    {
+        // kinogo.mba uses /filmy/filmy-{year}/, not /filmy/{year}/
+        var mbaProfile = new OnlineCinemaSiteProfile
+        {
+            BaseUrl = "https://kinogo.mba",
+            Template = "card",
+            Categories = new Dictionary<string, string> { ["все фильмы"] = "/filmy/", ["сериалы"] = "/serialy/" },
+            YearPathPattern = "/filmy/filmy-{0}/",
+            SearchKind = "dlesearch"
+        };
+        var site = new GenericDleSite(mbaProfile);
+        Assert.Equal("https://kinogo.mba/filmy/filmy-2024/", site.YearUrl(2024));
+        Assert.Equal("https://kinogo.mba/filmy/filmy-2024/page/3/", site.YearUrl(2024, 3));
+        Assert.NotEqual(site.YearUrl(2024), site.CategoryUrl("все фильмы", 1));
+    }
+
+    [Fact]
+    public void GenericAdapter_ParsesCardTemplate_MbaYearLinksInCards()
+    {
+        // mba puts year as /filmy/2026/ inside cards, not /god/2026/
+        var html = @"<div id=""dle-content""><article class=""card d-flex"">
+<h2 class=""card__title""><a href=""/filmy/111729-genialnyj-plan-2026.html"">Гениальный план (2026)</a></h2>
+<ul class=""card__list"">
+<li><span>Год выпуска:</span> <a href=""/filmy/2026/"">2026</a></li>
+<li><span>Жанр:</span> <a href=""/boeviki/"">Боевик</a>,  <a href=""/fantastika/"">Фантастика</a></li>
+</ul>
+<img src=""/uploads/posts/2026/x.webp"" alt=""Гениальный план"">
+</article></div>";
+        var mbaProfile = new OnlineCinemaSiteProfile
+        {
+            BaseUrl = "https://kinogo.mba",
+            Template = "card",
+            Categories = new Dictionary<string, string> { ["все фильмы"] = "/filmy/" },
+            YearPathPattern = "/filmy/filmy-{0}/",
+            SearchKind = "dlesearch"
+        };
+        var site = new GenericDleSite(mbaProfile);
+        var (items, _) = site.ParseCategoryPageHtml(html, "все фильмы");
+        Assert.Single(items);
+        Assert.Equal("Гениальный план (2026)", items[0].Title);
+        Assert.Equal(2026, items[0].Year);
+        Assert.Equal(["боевик", "фантастика"], items[0].Genres);
+    }
+
+    [Fact]
+    public void GenericAdapter_ParsesCardTemplate_MbaPremiereRowAndCommaGenres()
+    {
+        // Real kinogo.mba markup: no "Год выпуска" row (year sits in the
+        // "Премьера" date and the title), genre row is plain comma text
+        var html = @"<div id=""dle-content"" class=""sect__content"">
+<article class=""card d-flex"">
+    <h2 class=""card__title""><a href=""https://kinogo.mba/filmy/112000-tykvogolovyj-2-2026.html"">Тыквоголовый Р. Л. Стайна 2 (2026)</a></h2>
+    <a class=""card__img img-fit-cover"" href=""https://kinogo.mba/filmy/112000-tykvogolovyj-2-2026.html"">
+        <img width=""200px"" height=""300px"" src=""/uploads/mini/poster_foolstory/77/1792189773.jpg"" alt=""Тыквоголовый 2 (2026)"">
+    </a>
+    <div class=""card__desc flex-grow-1"">
+        <ul class=""card__list"">
+            <li><span>Страна:</span> <a href=""https://kinogo.mba/xfsearch/country/us/"">США</a></li>
+            <li><span>Продолжительность:</span> 93</li>
+            <li><span>Премьера:</span> 31 октября 2026</li>
+            <li><span>Жанр:</span> фильм, ужасы, фэнтези</li>
+            <li class=""pmovie__header-list--accent""><span>Качество:</span> <span>WEB-DL</span></li>
+            <li class=""tarnslator""><span>Озвучка:</span> многоголосый закадровый</li>
+        </ul>
+        <p class=""card__text line-clamp"">«Тыквоголовый 2» (2026) — канадский фантастический хоррор.</p>
+    </div>
+</article></div>";
+        var site = new GenericDleSite(new OnlineCinemaSiteProfile
+        {
+            BaseUrl = "https://kinogo.mba",
+            Template = "card",
+            Categories = new Dictionary<string, string> { ["все фильмы"] = "/filmy/" },
+            YearPathPattern = "/filmy/filmy-{0}/",
+            SearchKind = "dlesearch"
+        });
+        var (items, _) = site.ParseCategoryPageHtml(html, "все фильмы");
+        var item = Assert.Single(items);
+        Assert.Equal("Тыквоголовый Р. Л. Стайна 2 (2026)", item.Title);
+        Assert.Equal(2026, item.Year);
+        Assert.Equal(["ужасы", "фэнтези"], item.Genres);
+    }
+
+    [Fact]
+    public void GenericAdapter_ParsesCardTemplate_TitleYearFallback()
+    {
+        // No Премьера row either — the year comes from the "(Year)" title
+        var html = @"<div id=""dle-content""><article class=""card d-flex"">
+<h2 class=""card__title""><a href=""/filmy/1-x-1998.html"">Триган (1998)</a></h2>
+<img src=""/uploads/x.jpg"" alt=""Триган"">
+</article></div>";
+        var site = new GenericDleSite(new OnlineCinemaSiteProfile
+        {
+            BaseUrl = "https://kinogo.mba",
+            Template = "card",
+            Categories = new Dictionary<string, string> { ["все фильмы"] = "/filmy/" }
+        });
+        var (items, _) = site.ParseCategoryPageHtml(html, "все фильмы");
+        var item = Assert.Single(items);
+        Assert.Equal(1998, item.Year);
+        Assert.Empty(item.Genres);
+    }
+
+    [Fact]
+    public void ProbeProfile_VersionStampAndAliases()
+    {
+        // Probe bump: legacy profiles (Version < Current) re-probe on open
+        Assert.Equal(2, OnlineCinemaSiteProbe.CurrentProfileVersion);
     }
 }

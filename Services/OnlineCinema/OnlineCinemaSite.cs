@@ -79,6 +79,16 @@ public static class OnlineCinemaSites
     private static readonly Dictionary<string, IOnlineCinemaSite> GenericCache =
         new(StringComparer.OrdinalIgnoreCase);
 
+    // Drops a cached generic adapter — call after its stored profile was
+    // replaced, or the next ByUrl returns the adapter built from the old one
+    public static void InvalidateGeneric(string host)
+    {
+        lock (GenericCache)
+        {
+            GenericCache.Remove(host);
+        }
+    }
+
     // Site adapter matching the URL host (playlist Url / film page URL);
     // null when the host is unknown. Custom hosts resolve through the
     // probed-site profiles stored in settings

@@ -33,6 +33,9 @@ public sealed partial class MainPage
         _isFullScreen = enable;
         Serilog.Log.Information("FullScreen: {Action}", enable ? "вход в полноэкранный режим" : "выход из полноэкранного режима");
 
+        // Toast positioned for the previous layout would hang shifted/stuck
+        HideActionToastImmediate();
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var swTotal = System.Diagnostics.Stopwatch.StartNew();
 

@@ -304,7 +304,11 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                     continue;
                 }
 
-                var quality = resolution.Groups["r"].Value.Split('x')[1] + "p";
+                var dims = resolution.Groups["r"].Value.Split('x');
+                var quality = int.TryParse(dims[0], out var variantWidth) &&
+                              int.TryParse(dims[1], out var variantHeight)
+                    ? StreamService.HlsQualityLabel(variantWidth, variantHeight)
+                    : dims[1] + "p";
                 var miniMaster = "#EXTM3U\n" + audioGroupLine + "\n" + inf + "\n" + url + "\n";
                 var local = _proxy.RegisterText(miniMaster, ".m3u8");
                 if (local.Length > 0)
@@ -1037,6 +1041,23 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                     }
 
                     var src = rect.TryGetProperty("src", out var s) ? s.GetString() ?? string.Empty : string.Empty;
+                    // Series on nextembed: resolve the seasons tree by HTTP from
+                    // the embed config — the click flow returns only the current
+                    // episode and would lose the season/episode picker
+                    if (src.Contains("nextembed", StringComparison.OrdinalIgnoreCase) ||
+                        src.Contains("cinemar", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var embedUrl = src.StartsWith("//", StringComparison.Ordinal) ? "https:" + src : src;
+                        var httpSeries = await TryResolveEmbedAsync(embedUrl, pageUrl, ct);
+                        if (httpSeries?.Playlist?.Seasons is { Count: > 0 })
+                        {
+                            _logger.LogInformation(
+                                "Онлайн-кинотеатр: дерево серий получено по HTTP из embed {Url} (сезонов: {Seasons}).",
+                                embedUrl, httpSeries.Playlist.Seasons.Count);
+                            return httpSeries;
+                        }
+                    }
+
                     if (src != lastSeenSrc)
                     {
                         lastSeenSrc = src;

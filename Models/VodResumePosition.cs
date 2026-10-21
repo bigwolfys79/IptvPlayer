@@ -13,6 +13,11 @@ public class VodResumePosition
 
     public int EpisodeIndex { get; set; } = -1;
 
+
+    // Online cinema series: the season index within the episode tree
+    public int OcSeasonIndex { get; set; } = -1;
+
+
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
 

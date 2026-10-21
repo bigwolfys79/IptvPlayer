@@ -25,6 +25,10 @@ public interface ICatalogDatabaseService
     // Drops the loaded-pages bookkeeping of a category — used when the site
     // session filters (year/sort) change and the listing restarts at page 1
     Task ResetCategoryPagesAsync(string siteId, string category);
+
+    // Drops all items and page markers of a site — used when its profile is
+    // upgraded and cached rows no longer match what the parser extracts
+    Task DeleteSiteAsync(string siteId);
 }
 
 
@@ -279,6 +283,18 @@ public class CatalogDatabaseService : ICatalogDatabaseService
         cmd.CommandText = "DELETE FROM catalog_pages WHERE site_id = $site AND category = $cat";
         cmd.Parameters.AddWithValue("$site", siteId);
         cmd.Parameters.AddWithValue("$cat", category);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task DeleteSiteAsync(string siteId)
+    {
+        await InitializeAsync();
+        await using var connection = new SqliteConnection($"Data Source={_dbPath}");
+        await connection.OpenAsync();
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "DELETE FROM catalog_items WHERE site_id = $site; " +
+                          "DELETE FROM catalog_pages WHERE site_id = $site";
+        cmd.Parameters.AddWithValue("$site", siteId);
         await cmd.ExecuteNonQueryAsync();
     }
 

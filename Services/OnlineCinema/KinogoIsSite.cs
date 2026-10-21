@@ -90,9 +90,14 @@ public sealed class KinogoIsOnlineSite : IOnlineCinemaSite
     public string? LightSearchUrl => null;
 
     public string SearchPageUrl(string query) =>
-        $"{SiteBaseUrl}/index.php?do=search&subaction=search&story={Uri.EscapeDataString(query)}";
+        $"{SiteBaseUrl}/index.php?do=search&subaction=search&story={Uri.EscapeDataString(DleSearchQuery(query))}";
 
     public string? SearchRequestUrl(string query) => SearchPageUrl(query);
+
+    // DLE full search matches whole words; the trailing wildcard enables
+    // prefix matches on boolean-mode engines and is ignored by the rest
+    internal static string DleSearchQuery(string query) =>
+        query.EndsWith('*') ? query : query + "*";
 
     private static string? AbsoluteUrl(string raw)
     {

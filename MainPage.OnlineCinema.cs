@@ -76,6 +76,7 @@ public sealed partial class MainPage : Page
         ViewModel.SetVodSource(true);
         ViewModel.SetOnlineCinemaSource(true);
         ViewModel.SetOnlineCinemaSite(playlist.Url);
+        await ViewModel.EnsureSiteProfileUpToDateAsync();
         ViewModel.SyncCatalogSorts();
         EnsureCinemaCollectTimer();
 

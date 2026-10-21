@@ -16,6 +16,11 @@ public static class OnlineCinemaSiteProbe
 {
     private static readonly HttpClient Client = new() { Timeout = TimeSpan.FromSeconds(20) };
 
+    // Bumped when the probe learns something the parser relies on (new
+    // templates, year URL patterns) — legacy profiles below it are re-probed
+    // on source open and their catalog is rebuilt
+    public const int CurrentProfileVersion = 2;
+
     // Result of a probe: a ready profile or a user-facing reason
     public record ProbeResult(OnlineCinemaSiteProfile? Profile, string? Error);
 
@@ -33,6 +38,7 @@ public static class OnlineCinemaSiteProbe
         var html = await FetchAsync(baseUrl + "/", baseUrl, ct);
         if (html == null)
         {
+            logger?.LogInformation("Онлайн-кинотеатр: {Host} — главная страница не получена по HTTP.", baseUrl);
             return null;
         }
 
@@ -60,15 +66,23 @@ public static class OnlineCinemaSiteProbe
         var categories = await DiscoverCategoriesAsync(baseUrl, html, ct);
         if (categories.Count == 0)
         {
+            logger?.LogInformation(
+                "Онлайн-кинотеатр: {Host} — категории из меню не распознаны.", baseUrl);
             return null;
         }
 
         // Year listing path: prefer /xfsearch/god/{0}/, fall back to /filmy/{0}/
+        // Some sites nest year listings under the category path itself:
+        // /filmy/filmy-{0}/ and /serialy/serialy-{0}/
         var yearPattern = html.Contains("/xfsearch/god/", StringComparison.OrdinalIgnoreCase)
             ? "/xfsearch/god/{0}/"
-            : html.Contains("/filmy/202", StringComparison.OrdinalIgnoreCase) ? "/filmy/{0}/" : string.Empty;
+            : html.Contains("/filmy/filmy-", StringComparison.OrdinalIgnoreCase) ? "/filmy/filmy-{0}/"
+            : html.Contains("/filmy/202", StringComparison.OrdinalIgnoreCase) ? "/filmy/{0}/"
+            : string.Empty;
 
-        // Search kind: lightsearch AJAX first, plain DLE search second
+        // Search kind: lightsearch AJAX first, plain DLE search second. The
+        // DLE search page is accepted when it renders result cards — the
+        // dle-content container is absent on some templates
         string searchKind;
         if (html.Contains("lightsearch", StringComparison.OrdinalIgnoreCase))
         {
@@ -76,11 +90,19 @@ public static class OnlineCinemaSiteProbe
         }
         else
         {
-            var searchPage = await FetchAsync(
-                baseUrl + "/index.php?do=search&subaction=search&story=тест",
-                baseUrl, ct);
+            // curl rejects raw non-ASCII in the URL (400) — the query must be
+            // percent-encoded
+            var testUrl = baseUrl +
+                          "/index.php?do=search&subaction=search&story=" +
+                          Uri.EscapeDataString("тест");
+            var searchPage = await FetchAsync(testUrl, baseUrl, ct);
+            logger?.LogInformation(
+                "Онлайн-кинотеатр: {Host} — тест DLE-поиска: страница {Page}.",
+                baseUrl, searchPage == null ? "не получена" : $"{searchPage.Length} симв.");
             searchKind = searchPage != null && !LooksLikeChallenge(searchPage) &&
-                         searchPage.Contains("dle-content", StringComparison.OrdinalIgnoreCase)
+                         (searchPage.Contains("dle-content", StringComparison.OrdinalIgnoreCase) ||
+                          searchPage.Contains("card__title", StringComparison.OrdinalIgnoreCase) ||
+                          searchPage.Contains("shortstory", StringComparison.OrdinalIgnoreCase))
                 ? "dlesearch"
                 : "none";
         }
@@ -92,7 +114,8 @@ public static class OnlineCinemaSiteProbe
             Categories = categories,
             YearPathPattern = yearPattern,
             SearchKind = searchKind,
-            ChallengeProtected = false
+            ChallengeProtected = false,
+            Version = CurrentProfileVersion
         };
     }
 
@@ -174,6 +197,13 @@ public static class OnlineCinemaSiteProbe
         ["семейные"] = "семейный",
         ["фантастика"] = "фантастика",
         ["фэнтези"] = "фэнтези",
+        // Plural/truncated nav labels (targets must stay in
+        // the KnownGenres whitelist or the category is dropped)
+        ["биографии"] = "биография",
+        ["детские"] = "детский",
+        ["спортивные"] = "спорт",
+        ["документ-ные"] = "документальные",
+        ["короткометражные"] = "короткометражка",
     };
 
     // Minimal probes for the base listings

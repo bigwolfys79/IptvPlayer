@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.26.8
+- **Version:** 1.26.9
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -58,7 +58,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - "Audio" button on the player: shown when the stream has labeled audio tracks
 - Preferred audio language auto-selection (Settings → Playback)
 - Fast movie start (instant from catalog link)
-- VOD resume (position saving)
+- VOD resume (position saving; for online-cinema series — season and episode too)
 - Portal key cache invalidation (SHA-256)
 
 ### Video catalog from an m3u playlist
@@ -76,16 +76,17 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - A dedicated "Online cinema" settings section (player settings menu): source on/off switch, a "Background catalog loading" toggle (off — pages and category refreshes load only when you scroll), background catalog loading and list refresh intervals, parsing-method toggles (curl.exe → HttpClient → hidden WebView2 — a disabled method is skipped)
 - First sync loads 1 page per category; the total page count comes from the site's pagination; deeper pages load via "Load more" following the selection: the "Series" group deepens the series listing, the "Movies" group — the selected genre category (or "all movies"), any other group — categories in turn
 - The catalog is stored in a separate database (`%LocalAppData%\IptvPlayer\online_cinema.db`) — opening is instant, with no network
-- Search: when the loaded catalog has nothing for the query, the request automatically goes to the site's quick search (lightsearch) — found films are added to the list and saved into the catalog, so repeating the same query needs no network
+- Search: every query automatically goes to the site's quick search (not only when the loaded catalog has nothing) — found films join the local matches and are saved into the catalog, so repeating the same query needs no network
 - On every open, category first pages older than 6 hours refresh in the background — new films join the catalog automatically (can be disabled with the "Background catalog loading" toggle)
 - While a film is playing, background collection deepens the catalog by one page at a configurable interval ("Background catalog loading" setting, 120 seconds by default, 30–7200); the visible list is re-read from the DB at most once per the configured interval ("List refresh during playback" setting, 60 minutes by default, 0 — never) — group, genre, year filters and the playing item's selection are preserved across refreshes
 - Selecting a year re-requests the site's first page for that year (the `/xfsearch/god/<year>/` path) and adds it under the "year N" pseudo-category
 - The stream link is not stored; it is resolved at the moment a movie starts (CDN links carry a date-bound token and expire): film page → embed iframe → decoded player playlist → master `.m3u8`, all over HTTP via `curl.exe`; the hidden WebView2 remains a fallback (trusted iframe clicks + browser-level m3u8 interception) and closes right after the stream link is obtained — the site player keeps nothing running in the background. The whole process is invisible: the browser window never appears (not in the taskbar, not in Alt-Tab); if the site demands an unsolvable challenge, the resolution fails with an error message in the UI
 - VOD-style playback: pause, "Resume playback" dialog, seeking; the maximum rendition of the master playlist is selected by default (or the "Preferred quality" from settings when set), all renditions are available in the quality picker
-- Series: season, episode and voiceover pickers as combo boxes in the player next to the quality picker (films get the voiceover one only); season 1 / episode 1 / first track by default; switching keeps the playback position when only the voiceover changes
+- Series: season, episode and voiceover pickers as combo boxes in the player next to the quality picker (films get the voiceover one only); season 1 / episode 1 / first track by default; switching keeps the playback position when only the voiceover changes; resume remembers the season and episode — on launch it asks "Continue?" and opens the saved episode at the saved position ("Start over" resets to season 1, episode 1); films also ask to resume from the saved position
 - Downloading: a button in the player next to the quality picker downloads what is playing right now — the current voiceover and episode at the selected quality (the "Auto" mode takes the best rendition); links are resolved on the fly by the same cascade as the stream (no site registration needed); files go to a user-picked folder (remembered), resuming after an interruption is supported
 - Downloads menu (player settings → "Downloads"): file list with progress, pause/resume/stop, in-app playback of finished files and "show in folder", list clearing; downloads survive app restarts and are not interrupted by switching films
 - Listing sort (by date/rating/views/Kinopoisk etc.) and the year filter are site session filters applied to every page during catalog deepening; the sort is independent for films and series
+- Sites without a "Year of release" row in cards (the year sits in the premiere date and the "Title (Year)" header, genres are plain comma text) are supported automatically — genre and year are filled while parsing cards, and the genre/year filters appear after a sync; site profiles captured by an older prober version are re-probed when the source opens, and their catalog is rebuilt
 - Films with several players on the page: if the primary player is unsupported, the others from the switcher are tried (e.g., nextembed)
 - The WebView2 Runtime is only needed for the resolution fallback (usually preinstalled on Windows 10/11)
 

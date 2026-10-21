@@ -310,6 +310,14 @@ public sealed partial class MainPage
 
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _actionToastHideTimer;
 
+    private readonly Storyboard _actionToastStoryboard = new();
+    private readonly DoubleAnimation _actionToastFadeAnimation = new();
+
+    // Toast shown by the last ShowActionToast — hide tick must target it,
+    // not the toast picked by the current _isFullScreen (mode may switch
+    // between show and hide, leaving the other toast stuck visible)
+    private FrameworkElement? _activeActionToast;
+
 
     private bool _channelListAutoCollapsed;
 
@@ -452,17 +460,18 @@ public sealed partial class MainPage
         ActionToastText.Text = message;
         OverlayActionToastText.Text = message;
 
-        var storyboard = new Storyboard();
-        var animation = new DoubleAnimation
-        {
-            To = 1,
-            Duration = new Duration(TimeSpan.FromMilliseconds(150)),
-            EasingFunction = new QuadraticEase()
-        };
-        Storyboard.SetTarget(animation, fullScreen ? (DependencyObject)OverlayActionToast : ActionToast);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-        storyboard.Children.Add(animation);
-        storyboard.Begin();
+        _activeActionToast = fullScreen ? OverlayActionToast : ActionToast;
+
+        // Retargeting a timeline of a running storyboard throws 0x800F1000
+        _actionToastStoryboard.Stop();
+        Storyboard.SetTarget(_actionToastFadeAnimation, _activeActionToast);
+        Storyboard.SetTargetProperty(_actionToastFadeAnimation, "Opacity");
+        _actionToastFadeAnimation.To = 1;
+        _actionToastFadeAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(150));
+        _actionToastFadeAnimation.EasingFunction = new QuadraticEase();
+        _actionToastStoryboard.Children.Clear();
+        _actionToastStoryboard.Children.Add(_actionToastFadeAnimation);
+        _actionToastStoryboard.Begin();
 
         if (_actionToastHideTimer is not { } timer)
         {
@@ -480,17 +489,31 @@ public sealed partial class MainPage
     {
         _actionToastHideTimer?.Stop();
 
-        var storyboard = new Storyboard();
-        var animation = new DoubleAnimation
+        var target = _activeActionToast;
+        _activeActionToast = null;
+        if (target == null)
         {
-            To = 0,
-            Duration = new Duration(TimeSpan.FromMilliseconds(250)),
-            EasingFunction = new QuadraticEase()
-        };
-        Storyboard.SetTarget(animation, _isFullScreen ? (DependencyObject)OverlayActionToast : ActionToast);
-        Storyboard.SetTargetProperty(animation, "Opacity");
-        storyboard.Children.Add(animation);
-        storyboard.Begin();
+            return;
+        }
+
+        _actionToastStoryboard.Stop();
+        Storyboard.SetTarget(_actionToastFadeAnimation, target);
+        Storyboard.SetTargetProperty(_actionToastFadeAnimation, "Opacity");
+        _actionToastFadeAnimation.To = 0;
+        _actionToastFadeAnimation.Duration = new Duration(TimeSpan.FromMilliseconds(250));
+        _actionToastFadeAnimation.EasingFunction = new QuadraticEase();
+        _actionToastStoryboard.Children.Clear();
+        _actionToastStoryboard.Children.Add(_actionToastFadeAnimation);
+        _actionToastStoryboard.Begin();
+    }
+
+    private void HideActionToastImmediate()
+    {
+        _actionToastHideTimer?.Stop();
+        _activeActionToast = null;
+        _actionToastStoryboard.Stop();
+        ActionToast.Opacity = 0;
+        OverlayActionToast.Opacity = 0;
     }
 
     private void ShowFullScreenOverlay()

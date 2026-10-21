@@ -47,6 +47,9 @@ public class OnlineCinemaCatalogService
     // Status text for the loading overlay / toast
     public event Action<string>? Progress;
 
+    // A probed site profile was updated (search re-probe) — settings need saving
+    public event Action? SettingsChanged;
+
     public static string YearCategoryKey(int year) => $"год {year}";
 
     private volatile bool _syncActive;
@@ -435,7 +438,14 @@ public class OnlineCinemaCatalogService
     public async Task<List<OnlineCinemaItem>?> SearchAsync(string query, CancellationToken ct = default)
     {
         query = query.Trim();
-        if (query.Length < 2 || _searchActive || !_site.SupportsSearch)
+        if (query.Length < 2 || _searchActive)
+        {
+            return null;
+        }
+
+        // Sites without search (stale probed profile) get one re-probe chance;
+        // still no search — the query is not supported
+        if (!_site.SupportsSearch && !await TryReprobeSearchAsync())
         {
             return null;
         }
@@ -458,6 +468,55 @@ public class OnlineCinemaCatalogService
         finally
         {
             _searchActive = false;
+        }
+    }
+
+    // Older probed profiles may carry SearchKind "none" from a probe that
+    // missed the search form (card templates without dle-content). Re-probes
+    // the site once per session and swaps the adapter when search appeared
+    private int _reprobeAttempted;
+
+    private async Task<bool> TryReprobeSearchAsync()
+    {
+        if (_site is not GenericDleSite || _site.SupportsSearch ||
+            Interlocked.Exchange(ref _reprobeAttempted, 1) == 1)
+        {
+            _logger.LogInformation(
+                "Репробинг поиска пропущен: generic={Generic}, search={Search}, attempted={Attempted}.",
+                _site is GenericDleSite, _site.SupportsSearch, _reprobeAttempted);
+            return false;
+        }
+
+        _logger.LogInformation("Репробинг: пробую заново распознать поиск {Host}.", _site.BaseUrl);
+        try
+        {
+            var profile = await OnlineCinemaSiteProbe.ProbeAsync(_site.BaseUrl, logger: _logger);
+            if (profile == null || profile.SearchKind == "none")
+            {
+                return false;
+            }
+
+            var settings = SettingsService.Current;
+            if (settings == null)
+            {
+                return false;
+            }
+
+            settings.OnlineCinemaSiteProfiles.RemoveAll(p => string.Equals(
+                p.BaseUrl.TrimEnd('/'), profile.BaseUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase));
+            settings.OnlineCinemaSiteProfiles.Add(profile);
+            OnlineCinemaSites.InvalidateGeneric(((GenericDleSite)_site).Host);
+            _site = new GenericDleSite(profile);
+            SettingsChanged?.Invoke();
+            _logger.LogInformation(
+                "Онлайн-кинотеатр: профиль {Host} обновлён — поиск {Search}.",
+                profile.BaseUrl, profile.SearchKind);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Онлайн-кинотеатр: репробинг поиска {Host} не удался.", _site.BaseUrl);
+            return false;
         }
     }
 
