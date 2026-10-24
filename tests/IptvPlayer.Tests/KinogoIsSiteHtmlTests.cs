@@ -169,6 +169,24 @@ public class GenericDleSiteTests
     }
 
     [Fact]
+    public void GenericAdapter_HasYearListing_FollowsProfilePattern()
+    {
+        // Pattern present -> deep pages may take the year from the URL
+        Assert.True(new GenericDleSite(Profile()).HasYearListing);
+
+        var noYear = new GenericDleSite(new OnlineCinemaSiteProfile
+        {
+            BaseUrl = "https://kinogo.mba",
+            Template = "card",
+            Categories = new Dictionary<string, string> { ["все фильмы"] = "/filmy/" },
+            SearchKind = "none"
+        });
+        Assert.False(noYear.HasYearListing);
+        // Without a pattern YearUrl falls back to the plain category listing
+        Assert.Equal(noYear.CategoryUrl("все фильмы", 2), noYear.YearUrl(2024, 2));
+    }
+
+    [Fact]
     public void GenericAdapter_ParsesCardTemplate_MbaYearLinksInCards()
     {
         // mba puts year as /filmy/2026/ inside cards, not /god/2026/

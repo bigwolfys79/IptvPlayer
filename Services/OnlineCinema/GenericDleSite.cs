@@ -83,6 +83,8 @@ public sealed class GenericDleSite : IOnlineCinemaSite
         return page <= 1 ? BaseUrl + path : $"{BaseUrl}{path}page/{page}/";
     }
 
+    public bool HasYearListing => !string.IsNullOrEmpty(_profile.YearPathPattern);
+
     public string UserAgent => KinogoSite.UserAgent;
 
     public void ApplyBrowserHeaders(HttpRequestMessage msg) => KinogoSite.ApplyBrowserHeaders(msg);

@@ -35,6 +35,12 @@ public class OnlineCinemaPageInfo
 }
 
 
+// What a single catalog page load actually fetched — drives the "load more"
+// status line in the UI
+public sealed record OnlineCinemaPageLoadResult(
+    List<OnlineCinemaItem> Items, string Category, int PageNumber, int TotalPages, int NewItems);
+
+
 // Stream resolved on demand from a film page
 public class OnlineCinemaStream
 {

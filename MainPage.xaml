@@ -298,15 +298,25 @@
                     </GridView.ItemTemplate>
                 </GridView>
 
-                <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8"
-                            Margin="0,4"
-                            Visibility="{x:Bind ViewModel.IsLoadMoreVisible, Mode=OneWay}">
-                    <ProgressRing Width="16" Height="16" IsActive="True"
-                                  Visibility="{x:Bind ViewModel.IsLoadMoreBusyVisible, Mode=OneWay}" />
-                    <TextBlock x:Uid="OnlineCinema_LoadMore_Text" VerticalAlignment="Center" />
-                    <Button Command="{x:Bind ViewModel.LoadMoreOnlineCinemaCommand, Mode=OneWay}"
-                            x:Uid="OnlineCinema_LoadMore_Button" />
-                </StackPanel>
+                <Grid Grid.Row="3" Margin="0,4"
+                      Visibility="{x:Bind ViewModel.IsLoadMoreVisible, Mode=OneWay}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                        <ProgressRing Width="16" Height="16" IsActive="True"
+                                      Visibility="{x:Bind ViewModel.IsLoadMoreBusyVisible, Mode=OneWay}" />
+                        <TextBlock x:Uid="OnlineCinema_LoadMore_Text" VerticalAlignment="Center" />
+                        <Button Command="{x:Bind ViewModel.LoadMoreOnlineCinemaCommand, Mode=OneWay}"
+                                x:Uid="OnlineCinema_LoadMore_Button" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Text="{x:Bind ViewModel.LoadMoreStatusText, Mode=OneWay}"
+                               HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                               MaxWidth="560" FontSize="12" Margin="0,2,0,0"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Visibility="{x:Bind ViewModel.IsLoadMoreStatusVisible, Mode=OneWay}" />
+                </Grid>
 
                 <Border Grid.Row="4" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
                                                 <TextBlock x:Name="ChannelCountText" Text="{x:Bind ViewModel.ChannelCountText, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />

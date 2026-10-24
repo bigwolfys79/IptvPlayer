@@ -261,33 +261,23 @@ namespace IptvPlayer.Services
         }
 
 
-        // PlayerJS-style quality label: standard widths override the height
-        // bucket (mirrors site players' menus — 1920x800 shows as 1080p)
+        // Quality label mirrors the site player (player-venom, algorithm
+        // extracted from its bundle): the menu shows the largest ladder rung
+        // the rendition's WIDTH reaches (720p from 960, 1080p from 1440),
+        // not the nearest height bucket — 1272x530 is 720p and 648x270 is
+        // 480p in the site menu. Width 640 keeps the 360p that sevstar-style
+        // players show for their 640xN rung
         public static string HlsQualityLabel(int width, int height)
         {
-            var label = height switch
-            {
-                < 200 => "160p",
-                <= 300 => "240p",
-                <= 400 => "360p",
-                <= 500 => "480p",
-                <= 600 => "540p",
-                <= 900 => "720p",
-                <= 1200 => "1080p",
-                <= 1800 => "1440p",
-                _ => "2160p"
-            };
-
             return width switch
             {
-                426 when height <= 240 => "240p",
-                640 when height <= 360 => "360p",
-                >= 854 and <= 860 when height <= 480 => "480p",
-                1280 when height <= 720 => "720p",
-                1920 when height <= 1080 => "1080p",
-                2560 when height <= 1440 => "1440p",
-                3840 when height <= 2160 => "2160p",
-                _ => label
+                >= 3840 => "2160p",
+                >= 2560 => "1440p",
+                >= 1440 => "1080p",
+                >= 960 => "720p",
+                > 640 => "480p",
+                >= 480 => "360p",
+                _ => height + "p"
             };
         }
 

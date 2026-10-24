@@ -63,7 +63,7 @@ public class HlsMasterVariantsTests
         Assert.Equal("http://cdn.example.com/a.m3u8", result["720p"]);
     }
 
-    // Cinemascope masters (kinogo.mba / sevstar): raw heights 800/532/356/266
+    // Cinemascope masters (kinogo.online / sevstar): raw heights 800/532/356/266
     // must show as the site player's labels 1080p/720p/480p/360p
     [Fact]
     public void ParseHlsMasterVariants_CinemascopeWidths_UseSiteLabels()
@@ -82,8 +82,37 @@ public class HlsMasterVariantsTests
         Assert.Equal("http://cdn.example.com/v1.m3u8", result["360p"]);
     }
 
+    // player-venom menus (kinogo.mba / nextembed) label by width rungs, not
+    // height buckets: the site shows 1272x530 as 720p and 648x270 as 480p
     [Fact]
-    public void ParseHlsMasterVariants_NonStandardWidth_FallsBackToHeightBucket()
+    public void ParseHlsMasterVariants_VenomWidthRungs_LabelLikeSiteMenu()
+    {
+        var playlist = "#EXTM3U\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=1272x530\nv1.m3u8\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=648x270\nv2.m3u8\n";
+        var result = StreamService.ParseHlsMasterVariants(playlist, new Uri("http://cdn.example.com/master.m3u8"));
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("http://cdn.example.com/v1.m3u8", result["720p"]);
+        Assert.Equal("http://cdn.example.com/v2.m3u8", result["480p"]);
+    }
+
+    // Widths inside one rung collapse to the same label — first wins, like
+    // the site player's quality map keyed by the same rung function
+    [Fact]
+    public void ParseHlsMasterVariants_SameRungWidths_CollapseToFirst()
+    {
+        var playlist = "#EXTM3U\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=1272x530\na.m3u8\n" +
+                       "#EXT-X-STREAM-INF:RESOLUTION=1184x494\nb.m3u8\n";
+        var result = StreamService.ParseHlsMasterVariants(playlist, new Uri("http://cdn.example.com/master.m3u8"));
+
+        Assert.Single(result);
+        Assert.Equal("http://cdn.example.com/a.m3u8", result["720p"]);
+    }
+
+    [Fact]
+    public void ParseHlsMasterVariants_NonStandardWidth_LabelsByWidthRung()
     {
         var playlist = "#EXTM3U\n#EXT-X-STREAM-INF:RESOLUTION=1080x800\nv.m3u8\n";
         var result = StreamService.ParseHlsMasterVariants(playlist, new Uri("http://cdn.example.com/master.m3u8"));

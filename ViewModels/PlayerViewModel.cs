@@ -254,14 +254,16 @@ public partial class PlayerViewModel : ObservableObject
     public async Task<string?> StartOnlineCinemaDownloadAsync(string targetFolder)
     {
         // Nextembed-style stream: no cinemar download window exists — download
-        // the HLS master (current quality's mini-master) via ffmpeg remux
-        if (OnlineCinemaPlaylist == null)
+        // the HLS master (current quality's mini-master) via ffmpeg remux.
+        // Films with a synthesized audio-group playlist carry no api data —
+        // same treatment
+        if (OnlineCinemaPlaylist == null ||
+            CurrentOnlineCinemaLeaf() is not { Data.Length: > 0 } leaf)
         {
             return await StartHlsDownloadAsync(targetFolder);
         }
 
-        var leaf = CurrentOnlineCinemaLeaf();
-        if (leaf == null || _vodChannel == null)
+        if (_vodChannel == null)
         {
             return Services.L.T("OnlineCinema_Resolv_Fail");
         }

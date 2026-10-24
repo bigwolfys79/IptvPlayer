@@ -26,6 +26,10 @@ public interface IOnlineCinemaSite
 
     string YearUrl(int year, int page = 1);
 
+    // True when YearUrl returns a real per-year listing; false when it
+    // silently falls back to the plain category URL
+    bool HasYearListing { get; }
+
     string UserAgent { get; }
 
     void ApplyBrowserHeaders(HttpRequestMessage msg);
@@ -148,6 +152,8 @@ public sealed class KinogoOnlineSite : IOnlineCinemaSite
     public string CategoryUrl(string category, int page) => KinogoSite.CategoryUrl(category, page);
 
     public string YearUrl(int year, int page = 1) => KinogoSite.YearUrl(year, page);
+
+    public bool HasYearListing => true;
 
     public string UserAgent => KinogoSite.UserAgent;
 

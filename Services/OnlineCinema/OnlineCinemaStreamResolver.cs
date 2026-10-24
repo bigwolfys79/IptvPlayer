@@ -237,84 +237,113 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
 
     // Rebuild one mini-master per quality: header + the primary EXT-X-MEDIA
     // audio group line + that single variant, served through the local proxy.
-    // The child playlists stay on the CDN (absolute URLs); switching quality
-    // plays the mini-master, so audio survives the switch. Failover duplicate
-    // groups and renditions are dropped — they only produce identical audio
-    // tracks in the picker
+    // Audio renditions of the first EXT-X-MEDIA group (document order) plus
+    // every video rendition bound to it; null when the master has no group
+    private (List<string> AudioLines, string GroupId, List<(string Inf, string Url)> Renditions)?
+        ParseAudioGroup(string master, Uri masterUri)
+    {
+        string? groupId = null;
+        var audioLines = new List<string>();
+        var renditions = new List<(string Inf, string Url)>();
+        string? pendingInf = null;
+        foreach (var rawLine in master.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0)
+            {
+                continue;
+            }
+
+            if (line.StartsWith("#EXT-X-MEDIA", StringComparison.Ordinal))
+            {
+                var group = System.Text.RegularExpressions.Regex.Match(
+                    line, @"GROUP-ID=""(?<g>[^""]+)""");
+                if (groupId == null)
+                {
+                    groupId = group.Success ? group.Groups["g"].Value : string.Empty;
+                }
+
+                if (group.Success && group.Groups["g"].Value == groupId)
+                {
+                    audioLines.Add(line);
+                }
+            }
+            else if (line.StartsWith("#EXT-X-STREAM-INF", StringComparison.Ordinal))
+            {
+                pendingInf = line;
+            }
+            else if (!line.StartsWith('#') && pendingInf != null)
+            {
+                renditions.Add((pendingInf, new Uri(masterUri, line).ToString()));
+                pendingInf = null;
+            }
+        }
+
+        return groupId == null ? null : (audioLines, groupId, renditions);
+    }
+
+    // Registers a local mini-master: one audio member + one video rendition
+    private string RegisterMiniMaster(string audioLine, string inf, string url)
+    {
+        var miniMaster = "#EXTM3U\n" + audioLine + "\n" + inf + "\n" + url + "\n";
+        return _proxy.RegisterText(miniMaster, ".m3u8");
+    }
+
+    // Video renditions of the group deduped by resolution, first wins —
+    // variants bound to other (failover) audio groups are skipped
+    private List<(string Quality, string Inf, string Url)> GroupVariants(
+        (List<string> AudioLines, string GroupId, List<(string Inf, string Url)> Renditions) group)
+    {
+        var result = new List<(string Quality, string Inf, string Url)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (inf, url) in group.Renditions)
+        {
+            var resolution = System.Text.RegularExpressions.Regex.Match(
+                inf, @"RESOLUTION=(?<r>\d+x\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!resolution.Success || !seen.Add(resolution.Groups["r"].Value))
+            {
+                continue;
+            }
+
+            var audioAttr = System.Text.RegularExpressions.Regex.Match(
+                inf, @"AUDIO=""(?<g>[^""]+)""");
+            if (audioAttr.Success && audioAttr.Groups["g"].Value != group.GroupId)
+            {
+                continue;
+            }
+
+            var dims = resolution.Groups["r"].Value.Split('x');
+            var quality = int.TryParse(dims[0], out var variantWidth) &&
+                          int.TryParse(dims[1], out var variantHeight)
+                ? StreamService.HlsQualityLabel(variantWidth, variantHeight)
+                : dims[1] + "p";
+            result.Add((quality, inf, url));
+        }
+
+        return result;
+    }
+
     private void BuildAudioGroupMasters(string master, Uri masterUri,
         Dictionary<string, string> variants)
     {
         try
         {
-            string? audioGroupLine = null;
-            var audioGroupId = string.Empty;
-            var renditionLines = new List<(string Inf, string Url)>();
-            string? pendingInf = null;
-            foreach (var rawLine in master.Split('\n'))
-            {
-                var line = rawLine.Trim();
-                if (line.Length == 0)
-                {
-                    continue;
-                }
-
-                if (line.StartsWith("#EXT-X-MEDIA", StringComparison.Ordinal))
-                {
-                    if (audioGroupLine == null)
-                    {
-                        audioGroupLine = line;
-                        var group = System.Text.RegularExpressions.Regex.Match(
-                            line, @"GROUP-ID=""(?<g>[^""]+)""");
-                        audioGroupId = group.Success ? group.Groups["g"].Value : string.Empty;
-                    }
-                }
-                else if (line.StartsWith("#EXT-X-STREAM-INF", StringComparison.Ordinal))
-                {
-                    pendingInf = line;
-                }
-                else if (!line.StartsWith('#') && pendingInf != null)
-                {
-                    renditionLines.Add((pendingInf, new Uri(masterUri, line).ToString()));
-                    pendingInf = null;
-                }
-            }
-
-            if (audioGroupLine == null)
+            if (ParseAudioGroup(master, masterUri) is not { } group ||
+                group.AudioLines.FirstOrDefault() is not { Length: > 0 } audioLine)
             {
                 return;
             }
 
-            // One variant per resolution, first wins — mirrors ParseHlsMasterVariants;
-            // variants bound to other (failover) audio groups are skipped
-            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var written = 0;
-            foreach (var (inf, url) in renditionLines)
+            // The child playlists stay on the CDN (absolute URLs); switching quality
+            // plays the mini-master, so audio survives the switch. Failover duplicate
+            // groups and renditions are dropped — they only produce identical audio
+            // tracks in the picker
+            foreach (var (quality, inf, url) in GroupVariants(group))
             {
-                var resolution = System.Text.RegularExpressions.Regex.Match(
-                    inf, @"RESOLUTION=(?<r>\d+x\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                if (!resolution.Success || !seen.Add(resolution.Groups["r"].Value))
-                {
-                    continue;
-                }
-
-                var audioAttr = System.Text.RegularExpressions.Regex.Match(
-                    inf, @"AUDIO=""(?<g>[^""]+)""");
-                if (audioAttr.Success && audioAttr.Groups["g"].Value != audioGroupId)
-                {
-                    continue;
-                }
-
-                var dims = resolution.Groups["r"].Value.Split('x');
-                var quality = int.TryParse(dims[0], out var variantWidth) &&
-                              int.TryParse(dims[1], out var variantHeight)
-                    ? StreamService.HlsQualityLabel(variantWidth, variantHeight)
-                    : dims[1] + "p";
-                var miniMaster = "#EXTM3U\n" + audioGroupLine + "\n" + inf + "\n" + url + "\n";
-                var local = _proxy.RegisterText(miniMaster, ".m3u8");
+                var local = RegisterMiniMaster(audioLine, inf, url);
                 if (local.Length > 0)
                 {
                     variants[quality] = local;
-                    written++;
                 }
             }
         }
@@ -322,6 +351,81 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         {
             // Mini-masters are an enhancement — playback falls back to the
             // plain master link
+        }
+    }
+
+    // Human label for an EXT-X-MEDIA audio member: language wins, NAME fallback
+    private static string AudioTrackLabel(string mediaLine)
+    {
+        var lang = System.Text.RegularExpressions.Regex.Match(
+            mediaLine, @"LANGUAGE=""(?<l>[^""]+)""").Groups["l"].Value.ToLowerInvariant();
+        var label = lang switch
+        {
+            "ru" or "ru-ru" => "Русский",
+            "uk" or "uk-ua" or "ua" => "Украинский",
+            "en" or "en-us" => "Английский",
+            _ => string.Empty
+        };
+        if (label.Length > 0)
+        {
+            return label;
+        }
+
+        var name = System.Text.RegularExpressions.Regex.Match(
+            mediaLine, @"NAME=""(?<n>[^""]+)""").Groups["n"].Value.Trim();
+        return name.Length > 0 ? name : "Аудио";
+    }
+
+    // Films with a multi-member audio group (rus/ukr): each member becomes a
+    // voiceover leaf, so the existing picker switches audio tracks with the
+    // position preserved. Null when the group has a single member
+    private OnlineCinemaPlaylist? BuildAudioVoiceoverPlaylist(string master, Uri masterUri)
+    {
+        try
+        {
+            if (ParseAudioGroup(master, masterUri) is not { } group)
+            {
+                return null;
+            }
+
+            var playlist = new OnlineCinemaPlaylist();
+            foreach (var audioLine in group.AudioLines)
+            {
+                if (audioLine.Contains(@"TYPE=""SUBTITLES""", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var leaf = new OnlineCinemaLeaf { Label = AudioTrackLabel(audioLine) };
+                foreach (var (quality, inf, url) in GroupVariants(group))
+                {
+                    var local = RegisterMiniMaster(audioLine, inf, url);
+                    if (local.Length > 0)
+                    {
+                        leaf.Variants[quality] = local;
+                    }
+                }
+
+                if (leaf.Variants.Count == 0)
+                {
+                    continue;
+                }
+
+                // Default leaf URL: the top-rendition mini-master of this track
+                var best = leaf.Variants.Keys
+                    .Where(k => k.EndsWith('p') && int.TryParse(k[..^1], out _))
+                    .OrderByDescending(k => int.Parse(k[..^1]))
+                    .FirstOrDefault() ?? leaf.Variants.Keys.First();
+                leaf.ResolvedUrl = leaf.Variants[best];
+                playlist.Voiceovers ??= new List<OnlineCinemaLeaf>();
+                playlist.Voiceovers.Add(leaf);
+            }
+
+            return playlist.Voiceovers is { Count: > 1 } ? playlist : null;
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 
@@ -594,6 +698,47 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         }
     }
 
+    // Страница гейта — единственный запакованный eval и ни одного маркера
+    // плеера (Cinemar( / "file":"# / hls: / seasons:[)
+    private static bool IsCinemarGate(string html) =>
+        html.Contains("eval(function(c,m,r)", StringComparison.Ordinal) &&
+        !html.Contains("Cinemar(", StringComparison.Ordinal);
+
+    // Гейт решается самим сайтом: его скрипт вычисляет поля формы в onsubmit.
+    // Скриптовый клик по submit-кнопке отправляет форму (POST на тот же URL)
+    // и приводит к странице плеера — жду в ней маркер Cinemar(
+    private async Task<string?> SolveCinemarGateAsync(string embedUrl, CancellationToken ct)
+    {
+        if (!_browser.IsInitialized)
+        {
+            _logger.LogInformation("Онлайн-кинотеатр: скрытый браузер не инициализирован, гейт непроходим.");
+            return null;
+        }
+
+        if (!await _browser.NavigateAsync(embedUrl, ct))
+        {
+            return null;
+        }
+
+        var clicked = await _browser.RunScriptAsync(
+            "(function(){var b=document.querySelector('form button[type=submit]')||document.querySelector('form button');" +
+            "if(b){b.click();return 'clicked';}return 'no-button';})()", ct);
+        _logger.LogInformation("Онлайн-кинотеатр: клик-гейт: {Result}.", clicked ?? "скрипт не выполнен");
+
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(20);
+        while (DateTime.UtcNow < deadline && !ct.IsCancellationRequested)
+        {
+            await Task.Delay(700, ct);
+            var html = await _browser.RunScriptAsync("document.documentElement.outerHTML", ct);
+            if (!string.IsNullOrEmpty(html) && html.Contains("Cinemar(", StringComparison.Ordinal))
+            {
+                return html;
+            }
+        }
+
+        return null;
+    }
+
     private async Task<OnlineCinemaStream?> TryResolveEmbedAsync(string embedUrl, string pageUrl, CancellationToken ct)
     {
         var embedHtml = await GetStringAsync(embedUrl, referer: pageUrl, iframe: true, ct);
@@ -601,6 +746,23 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         {
             _logger.LogInformation("Онлайн-кинотеатр: embed недоступен по HTTP: {Url}", embedUrl);
             return null;
+        }
+
+        // cinemar click-gate (появился 2026-10): страница содержит один запакованный
+        // eval, который строит форму «смотреть онлайн»; настоящий HTML плеера
+        // отдаётся только на POST её вычисляемых полей. Сайт обязан сам исполнить
+        // свой JS, поэтому гейт проходится в скрытом WebView2: клик по кнопке
+        // запускает onsubmit (добавление полей) и форму, POST ведёт на страницу
+        // плеера с тем же URL
+        if (IsCinemarGate(embedHtml))
+        {
+            _logger.LogInformation("Онлайн-кинотеатр: cinemar клик-гейт, прохожу через скрытый браузер: {Url}", embedUrl);
+            embedHtml = await SolveCinemarGateAsync(embedUrl, ct);
+            if (embedHtml == null)
+            {
+                _logger.LogInformation("Онлайн-кинотеатр: клик-гейт не пройден: {Url}", embedUrl);
+                return null;
+            }
         }
 
         if (embedHtml.Contains("hls:", StringComparison.Ordinal))
@@ -672,6 +834,10 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 // quality (audio group + that single variant) — switching
                 // quality plays the local file, ffmpeg pulls CDN playlists
                 BuildAudioGroupMasters(master, new Uri(stream.Url), stream.Variants);
+
+                // A multi-member group (rus/ukr) becomes voiceover leaves —
+                // the picker switches audio, position preserved
+                stream.Playlist = BuildAudioVoiceoverPlaylist(master, new Uri(stream.Url));
             }
             _logger.LogInformation(
                 "Онлайн-кинотеатр: поток получен из hls-конфига {Url} (аудио-группа: {Audio}, вариантов: {Variants}) — {Hit}",

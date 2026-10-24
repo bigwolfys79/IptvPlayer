@@ -86,6 +86,24 @@ public partial class MainPageViewModel
     public Visibility IsLoadMoreBusyVisible => _isLoadingMoreCinema ? Visibility.Visible : Visibility.Collapsed;
 
 
+    // Last "load more" outcome shown next to the button
+    private string _loadMoreStatusText = string.Empty;
+
+    public string LoadMoreStatusText
+    {
+        get => _loadMoreStatusText;
+        set
+        {
+            _loadMoreStatusText = value;
+            OnPropertyChanged(nameof(LoadMoreStatusText));
+            OnPropertyChanged(nameof(IsLoadMoreStatusVisible));
+        }
+    }
+
+    public Visibility IsLoadMoreStatusVisible =>
+        string.IsNullOrEmpty(_loadMoreStatusText) ? Visibility.Collapsed : Visibility.Visible;
+
+
     public void SetOnlineCinemaSource(bool isOnlineCinema)
     {
         _isOnlineCinemaSource = isOnlineCinema;
@@ -97,10 +115,12 @@ public partial class MainPageViewModel
     }
 
 
-    // Coarse group for the category combo: series by their page path,
-    // everything else is a film. Site genres stay in Genre (multi-genre aware)
+    // Coarse group for the category combo: series by their page path or by
+    // the listing category (kinogo.is cards carry flat /id-slug.html URLs —
+    // the path alone cannot tell a series), everything else is a film
     internal static string GroupForItem(OnlineCinemaItem item) =>
-        item.PageUrl.Contains("/serialy/", StringComparison.OrdinalIgnoreCase)
+        item.PageUrl.Contains("/serialy/", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(item.Category, "сериалы", StringComparison.OrdinalIgnoreCase)
             ? L.T("OnlineCinema_Group_Serials")
             : L.T("OnlineCinema_Group_Films");
 
@@ -287,7 +307,8 @@ public partial class MainPageViewModel
 
 
     // Loads the next page of the selected category (or any category with more
-    // pages) and merges it into the channel list
+    // pages) and merges it into the channel list; the result is reported in
+    // LoadMoreStatusText so the user sees what actually loaded
     [RelayCommand]
     public async Task LoadMoreOnlineCinemaAsync()
     {
@@ -300,49 +321,53 @@ public partial class MainPageViewModel
         OnPropertyChanged(nameof(IsLoadMoreBusyVisible));
         try
         {
-            // "Load more" follows the selection: series deepen their own
-            // listing, films deepen the selected genre (falling back to
-            // "all films" when the genre is not a site category); any other
-            // group keeps the round-robin over site categories
-            List<OnlineCinemaItem>? items = null;
-            string? category = null;
-            if (SelectedGroup == L.T("OnlineCinema_Group_Serials"))
-            {
-                category = "сериалы";
-            }
-            else if (SelectedGroup == L.T("OnlineCinema_Group_Films"))
-            {
-                var genre = SelectedGenre;
-                category = !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
-                           CurrentSite.Categories.ContainsKey(genre)
-                    ? genre
-                    : "все фильмы";
-            }
+            // "Load more" follows the current category (see CurrentCinemaCategory):
+            // series deepen their listing, films deepen the selected genre
+            // (or "all films"); other groups still deepen the selected genre,
+            // otherwise round-robin over site categories
+            OnlineCinemaPageLoadResult? result = null;
+            var category = CurrentCinemaCategory();
 
             if (category != null)
             {
-                items = await _onlineCinemaCatalog.LoadNextPageAsync(category);
+                result = await _onlineCinemaCatalog.LoadNextPageAsync(category);
             }
             else
             {
                 foreach (var cat in CurrentSite.Categories.Keys)
                 {
-                    items = await _onlineCinemaCatalog.LoadNextPageAsync(cat);
-                    if (items is { Count: > 0 })
+                    category = cat;
+                    result = await _onlineCinemaCatalog.LoadNextPageAsync(cat);
+                    if (result is { Items.Count: > 0 })
                     {
                         break;
                     }
                 }
             }
 
-            if (items is { Count: > 0 })
+            if (result is { Items.Count: > 0 })
             {
                 await ReloadOnlineCinemaChannelsAsync();
+                var status = result.TotalPages > 0
+                    ? string.Format(L.T("OnlineCinema_LoadMore_Status"),
+                        result.Category, result.PageNumber, result.TotalPages)
+                    : string.Format(L.T("OnlineCinema_LoadMore_StatusNoTotal"),
+                        result.Category, result.PageNumber);
+                status += " (" + (result.NewItems > 0
+                    ? string.Format(L.T("OnlineCinema_LoadMore_NewCount"), result.NewItems)
+                    : L.T("OnlineCinema_LoadMore_NoNew")) + ")";
+                LoadMoreStatusText = status;
+            }
+            else
+            {
+                LoadMoreStatusText = string.Format(
+                    L.T("OnlineCinema_LoadMore_Done"), category ?? "?");
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Онлайн-кинотеатр: не удалось догрузить страницу каталога.");
+            LoadMoreStatusText = L.T("OnlineCinema_LoadMore_Failed");
         }
         finally
         {
@@ -391,8 +416,10 @@ public partial class MainPageViewModel
     // Push the persisted per-category sorts into the catalog service
     public void SyncCatalogSorts() => _onlineCinemaCatalog.Sorts = AppSettings.OnlineCinemaSorts;
 
-    // The category matching the current group/genre selection (films →
-    // genre-or-"все фильмы"; series → "сериалы"); null for other groups
+    // The category matching the current group/genre selection (series →
+    // "сериалы"; films → the selected genre or "все фильмы"; any other group
+    // still deepens the selected genre when it is a site category); null
+    // means the load-more round-robin over site categories
     private string? CurrentCinemaCategory()
     {
         if (SelectedGroup == L.T("OnlineCinema_Group_Serials"))
@@ -400,16 +427,18 @@ public partial class MainPageViewModel
             return "сериалы";
         }
 
+        var genre = SelectedGenre;
+        var genreCategory = !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
+                            CurrentSite.Categories.ContainsKey(genre)
+            ? genre
+            : null;
+
         if (SelectedGroup == L.T("OnlineCinema_Group_Films"))
         {
-            var genre = SelectedGenre;
-            return !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
-                   CurrentSite.Categories.ContainsKey(genre)
-                ? genre
-                : "все фильмы";
+            return genreCategory ?? OnlineCinemaCatalogService.AllFilmsCategory;
         }
 
-        return null;
+        return genreCategory;
     }
 
     // Pushes the current year + per-category sorts into the catalog service
@@ -480,20 +509,8 @@ public partial class MainPageViewModel
 
     public void RestoreOnlineCinemaSortSelection()
     {
-        string category;
-        if (SelectedGroup == L.T("OnlineCinema_Group_Serials"))
-        {
-            category = "сериалы";
-        }
-        else if (SelectedGroup == L.T("OnlineCinema_Group_Films"))
-        {
-            var genre = SelectedGenre;
-            category = !string.IsNullOrEmpty(genre) && genre != AllGenresOption &&
-                       CurrentSite.Categories.ContainsKey(genre)
-                ? genre
-                : "все фильмы";
-        }
-        else
+        var category = CurrentCinemaCategory();
+        if (category == null)
         {
             return;
         }
@@ -507,12 +524,16 @@ public partial class MainPageViewModel
 
     public void ApplyOnlineCinemaYear()
     {
-        if (_lastSyncedYear?.ToString() == SelectedYear)
+        // List rebuilds reset the year combo to "all years" programmatically —
+        // the transition null->empty must not reload the category (a reload
+        // would POST empty filters and could drop the saved page numbering)
+        var year = int.TryParse(SelectedYear, out var parsed) ? parsed : (int?)null;
+        if (_lastSyncedYear == year)
         {
             return;
         }
 
-        _lastSyncedYear = int.TryParse(SelectedYear, out var parsed) ? parsed : (int?)null;
+        _lastSyncedYear = year;
         UpdateOnlineCinemaFilters(reloadCurrentPage: true);
     }
 

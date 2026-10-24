@@ -22,6 +22,10 @@ public interface ICatalogDatabaseService
 
     Task<int> CountItemsAsync(string siteId);
 
+    // Urls from the given list that are already in the catalog — the caller
+    // reports how many fetched cards were actually new
+    Task<HashSet<string>> GetExistingPageUrlsAsync(string siteId, IEnumerable<string> urls);
+
     // Drops the loaded-pages bookkeeping of a category — used when the site
     // session filters (year/sort) change and the listing restarts at page 1
     Task ResetCategoryPagesAsync(string siteId, string category);
@@ -308,5 +312,40 @@ public class CatalogDatabaseService : ICatalogDatabaseService
         cmd.Parameters.AddWithValue("$site", siteId);
         var value = await cmd.ExecuteScalarAsync();
         return value is long v ? (int)v : 0;
+    }
+
+    public async Task<HashSet<string>> GetExistingPageUrlsAsync(string siteId, IEnumerable<string> urls)
+    {
+        var urlList = urls.Where(u => !string.IsNullOrEmpty(u)).Distinct().ToList();
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (urlList.Count == 0)
+        {
+            return existing;
+        }
+
+        await InitializeAsync();
+        await using var connection = new SqliteConnection($"Data Source={_dbPath}");
+        await connection.OpenAsync();
+        // One query per chunk keeps the IN-list short without dynamic SQL
+        for (var offset = 0; offset < urlList.Count; offset += 100)
+        {
+            var chunk = urlList.Skip(offset).Take(100).ToList();
+            await using var cmd = connection.CreateCommand();
+            var parameters = string.Join(", ", chunk.Select((_, i) => $"$u{i}"));
+            cmd.CommandText = $"SELECT page_url FROM catalog_items WHERE site_id = $site AND page_url IN ({parameters})";
+            cmd.Parameters.AddWithValue("$site", siteId);
+            for (var i = 0; i < chunk.Count; i++)
+            {
+                cmd.Parameters.AddWithValue($"$u{i}", chunk[i]);
+            }
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                existing.Add(reader.GetString(0));
+            }
+        }
+
+        return existing;
     }
 }

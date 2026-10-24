@@ -20,6 +20,9 @@ public class OnlineCinemaCatalogService
     private const int Page1RefreshHours = 6;
     private const int PauseBetweenPagesMs = 2000;
 
+    // Canonical all-films category name; site adapters key it the same way
+    public const string AllFilmsCategory = "все фильмы";
+
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     private readonly ICatalogDatabaseService _db;
@@ -146,6 +149,14 @@ public class OnlineCinemaCatalogService
         }
 
         var applied = _appliedFilters.TryGetValue(category, out var a) ? a : (Year: (string?)null, Sort: (string?)null);
+        // Both sides empty — nothing to apply. A null->empty transition must
+        // not POST or reset the saved page numbering
+        if (string.IsNullOrEmpty(desired.Year) && string.IsNullOrEmpty(desired.Sort) &&
+            string.IsNullOrEmpty(applied.Year) && string.IsNullOrEmpty(applied.Sort))
+        {
+            return null;
+        }
+
         if (applied == desired)
         {
             return null;
@@ -198,9 +209,15 @@ public class OnlineCinemaCatalogService
             return null;
         }
 
+        // Year/sort filters live in the PHP session of the curl cookie jar —
+        // the cookie-less HttpClient tier answers with the UNFILTERED listing,
+        // so while filters are active only curl may fetch
+        var filtersActive = _desiredFilters.TryGetValue(category, out var filter) &&
+                            (!string.IsNullOrEmpty(filter.Year) || !string.IsNullOrEmpty(filter.Sort));
+
         foreach (var viaCurl in new[] { true, false })
         {
-            if (viaCurl ? !OnlineCinemaMethods.UseCurl : !OnlineCinemaMethods.UseHttpClient)
+            if (viaCurl ? !OnlineCinemaMethods.UseCurl : (!OnlineCinemaMethods.UseHttpClient || filtersActive))
             {
                 continue;
             }
@@ -246,9 +263,23 @@ public class OnlineCinemaCatalogService
         return null;
     }
 
+    // Info about the most recent SavePageAsync (valid under LoadGate) —
+    // LoadNextPageAsync reports it to the UI
+    private (string Category, int Page, int Total, int NewItems)? _lastSave;
+
     private async Task<List<OnlineCinemaItem>> SavePageAsync(
         string category, int page, List<OnlineCinemaItem> items, int total)
     {
+        var existing = await _db.GetExistingPageUrlsAsync(_site.Id, items.Select(i => i.PageUrl));
+        var newItems = items.Count(i => !existing.Contains(i.PageUrl));
+        _lastSave = (category, page, total, newItems);
+        if (page == 1)
+        {
+            // Stamp every tier: a browser-tier page-1 must also trip the
+            // reload-loop guard below
+            _lastPage1Fetch[category] = DateTime.UtcNow;
+        }
+
         await _db.UpsertItemsAsync(_site.Id, items);
         await _db.SavePageInfoAsync(_site.Id, new OnlineCinemaPageInfo
         {
@@ -257,9 +288,9 @@ public class OnlineCinemaCatalogService
             TotalPages = total
         });
 
-        Progress?.Invoke($"{category}: страница {page}{(total > 0 ? $" из {total}" : "")}");
-        _logger.LogInformation("Онлайн-кинотеатр: {Category} стр. {Page} — {Count} карточек, всего страниц {Total}.",
-            category, page, items.Count, total);
+        Progress?.Invoke($"{category}: страница {page}{(total > 0 ? $" из {total}" : "")} (+{newItems})");
+        _logger.LogInformation("Онлайн-кинотеатр: {Category} стр. {Page} — {Count} карточек (+{New}), всего страниц {Total}.",
+            category, page, items.Count, newItems, total);
         return items;
     }
 
@@ -297,6 +328,20 @@ public class OnlineCinemaCatalogService
         }
 
         var url = _site.CategoryUrl(category, page);
+        // Deep pages of the all-films listing take the year from the URL when
+        // the site has a year listing: the session filter the page-1 POST
+        // sets is not reliably carried by later GETs (observed as alternating
+        // filtered/unfiltered totals)
+        if (page > 1 &&
+            category == AllFilmsCategory &&
+            _site.HasYearListing &&
+            _desiredFilters.TryGetValue(category, out var desired) &&
+            !string.IsNullOrEmpty(desired.Year) &&
+            int.TryParse(desired.Year, out var year))
+        {
+            url = _site.YearUrl(year, page);
+        }
+
         if (page == 1 && _lastPage1Fetch.TryGetValue(category, out var lastFetch) &&
             (DateTime.UtcNow - lastFetch).TotalSeconds < 10)
         {
@@ -393,15 +438,19 @@ public class OnlineCinemaCatalogService
     }
 
     // Loads the next unloaded page of a category; when total is unknown keeps
-    // going while the previous page returned cards
-    public async Task<List<OnlineCinemaItem>?> LoadNextPageAsync(string category, CancellationToken ct = default)
+    // going while the previous page returned cards. Null means "nothing was
+    // fetched" (exhausted or unavailable)
+    public async Task<OnlineCinemaPageLoadResult?> LoadNextPageAsync(string category, CancellationToken ct = default)
     {
         var pages = (await _db.GetLoadedPagesAsync(_site.Id))
             .Where(p => p.Category == category)
             .ToList();
         if (pages.Count == 0)
         {
-            return await LoadCategoryPageAsync(category, 1, ct);
+            var first = await LoadCategoryPageAsync(category, 1, ct);
+            var firstSave = _lastSave;
+            return new OnlineCinemaPageLoadResult(
+                first, category, 1, firstSave?.Total ?? 0, firstSave?.NewItems ?? first.Count);
         }
 
         var next = pages.Max(p => p.PageNumber) + 1;
@@ -413,7 +462,10 @@ public class OnlineCinemaCatalogService
 
         try
         {
-            return await LoadCategoryPageAsync(category, next, ct);
+            var items = await LoadCategoryPageAsync(category, next, ct);
+            var save = _lastSave;
+            return new OnlineCinemaPageLoadResult(
+                items, category, next, total > 0 ? total : save?.Total ?? 0, save?.NewItems ?? items.Count);
         }
         catch (InvalidOperationException ex)
         {

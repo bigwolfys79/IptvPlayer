@@ -1531,6 +1531,42 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
+  <data name="OnlineCinema_LoadMore_Status" xml:space="preserve">
+
+    <value>Загружено: {0}, страница {1} из {2}</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_StatusNoTotal" xml:space="preserve">
+
+    <value>Загружено: {0}, страница {1}</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Done" xml:space="preserve">
+
+    <value>«{0}»: все страницы загружены</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_NewCount" xml:space="preserve">
+
+    <value>+{0} новых</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_NoNew" xml:space="preserve">
+
+    <value>новых карточек нет</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Failed" xml:space="preserve">
+
+    <value>Не удалось загрузить страницу каталога</value>
+
+  </data>
+
   <data name="OnlineCinema_Zagruzka_Kataloga" xml:space="preserve">
 
     <value>Загрузка каталога онлайн-кинотеатра…</value>

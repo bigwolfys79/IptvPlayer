@@ -65,6 +65,8 @@ public sealed class KinogoIsOnlineSite : IOnlineCinemaSite
     public string YearUrl(int year, int page = 1) =>
         page <= 1 ? $"{SiteBaseUrl}/filmy/{year}/" : $"{SiteBaseUrl}/filmy/{year}/page/{page}/";
 
+    public bool HasYearListing => true;
+
     public string UserAgent => KinogoSite.UserAgent;
 
     public void ApplyBrowserHeaders(HttpRequestMessage msg) => KinogoSite.ApplyBrowserHeaders(msg);

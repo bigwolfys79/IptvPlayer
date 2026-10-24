@@ -116,17 +116,21 @@ public class OnlineCinemaBrowserService : IDisposable
     // that does not clear on its own fails the navigation
     public async Task<bool> NavigateAsync(string url, CancellationToken ct = default)
     {
-        if (_core == null)
+        // The browser can be disposed concurrently (stream resolved ->
+        // ShutdownAsync) while this navigation is awaiting — a field read
+        // after the await would NRE, so everything goes through the local
+        var core = _core;
+        if (core == null)
         {
             throw new InvalidOperationException("Browser is not initialized");
         }
 
         var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         void Handler(object? s, CoreWebView2NavigationCompletedEventArgs e) => tcs.TrySetResult(e.IsSuccess);
-        _core.NavigationCompleted += Handler;
+        core.NavigationCompleted += Handler;
         try
         {
-            _core.Navigate(url);
+            core.Navigate(url);
             var loaded = await tcs.Task.WaitAsync(TimeSpan.FromMinutes(2), ct);
             if (!loaded)
             {
@@ -135,7 +139,7 @@ public class OnlineCinemaBrowserService : IDisposable
         }
         finally
         {
-            _core.NavigationCompleted -= Handler;
+            core.NavigationCompleted -= Handler;
         }
 
         return await WaitForChallengeAsync(ct);

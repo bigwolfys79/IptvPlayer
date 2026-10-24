@@ -1531,6 +1531,42 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+  <data name="OnlineCinema_LoadMore_Status" xml:space="preserve">
+
+    <value>Loaded: {0}, page {1} of {2}</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_StatusNoTotal" xml:space="preserve">
+
+    <value>Loaded: {0}, page {1}</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Done" xml:space="preserve">
+
+    <value>"{0}": all pages loaded</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_NewCount" xml:space="preserve">
+
+    <value>+{0} new</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_NoNew" xml:space="preserve">
+
+    <value>nothing new</value>
+
+  </data>
+
+  <data name="OnlineCinema_LoadMore_Failed" xml:space="preserve">
+
+    <value>Failed to load a catalog page</value>
+
+  </data>
+
   <data name="OnlineCinema_Zagruzka_Kataloga" xml:space="preserve">
 
     <value>Loading the online cinema catalog…</value>
