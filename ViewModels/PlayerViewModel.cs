@@ -69,6 +69,7 @@ public partial class PlayerViewModel : ObservableObject
     public bool IsVodPlaying { get; private set; }
 
     private ChannelViewModel? _vodChannel;
+    private ChannelViewModel? _liveChannel;
     private Dictionary<string, string> _vodVariantUrls = new();
 
 
@@ -794,6 +795,18 @@ public partial class PlayerViewModel : ObservableObject
         IsBuffering = true;
         _lastStreamUrl = streamUrl;
 
+        // Manual start re-arms the stall watchdog budget; a watchdog restart keeps its own count
+        EnsureStallWatchdog();
+        if (_stallAutoRestart)
+        {
+            _stallAutoRestart = false;
+        }
+        else
+        {
+            _stallRestarts = 0;
+            _stallGiveUp = false;
+        }
+
             var startWait = System.Diagnostics.Stopwatch.StartNew();
             var streamSettings = await _settingsService.LoadAsync();
             var streamConfig = new PlaybackConfig(
@@ -847,6 +860,8 @@ public partial class PlayerViewModel : ObservableObject
             CurrentPlayerChannelId = channel.Id;
             IsArchivePlaying = archiveEntry != null;
             IsVodPlaying = isVod && archiveEntry == null;
+            // Live stall watchdog restarts the plain live stream (archive and VOD have their own paths)
+            _liveChannel = archiveEntry == null && !isVod ? channel : null;
             OnlineCinemaPlaylist = isVod ? onlineCinemaPlaylist : null;
             if (OnlineCinemaPlaylist != null)
             {
@@ -1041,6 +1056,7 @@ public partial class PlayerViewModel : ObservableObject
         IsArchivePlaying = false;
         IsVodPlaying = false;
         _vodChannel = null;
+        _liveChannel = null;
         _vodVariantUrls = new Dictionary<string, string>();
         VodQualities = Array.Empty<string>();
         CurrentVodQuality = null;

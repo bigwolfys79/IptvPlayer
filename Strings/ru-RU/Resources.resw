@@ -126,6 +126,8 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
 • Мини-плеер (Ctrl+M), статистика потока (Ctrl+J)
 
+• Автовосстановление зависшего потока (фильмы и эфир)
+
 • Полуавтоматическое обновление (GitHub Releases)
 
 • Родительский контроль, тёмная тема, русский/английский</value>
@@ -1576,6 +1578,12 @@ Serilog (логирование), Inno Setup (установщик)</value>
   <data name="OnlineCinema_Resolv_Fail" xml:space="preserve">
 
     <value>Не удалось получить ссылку на поток — попробуйте ещё раз.</value>
+
+  </data>
+
+  <data name="Stall_Watchdog_Give_Up" xml:space="preserve">
+
+    <value>Поток остановился: автовосстановление не удалось. Нажмите на название фильма ещё раз.</value>
 
   </data>
 

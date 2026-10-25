@@ -126,6 +126,8 @@ Serilog (logging), Inno Setup (installer)</value>
 
 • Mini player (Ctrl+M), stream stats (Ctrl+J)
 
+• Stalled stream auto-recovery (movies and live)
+
 • Semi-automatic updates (GitHub Releases)
 
 • Parental control, dark theme, Russian/English</value>
@@ -1576,6 +1578,12 @@ Serilog (logging), Inno Setup (installer)</value>
   <data name="OnlineCinema_Resolv_Fail" xml:space="preserve">
 
     <value>Could not resolve the stream link — please try again.</value>
+
+  </data>
+
+  <data name="Stall_Watchdog_Give_Up" xml:space="preserve">
+
+    <value>The stream stalled: automatic recovery failed. Click the movie title again.</value>
 
   </data>
 

@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.30.0
+- **Version:** 1.31.0
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -41,6 +41,7 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Archive (timeshift) with seeking and program progress
 - Archive/VOD pause freezes the last frame (no gray screen); a popup "Paused / Playing" indicator appears on pause state changes
 - Stream diagnostics on playback error
+- Stalled stream auto-recovery: if the picture freezes for ~20 s without pause, the stream is reopened automatically — a movie (VOD, online cinema, local file) from the same position, live TV at the live edge; up to 3 attempts, then an error message (archive is not covered)
 
 ### Local video files
 - "Video" card on the Hub — open a video file from disk (FileOpenPicker: mp4, mkv, avi, ts, mpg, etc.)
