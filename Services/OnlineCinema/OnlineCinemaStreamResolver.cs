@@ -354,6 +354,31 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
         }
     }
 
+    // Voiceover menu labels of the site player: the embed config carries
+    // audio: {"names":["Рус. Дублированный", ...]} aligned with the master's
+    // EXT-X-MEDIA members by index. Null when the config has no names
+    internal static List<string>? ExtractAudioNames(string embedHtml)
+    {
+        var names = System.Text.RegularExpressions.Regex.Match(
+            embedHtml, @"audio:\s*\{\s*""names""\s*:\s*\[(?<items>[^\]]*)\]");
+        if (!names.Success)
+        {
+            return null;
+        }
+
+        var result = new List<string>();
+        foreach (System.Text.RegularExpressions.Match item in
+                 System.Text.RegularExpressions.Regex.Matches(
+                     names.Groups["items"].Value, @"""(?<n>(?:[^""\\]|\\.)*)"""))
+        {
+            var value = item.Groups["n"].Value
+                .Replace("\\/", "/").Replace("\\\"", "\"").Replace("\\\\", "\\");
+            result.Add(value);
+        }
+
+        return result.Count > 0 ? result : null;
+    }
+
     // Human label for an EXT-X-MEDIA audio member: language wins, NAME fallback
     private static string AudioTrackLabel(string mediaLine)
     {
@@ -378,8 +403,11 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
 
     // Films with a multi-member audio group (rus/ukr): each member becomes a
     // voiceover leaf, so the existing picker switches audio tracks with the
-    // position preserved. Null when the group has a single member
-    private OnlineCinemaPlaylist? BuildAudioVoiceoverPlaylist(string master, Uri masterUri)
+    // position preserved. Null when the group has a single member.
+    // audioNames are the site player's menu labels (embed config's
+    // audio.names) aligned with the master's members by index
+    private OnlineCinemaPlaylist? BuildAudioVoiceoverPlaylist(string master, Uri masterUri,
+        List<string>? audioNames)
     {
         try
         {
@@ -389,6 +417,7 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
             }
 
             var playlist = new OnlineCinemaPlaylist();
+            var memberIndex = -1;
             foreach (var audioLine in group.AudioLines)
             {
                 if (audioLine.Contains(@"TYPE=""SUBTITLES""", StringComparison.OrdinalIgnoreCase))
@@ -396,7 +425,14 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                     continue;
                 }
 
-                var leaf = new OnlineCinemaLeaf { Label = AudioTrackLabel(audioLine) };
+                memberIndex++;
+                var siteName = audioNames is { Count: > 0 } && memberIndex < audioNames.Count
+                    ? CleanTrackLabel(audioNames[memberIndex])
+                    : string.Empty;
+                var leaf = new OnlineCinemaLeaf
+                {
+                    Label = siteName.Length > 0 ? siteName : AudioTrackLabel(audioLine)
+                };
                 foreach (var (quality, inf, url) in GroupVariants(group))
                 {
                     var local = RegisterMiniMaster(audioLine, inf, url);
@@ -836,8 +872,10 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                 BuildAudioGroupMasters(master, new Uri(stream.Url), stream.Variants);
 
                 // A multi-member group (rus/ukr) becomes voiceover leaves —
-                // the picker switches audio, position preserved
-                stream.Playlist = BuildAudioVoiceoverPlaylist(master, new Uri(stream.Url));
+                // the picker switches audio, position preserved; labels come
+                // from the embed config's audio.names (site player's menu)
+                stream.Playlist = BuildAudioVoiceoverPlaylist(
+                    master, new Uri(stream.Url), ExtractAudioNames(embedHtml));
             }
             _logger.LogInformation(
                 "Онлайн-кинотеатр: поток получен из hls-конфига {Url} (аудио-группа: {Audio}, вариантов: {Variants}) — {Hit}",
@@ -1207,20 +1245,25 @@ public class OnlineCinemaStreamResolver : IOnlineCinemaStreamResolver
                     }
 
                     var src = rect.TryGetProperty("src", out var s) ? s.GetString() ?? string.Empty : string.Empty;
-                    // Series on nextembed: resolve the seasons tree by HTTP from
-                    // the embed config — the click flow returns only the current
-                    // episode and would lose the season/episode picker
+                    // Series on nextembed: the seasons tree; films on cinemar: the
+                    // full voiceover tree. The embed page itself stays reachable
+                    // over plain HTTP even when the film page sits behind the WAF —
+                    // the click flow would resolve only the translation the site
+                    // player picked and the picker would collapse to one item
                     if (src.Contains("nextembed", StringComparison.OrdinalIgnoreCase) ||
                         src.Contains("cinemar", StringComparison.OrdinalIgnoreCase))
                     {
                         var embedUrl = src.StartsWith("//", StringComparison.Ordinal) ? "https:" + src : src;
-                        var httpSeries = await TryResolveEmbedAsync(embedUrl, pageUrl, ct);
-                        if (httpSeries?.Playlist?.Seasons is { Count: > 0 })
+                        var httpStream = await TryResolveEmbedAsync(embedUrl, pageUrl, ct);
+                        if (httpStream?.Playlist is { } httpPlaylist &&
+                            (httpPlaylist.Seasons is { Count: > 0 } ||
+                             httpPlaylist.Voiceovers is { Count: > 0 }))
                         {
                             _logger.LogInformation(
-                                "Онлайн-кинотеатр: дерево серий получено по HTTP из embed {Url} (сезонов: {Seasons}).",
-                                embedUrl, httpSeries.Playlist.Seasons.Count);
-                            return httpSeries;
+                                "Онлайн-кинотеатр: дерево получено по HTTP из embed {Url} (сезонов: {Seasons}, озвучек: {Voiceovers}).",
+                                embedUrl, httpPlaylist.Seasons?.Count ?? 0,
+                                httpPlaylist.Voiceovers?.Count ?? 0);
+                            return httpStream;
                         }
                     }
 
