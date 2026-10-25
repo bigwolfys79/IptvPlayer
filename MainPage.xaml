@@ -957,22 +957,6 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border x:Name="OverlayActionToast"
-                    Grid.Row="0" Grid.RowSpan="3" Grid.Column="1"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom"
-                    Margin="0,0,0,64"
-                    Padding="16,9"
-                    CornerRadius="8"
-                    Background="{ThemeResource OverlayScrimBrush}"
-                    Opacity="0"
-                    IsHitTestVisible="False">
-                <TextBlock x:Name="OverlayActionToastText"
-                           Foreground="{ThemeResource OverlayFgBrush}"
-                           FontSize="14"
-                           FontWeight="SemiBold"/>
-            </Border>
-
             <Border Grid.Row="0" Grid.Column="1" Background="{ThemeResource OverlayScrimBrush}" Padding="20,14">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -1299,6 +1283,25 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- Outside FullScreenOverlay: the wheel-at-hidden-cursor path shows the toast
+             while the overlay itself stays collapsed -->
+        <Border x:Name="OverlayActionToast"
+                Grid.Column="0" Grid.ColumnSpan="3"
+                Canvas.ZIndex="30"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,64"
+                Padding="16,9"
+                CornerRadius="8"
+                Background="{ThemeResource OverlayScrimBrush}"
+                Opacity="0"
+                IsHitTestVisible="False">
+            <TextBlock x:Name="OverlayActionToastText"
+                       Foreground="{ThemeResource OverlayFgBrush}"
+                       FontSize="14"
+                       FontWeight="SemiBold"/>
+        </Border>
 
         <Border x:Name="StatsOverlay"
                 Grid.Column="2"

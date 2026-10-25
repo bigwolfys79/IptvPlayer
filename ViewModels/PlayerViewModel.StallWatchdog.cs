@@ -27,6 +27,7 @@ public partial class PlayerViewModel
     private int _stallRestarts;
     private bool _stallGiveUp;
     private bool _stallAutoRestart;
+    private int _stallTicksSinceHeartbeat;
 
     private void EnsureStallWatchdog()
     {
@@ -89,6 +90,16 @@ public partial class PlayerViewModel
         var position = session.Position;
         var duration = session.NaturalDuration;
 
+        // Minute heartbeat: a video freeze with live audio keeps the clock
+        // running — the log trail is the only way to see it after the fact
+        if (++_stallTicksSinceHeartbeat >= 12)
+        {
+            _stallTicksSinceHeartbeat = 0;
+            _logger.LogInformation(
+                "Пульс: «{Channel}» ({Mode}) состояние={State} позиция={Position:mm\\:ss} рестартов={Restarts}.",
+                channel.Name, isVod ? "VOD" : "эфир", state, position, _stallRestarts);
+        }
+
         // Media ended — the position legitimately stops near the duration.
         // VOD only: a live stream sitting near its reported duration is normal
         if (isVod && duration > TimeSpan.Zero && position >= duration - TimeSpan.FromSeconds(5))
@@ -143,6 +154,7 @@ public partial class PlayerViewModel
         _stallLastPosition = TimeSpan.Zero;
         _stallSinceUtc = null;
         _stallStableTicks = 0;
+        _stallTicksSinceHeartbeat = 0;
     }
 
     private async Task StallRestartAsync(bool isVod, ChannelViewModel channel, TimeSpan resume)
