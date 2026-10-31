@@ -16,7 +16,9 @@ namespace IptvPlayer.Services
         bool DiagnosticProxy = false,
         string? VideoUpscaler = null,
         bool FrameServer = false,
-        string? PreferredAudioLanguage = null);
+        string? PreferredAudioLanguage = null,
+        int PrebufferSeconds = 1,
+        int VodPrebufferSeconds = 2);
 
     public interface IStreamService
     {
@@ -26,6 +28,8 @@ namespace IptvPlayer.Services
 
 
         double? ProxyMeasuredBitrate { get; }
+
+        double? ProxyMinBitrateLastMinute { get; }
 
 
         void ApplyAudioFilters(MediaPlayer? player, string? mode, bool allowLoudness = false, int boostPercent = 100);

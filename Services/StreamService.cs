@@ -37,6 +37,8 @@ namespace IptvPlayer.Services
 
         public double? ProxyMeasuredBitrate => _proxy.Sample();
 
+        public double? ProxyMinBitrateLastMinute => _proxy.MinBitrateLastMinute;
+
 
         public PlaybackDiagnostics? CurrentDiagnostics { get; private set; }
 
@@ -461,6 +463,9 @@ namespace IptvPlayer.Services
             {
                 player = new MediaPlayer();
 
+                // Prebuffer before the first frame: playback starts explicitly
+                // after the initial buffering pass (see PrebufferBeforePlayAsync)
+                player.AutoPlay = false;
                 player.IsVideoFrameServerEnabled = streamConfig.FrameServer;
             }
             catch (Exception ex)
@@ -731,8 +736,43 @@ namespace IptvPlayer.Services
                 throw;
             }
 
+            await PrebufferBeforePlayAsync(player,
+                isVod ? streamConfig.VodPrebufferSeconds : streamConfig.PrebufferSeconds,
+                openCt);
             player.Play();
             return player;
+        }
+
+
+        // Short pause before the first frame lets the FFmpeg read-ahead fill
+        // so playback starts without stutter; 0 seconds = start at once.
+        // The Media session reports Paused right after Source is set and its
+        // buffering state says nothing about the FFmpeg read-ahead, so the
+        // wait is time-based (StartBuffering fills in the background)
+        private async Task PrebufferBeforePlayAsync(MediaPlayer player, int prebufferSeconds, CancellationToken ct)
+        {
+            if (prebufferSeconds <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                if (LiveSources.TryGetValue(player, out var source))
+                {
+                    source.StartBuffering();
+                }
+                await Task.Delay(TimeSpan.FromSeconds(prebufferSeconds), ct);
+                _logger.LogInformation("Prebuffer: пауза {Seconds} с перед стартом выдержана.", prebufferSeconds);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Prebuffer: ожидание прервано ошибкой — стартуем сразу.");
+            }
         }
 
 

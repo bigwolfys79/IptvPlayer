@@ -85,6 +85,14 @@ public class AppSettings
     public int VodReadAheadSeconds { get; set; } = 8;
 
 
+    // Pause before playback starts so the first frames render without stutter;
+    // 0 = start immediately
+    public int PrebufferSeconds { get; set; } = 1;
+
+
+    public int VodPrebufferSeconds { get; set; } = 2;
+
+
     public WindowPlacement? WindowPlacement { get; set; }
 
 

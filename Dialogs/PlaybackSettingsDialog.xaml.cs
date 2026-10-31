@@ -34,6 +34,8 @@ namespace IptvPlayer.Dialogs
 
             BufferSlider.ValueChanged += BufferSlider_ValueChanged;
             VodBufferSlider.ValueChanged += BufferSlider_ValueChanged;
+            PrebufferSlider.ValueChanged += BufferSlider_ValueChanged;
+            VodPrebufferSlider.ValueChanged += BufferSlider_ValueChanged;
         }
 
         public async Task ShowAsync(XamlRoot xamlRoot)
@@ -89,6 +91,8 @@ namespace IptvPlayer.Dialogs
             VodBufferHeader.Text = L.T("Bufer_Videoteki_Filmy_Portala");
             VodBufferHint.Text = L.T("Tot_Zhe_Bufer_No_Dlya_Filmov");
             VodBufferSlider.Value = Math.Clamp(settings.VodReadAheadSeconds, 2, 15);
+            PrebufferSlider.Value = Math.Clamp(settings.PrebufferSeconds, 0, 5);
+            VodPrebufferSlider.Value = Math.Clamp(settings.VodPrebufferSeconds, 0, 5);
             UpdateBufferLabel();
 
 
@@ -194,6 +198,12 @@ namespace IptvPlayer.Dialogs
         {
             BufferValueText.Text = string.Format(L.T("TV_Bufer_0_C_Zaderzhka_Ot"), $"{BufferSlider.Value:F0}", $"{BufferSlider.Value:F0}", $"{BufferSlider.Value:F0}", $"{BufferSlider.Value:F0}");
             VodBufferValueText.Text = string.Format(L.T("Videoteka_Bufer_0_C"), $"{VodBufferSlider.Value:F0}", $"{VodBufferSlider.Value:F0}");
+            PrebufferValueText.Text = PrebufferSlider.Value < 0.5
+                ? L.T("Predbufer_Vyklyuchen")
+                : string.Format(L.T("TV_Predbufer_0_S"), $"{PrebufferSlider.Value:F0}");
+            VodPrebufferValueText.Text = VodPrebufferSlider.Value < 0.5
+                ? L.T("Predbufer_Vyklyuchen")
+                : string.Format(L.T("Videoteka_Predbufer_0_S"), $"{VodPrebufferSlider.Value:F0}");
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -208,6 +218,8 @@ namespace IptvPlayer.Dialogs
 
             appSettings.ReadAheadSeconds = (int)Math.Clamp(BufferSlider.Value, 5, 60);
             appSettings.VodReadAheadSeconds = (int)Math.Clamp(VodBufferSlider.Value, 2, 15);
+            appSettings.PrebufferSeconds = (int)Math.Clamp(PrebufferSlider.Value, 0, 5);
+            appSettings.VodPrebufferSeconds = (int)Math.Clamp(VodPrebufferSlider.Value, 0, 5);
 
             if (QualityCombo.SelectedItem is ComboBoxItem { Tag: int quality })
             {

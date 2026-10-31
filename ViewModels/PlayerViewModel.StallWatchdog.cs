@@ -98,6 +98,16 @@ public partial class PlayerViewModel
             _logger.LogInformation(
                 "Пульс: «{Channel}» ({Mode}) состояние={State} позиция={Position:mm\\:ss} рестартов={Restarts}.",
                 channel.Name, isVod ? "VOD" : "эфир", state, position, _stallRestarts);
+
+            // Diagnostic proxy on → per-minute average stream speed for freeze correlation
+            if (_streamService.ProxyMeasuredBitrate is { } bps && bps > 0)
+            {
+                var min = _streamService.ProxyMinBitrateLastMinute;
+                var minText = min is { } m ? $" (мин 10-с окно {m / 1_000_000.0:F1})" : string.Empty;
+                _logger.LogInformation(
+                    "Пульс: скорость потока (прокси) {Mbps:F1} Мбит/с{Min}.",
+                    bps / 1_000_000.0, minText);
+            }
         }
 
         // Media ended — the position legitimately stops near the duration.
@@ -159,13 +169,6 @@ public partial class PlayerViewModel
 
     private async Task StallRestartAsync(bool isVod, ChannelViewModel channel, TimeSpan resume)
     {
-        var url = _lastStreamUrl!;
-        var variants = _vodVariantUrls.Count > 0 ? new Dictionary<string, string>(_vodVariantUrls) : null;
-        var quality = CurrentVodQuality;
-        var playlist = OnlineCinemaPlaylist;
-        var episodes = _vodEpisodes.Count > 0 ? _vodEpisodes.ToList() : null;
-        var episodeIndex = CurrentVodEpisodeIndex;
-
         _stallRestarts++;
         _logger.LogWarning(
             "Сторож: поток «{Channel}» ({Mode}) не продвигается {Seconds} с — перезапуск {Attempt}/{Max}{Position}.",
@@ -173,26 +176,53 @@ public partial class PlayerViewModel
             _stallRestarts, StallMaxRestarts,
             isVod ? $" с позиции {resume}" : " с живого края");
 
+        if (isVod)
+        {
+            await ReopenVodAsync(resume, "зависание потока");
+            return;
+        }
+
         // StartPlaybackAsync must not consume the retry budget on this call
         _stallAutoRestart = true;
         try
         {
-            if (isVod)
-            {
-                await StartPlaybackAsync(channel, url, archiveEntry: null, isVod: true,
-                    vodVariants: variants, vodQuality: quality,
-                    resumePosition: resume > TimeSpan.Zero ? resume : null,
-                    vodEpisodes: episodes, vodEpisodeIndex: episodeIndex,
-                    onlineCinemaPlaylist: playlist, onlineCinemaLeafSwitch: true);
-            }
-            else
-            {
-                await StartPlaybackAsync(channel, url, archiveEntry: null);
-            }
+            await StartPlaybackAsync(channel, _lastStreamUrl!, archiveEntry: null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Сторож: перезапуск «{Channel}» не удался.", channel.Name);
+        }
+    }
+
+    // Reopens the current VOD stream with full context (quality/voiceover/
+    // episode) from the given position; the retry budget is handled by callers
+    private async Task ReopenVodAsync(TimeSpan resume, string reason)
+    {
+        var channel = _vodChannel!;
+        var url = _lastStreamUrl!;
+        var variants = _vodVariantUrls.Count > 0 ? new Dictionary<string, string>(_vodVariantUrls) : null;
+        var quality = CurrentVodQuality;
+        var playlist = OnlineCinemaPlaylist;
+        var episodes = _vodEpisodes.Count > 0 ? _vodEpisodes.ToList() : null;
+        var episodeIndex = CurrentVodEpisodeIndex;
+
+        _logger.LogInformation(
+            "VOD: переоткрытие потока ({Reason}) с позиции {Position}.",
+            reason, resume);
+
+        // StartPlaybackAsync must not consume the retry budget on this call
+        _stallAutoRestart = true;
+        try
+        {
+            await StartPlaybackAsync(channel, url, archiveEntry: null, isVod: true,
+                vodVariants: variants, vodQuality: quality,
+                resumePosition: resume > TimeSpan.Zero ? resume : null,
+                vodEpisodes: episodes, vodEpisodeIndex: episodeIndex,
+                onlineCinemaPlaylist: playlist, onlineCinemaLeafSwitch: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "VOD: переоткрытие ({Reason}) не удалось.", reason);
         }
     }
 }

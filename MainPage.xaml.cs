@@ -267,6 +267,12 @@ public sealed partial class MainPage : Page
         _overlayHideTimer.Tick += (s, e) =>
         {
             _overlayHideTimer.Stop();
+            if (_pointerOverOverlayList)
+            {
+                // Cursor rests on the fullscreen list — keep the overlay up;
+                // it is restarted by the list PointerExited
+                return;
+            }
             HideFullScreenOverlay();
             HideWindowedVideoOverlay();
         };

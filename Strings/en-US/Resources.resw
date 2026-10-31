@@ -2487,6 +2487,42 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+  <data name="Predbuferizatsiya.Text" xml:space="preserve">
+
+    <value>Pre-buffering before start</value>
+
+  </data>
+
+  <data name="Predbuferizatsiya_Podskazka.Text" xml:space="preserve">
+
+    <value>Short pause before playback starts so the first seconds play without stutter. 0 — start immediately.</value>
+
+  </data>
+
+  <data name="Predbufer_Videoteki.Text" xml:space="preserve">
+
+    <value>Movie pre-buffering</value>
+
+  </data>
+
+  <data name="Predbufer_Vyklyuchen" xml:space="preserve">
+
+    <value>start immediately</value>
+
+  </data>
+
+  <data name="TV_Predbufer_0_S" xml:space="preserve">
+
+    <value>Live TV: {0} s pause before start</value>
+
+  </data>
+
+  <data name="Videoteka_Predbufer_0_S" xml:space="preserve">
+
+    <value>Movies: {0} s pause before start</value>
+
+  </data>
+
   <data name="Vkl" xml:space="preserve">
 
     <value>On</value>

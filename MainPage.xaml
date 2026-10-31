@@ -1018,6 +1018,8 @@
             <Border x:Name="OverlayChannelsPanel" Grid.Row="0" Grid.Column="0" Grid.RowSpan="3"
                     HorizontalAlignment="Left"
                     Width="320"
+                    PointerEntered="OverlayChannelsPanel_PointerEntered"
+                    PointerExited="OverlayChannelsPanel_PointerExited"
                     Background="{ThemeResource OverlayScrimDarkBrush}">
                 <Grid>
                     <Grid.RowDefinitions>

@@ -1,4 +1,4 @@
-# IptvPlayer
+﻿# IptvPlayer
 
 ## License
 
@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.31.1
+- **Version:** 1.31.4
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -39,9 +39,11 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
 - Hotkeys: digits (channel number), Enter (confirm), Backspace (previous channel), arrows/PgUp/PgDn (adjacent channel), Space (pause for archive and VOD), M (mute), V (display mode), F/F11 (fullscreen), Esc (back/exit), Ctrl+F (search), Ctrl+J (stream stats), Ctrl+M (mini-player), Ctrl+T (always on top); full help — F1
 - Archive (timeshift) with seeking and program progress
-- Archive/VOD pause freezes the last frame (no gray screen); a popup "Paused / Playing" indicator appears on pause state changes
+- Archive/VOD pause freezes the last frame (no gray screen); a popup "Paused / Playing" indicator appears on pause state changes; after a pause longer than a minute, a movie (VOD, online cinema) and the archive reopen at the same position — the CDN drops idle connections, and without this the first seconds after resuming stutter
 - Stream diagnostics on playback error
 - Stalled stream auto-recovery: if the picture freezes for ~20 s without pause, the stream is reopened automatically — a movie (VOD, online cinema, local file) from the same position, live TV at the live edge; up to 3 attempts, then an error message (archive is not covered)
+- Start pre-buffering: a short pause so the first seconds play without stutter; the wait is configured separately for live TV and movies in Playback Settings (0 — start immediately)
+- In fullscreen the overlay stays visible while the cursor is over the channel/movie listn- In fullscreen the overlay stays visible while the cursor is over the channel/movie list
 
 ### Local video files
 - "Video" card on the Hub — open a video file from disk (FileOpenPicker: mp4, mkv, avi, ts, mpg, etc.)

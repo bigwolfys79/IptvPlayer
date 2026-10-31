@@ -29,6 +29,10 @@ public sealed class LocalStreamProxy : IDisposable
     private long _lastSampleBytes;
     private readonly System.Diagnostics.Stopwatch _sampleClock = System.Diagnostics.Stopwatch.StartNew();
     private string _baseUrl = "";
+    private long _tenSecondBase;
+    private readonly System.Diagnostics.Stopwatch _tenSecondClock = System.Diagnostics.Stopwatch.StartNew();
+    private readonly Queue<double> _tenSecondRates = new();
+    private double? _minTenSecondRate;
 
     public LocalStreamProxy(Microsoft.Extensions.Logging.ILogger<LocalStreamProxy> logger)
     {
@@ -105,6 +109,58 @@ public sealed class LocalStreamProxy : IDisposable
             _totalBytes = 0;
             _lastSampleBytes = 0;
             _window.Clear();
+            _tenSecondBase = _totalBytes;
+            _tenSecondRates.Clear();
+            _minTenSecondRate = null;
+        }
+    }
+
+
+    // Minimum 10-second-window bitrate over the last minute: minute averages
+    // hide sub-second stalls, while a bursty feed zeros some windows
+    public double? MinBitrateLastMinute
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _minTenSecondRate;
+            }
+        }
+    }
+
+    private async Task SamplerLoopAsync(CancellationToken ct)
+    {
+        using var timer = new System.Threading.PeriodicTimer(TimeSpan.FromSeconds(10));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                double rate;
+                lock (_gate)
+                {
+                    var seconds = _tenSecondClock.Elapsed.TotalSeconds;
+                    _tenSecondClock.Restart();
+                    var delta = _totalBytes - _tenSecondBase;
+                    _tenSecondBase = _totalBytes;
+                    if (seconds <= 0.5)
+                    {
+                        continue;
+                    }
+
+                    rate = delta * 8 / seconds;
+                    _tenSecondRates.Enqueue(rate);
+                    while (_tenSecondRates.Count > 6)
+                    {
+                        _tenSecondRates.Dequeue();
+                    }
+
+                    _minTenSecondRate = _tenSecondRates.Min();
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
         }
     }
 
@@ -159,6 +215,7 @@ public sealed class LocalStreamProxy : IDisposable
             _baseUrl = $"http://127.0.0.1:{port}";
 
             _ = Task.Run(() => AcceptLoopAsync(_cts.Token));
+            _ = Task.Run(() => SamplerLoopAsync(_cts.Token));
             return true;
         }
         catch (Exception)

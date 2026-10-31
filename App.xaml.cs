@@ -492,6 +492,9 @@ public partial class App : Application
 
             var settingsService = App.Services.GetRequiredService<ISettingsService>();
             var settings = await settingsService.LoadAsync();
+            // Apply the saved theme before navigation: starting on the hub
+            // otherwise keeps the system theme until the player page loads
+            App.ApplyAppTheme(settings.Theme);
             if (_cinemaPlaylistSyncDirty)
             {
                 _cinemaPlaylistSyncDirty = false;

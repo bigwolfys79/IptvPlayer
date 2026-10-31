@@ -818,7 +818,9 @@ public partial class PlayerViewModel : ObservableObject
                 streamSettings.DiagnosticStreamProxy,
                 streamSettings.VideoUpscaler,
                 streamSettings.FrameServerRender,
-                streamSettings.PreferredAudioLanguage);
+                streamSettings.PreferredAudioLanguage,
+                streamSettings.PrebufferSeconds,
+                streamSettings.VodPrebufferSeconds);
             try
             {
                 var player = await _streamService.CreatePlayerAsync(streamUrl, streamConfig, isVod, zapCts.Token);
@@ -1093,11 +1095,42 @@ public partial class PlayerViewModel : ObservableObject
         }
         else
         {
+            TimeSpan pausedFor = TimeSpan.Zero;
             if (_archivePausedAtUtc is { } pausedAt)
             {
+                pausedFor = DateTime.UtcNow - pausedAt;
                 _archivePausedTotal += DateTime.UtcNow - pausedAt;
                 _archivePausedAtUtc = null;
             }
+
+            // Long pause: the read-ahead filled up and the idle CDN connection
+            // silently died (NAT/CDN idle timeout) — plain Play() stutters on
+            // rw_timeouts until the buffer refills. Reopen fresh at the moment
+            // where the user paused
+            if (pausedFor > TimeSpan.FromSeconds(60))
+            {
+                if (IsVodPlaying && _vodChannel is { IsLocalFile: false } &&
+                    Player?.PlaybackSession != null)
+                {
+                    var vodResume = Player.Position;
+                    _ = ReopenVodAsync(vodResume, $"пауза {pausedFor.TotalSeconds:F0} с");
+                    ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+
+                if (IsArchivePlaying && ArchiveEntry != null && _archiveChannel != null)
+                {
+                    RefreshArchivePosition();
+                    var archiveAt = ArchivePositionSeconds;
+                    _logger.LogInformation(
+                        "Архив: пауза {Seconds:F0} с — переоткрытие на текущей позиции {Position:F0} с.",
+                        pausedFor.TotalSeconds, archiveAt);
+                    _ = SeekArchiveAsync(archiveAt);
+                    ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
+                    return true;
+                }
+            }
+
             Player.Play();
             selectedChannel.IsPlaying = true;
         }

@@ -31,6 +31,7 @@ public sealed partial class MainPage
     private void SetFullScreenMode(bool enable)
     {
         _isFullScreen = enable;
+        _pointerOverOverlayList = false;
         Serilog.Log.Information("FullScreen: {Action}", enable ? "вход в полноэкранный режим" : "выход из полноэкранного режима");
 
         // Toast positioned for the previous layout would hang shifted/stuck
@@ -126,6 +127,36 @@ public sealed partial class MainPage
 
     private Windows.Foundation.Point _lastOverlayPointerPosition = new(-1, -1);
 
+    // Pointer rests on the fullscreen channel/movie list — pause auto-hide
+    private bool _pointerOverOverlayList;
+
+    private void OverlayChannelsPanel_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isFullScreen)
+        {
+            return;
+        }
+        _pointerOverOverlayList = true;
+        if (FullScreenOverlay.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+        // List may be mid-fade-out when the pointer re-enters it — restore fully
+        ShowFullScreenOverlay();
+        _overlayHideTimer.Stop();
+    }
+
+    private void OverlayChannelsPanel_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        _pointerOverOverlayList = false;
+        if (!_isFullScreen || FullScreenOverlay.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+        _overlayHideTimer.Stop();
+        _overlayHideTimer.Start();
+    }
+
     private void RootGrid_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
         if (!_isFullScreen || _suppressOverlayWake)
@@ -152,6 +183,12 @@ public sealed partial class MainPage
         }
 
         ShowFullScreenOverlay();
+        if (_pointerOverOverlayList)
+        {
+            // Cursor is on the channel/movie list — keep the overlay up
+            _overlayHideTimer.Stop();
+            return;
+        }
         _overlayHideTimer.Stop();
         _overlayHideTimer.Start();
     }

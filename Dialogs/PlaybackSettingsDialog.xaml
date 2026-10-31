@@ -46,6 +46,25 @@
                     <TextBlock x:Name="VodBufferValueText"
                                FontSize="11"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="PrebufferHeader" x:Uid="Predbuferizatsiya" FontSize="13" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="PrebufferHint"
+                               x:Uid="Predbuferizatsiya_Podskazka"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <Slider x:Name="PrebufferSlider"
+                            Minimum="0" Maximum="5" StepFrequency="1"
+                            Width="320" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="PrebufferValueText"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    <TextBlock x:Name="VodPrebufferHeader" x:Uid="Predbufer_Videoteki" FontSize="13" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <Slider x:Name="VodPrebufferSlider"
+                            Minimum="0" Maximum="5" StepFrequency="1"
+                            Width="320" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="VodPrebufferValueText"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
 
                 <StackPanel Spacing="8">
