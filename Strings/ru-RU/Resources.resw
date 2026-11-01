@@ -1581,9 +1581,9 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
-  <data name="Stall_Watchdog_Give_Up" xml:space="preserve">
+  <data name="Stall_Watchdog_Unstable" xml:space="preserve">
 
-    <value>Поток остановился: автовосстановление не удалось. Нажмите на название фильма ещё раз.</value>
+    <value>Поток нестабилен: автовосстановление продолжается с паузами.</value>
 
   </data>
 
@@ -2877,7 +2877,7 @@ Serilog (логирование), Inno Setup (установщик)</value>
     <value>Диагностика скорости</value>
   </data>
   <data name="Diagnosticheskiy_Proksi" xml:space="preserve">
-    <value>Диагностический прокси</value>
+    <value>Умный прокси CDN</value>
   </data>
   <data name="Vklyuchen_Lbl" xml:space="preserve">
     <value>Вкл.</value>
@@ -2886,13 +2886,13 @@ Serilog (логирование), Inno Setup (установщик)</value>
     <value>Выкл.</value>
   </data>
   <data name="Proksi_Schitaet_Bayty_Potoka_Dlya_Overlay" xml:space="preserve">
-    <value>Прокси считает байты потока</value>
+    <value>Умный прокси CDN (failover узлов)</value>
   </data>
   <data name="Proksi_Schitaet_Bayty_Potoka_Dlya_Overlay_Lbl" xml:space="preserve">
-    <value>Пускает поток через локальный посредник, который считает байты: в Ctrl+J появится реальная скорость загрузки вместо оценки. Применится при следующем переключении канала. Обычный просмотр лучше держать с выключенной галкой.</value>
+    <value>Пускает живые потоки через локального посредника: если один узел CDN отказывает или отклоняет сегмент, он автоматически берётся с резервного узла. Там же считается реальная скорость для Ctrl+J. Рекомендуется держать включённым. Применится при следующем переключении канала.</value>
   </data>
   <data name="Skorost_Vklyuchite_Proksi" xml:space="preserve">
-    <value>Скорость: включите «Диагностический прокси» в настройках воспроизведения</value>
+    <value>Скорость: включите «Умный прокси CDN» в настройках воспроизведения</value>
   </data>
   <data name="Statistika_Potoka" xml:space="preserve">
     <value>Статистика потока (Ctrl+J)</value>

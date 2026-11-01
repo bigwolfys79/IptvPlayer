@@ -13,7 +13,7 @@ namespace IptvPlayer.Services
         int AudioVolumeBoost,
         int ReadAheadSeconds,
         int VodReadAheadSeconds,
-        bool DiagnosticProxy = false,
+        bool SmartProxy = true,
         string? VideoUpscaler = null,
         bool FrameServer = false,
         string? PreferredAudioLanguage = null,

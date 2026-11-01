@@ -33,6 +33,9 @@ public sealed class LocalStreamProxy : IDisposable
     private readonly System.Diagnostics.Stopwatch _tenSecondClock = System.Diagnostics.Stopwatch.StartNew();
     private readonly Queue<double> _tenSecondRates = new();
     private double? _minTenSecondRate;
+    // CDN nodes learned from playlists (host -> auth token query): a failed
+    // segment fetch is retried transparently on an alternate node
+    private readonly Dictionary<string, string> _nodeTokens = new(StringComparer.OrdinalIgnoreCase);
 
     public LocalStreamProxy(Microsoft.Extensions.Logging.ILogger<LocalStreamProxy> logger)
     {
@@ -44,7 +47,9 @@ public sealed class LocalStreamProxy : IDisposable
             UseCookies = false,
         })
         {
-            Timeout = TimeSpan.FromSeconds(30),
+            // Generous ceiling: a slow CDN node may legitimately need a long
+            // time to deliver one segment; the header phase has its own cap
+            Timeout = TimeSpan.FromSeconds(120),
         };
     }
 
@@ -76,6 +81,8 @@ public sealed class LocalStreamProxy : IDisposable
     {
         if (!IsRunning && !TryStart())
         {
+            // Auto-fallback: a dead proxy must not kill playback
+            _logger.LogWarning("Прокси не запустился — поток идёт напрямую: {Url}", upstreamUrl);
             return upstreamUrl;
         }
 
@@ -112,6 +119,7 @@ public sealed class LocalStreamProxy : IDisposable
             _tenSecondBase = _totalBytes;
             _tenSecondRates.Clear();
             _minTenSecondRate = null;
+            _nodeTokens.Clear();
         }
     }
 
@@ -301,24 +309,64 @@ public sealed class LocalStreamProxy : IDisposable
 
                 var upstreamBase = new Uri(upstream);
 
-                using var request = new HttpRequestMessage(HttpMethod.Get, upstream);
-                CopyRequestHeaders(headers, request);
-
-                using var response = await _http.SendAsync(
-                    request, HttpCompletionOption.ResponseHeadersRead, ct);
-
-                var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-                var isPlaylist = contentType.Contains("mpegurl", StringComparison.OrdinalIgnoreCase)
-                    || upstreamBase.AbsolutePath.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase)
+                // Playlist URLs come from the master host — no failover there;
+                // a failing playlist means dead tokens everywhere, the demuxer
+                // will re-fetch the master itself
+                var isPlaylistPath = upstreamBase.AbsolutePath.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase)
                     || upstreamBase.AbsolutePath.EndsWith(".m3u", StringComparison.OrdinalIgnoreCase);
 
-                if (isPlaylist)
+                HttpResponseMessage response;
+                try
                 {
-                    await ProxyPlaylistAsync(stream, response, upstreamBase, ct);
+                    response = await SendUpstreamAsync(headers, upstream, ct);
                 }
-                else
+                catch (Exception ex) when (ex is HttpRequestException or TimeoutException && !ct.IsCancellationRequested)
                 {
-                    await ProxyBodyAsync(stream, response, ct);
+                    var alt = isPlaylistPath ? null : await TryFailoverAsync(headers, upstreamBase, ct);
+                    if (alt is null)
+                    {
+                        _logger.LogWarning(ex, "Сегмент {Path} недоступен ни на одном известном узле.",
+                            upstreamBase.AbsolutePath);
+                        await WriteSimpleStatusAsync(stream, 502, "Bad Gateway", ct);
+                        return;
+                    }
+
+                    response = alt;
+                }
+
+                var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+
+                if (!isPlaylistPath && (int)response.StatusCode >= 400)
+                {
+                    var failedCode = (int)response.StatusCode;
+                    var alt = await TryFailoverAsync(headers, upstreamBase, ct);
+                    if (alt is not null)
+                    {
+                        response.Dispose();
+                        response = alt;
+                        contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Failover не удался: сегмент {Path} — узел {Host} ответил {Code}, других узлов не известно.",
+                            upstreamBase.AbsolutePath, upstreamBase.Authority, failedCode);
+                    }
+                }
+
+                var isPlaylist = isPlaylistPath
+                    || contentType.Contains("mpegurl", StringComparison.OrdinalIgnoreCase);
+
+                using (response)
+                {
+                    if (isPlaylist)
+                    {
+                        await ProxyPlaylistAsync(stream, response, upstreamBase, ct);
+                    }
+                    else
+                    {
+                        await ProxyBodyAsync(stream, response, ct);
+                    }
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -329,6 +377,109 @@ public sealed class LocalStreamProxy : IDisposable
             {
                 _logger.LogDebug(ex, "Proxy connection failed.");
             }
+        }
+    }
+
+    // Single upstream request; the 10 s cap covers the header phase only —
+    // the body streams freely afterwards (a slow node may legitimately need
+    // longer than the cap to deliver one segment)
+    private async Task<HttpResponseMessage> SendUpstreamAsync(
+        Dictionary<string, string> headers, string upstream, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, upstream);
+        CopyRequestHeaders(headers, request);
+
+        using var headerCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        headerCts.CancelAfter(TimeSpan.FromSeconds(10));
+        try
+        {
+            var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, headerCts.Token);
+            // Headers received: disarm the cap so body streaming is not cut
+            headerCts.CancelAfter(Timeout.InfiniteTimeSpan);
+            return response;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Узел {new Uri(upstream).Authority} не ответил заголовками за 10 с.");
+        }
+    }
+
+    // Transparent segment failover: the playlist may rotate segments across
+    // several CDN nodes with per-host auth tokens; a node that rejects (401
+    // after a token rotation) or stalls must not stall playback when another
+    // known node serves the same path with identical content
+    private async Task<HttpResponseMessage?> TryFailoverAsync(
+        Dictionary<string, string> headers, Uri upstream, CancellationToken ct)
+    {
+        string[] hosts;
+        lock (_gate)
+        {
+            hosts = _nodeTokens.Keys
+                .Where(h => !h.Equals(upstream.Authority, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+        }
+
+        foreach (var host in hosts)
+        {
+            string token;
+            lock (_gate)
+            {
+                token = _nodeTokens[host];
+            }
+
+            Uri altUrl;
+            try
+            {
+                altUrl = new UriBuilder(upstream) { Host = host, Query = token }.Uri;
+            }
+            catch (UriFormatException)
+            {
+                continue;
+            }
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                var altResponse = await SendUpstreamAsync(headers, altUrl.ToString(), ct);
+                if ((int)altResponse.StatusCode < 400)
+                {
+                    _logger.LogInformation(
+                        "Failover: сегмент {Path} — узел {Host} не отдал его, резервный узел {Alt} ответил {Code} за {Ms:F0} мс.",
+                        upstream.AbsolutePath, upstream.Authority, altUrl.Authority,
+                        (int)altResponse.StatusCode, sw.Elapsed.TotalMilliseconds);
+                    return altResponse;
+                }
+
+                altResponse.Dispose();
+            }
+            catch (Exception)
+            {
+                // Next candidate node
+            }
+        }
+
+        return null;
+    }
+
+    // Playlists carry the full node list with per-host tokens — remember them
+    private void RememberNode(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            if (string.IsNullOrEmpty(uri.Query))
+            {
+                return;
+            }
+
+            lock (_gate)
+            {
+                _nodeTokens[uri.Authority] = uri.Query.TrimStart('?');
+            }
+        }
+        catch (UriFormatException)
+        {
         }
     }
 
@@ -464,6 +615,10 @@ public sealed class LocalStreamProxy : IDisposable
                     {
                         var inner = line[start..end];
                         var absolute = Resolve(upstreamBase, inner);
+                        if (absolute is not null)
+                        {
+                            RememberNode(absolute);
+                        }
                         sb.AppendLine(line[..start] + (absolute == null ? inner : WrapUrl(absolute)) + line[end..]);
                         continue;
                     }
@@ -474,6 +629,10 @@ public sealed class LocalStreamProxy : IDisposable
             else
             {
                 var absolute = Resolve(upstreamBase, line);
+                if (absolute is not null)
+                {
+                    RememberNode(absolute);
+                }
                 sb.AppendLine(absolute == null ? line : WrapUrl(absolute));
             }
         }

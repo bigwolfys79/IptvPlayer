@@ -804,7 +804,8 @@ public partial class PlayerViewModel : ObservableObject
         else
         {
             _stallRestarts = 0;
-            _stallGiveUp = false;
+            _stallBackoffSeconds = 0;
+            _stallNextRestartUtc = null;
         }
 
             var startWait = System.Diagnostics.Stopwatch.StartNew();
@@ -1080,7 +1081,8 @@ public partial class PlayerViewModel : ObservableObject
 
     public bool ToggleArchivePause(ChannelViewModel? selectedChannel)
     {
-        if (Player == null || selectedChannel == null || CurrentPlayerChannelId != selectedChannel.Id)
+        var player = Player;
+        if (player == null || selectedChannel == null || CurrentPlayerChannelId != selectedChannel.Id)
         {
             return false;
         }
@@ -1090,7 +1092,7 @@ public partial class PlayerViewModel : ObservableObject
 
 
             _archivePausedAtUtc = DateTime.UtcNow;
-            Player.Pause();
+            player.Pause();
             selectedChannel.IsPlaying = false;
         }
         else
@@ -1110,9 +1112,9 @@ public partial class PlayerViewModel : ObservableObject
             if (pausedFor > TimeSpan.FromSeconds(60))
             {
                 if (IsVodPlaying && _vodChannel is { IsLocalFile: false } &&
-                    Player?.PlaybackSession != null)
+                    player.PlaybackSession != null)
                 {
-                    var vodResume = Player.Position;
+                    var vodResume = player.Position;
                     _ = ReopenVodAsync(vodResume, $"пауза {pausedFor.TotalSeconds:F0} с");
                     ArchiveStateChanged?.Invoke(this, EventArgs.Empty);
                     return true;
@@ -1131,7 +1133,7 @@ public partial class PlayerViewModel : ObservableObject
                 }
             }
 
-            Player.Play();
+            player.Play();
             selectedChannel.IsPlaying = true;
         }
 

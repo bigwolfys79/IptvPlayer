@@ -13,8 +13,26 @@ namespace IptvPlayer.ViewModels;
 public partial class PlayerViewModel
 {
     private const int StallTickSeconds = 5;
-    private const int StallThresholdSeconds = 20;
+    // Hard stall (position frozen): live reacts faster — 20 s of frozen
+    // picture is too long when a restart recovers the stream instantly
+    private const int StallLiveThresholdSeconds = 10;
+    private const int StallVodThresholdSeconds = 20;
     private const int StallMaxRestarts = 3;
+
+    // Soft stall: the clock creeps (<1.5 s per 5 s tick) — decode/render is
+    // stalled while the presentation clock keeps running; ~15 s of creeping
+    // on live triggers a restart
+    private const int StallSoftDeltaMs = 1500;
+    private const int StallSoftTicksToRestart = 3;
+
+    // Stuck in buffering: MediaPlayer never leaves the buffering state and
+    // the position says nothing — restart after a fixed timeout
+    private const int StallBufferingTimeoutSeconds = 30;
+
+    // After the restart budget is exhausted, retries continue with a growing
+    // pause instead of giving up
+    private const int StallBackoffStartSeconds = 30;
+    private const int StallBackoffMaxSeconds = 300;
 
     // 60 s of continuous progress re-arms the restart budget
     private const int StallStableTicksToReset = 12;
@@ -23,9 +41,12 @@ public partial class PlayerViewModel
     private MediaPlayer? _stallPlayer;
     private TimeSpan _stallLastPosition;
     private DateTime? _stallSinceUtc;
+    private DateTime? _bufferingSinceUtc;
     private int _stallStableTicks;
+    private int _stallSoftTicks;
     private int _stallRestarts;
-    private bool _stallGiveUp;
+    private int _stallBackoffSeconds;
+    private DateTime? _stallNextRestartUtc;
     private bool _stallAutoRestart;
     private int _stallTicksSinceHeartbeat;
 
@@ -56,7 +77,7 @@ public partial class PlayerViewModel
         // URL carries the start time and StartPlaybackAsync cannot resume inside it)
         var isVod = IsVodPlaying;
         var channel = isVod ? _vodChannel : (IsArchivePlaying ? null : _liveChannel);
-        if (channel == null || _lastStreamUrl == null || IsBuffering)
+        if (channel == null || _lastStreamUrl == null)
         {
             ResetStallTracking();
             return;
@@ -77,6 +98,8 @@ public partial class PlayerViewModel
             _stallLastPosition = TimeSpan.Zero;
             _stallSinceUtc = DateTime.UtcNow;
             _stallStableTicks = 0;
+            _stallSoftTicks = 0;
+            _bufferingSinceUtc = null;
             return;
         }
 
@@ -84,6 +107,8 @@ public partial class PlayerViewModel
         if (state is MediaPlaybackState.Paused or MediaPlaybackState.None)
         {
             _stallSinceUtc = null;
+            _stallSoftTicks = 0;
+            _bufferingSinceUtc = null;
             return;
         }
 
@@ -118,44 +143,93 @@ public partial class PlayerViewModel
             return;
         }
 
-        if (Math.Abs((position - _stallLastPosition).TotalMilliseconds) >= 500)
+        // Stuck in buffering: the position says nothing here, the player just
+        // never leaves the buffering state — restart after a fixed timeout
+        if (IsBuffering)
+        {
+            _stallSinceUtc = null;
+            _stallSoftTicks = 0;
+            _bufferingSinceUtc ??= DateTime.UtcNow;
+            if (DateTime.UtcNow - _bufferingSinceUtc.Value >= TimeSpan.FromSeconds(StallBufferingTimeoutSeconds))
+            {
+                _bufferingSinceUtc = null;
+                if (!StallRetryPauseActive())
+                {
+                    _ = StallRestartAsync(isVod, channel, position, "буферизация не завершается");
+                }
+            }
+            return;
+        }
+        _bufferingSinceUtc = null;
+
+        var deltaMs = Math.Abs((position - _stallLastPosition).TotalMilliseconds);
+        if (deltaMs >= StallSoftDeltaMs)
         {
             var advanced = position > _stallLastPosition;
             _stallLastPosition = position;
             _stallSinceUtc = null;
+            _stallSoftTicks = 0;
             if (advanced && _stallStableTicks < StallStableTicksToReset &&
                 ++_stallStableTicks == StallStableTicksToReset)
             {
                 _stallRestarts = 0;
-                _stallGiveUp = false;
+                _stallBackoffSeconds = 0;
+                _stallNextRestartUtc = null;
             }
 
             return;
         }
 
+        if (deltaMs >= 500)
+        {
+            // Creeping playback: the clock advances at a fraction of real
+            // speed — decode/render stalled while the transport still feeds.
+            // VOD keeps the old behaviour (may be slow decode); live restarts.
+            _stallLastPosition = position;
+            _stallSinceUtc = null;
+            if (++_stallSoftTicks >= StallSoftTicksToRestart)
+            {
+                _stallSoftTicks = 0;
+                if (isVod)
+                {
+                    _logger.LogWarning(
+                        "Сторож: «{Channel}» (VOD) движется рывками — восстановление не запускается.",
+                        channel.Name);
+                }
+                else if (!StallRetryPauseActive())
+                {
+                    _ = StallRestartAsync(isVod, channel, position, "поток движется рывками");
+                }
+            }
+
+            return;
+        }
+
+        // Hard stall: the position is frozen
+        _stallSoftTicks = 0;
         _stallSinceUtc ??= DateTime.UtcNow;
-        if (DateTime.UtcNow - _stallSinceUtc.Value < TimeSpan.FromSeconds(StallThresholdSeconds))
+        var threshold = TimeSpan.FromSeconds(isVod ? StallVodThresholdSeconds : StallLiveThresholdSeconds);
+        if (DateTime.UtcNow - _stallSinceUtc.Value < threshold)
         {
             return;
         }
 
-        if (_stallGiveUp)
+        if (StallRetryPauseActive())
         {
-            return;
-        }
-
-        if (_stallRestarts >= StallMaxRestarts)
-        {
-            _stallGiveUp = true;
-            _logger.LogError(
-                "Сторож: {Max} перезапусков «{Channel}» ({Mode}) не помогли — автовосстановление остановлено.",
-                StallMaxRestarts, channel.Name, isVod ? "VOD" : "эфир");
-            StreamError = Services.L.T("Stall_Watchdog_Give_Up");
+            // Keep _stallSinceUtc: fire as soon as the retry pause passes
             return;
         }
 
         _stallSinceUtc = null;
-        _ = StallRestartAsync(isVod, channel, position);
+        _ = StallRestartAsync(isVod, channel, position, $"поток не продвигается {(isVod ? StallVodThresholdSeconds : StallLiveThresholdSeconds)} с");
+    }
+
+    // Retry pause after the restart budget is exhausted is still running
+    private bool StallRetryPauseActive()
+    {
+        return _stallRestarts >= StallMaxRestarts &&
+               _stallNextRestartUtc is { } next &&
+               DateTime.UtcNow < next;
     }
 
     private void ResetStallTracking()
@@ -163,17 +237,36 @@ public partial class PlayerViewModel
         _stallPlayer = null;
         _stallLastPosition = TimeSpan.Zero;
         _stallSinceUtc = null;
+        _bufferingSinceUtc = null;
         _stallStableTicks = 0;
+        _stallSoftTicks = 0;
         _stallTicksSinceHeartbeat = 0;
     }
 
-    private async Task StallRestartAsync(bool isVod, ChannelViewModel channel, TimeSpan resume)
+    private async Task StallRestartAsync(bool isVod, ChannelViewModel channel, TimeSpan resume, string reason)
     {
         _stallRestarts++;
+        var pauseText = string.Empty;
+        if (_stallRestarts >= StallMaxRestarts)
+        {
+            // Budget exhausted: later attempts only with a growing pause
+            _stallBackoffSeconds = _stallBackoffSeconds == 0
+                ? StallBackoffStartSeconds
+                : Math.Min(_stallBackoffSeconds * 2, StallBackoffMaxSeconds);
+            _stallNextRestartUtc = DateTime.UtcNow + TimeSpan.FromSeconds(_stallBackoffSeconds);
+            pauseText = $" (далее не чаще раза в {_stallBackoffSeconds} с)";
+            if (_stallBackoffSeconds == StallBackoffStartSeconds)
+            {
+                StreamError = Services.L.T("Stall_Watchdog_Unstable");
+                _logger.LogWarning(
+                    "Сторож: {Max} перезапуска «{Channel}» не помогли — восстановление продолжается с паузами.",
+                    StallMaxRestarts, channel.Name);
+            }
+        }
+
         _logger.LogWarning(
-            "Сторож: поток «{Channel}» ({Mode}) не продвигается {Seconds} с — перезапуск {Attempt}/{Max}{Position}.",
-            channel.Name, isVod ? "VOD" : "эфир", StallThresholdSeconds,
-            _stallRestarts, StallMaxRestarts,
+            "Сторож: поток «{Channel}» ({Mode}) {Reason} — перезапуск {Attempt}{Pause}{Position}.",
+            channel.Name, isVod ? "VOD" : "эфир", reason, _stallRestarts, pauseText,
             isVod ? $" с позиции {resume}" : " с живого края");
 
         if (isVod)

@@ -1581,9 +1581,9 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
-  <data name="Stall_Watchdog_Give_Up" xml:space="preserve">
+  <data name="Stall_Watchdog_Unstable" xml:space="preserve">
 
-    <value>The stream stalled: automatic recovery failed. Click the movie title again.</value>
+    <value>The stream is unstable: automatic recovery continues with pauses.</value>
 
   </data>
 
@@ -2877,7 +2877,7 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>Speed diagnostics</value>
   </data>
   <data name="Diagnosticheskiy_Proksi" xml:space="preserve">
-    <value>Diagnostic proxy</value>
+    <value>CDN smart proxy</value>
   </data>
   <data name="Vklyuchen_Lbl" xml:space="preserve">
     <value>On</value>
@@ -2886,13 +2886,13 @@ Serilog (logging), Inno Setup (installer)</value>
     <value>Off</value>
   </data>
   <data name="Proksi_Schitaet_Bayty_Potoka_Dlya_Overlay" xml:space="preserve">
-    <value>Proxy counts stream bytes</value>
+    <value>CDN smart proxy (node failover)</value>
   </data>
   <data name="Proksi_Schitaet_Bayty_Potoka_Dlya_Overlay_Lbl" xml:space="preserve">
-    <value>Routes the stream through a local hop that counts bytes: Ctrl+J will show the real download speed instead of an estimate. Takes effect on the next channel change. Keep it off for normal viewing.</value>
+    <value>Routes live streams through a local hop: when one CDN node rejects or stalls, the segment is automatically fetched from an alternate node. It also measures the real download speed for Ctrl+J. Recommended to keep enabled. Takes effect on the next channel change.</value>
   </data>
   <data name="Skorost_Vklyuchite_Proksi" xml:space="preserve">
-    <value>Speed: enable "Diagnostic proxy" in playback settings</value>
+    <value>Speed: enable "CDN smart proxy" in playback settings</value>
   </data>
   <data name="Statistika_Potoka" xml:space="preserve">
     <value>Stream statistics (Ctrl+J)</value>

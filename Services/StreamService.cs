@@ -136,6 +136,35 @@ namespace IptvPlayer.Services
         }
 
 
+        // Selects an audio track on the playback item, guarding the whole open:
+        // MediaPlaybackItem may expose fewer tracks than the FFmpeg source lists,
+        // and an out-of-range SelectedIndex throws — without the guard that
+        // aborted the open and fell back to the system player
+        private bool TrySelectAudioTrack(MediaPlaybackItem item, int index, string reason)
+        {
+            if (index < 0 || index >= item.AudioTracks.Count)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (item.AudioTracks.SelectedIndex != index)
+                {
+                    item.AudioTracks.SelectedIndex = index;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Не удалось выбрать аудиодорожку {Index} ({Reason}).", index, reason);
+                return false;
+            }
+        }
+
+
         public IReadOnlyList<(int Index, string? Language)> GetAudioTracks(MediaPlayer? player)
         {
             if (player is null || !PlaybackItems.TryGetValue(player, out var item))
@@ -517,16 +546,16 @@ namespace IptvPlayer.Services
                 var readAheadSeconds = Math.Clamp(streamConfig.ReadAheadSeconds, 2, 120);
 
                 // Байтовый потолок считаем из расчёта 4 МБ/с — покрывает 4K HEVC
-                // (~32 Мбит/с) без запаса впустую. SD/HD-каналы до него не дорастут,
-                // поэтому цена для них нулевая. Верхняя граница 24 МБ защищает память
-                // при большом ReadAheadSeconds; нижняя 4 МБ — минимум для надёжного
-                // буферирования пика на любом качестве.
+                // (~32 Мбит/с). Верхняя граница 48 МБ: у ряда поставщиков сегменты
+                // HLS по 10 с, и при 4K-битрейте 24 МБ — меньше одного сегмента,
+                // что не оставляет запаса на затык одного узла CDN. SD/HD-каналы
+                // до потолка не дорастут, поэтому цена для них нулевая.
                 // ReadAheadBufferSize — это потолок, а не преаллокация: FFmpegInteropX
                 // не заполняет его до краёв перед первым кадром, задержку на старте
                 // он не вносит. Узкий же буфер на 4K-канале вызывает постоянные паузы
                 // фонового чтения и фризы на сетевом джиттере.
                 var readAheadBytes = Math.Clamp(readAheadSeconds * 4 * 1024 * 1024,
-                                                4 * 1024 * 1024, 24 * 1024 * 1024);
+                                                4 * 1024 * 1024, 48 * 1024 * 1024);
                 if (isVod)
                 {
                     // VOD: можно буферировать щедрее — латентность не критична,
@@ -583,20 +612,39 @@ namespace IptvPlayer.Services
                 ffmpegConfig.FFmpegOptions["reconnect"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_streamed"] = "1";
                 ffmpegConfig.FFmpegOptions["reconnect_delay_max"] = "7";
-                // Cap a single blocking connect/read (15 s, microseconds): a server that
-                // accepts TCP but never answers otherwise hangs the open until app restart
-                ffmpegConfig.FFmpegOptions["rw_timeout"] = "15000000";
+                // Cap a single blocking connect/read: a server that accepts TCP
+                // but never answers otherwise hangs the open until app restart.
+                // Live gets a tighter cap — FFmpeg then heals a stalled CDN
+                // connection by itself (reconnect below) instead of freezing
+                // playback until the watchdog steps in.
+                ffmpegConfig.FFmpegOptions["rw_timeout"] = isVod ? "15000000" : "7000000";
+                // Retry reads after network errors (timeouts included), not
+                // only on a dropped connection — covers HLS playlists that
+                // stop refreshing at an hourly discontinuity
+                ffmpegConfig.FFmpegOptions["reconnect_on_network_error"] = "1";
+                // Same for HTTP-level failures (5xx): a transient CDN node
+                // error should not stop the demuxer
+                ffmpegConfig.FFmpegOptions["reconnect_on_http_error"] = "5xx";
 
+                // Smart CDN proxy: live streams route through the local proxy
+                // which counts bytes and, more importantly, fails segments
+                // over to an alternate CDN node when one rejects or stalls
+                // (multi-node HLS playlists with per-host auth tokens). VOD
+                // keeps its direct path — online cinema has its own URL logic.
                 var actualUrl = streamUrl;
-                if (streamConfig.DiagnosticProxy
+                if (!isVod
+                    && streamConfig.SmartProxy
                     && (streamUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                         || streamUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
                 {
                     _proxy.ResetForNewStream();
                     actualUrl = _proxy.WrapUrl(streamUrl);
-                    _logger.LogInformation(
-                        "Диагностический прокси включён: поток идёт через {Local}.",
-                        actualUrl);
+                    if (!ReferenceEquals(actualUrl, streamUrl) && actualUrl != streamUrl)
+                    {
+                        _logger.LogInformation(
+                            "Умный прокси CDN (failover узлов): поток идёт через {Local}.",
+                            actualUrl);
+                    }
                 }
 
                 openCt.ThrowIfCancellationRequested();
@@ -653,7 +701,8 @@ namespace IptvPlayer.Services
                             .FirstOrDefault(i => !invalidAudioIndexes.Contains(i), -1);
                         if (validIndex >= 0)
                         {
-                            audioTracks.SelectedIndex = validIndex;
+                            TrySelectAudioTrack(mediaPlaybackItem, validIndex,
+                                "исходная дорожка без метаданных");
                         }
                     }
                     // LogDebug, а не Warning: пустые дорожки — известный паттерн
@@ -671,12 +720,21 @@ namespace IptvPlayer.Services
                     audioStreams.Select(a => (string?)a.Language).ToList(),
                     streamConfig.PreferredAudioLanguage,
                     invalidSet);
-                if (preferredAudioIndex >= 0 && preferredAudioIndex != mediaPlaybackItem.AudioTracks.SelectedIndex)
+                if (preferredAudioIndex >= 0)
                 {
-                    mediaPlaybackItem.AudioTracks.SelectedIndex = preferredAudioIndex;
-                    _logger.LogInformation(
-                        "Аудиодорожка: выбран язык {Language} (дорожка {Index} из {Count}).",
-                        streamConfig.PreferredAudioLanguage, preferredAudioIndex + 1, audioStreams.Count);
+                    var trackCount = mediaPlaybackItem.AudioTracks.Count;
+                    if (TrySelectAudioTrack(mediaPlaybackItem, preferredAudioIndex, "предпочтительный язык"))
+                    {
+                        _logger.LogInformation(
+                            "Аудиодорожка: выбран язык {Language} (дорожка {Index} из {Count}).",
+                            streamConfig.PreferredAudioLanguage, preferredAudioIndex + 1, audioStreams.Count);
+                    }
+                    else if (preferredAudioIndex >= trackCount)
+                    {
+                        _logger.LogDebug(
+                            "Выбор языка пропущен: дорожка {Index} вне диапазона плейлиста ({Count} дорожек).",
+                            preferredAudioIndex, trackCount);
+                    }
                 }
 
                 player.Source = mediaPlaybackItem;

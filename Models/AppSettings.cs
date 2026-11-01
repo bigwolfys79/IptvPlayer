@@ -152,7 +152,9 @@ public class AppSettings
     public bool StatsOverlayVisible { get; set; }
 
 
-    public bool DiagnosticStreamProxy { get; set; }
+    // Smart CDN proxy (failover between playlist nodes) — on by default:
+    // multi-node HLS providers stall without it when one node rejects
+    public bool DiagnosticStreamProxy { get; set; } = true;
 
 
     public bool TempDiagnosticsEnabled { get; set; }
