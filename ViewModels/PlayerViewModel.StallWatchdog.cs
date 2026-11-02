@@ -37,6 +37,14 @@ public partial class PlayerViewModel
     // 60 s of continuous progress re-arms the restart budget
     private const int StallStableTicksToReset = 12;
 
+    // Video freeze: the position runs and audio plays while the video stream
+    // stopped delivering frames — invisible to the position checks above.
+    // MainPage wires this to FrameServerRenderer.FrameCount; null = check off
+    public Func<long>? VideoFrameCounterSource { get; set; }
+    private const int VideoStallTicksToRestart = 1; // 5 s at 5 s ticks
+    private long _lastFrameCount;
+    private int _videoStallTicks;
+
     private Windows.System.DispatcherQueueTimer? _stallTimer;
     private MediaPlayer? _stallPlayer;
     private TimeSpan _stallLastPosition;
@@ -49,6 +57,7 @@ public partial class PlayerViewModel
     private DateTime? _stallNextRestartUtc;
     private bool _stallAutoRestart;
     private int _stallTicksSinceHeartbeat;
+    private long _heartbeatLastFrameCount;
 
     private void EnsureStallWatchdog()
     {
@@ -100,6 +109,8 @@ public partial class PlayerViewModel
             _stallStableTicks = 0;
             _stallSoftTicks = 0;
             _bufferingSinceUtc = null;
+            _videoStallTicks = 0;
+            _lastFrameCount = VideoFrameCounterSource?.Invoke() ?? 0;
             return;
         }
 
@@ -109,6 +120,8 @@ public partial class PlayerViewModel
             _stallSinceUtc = null;
             _stallSoftTicks = 0;
             _bufferingSinceUtc = null;
+            _videoStallTicks = 0;
+            _lastFrameCount = VideoFrameCounterSource?.Invoke() ?? _lastFrameCount;
             return;
         }
 
@@ -116,22 +129,34 @@ public partial class PlayerViewModel
         var duration = session.NaturalDuration;
 
         // Minute heartbeat: a video freeze with live audio keeps the clock
-        // running — the log trail is the only way to see it after the fact
+        // running — the log trail is the only way to see it after the fact.
+        // Diagnostic-gated: the toggle in the diagnostics dialog silences it
         if (++_stallTicksSinceHeartbeat >= 12)
         {
             _stallTicksSinceHeartbeat = 0;
-            _logger.LogInformation(
-                "Пульс: «{Channel}» ({Mode}) состояние={State} позиция={Position:mm\\:ss} рестартов={Restarts}.",
-                channel.Name, isVod ? "VOD" : "эфир", state, position, _stallRestarts);
-
-            // Diagnostic proxy on → per-minute average stream speed for freeze correlation
-            if (_streamService.ProxyMeasuredBitrate is { } bps && bps > 0)
+            if (App.TempDiagnosticsEnabled)
             {
-                var min = _streamService.ProxyMinBitrateLastMinute;
-                var minText = min is { } m ? $" (мин 10-с окно {m / 1_000_000.0:F1})" : string.Empty;
+                var frameText = string.Empty;
+                if (VideoFrameCounterSource is { } heartbeatSource)
+                {
+                    var now = heartbeatSource();
+                    frameText = $" кадров за минуту: {now - _heartbeatLastFrameCount}";
+                    _heartbeatLastFrameCount = now;
+                }
+
                 _logger.LogInformation(
-                    "Пульс: скорость потока (прокси) {Mbps:F1} Мбит/с{Min}.",
-                    bps / 1_000_000.0, minText);
+                    "Пульс: «{Channel}» ({Mode}) состояние={State} позиция={Position:mm\\:ss} рестартов={Restarts}.{Frames}",
+                    channel.Name, isVod ? "VOD" : "эфир", state, position, _stallRestarts, frameText);
+
+                // Diagnostic proxy on → per-minute average stream speed for freeze correlation
+                if (_streamService.ProxyMeasuredBitrate is { } bps && bps > 0)
+                {
+                    var min = _streamService.ProxyMinBitrateLastMinute;
+                    var minText = min is { } m ? $" (мин 10-с окно {m / 1_000_000.0:F1})" : string.Empty;
+                    _logger.LogInformation(
+                        "Пульс: скорость потока (прокси) {Mbps:F1} Мбит/с{Min}.",
+                        bps / 1_000_000.0, minText);
+                }
             }
         }
 
@@ -149,6 +174,8 @@ public partial class PlayerViewModel
         {
             _stallSinceUtc = null;
             _stallSoftTicks = 0;
+            _videoStallTicks = 0;
+            _lastFrameCount = VideoFrameCounterSource?.Invoke() ?? _lastFrameCount;
             _bufferingSinceUtc ??= DateTime.UtcNow;
             if (DateTime.UtcNow - _bufferingSinceUtc.Value >= TimeSpan.FromSeconds(StallBufferingTimeoutSeconds))
             {
@@ -175,6 +202,29 @@ public partial class PlayerViewModel
                 _stallRestarts = 0;
                 _stallBackoffSeconds = 0;
                 _stallNextRestartUtc = null;
+            }
+
+            // Video freeze: the position runs while the video stream delivers
+            // no frames — invisible to every position check above
+            if (session.NaturalVideoWidth > 0 && VideoFrameCounterSource is { } frameSource)
+            {
+                var now = frameSource();
+                var frameDelta = now - _lastFrameCount;
+                _lastFrameCount = now;
+                if (frameDelta > 0)
+                {
+                    _videoStallTicks = 0;
+                }
+                else if (++_videoStallTicks >= VideoStallTicksToRestart && !StallRetryPauseActive())
+                {
+                    _videoStallTicks = 0;
+                    _ = StallRestartAsync(isVod, channel, position,
+                        $"видео не выдаёт кадров {VideoStallTicksToRestart * StallTickSeconds} с при живой позиции");
+                }
+            }
+            else
+            {
+                _videoStallTicks = 0;
             }
 
             return;
@@ -241,6 +291,8 @@ public partial class PlayerViewModel
         _stallStableTicks = 0;
         _stallSoftTicks = 0;
         _stallTicksSinceHeartbeat = 0;
+        _videoStallTicks = 0;
+        _lastFrameCount = 0;
     }
 
     private async Task StallRestartAsync(bool isVod, ChannelViewModel channel, TimeSpan resume, string reason)

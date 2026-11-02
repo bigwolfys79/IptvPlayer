@@ -304,6 +304,12 @@ public sealed partial class MainPage : Page
                     var diag = _streamService.CurrentDiagnostics;
                     _frameServerRenderer.Attach(FrameServerPanel, player,
                         diag?.VideoWidth ?? 0, diag?.VideoHeight ?? 0);
+                    Player.VideoFrameCounterSource = () => _frameServerRenderer.FrameCount;
+                }
+                else
+                {
+                    // Renderer off — the video-stall watchdog has no signal
+                    Player.VideoFrameCounterSource = null;
                 }
             }
 

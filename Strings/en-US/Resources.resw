@@ -284,6 +284,30 @@ Serilog (logging), Inno Setup (installer)</value>
 
   </data>
 
+  <data name="FrameServer_Rendering.Text" xml:space="preserve">
+
+    <value>Enhanced video output (Frame Server)</value>
+
+  </data>
+
+  <data name="FrameServer_Rendering_Lbl" xml:space="preserve">
+
+    <value>Enhanced video output (Frame Server)</value>
+
+  </data>
+
+  <data name="FrameServer_Podskazka.Text" xml:space="preserve">
+
+    <value>Custom frame output pipeline with FSR upscaling. Enables automatic recovery from video freezes while audio keeps playing. Applies on the next channel switch.</value>
+
+  </data>
+
+  <data name="FrameServer_Podskazka_Lbl" xml:space="preserve">
+
+    <value>Custom frame output pipeline with FSR upscaling. Enables automatic recovery from video freezes while audio keeps playing. Applies on the next channel switch.</value>
+
+  </data>
+
   <data name="Dinamicheskaya_Usilivaet_Tikhie_Kanaly" xml:space="preserve">
 
     <value>Dynamic (boosts quiet channels)</value>

@@ -284,6 +284,30 @@ Serilog (логирование), Inno Setup (установщик)</value>
 
   </data>
 
+  <data name="FrameServer_Rendering.Text" xml:space="preserve">
+
+    <value>Ускоренный вывод видео (Frame Server)</value>
+
+  </data>
+
+  <data name="FrameServer_Rendering_Lbl" xml:space="preserve">
+
+    <value>Ускоренный вывод видео (Frame Server)</value>
+
+  </data>
+
+  <data name="FrameServer_Podskazka.Text" xml:space="preserve">
+
+    <value>Собственный конвейер вывода кадров с FSR-масштабированием. Включает автоматическое восстановление при замирании видео при живом звуке. Применится при следующем переключении канала.</value>
+
+  </data>
+
+  <data name="FrameServer_Podskazka_Lbl" xml:space="preserve">
+
+    <value>Собственный конвейер вывода кадров с FSR-масштабированием. Включает автоматическое восстановление при замирании видео при живом звуке. Применится при следующем переключении канала.</value>
+
+  </data>
+
   <data name="Dinamicheskaya_Usilivaet_Tikhie_Kanaly" xml:space="preserve">
 
     <value>Динамическая (усиливает тихие каналы)</value>

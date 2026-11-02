@@ -10,7 +10,7 @@ It is free for noncommercial and personal use, but commercial use is limited to 
 
 IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 playback powered by FFmpeg. WinUI 3 / .NET 8 / Windows App SDK.
 
-- **Version:** 1.32.0
+- **Version:** 1.32.2
 - **Repository and releases:** https://github.com/bigwolfys79/IptvPlayer (update checking is built into "About")
 - **Settings and cache:** `%LocalAppData%\IptvPlayer`
 - **Log (Serilog):** `%LocalAppData%\IptvPlayer\logs` (daily rolling, toggleable in settings)
@@ -35,14 +35,15 @@ IPTV player for M3U/M3U8 playlists with timeshift archive and full HEVC/AC-3 pla
 - Audio normalization: Dynamic (boost quiet channels) / Loudness (EBU R128)
 - Volume boost up to 200% (FFmpeg volume on top of normalization — for very quiet channels)
 - Action confirmation toasts at the bottom center of the video: volume, mute, sleep timer
-- CDN smart proxy: live streams go through a local hop — when one CDN node fails, segments are automatically fetched from an alternate node; plus real speed measurement (playback settings, on by default)
+- CDN smart proxy: live streams go through a local hop — a throttling node is quarantined and segments are automatically fetched from an alternate, large segments download in parallel (4 connections), a silently stalled node is cut off by an idle timeout, and announced segments are pulled into a background cache ahead of time; verbose telemetry is toggled in diagnostics; plus real speed measurement (playback settings, on by default)
 - Statistics overlay (Ctrl+J): codecs, resolution, bitrates, decoder
 - Hotkeys: digits (channel number), Enter (confirm), Backspace (previous channel), arrows/PgUp/PgDn (adjacent channel), Space (pause for archive and VOD), M (mute), V (display mode), F/F11 (fullscreen), Esc (back/exit), Ctrl+F (search), Ctrl+J (stream stats), Ctrl+M (mini-player), Ctrl+T (always on top); full help — F1
 - Archive (timeshift) with seeking and program progress
 - Archive/VOD pause freezes the last frame (no gray screen); a popup "Paused / Playing" indicator appears on pause state changes; after a pause longer than a minute, a movie (VOD, online cinema) and the archive reopen at the same position — the CDN drops idle connections, and without this the first seconds after resuming stutter
 - Stream diagnostics on playback error
-- Stalled stream auto-recovery: a frozen position (10 s live, 20 s for movies), creeping playback with a running clock (~15 s) or endless buffering (30 s) — the stream is reopened automatically: a movie (VOD, online cinema, local file) from the same position, live TV at the live edge; after 3 fast attempts recovery continues with growing pauses (archive is not covered)
+- Stalled stream auto-recovery: a frozen position (10 s live, 20 s for movies), creeping playback with a running clock (~15 s), endless buffering (30 s) or a frozen picture with live audio (5 s, requires Frame Server) — the stream is reopened automatically: a movie (VOD, online cinema, local file) from the same position, live TV at the live edge; after 3 fast attempts recovery continues with growing pauses (archive is not covered)
 - Start pre-buffering: a short pause so the first seconds play without stutter; the wait is configured separately for live TV and movies in Playback Settings (0 — start immediately)
+- Enhanced video output (Frame Server): a custom frame pipeline with FSR upscaling — a toggle in Playback Settings; enables protection against video freezes while audio keeps playing
 - In fullscreen the overlay stays visible while the cursor is over the channel/movie listn- In fullscreen the overlay stays visible while the cursor is over the channel/movie list
 
 ### Local video files

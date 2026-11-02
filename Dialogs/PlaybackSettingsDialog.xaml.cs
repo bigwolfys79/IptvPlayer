@@ -84,6 +84,10 @@ namespace IptvPlayer.Dialogs
             DecoderRadio.SelectedIndex =
                 string.Equals(settings.DecoderMode, "Hardware", StringComparison.OrdinalIgnoreCase) ? 0 : 1;
 
+            FrameServerHeader.Text = L.T("FrameServer_Rendering_Lbl");
+            FrameServerHint.Text = L.T("FrameServer_Podskazka_Lbl");
+            FrameServerToggle.IsOn = settings.FrameServerRender;
+
 
             BufferHeader.Text = L.T("Bufer_TV_Kanalov_Pryamoy_Efir");
             BufferHint.Text = L.T("Glubina_Bufera_Dlya_TV_Kanalov_Pryamogo");
@@ -215,6 +219,8 @@ namespace IptvPlayer.Dialogs
             {
                 appSettings.DecoderMode = DecoderModes[DecoderRadio.SelectedIndex];
             }
+
+            appSettings.FrameServerRender = FrameServerToggle.IsOn;
 
             appSettings.ReadAheadSeconds = (int)Math.Clamp(BufferSlider.Value, 5, 60);
             appSettings.VodReadAheadSeconds = (int)Math.Clamp(VodBufferSlider.Value, 2, 15);

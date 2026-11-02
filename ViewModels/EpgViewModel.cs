@@ -415,6 +415,8 @@ public partial class EpgViewModel : ObservableObject
     private async Task RefreshCurrentProgramsLightCoreAsync()
     {
         var processed = 0;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var now = DateTime.Now;
 
         foreach (var channel in Channels)
         {
@@ -422,6 +424,21 @@ public partial class EpgViewModel : ObservableObject
 
             if (channel.IsPortalItem || channel.IsVodCatalogItem)
             {
+                continue;
+            }
+
+            // Stored entry still covers now: progress tick only, no EPG
+            // round-trip — the full pass re-resolves on program transition
+            var stored = channel.CurrentEPGEntry;
+            if (stored is { } s && s.StartTime <= now && now < s.EndTime)
+            {
+                channel.RefreshCurrentProgramProgress();
+                processed++;
+                if (processed % YieldEveryNChannels == 0)
+                {
+                    await Task.Yield();
+                }
+
                 continue;
             }
 
@@ -453,6 +470,10 @@ public partial class EpgViewModel : ObservableObject
                 await Task.Yield();
             }
         }
+
+        _logger.LogInformation(
+            "Обновление текущих программ (лайт): {Processed} каналов за {Ms:F0} мс.",
+            processed, sw.Elapsed.TotalMilliseconds);
     }
 
 

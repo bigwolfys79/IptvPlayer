@@ -23,6 +23,16 @@
                 </StackPanel>
 
                 <StackPanel Spacing="8">
+                    <TextBlock x:Name="FrameServerHeader" x:Uid="FrameServer_Rendering" FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="FrameServerHint"
+                               x:Uid="FrameServer_Podskazka"
+                               FontSize="11"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+                    <ToggleSwitch x:Name="FrameServerToggle" HorizontalAlignment="Left" Margin="0,-6,0,0"/>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
                     <TextBlock x:Name="BufferHeader" x:Uid="Buferizatsiya" FontSize="14" FontWeight="SemiBold"/>
                     <TextBlock x:Name="BufferHint"
                                x:Uid="Primenitsya_Pri_Sleduyushchem_Pereklyuchenii_Kanala"

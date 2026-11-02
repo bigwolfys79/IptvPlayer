@@ -50,6 +50,11 @@ namespace IptvPlayer.Services
         private int _streamWidth, _streamHeight;
         private bool _loggedScaleInfo;
         private float _cachedDpi = 96f;
+        private long _frameCount;
+
+        // Total VideoFrameAvailable events since attach: zero growth while
+        // Playing means the video stream stopped delivering frames
+        public long FrameCount => Interlocked.Read(ref _frameCount);
 
         private const float Sharpening = 0.80f;
 
@@ -210,6 +215,7 @@ namespace IptvPlayer.Services
 
         private void Player_VideoFrameAvailable(MediaPlayer sender, object args)
         {
+            Interlocked.Increment(ref _frameCount);
             if (_canvasDevice is null || _panel?.SwapChain is null)
             {
                 return;
